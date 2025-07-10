@@ -1,0 +1,167 @@
+-- Políticas para la tabla profiles
+CREATE POLICY "Los usuarios pueden ver su propio perfil" 
+  ON profiles FOR SELECT 
+  USING ((select auth.uid()) = id);
+
+CREATE POLICY "Los usuarios pueden actualizar su propio perfil" 
+  ON profiles FOR UPDATE 
+  USING ((select auth.uid()) = id);
+
+-- Políticas para la tabla products
+CREATE POLICY "Cualquiera puede ver productos activos" 
+  ON products FOR SELECT 
+  USING (is_active = true);
+
+CREATE POLICY "Solo administradores pueden modificar productos" 
+  ON products FOR INSERT 
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  ));
+
+CREATE POLICY "Solo administradores pueden actualizar productos" 
+  ON products FOR UPDATE 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  ));
+
+CREATE POLICY "Solo administradores pueden eliminar productos" 
+  ON products FOR DELETE 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  ));
+
+-- Políticas para la tabla categories
+CREATE POLICY "Cualquiera puede ver categorías" 
+  ON categories FOR SELECT 
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Solo administradores pueden modificar categorías" 
+  ON categories FOR INSERT 
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  ));
+
+CREATE POLICY "Solo administradores pueden actualizar categorías" 
+  ON categories FOR UPDATE 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  ));
+
+CREATE POLICY "Solo administradores pueden eliminar categorías" 
+  ON categories FOR DELETE 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  ));
+
+-- Políticas para la tabla customers
+CREATE POLICY "Staff y admin pueden ver todos los clientes" 
+  ON customers FOR SELECT 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role IN ('admin', 'staff')
+  ));
+
+CREATE POLICY "Los clientes solo pueden ver su propia información" 
+  ON customers FOR SELECT 
+  USING (EXISTS (
+    SELECT 1 FROM orders 
+    WHERE customer_id = customers.id AND user_id = (select auth.uid())
+  ));
+
+CREATE POLICY "Solo staff y admin pueden crear clientes" 
+  ON customers FOR INSERT 
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role IN ('admin', 'staff')
+  ));
+
+CREATE POLICY "Solo staff y admin pueden actualizar clientes" 
+  ON customers FOR UPDATE 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role IN ('admin', 'staff')
+  ));
+
+-- Políticas para la tabla orders
+CREATE POLICY "Staff y admin pueden ver todas las órdenes" 
+  ON orders FOR SELECT 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role IN ('admin', 'staff')
+  ));
+
+CREATE POLICY "Los usuarios pueden ver sus propias órdenes" 
+  ON orders FOR SELECT 
+  USING (user_id = (select auth.uid()));
+
+CREATE POLICY "Los usuarios pueden crear sus propias órdenes" 
+  ON orders FOR INSERT 
+  WITH CHECK (user_id = (select auth.uid()));
+
+CREATE POLICY "Staff y admin pueden actualizar órdenes" 
+  ON orders FOR UPDATE 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role IN ('admin', 'staff')
+  ));
+
+CREATE POLICY "Los usuarios pueden actualizar sus propias órdenes pendientes" 
+  ON orders FOR UPDATE 
+  USING (
+    user_id = (select auth.uid()) AND 
+    status = 'pending'
+  );
+
+-- Políticas para la tabla order_items
+CREATE POLICY "Staff y admin pueden ver todos los items de órdenes" 
+  ON order_items FOR SELECT 
+  USING (EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = (select auth.uid()) AND role IN ('admin', 'staff')
+  ));
+
+CREATE POLICY "Los usuarios pueden ver items de sus propias órdenes" 
+  ON order_items FOR SELECT 
+  USING (EXISTS (
+    SELECT 1 FROM orders 
+    WHERE id = order_items.order_id AND user_id = (select auth.uid())
+  ));
+
+CREATE POLICY "Los usuarios pueden crear items en sus propias órdenes pendientes" 
+  ON order_items FOR INSERT 
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM orders 
+    WHERE id = order_items.order_id AND user_id = (select auth.uid()) AND status = 'pending'
+  ));
+
+CREATE POLICY "Los usuarios pueden actualizar items en sus propias órdenes pendientes" 
+  ON order_items FOR UPDATE 
+  USING (EXISTS (
+    SELECT 1 FROM orders 
+    WHERE id = order_items.order_id AND user_id = (select auth.uid()) AND status = 'pending'
+  ));
+
+CREATE POLICY "Los usuarios pueden eliminar items de sus propias órdenes pendientes" 
+  ON order_items FOR DELETE 
+  USING (EXISTS (
+    SELECT 1 FROM orders 
+    WHERE id = order_items.order_id AND user_id = (select auth.uid()) AND status = 'pending'
+  ));
+
+
+-- Políticas para la tabla attention_service_products
+CREATE POLICY "Usuarios autenticados pueden insertar productos de servicio de atención" 
+  ON attention_service_products FOR INSERT 
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Usuarios anónimos pueden insertar productos de servicio de atención" 
+  ON attention_service_products FOR INSERT 
+  WITH CHECK (true);
