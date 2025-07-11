@@ -4,7 +4,19 @@ import type { Database } from '@/integrations/supabase/types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Ensure the client is only created once, especially in development with HMR
+let supabaseClient: ReturnType<typeof createClient<Database>>;
+
+if (import.meta.env.DEV && globalThis.supabase) {
+  supabaseClient = globalThis.supabase as ReturnType<typeof createClient<Database>>;
+} else {
+  supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  if (import.meta.env.DEV) {
+    globalThis.supabase = supabaseClient;
+  }
+}
+
+export const supabase = supabaseClient;
 
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 

@@ -13,6 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
 import Reports from "@/pages/Reports";
+import RegisterTenant from "@/pages/RegisterTenant";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Route>
+          <Route path="/register-tenant" element={<RegisterTenant />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
