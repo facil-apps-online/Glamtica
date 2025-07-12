@@ -70,10 +70,16 @@ export const useStylistAvailability = () => {
   });
 };
 
+import { useUserTenantInfo } from "@/hooks/useUserTenantInfo";
+
 export const useAppointments = (stylistId?: string, statusFilter?: string, dateFilter?: Date) => {
+  const { tenant_id } = useUserTenantInfo();
+
   return useQuery({
-    queryKey: ['appointments', stylistId, statusFilter, dateFilter],
+    queryKey: ['appointments', stylistId, statusFilter, dateFilter, tenant_id],
     queryFn: async () => {
+      if (!tenant_id) throw new Error("Tenant ID not available.");
+
       try {
         let query = supabase
           .from('appointments')
@@ -83,6 +89,7 @@ export const useAppointments = (stylistId?: string, statusFilter?: string, dateF
             stylists(name, specialties),
             services(name, duration_minutes, price)
           `)
+          .eq('tenant_id', tenant_id)
           .order('appointment_date', { ascending: true })
           .order('appointment_time', { ascending: true });
 
@@ -91,10 +98,10 @@ export const useAppointments = (stylistId?: string, statusFilter?: string, dateF
           query = query.eq('stylist_id', stylistId);
         }
 
-        // Filtrar por fecha si se especifica
+        // Filtrar por fecha si se especifica (desde la fecha dada en adelante)
         if (dateFilter) {
           const dateString = format(dateFilter, 'yyyy-MM-dd');
-          query = query.eq('appointment_date', dateString);
+          query = query.gte('appointment_date', dateString);
         }
 
         // Filtrar por estado
@@ -204,14 +211,19 @@ export const useAppointments = (stylistId?: string, statusFilter?: string, dateF
 
 // Nuevo hook para obtener días con citas pendientes
 export const useAppointmentDates = (stylistId?: string) => {
+  const { tenant_id } = useUserTenantInfo();
+
   return useQuery({
-    queryKey: ['appointment-dates', stylistId],
+    queryKey: ['appointment-dates', stylistId, tenant_id],
     queryFn: async () => {
+      if (!tenant_id) throw new Error("Tenant ID not available.");
+
       try {
         let query = supabase
           .from('appointments')
           .select('appointment_date, status')
-          .in('status', ['Confirmada', 'En Proceso', 'Completada']);
+          .in('status', ['Confirmada', 'En Proceso', 'Completada'])
+          .eq('tenant_id', tenant_id);
 
         if (stylistId && stylistId !== 'all') {
           query = query.eq('stylist_id', stylistId);

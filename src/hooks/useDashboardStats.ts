@@ -50,10 +50,15 @@ export interface TopService {
   revenue: number;
 }
 
+import { useUserTenantInfo } from "@/hooks/useUserTenantInfo";
+
 export const useDashboardStats = () => {
+  const { tenant_id } = useUserTenantInfo();
+
   return useQuery<DashboardStats>({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-stats', tenant_id],
     queryFn: async (): Promise<DashboardStats> => {
+      if (!tenant_id) throw new Error("Tenant ID not available.");
       const today = new Date();
       const yesterday = subDays(today, 1);
       const currentMonth = new Date();
@@ -74,7 +79,8 @@ export const useDashboardStats = () => {
           appointment_products(total_price),
           appointment_extra_services(price)
         `)
-        .eq('appointment_date', todayStart);
+        .eq('appointment_date', todayStart)
+        .eq('tenant_id', tenant_id);
 
       if (todayError) throw todayError;
 
@@ -86,7 +92,8 @@ export const useDashboardStats = () => {
           appointment_products(total_price),
           appointment_extra_services(price)
         `)
-        .eq('appointment_date', yesterdayStart);
+        .eq('appointment_date', yesterdayStart)
+        .eq('tenant_id', tenant_id);
 
       if (yesterdayError) throw yesterdayError;
 
@@ -96,11 +103,13 @@ export const useDashboardStats = () => {
         .select(`
           *,
           appointment_products(total_price),
-          appointment_extra_services(price)
+          appointment_extra_services(price),
+          services(duration_minutes)
         `)
         .gte('appointment_date', monthStart)
         .lte('appointment_date', monthEnd)
-        .in('status', ['Completada', 'Pagada']);
+        .in('status', ['Completada', 'Pagada'])
+        .eq('tenant_id', tenant_id);
 
       if (monthlyError) throw monthlyError;
 
@@ -114,7 +123,8 @@ export const useDashboardStats = () => {
         `)
         .gte('appointment_date', lastMonthStart)
         .lte('appointment_date', lastMonthEnd)
-        .in('status', ['Completada', 'Pagada']);
+        .in('status', ['Completada', 'Pagada'])
+        .eq('tenant_id', tenant_id);
 
       if (lastMonthError) throw lastMonthError;
 
@@ -122,7 +132,8 @@ export const useDashboardStats = () => {
       const { data: stylists, error: stylistsError } = await supabase
         .from('stylists')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('tenant_id', tenant_id);
 
       if (stylistsError) throw stylistsError;
 
@@ -158,13 +169,9 @@ export const useDashboardStats = () => {
         : todayCount > 0 ? 100 : 0;
 
       // Calcular duración promedio (usando duración estimada del servicio)
-      const { data: services, error: servicesError } = await supabase
-        .from('services')
-        .select('duration_minutes');
-
-      if (servicesError) throw servicesError;
-
-      const averageDuration = services?.reduce((sum, service) => sum + service.duration_minutes, 0) / (services?.length || 1) || 45;
+      const completedAppointments = lastMonthAppointments?.filter(apt => apt.status === 'Completada' || apt.status === 'Pagada');
+      const totalDuration = completedAppointments?.reduce((sum, apt) => sum + (apt.services?.duration_minutes || 0), 0) || 0;
+      const averageDuration = completedAppointments?.length > 0 ? totalDuration / completedAppointments.length : 0;
 
       return {
         todayRevenue,
@@ -182,9 +189,13 @@ export const useDashboardStats = () => {
 };
 
 export const useTodayAppointments = () => {
+  const { tenant_id } = useUserTenantInfo();
+
   return useQuery({
-    queryKey: ['today-appointments'],
+    queryKey: ['today-appointments', tenant_id],
     queryFn: async (): Promise<TodayAppointment[]> => {
+      if (!tenant_id) throw new Error("Tenant ID not available.");
+
       const today = format(new Date(), 'yyyy-MM-dd');
 
       const { data, error } = await supabase
@@ -201,6 +212,7 @@ export const useTodayAppointments = () => {
           appointment_extra_services(price)
         `)
         .eq('appointment_date', today)
+        .eq('tenant_id', tenant_id)
         .order('appointment_time', { ascending: true });
 
       if (error) throw error;
@@ -226,9 +238,13 @@ export const useTodayAppointments = () => {
 };
 
 export const useTopServices = () => {
+  const { tenant_id } = useUserTenantInfo();
+
   return useQuery({
-    queryKey: ['top-services'],
+    queryKey: ['top-services', tenant_id],
     queryFn: async (): Promise<TopService[]> => {
+      if (!tenant_id) throw new Error("Tenant ID not available.");
+
       // Obtener citas de los últimos 30 días
       const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
@@ -241,7 +257,8 @@ export const useTopServices = () => {
           appointment_extra_services(price)
         `)
         .gte('appointment_date', thirtyDaysAgo)
-        .in('status', ['Completada', 'Pagada']);
+        .in('status', ['Completada', 'Pagada'])
+        .eq('tenant_id', tenant_id);
 
       if (error) throw error;
 

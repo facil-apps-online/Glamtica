@@ -9,50 +9,44 @@ key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 # Create Supabase client
 supabase: Client = create_client(url, key)
 
-def get_tables():
-    """Fetches all table names from the public schema."""
+def get_functions():
+    """Fetches all function names and their argument types from the public schema."""
     try:
-        # Supabase Python library doesn't have a direct way to list tables,
+        # Supabase Python library doesn't have a direct way to list functions,
         # so we use a remote procedure call to a SQL function.
-        tables = supabase.rpc('get_table_names', {}).execute()
-        if tables.data:
-            # Filter out the 'settings' table and internal Supabase tables
-            excluded_tables = {'settings'}
-            table_names = [t['table_name'] for t in tables.data if t['table_name'] not in excluded_tables and not t['table_name'].startswith('supabase_')]
-            print("Tables to be cleared:")
-            for name in table_names:
-                print(f"- {name}")
-            return table_names
+        # We need to create a temporary function to get function details.
+        supabase.rpc('sql', {
+            'statement': """
+            CREATE OR REPLACE FUNCTION get_function_signatures()
+            RETURNS TABLE(function_name TEXT, argument_types TEXT) AS $$
+            BEGIN
+                RETURN QUERY
+                SELECT
+                    p.proname AS function_name,
+                    pg_get_function_arguments(p.oid) AS argument_types
+                FROM
+                    pg_proc p
+                JOIN
+                    pg_namespace n ON n.oid = p.pronamespace
+                WHERE
+                    n.nspname = 'public' AND p.proname = 'set_session_context';
+            END;
+            $$ LANGUAGE plpgsql;
+            """
+        }).execute()
+
+        functions = supabase.rpc('get_function_signatures', {}).execute()
+        if functions.data:
+            print("Functions in database:")
+            for func in functions.data:
+                print(f"- {func['function_name']}({func['argument_types']})")
+            return functions.data
         else:
-            print("No tables found or error fetching tables.")
+            print("No functions found or error fetching functions.")
             return []
     except Exception as e:
         print(f"An error occurred: {e}")
         return []
 
 if __name__ == "__main__":
-    # Before we can get the tables, we need to create the RPC function in Supabase
-    # This is a one-time setup.
-    try:
-        supabase.rpc('sql', {
-            'statement': """
-            CREATE OR REPLACE FUNCTION get_table_names()
-            RETURNS TABLE(table_name TEXT) AS $$
-            BEGIN
-                RETURN QUERY
-                SELECT t.table_name
-                FROM information_schema.tables t
-                WHERE t.table_schema = 'public' AND t.table_type = 'BASE TABLE';
-            END;
-            $$ LANGUAGE plpgsql;
-            """
-        }).execute()
-        print("Successfully created RPC function 'get_table_names'.")
-    except Exception as e:
-        # Function might already exist, which is fine.
-        if 'already exists' not in str(e):
-            print(f"Error creating RPC function: {e}")
-        else:
-            print("RPC function 'get_table_names' already exists.")
-
-    get_tables()
+    get_functions()

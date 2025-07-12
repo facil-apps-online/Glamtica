@@ -18,7 +18,7 @@ export default function Dashboard() {
   // Obtener todas las citas para el gráfico comparativo
   const currentMonth = useMemo(() => new Date(), []);
   const previousMonth = useMemo(() => subMonths(currentMonth, 1), [currentMonth]);
-  const { data: allAppointments } = useAppointments(null, null, null);
+  const { data: allAppointments } = useAppointments(null, null, startOfMonth(previousMonth));
 
   // Generar datos para el gráfico de ventas mensuales comparativo
   const monthlyComparisonData = useMemo(() => {
@@ -232,7 +232,7 @@ export default function Dashboard() {
         
         <StatsCard
           title="Duración Promedio"
-          value={`${stats?.averageDuration || 45}min`}
+          value={`${stats?.averageDuration}min`}
           change="Por servicio"
           icon={Clock}
           trend="up"

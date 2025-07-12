@@ -10,7 +10,12 @@ let supabaseClient: ReturnType<typeof createClient<Database>>;
 if (import.meta.env.DEV && globalThis.supabase) {
   supabaseClient = globalThis.supabase as ReturnType<typeof createClient<Database>>;
 } else {
-  supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      persistSession: false, // We manage session manually
+      detectSessionInUrl: false, // We manage session manually
+    },
+  });
   if (import.meta.env.DEV) {
     globalThis.supabase = supabaseClient;
   }

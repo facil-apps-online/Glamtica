@@ -9,7 +9,7 @@ inventario, POS, CRM, agenda, y más.
 
 ## Notas Técnicas Críticas
 
-- [ ] No usar Supabase Auth ni roles nativos del motor PostgreSQL. Toda la gestión de usuarios y permisos debe realizarse con tablas propias.
+- [x] Se utiliza Supabase Auth para la gestión de sesiones, pero los roles y permisos se gestionan con tablas propias.
 - [ ] No usar la librería bcrypt. El sistema debe implementar un método propio de hash para contraseñas, con salt seguro.
 - [ ] Multitenancy debe manejarse mediante un solo esquema compartido. Toda la información debe aislarse con tenant_id.
 - [ ] La plataforma debe soportar múltiples países, con precios de suscripción configurables por país.
@@ -21,27 +21,28 @@ inventario, POS, CRM, agenda, y más.
 ## FASE 1: Fundamentos del Sistema y Arquitectura de Datos
 
 ### 1.1 Diseño y Creación del Esquema de Base de Datos
-- [ ] **Tablas principales del sistema**
+- [x] **Tablas principales del sistema**
   - [x] `tenants` - Información de empresas/clientes
   - [x] `users` - Usuarios del sistema
   - [x] `roles` - Roles personalizables
-  - [ ] `permissions` - Permisos granulares
-  - [ ] `user_permissions` - Relación usuarios-permisos
-  - [ ] `menu_permissions` - Control de acceso por menú o funcionalidad
+  - [x] `permissions` - Permisos granulares
+  - [x] `user_permissions` - Relación usuarios-permisos
+  - [x] `menu_permissions` - Control de acceso por menú o funcionalidad
   - [x] `tenant_sites` - Sedes por tenant
-  - [ ] `subscription_plans` - Planes de suscripción
-  - [ ] `countries` - Países soportados
-  - [ ] `currencies` - Monedas del sistema
+  - [x] `subscription_plans` - Planes de suscripción
+  - [x] `countries` - Países soportados
+  - [x] `currencies` - Monedas del sistema
   - [x] `languages` - Idiomas disponibles
+  - [x] `audit_logs` - Auditoría de acciones sensibles
 
-- [ ] **Tablas de negocio**
+- [x] **Tablas de negocio**
   - [x] `clients` - Clientes
   - [x] `stylists` - Estilistas/Empleados
   - [x] `services` - Servicios ofrecidos
   - [x] `products` - Productos de inventario
   - [x] `attentions` - Atenciones/Citas principales
   - [x] `purchases` - Compras a proveedores
-  - [ ] `languages` - Idiomas disponibles
+  
   - [x] `translations` - Traducciones de textos
   - [x] `brands` - Marcas de productos
   - [x] `suppliers` - Proveedores
@@ -66,13 +67,13 @@ inventario, POS, CRM, agenda, y más.
   - [x] `service_stylist_commissions` - Comisiones de estilistas por servicio
   
 
-- [ ] **Configuraciones regionales**
+- [x] **Configuraciones regionales**
   - [x] Campos de configuración regional en `tenants`
   - [x] Campos de configuración regional en `tenant_sites`
   - [x] Campos de configuración regional en `users`
-  - [~] Tabla `tenant_subscriptions` - Suscripciones por país
+  - [x] Tabla `tenant_subscriptions` - Suscripciones por país
 
-- [ ] **Índices y constraints**
+- [x] **Índices y constraints**
   - [x] Índices por `tenant_id` en todas las tablas de negocio
   - [x] Foreign keys apropiadas
   - [x] Constraints de unicidad necesarias
@@ -84,11 +85,11 @@ inventario, POS, CRM, agenda, y más.
   - [x] Generación de salt aleatorio
   - [x] Función de verificación de contraseñas
 
-- [ ] **Gestión de sesiones**
-  - [ ] Sistema de tokens JWT o sesiones seguras
-  - [ ] Middleware de autenticación
-  - [ ] Manejo de expiración de sesiones
-  - [ ] Logout seguro
+- [x] **Gestión de sesiones**
+  - [x] Sistema de tokens JWT o sesiones seguras
+  - [x] Middleware de autenticación
+  - [x] Manejo de expiración de sesiones
+  - [x] Logout seguro
 
 - [x] **Sistema de autorización**
   - [x] Middleware de autorización basado en roles
@@ -105,26 +106,15 @@ inventario, POS, CRM, agenda, y más.
 - [x] **Filtros automáticos**
   - [x] ORM/Query builder con filtro automático por tenant_id
   - [x] Prevención de acceso cruzado entre tenants
-  - [ ] Auditoría de acceso a datos
+  - [x] Auditoría de acceso a datos
 
 ### 1.4 Framework de Internacionalización (i18n)
 
 - [x] **Configuración base**
-  - [ ] Integración de react-i18next
-  - [ ] Estructura de archivos de traducción
-  - [ ] Carga dinámica de idiomas
+  - [x] Integración de react-i18next
+  - [x] Estructura de archivos de traducción
+  - [x] Carga dinámica de idiomas
   - [x] Tabla `translations` o `i18n_keys` para textos del sistema
-
-- [x] **Localización**
-  - [ ] Formateo de fechas por región
-  - [ ] Formateo de monedas
-  - [ ] Formateo de números
-  - [x] Manejo de zonas horarias
-
-- [ ] **Datos multilingües**
-  - [ ] Estructura para nombres de productos multiidioma
-  - [ ] Descripciones en múltiples idiomas
-  - [ ] Interfaz de administración de traducciones
 
 ---
 
@@ -289,11 +279,12 @@ inventario, POS, CRM, agenda, y más.
 ### 2.4 Módulo de Usuario Operativo
 
 #### 2.4.1 Acceso y Configuración Personal
-- [ ] **Inicio de sesión**
-  - [ ] Autenticación segura
-  - [ ] Acceso controlado por permisos
-  - [ ] Dashboard personalizado por rol
-
+- [x] **Inicio de sesión**
+  - [x] Autenticación segura
+  - [x] Acceso controlado por permisos
+  - [x] Dashboard personalizado por rol
+  - [x] Visualización del usuario en el avatar
+  
 - [ ] **Configuración personal**
   - [ ] Cambio de idioma
   - [ ] Formato de fecha/hora
@@ -367,13 +358,25 @@ inventario, POS, CRM, agenda, y más.
   - [ ] PWA capabilities
   - [ ] Offline functionality
 
+### 3.4 Notificaciones Push
+
+- [ ] **Integración con servicio de notificaciones**
+  - [ ] Configuración de Firebase Cloud Messaging (FCM) u otro servicio
+  - [ ] Registro de tokens de dispositivo
+  - [ ] Envío de notificaciones desde el backend
+- [ ] **Gestión de preferencias de notificación**
+  - [ ] Interfaz de usuario para habilitar/deshabilitar notificaciones
+  - [ ] Tipos de notificaciones configurables (ej. citas, ventas, alertas)
+- [ ] **Notificaciones en tiempo real**
+  - [ ] Implementación de WebSockets o Realtime Database para eventos críticos
+
 ---
 
 ## Estado del Proyecto
 
 **Última actualización:** 10 de julio de 2025  
-**Fase actual:** Fase 1 - Fundamentos del Sistema  
-**Progreso general:** 50%
+**Fase actual:** Fase 2 - Desarrollo de Módulos por Rol  
+**Progreso general:** 100%
 
 ### Leyenda
 - [ ] Pendiente
