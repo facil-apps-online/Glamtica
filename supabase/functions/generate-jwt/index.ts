@@ -1,64 +1,89 @@
-import { serve } from "https://deno.land/std@0.224.0/http/mod.ts";
-import { SignJWT } from "https://deno.land/x/jose@v5.2.3/index.ts"; // Full URL for manual deployment
+// Import Deno's standard server and the djwt library for signing tokens.
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+// Correctly import the necessary functions from djwt v2.2
+import { create, getNumericDate } from 'https://deno.land/x/djwt@v2.2/mod.ts'
+
+// Define CORS headers to allow requests from any origin.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS', // Explicitly allow OPTIONS
+}
 
 serve(async (req) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
-
-  // Handle CORS preflight requests
+  // The browser sends an OPTIONS request first to check if the server allows the actual request.
+  // We must handle this preflight request by responding with a 200 OK and the CORS headers.
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: corsHeaders,
-    });
+    return new Response('ok', { headers: corsHeaders })
   }
 
-  if (req.method === "POST") {
-    try {
-      const { user_id, email, role, tenant_id, branch_id, jwt_secret, audience } = await req.json();
+  try {
+    // Get all the necessary data from the request body.
+    const { 
+      user_id, 
+      email, 
+      role, 
+      tenant_id, 
+      branch_id, 
+      first_name, 
+      last_name, 
+      avatar_url, 
+      jwt_secret 
+    } = await req.json()
 
-      console.log("Edge Function: Received parameters:", { user_id, email, role, tenant_id, branch_id, jwt_secret: jwt_secret ? "[REDACTED]" : "[MISSING]", audience });
+    console.log('[generate-jwt] Received role:', role);
 
-      if (!jwt_secret) {
-        return new Response(JSON.stringify({ error: "JWT secret is missing." }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-      if (!audience) {
-        return new Response(JSON.stringify({ error: "Audience is missing." }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-
-      const secret = new TextEncoder().encode(jwt_secret);
-
-      const jwt = await new SignJWT({
-        sub: user_id,
-        email: email,
-        role: role,
-        tenant_id: tenant_id,
-        branch_id: branch_id,
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("1h")
-        .setAudience(audience) // Set the audience claim
-        .sign(secret);
-
-      return new Response(JSON.stringify({ token: jwt }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      });
+    // Ensure the JWT secret was passed.
+    if (!jwt_secret) {
+      throw new Error('JWT secret is missing.')
     }
-  }
 
-  return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
-});
+    // If the user is a super_admin, ensure their tenant_id is the global one.
+    let final_tenant_id = tenant_id;
+    if (role === 'super_admin') {
+      final_tenant_id = '00000000-0000-0000-0000-000000000000';
+    }
+
+    // Create the payload for the JWT, including all user data.
+    const payload = {
+      sub: user_id,
+      email: email,
+      tenant_id: final_tenant_id, // Use the potentially modified tenant_id
+      branch_id: branch_id,
+      first_name: first_name,
+      last_name: last_name,
+      avatar_url: avatar_url, // Add avatar_url to the payload
+      aud: 'authenticated', // Add the audience claim
+      exp: getNumericDate(60 * 60 * 24), // Token expires in 24 hours
+      app_metadata: {
+        role: role, // Move role into app_metadata
+      },
+    };
+
+    console.log('[generate-jwt] Payload before signing:', payload);
+
+    // Prepare the cryptographic key for signing.
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(jwt_secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign", "verify"]
+    );
+
+    // Sign the token using the correct syntax for djwt v2.2
+    const token = await create({ alg: "HS256", typ: "JWT" }, payload, key);
+
+    // Return the newly generated token.
+    return new Response(
+      JSON.stringify({ token }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error) {
+    // Return an error response if anything fails.
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    })
+  }
+})

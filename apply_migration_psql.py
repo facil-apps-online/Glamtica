@@ -9,7 +9,7 @@ DB_NAME = "postgres"
 DB_USER = "postgres.vtfsbogpkrcbfuhhoepf"
 DB_PASSWORD = "3nt3patatA*.*"
 
-migration_file_path = "C:/Desarrollos/Glamtica.app/supabase/migrations/20250712021000_add_localization_fields_v2.sql"
+migration_file_path = "C:/Desarrollos/Glamtica.app/supabase/migrations/20250712103000_create_create_tenant_rpc_function.sql"
 PSQL_PATH = "C:/Program Files/PostgreSQL/17/bin/psql.exe"
 
 def apply_migration_with_psql():

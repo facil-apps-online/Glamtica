@@ -10,9 +10,13 @@ CREATE TABLE IF NOT EXISTS public.languages (
 
 -- Add RLS
 ALTER TABLE public.languages ENABLE ROW LEVEL SECURITY;
+
+-- Drop policy if it exists before creating it to ensure idempotency
+DROP POLICY IF EXISTS "Enable all operations for languages" ON public.languages;
 CREATE POLICY "Enable all operations for languages" ON public.languages FOR ALL USING (true) WITH CHECK (true);
 
--- Add updated_at trigger
+-- Drop trigger if it exists before creating it to ensure idempotency
+DROP TRIGGER IF EXISTS trigger_languages_updated_at ON public.languages;
 CREATE TRIGGER trigger_languages_updated_at
   BEFORE UPDATE ON public.languages
   FOR EACH ROW

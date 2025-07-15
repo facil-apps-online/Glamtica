@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,12 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { DatePickerWrapper } from "@/components/ui/DatePicker"; // Importar el nuevo componente
+import { Plus } from "lucide-react";
 import { useCreateTimeOffRequest } from "@/hooks/useStylistTimeOff";
 
 interface TimeOffRequestDialogProps {
@@ -29,8 +24,8 @@ const TIME_OFF_TYPES = [
 
 export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [type, setType] = useState("");
@@ -46,25 +41,10 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
     if (!startDate || !endDate || !type) return;
 
     try {
-      // Asegurar que las fechas se envíen en la zona horaria local sin conversión
-      const startDateFormatted = startDate.getFullYear() + '-' + 
-        String(startDate.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(startDate.getDate()).padStart(2, '0');
-      const endDateFormatted = endDate.getFullYear() + '-' + 
-        String(endDate.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(endDate.getDate()).padStart(2, '0');
-
-      console.log('Fechas enviadas:', { 
-        startDate: startDateFormatted, 
-        endDate: endDateFormatted,
-        originalStart: startDate,
-        originalEnd: endDate 
-      });
-
       await createRequestMutation.mutateAsync({
         stylist_id: stylistId,
-        start_date: startDateFormatted,
-        end_date: endDateFormatted,
+        start_date: startDate,
+        end_date: endDate,
         start_time: isPartialDay ? startTime : undefined,
         end_time: isPartialDay ? endTime : undefined,
         type,
@@ -73,8 +53,8 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
       });
 
       // Reset form
-      setStartDate(undefined);
-      setEndDate(undefined);
+      setStartDate(null);
+      setEndDate(null);
       setStartTime("");
       setEndTime("");
       setType("");
@@ -121,56 +101,18 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fecha de Inicio</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "dd/MM/yyyy", { locale: es }) : "Seleccionar"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerWrapper
+                selected={startDate}
+                onChange={setStartDate}
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Fecha de Fin</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "dd/MM/yyyy", { locale: es }) : "Seleccionar"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    disabled={(date) => date < (startDate || new Date())}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerWrapper
+                selected={endDate}
+                onChange={setEndDate}
+              />
             </div>
           </div>
 

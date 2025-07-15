@@ -4,25 +4,31 @@ import type { Database } from '@/integrations/supabase/types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-// Ensure the client is only created once, especially in development with HMR
-let supabaseClient: ReturnType<typeof createClient<Database>>;
+// Create a single, new, and clean Supabase client instance.
+// This removes the HMR logic to prevent using a stale client.
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false, // We will manage the session manually.
+    detectSessionInUrl: false,
+  },
+  // Initialize the global property to ensure it exists.
+  global: {
+    headers: {},
+  },
+});
 
-if (import.meta.env.DEV && globalThis.supabase) {
-  supabaseClient = globalThis.supabase as ReturnType<typeof createClient<Database>>;
-} else {
-  supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      persistSession: false, // We manage session manually
-      detectSessionInUrl: false, // We manage session manually
-    },
-  });
-  if (import.meta.env.DEV) {
-    globalThis.supabase = supabaseClient;
-  }
+// Asegurar que supabase.global y supabase.global.headers existan
+if (!supabase.global) {
+  supabase.global = {};
+}
+if (!supabase.global.headers) {
+  supabase.global.headers = {};
 }
 
-export const supabase = supabaseClient;
+console.log('[supabaseClient.ts] Supabase client initialized. supabase.global (after check):', supabase.global);
 
+
+// The following utility functions remain unchanged.
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Utility function to convert a local date to UTC string for Supabase

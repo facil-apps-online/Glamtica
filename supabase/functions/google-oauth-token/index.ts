@@ -1,0 +1,109 @@
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
+const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
+const REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI');
+
+// Headers de CORS para permitir peticiones desde el frontend
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Manejar la petición preflight de CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // **VERIFICACIÓN DE VARIABLES DE ENTORNO**
+    const requiredEnv = [
+      'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI',
+      'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'
+    ];
+    for (const env of requiredEnv) {
+      if (!Deno.env.get(env)) {
+        throw new Error(`Missing required environment variable: ${env}`);
+      }
+    }
+
+    const { code, tenantId } = await req.json();
+
+    if (!code || !tenantId) {
+      return new Response(JSON.stringify({ error: 'Missing code or tenantId' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // 1. Intercambiar código por tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorBody = await tokenResponse.json();
+      throw new Error(`Google token exchange failed: ${JSON.stringify(errorBody)}`);
+    }
+
+    const tokens = await tokenResponse.json();
+    const { access_token, refresh_token, id_token } = tokens;
+
+    // 2. Obtener info del usuario
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${access_token}` },
+    });
+    const userInfo = await userInfoResponse.json();
+    const userEmail = userInfo.email;
+
+    // 3. Guardar en la base de datos
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: encryptedData, error: encryptError } = await supabaseAdmin.rpc(
+        'encrypt_secret', 
+        { secret_value: refresh_token }
+    );
+
+    if (encryptError) throw encryptError;
+
+    const { error: dbError } = await supabaseAdmin
+      .from('tenant_integrations')
+      .upsert({
+        tenant_id: tenantId,
+        provider: 'google_drive',
+        access_token: access_token,
+        encrypted_refresh_token: encryptedData,
+        account_email: userEmail,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'tenant_id, provider' });
+
+    if (dbError) throw dbError;
+
+    return new Response(JSON.stringify({ success: true, message: 'Integration successful.' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error in Google OAuth flow:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

@@ -100,4 +100,9 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Super-Specific Calendar Fix */
+  .rdp-head_row, .rdp-row {
+    display: flex !important;
+  }
 }

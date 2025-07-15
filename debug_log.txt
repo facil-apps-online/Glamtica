@@ -1,0 +1,129 @@
+client:495 [vite] connecting...
+client:614 [vite] connected.
+chunk-W6L2VRDA.js?v=d589500c:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+i18n.ts:21 i18next: init: you are still using the legacy format function, please use the new approach: https://www.i18next.com/translation-function/formatting
+output @ i18next.js?v=d589500c:208
+warn @ i18next.js?v=d589500c:201
+forward @ i18next.js?v=d589500c:236
+warn @ i18next.js?v=d589500c:225
+init @ i18next.js?v=d589500c:1760
+(anonymous) @ i18n.ts:21
+AuthContext.tsx:59 [Auth] useEffect running. Token from localStorage: not found
+i18n.ts:21 i18next::backendConnector: loading namespace common for language es-ES failed failed parsing /locales/es-ES/common.json to json
+output @ i18next.js?v=d589500c:208
+warn @ i18next.js?v=d589500c:201
+forward @ i18next.js?v=d589500c:236
+warn @ i18next.js?v=d589500c:225
+(anonymous) @ i18next.js?v=d589500c:1557
+resolver @ i18next.js?v=d589500c:1510
+(anonymous) @ i18next-http-backend.js?v=d589500c:404
+(anonymous) @ i18next-http-backend.js?v=d589500c:124
+Promise.then
+resolver2 @ i18next-http-backend.js?v=d589500c:123
+Promise.then
+fetchIt2 @ i18next-http-backend.js?v=d589500c:138
+requestWithFetch2 @ i18next-http-backend.js?v=d589500c:161
+request2 @ i18next-http-backend.js?v=d589500c:223
+loadUrl @ i18next-http-backend.js?v=d589500c:381
+(anonymous) @ i18next-http-backend.js?v=d589500c:371
+Promise.then
+_readAny @ i18next-http-backend.js?v=d589500c:365
+read @ i18next-http-backend.js?v=d589500c:354
+read @ i18next.js?v=d589500c:1526
+loadOne @ i18next.js?v=d589500c:1556
+(anonymous) @ i18next.js?v=d589500c:1541
+prepareLoading @ i18next.js?v=d589500c:1540
+load @ i18next.js?v=d589500c:1545
+loadResources @ i18next.js?v=d589500c:1856
+setLng @ i18next.js?v=d589500c:1962
+changeLanguage @ i18next.js?v=d589500c:1967
+load @ i18next.js?v=d589500c:1823
+setTimeout
+init @ i18next.js?v=d589500c:1828
+(anonymous) @ i18n.ts:21
+i18n.ts:21 i18next::backendConnector: loading namespace common for language es failed failed parsing /locales/es/common.json to json
+output @ i18next.js?v=d589500c:208
+warn @ i18next.js?v=d589500c:201
+forward @ i18next.js?v=d589500c:236
+warn @ i18next.js?v=d589500c:225
+(anonymous) @ i18next.js?v=d589500c:1557
+resolver @ i18next.js?v=d589500c:1510
+(anonymous) @ i18next-http-backend.js?v=d589500c:404
+(anonymous) @ i18next-http-backend.js?v=d589500c:124
+Promise.then
+resolver2 @ i18next-http-backend.js?v=d589500c:123
+Promise.then
+fetchIt2 @ i18next-http-backend.js?v=d589500c:138
+requestWithFetch2 @ i18next-http-backend.js?v=d589500c:161
+request2 @ i18next-http-backend.js?v=d589500c:223
+loadUrl @ i18next-http-backend.js?v=d589500c:381
+(anonymous) @ i18next-http-backend.js?v=d589500c:371
+Promise.then
+_readAny @ i18next-http-backend.js?v=d589500c:365
+read @ i18next-http-backend.js?v=d589500c:354
+read @ i18next.js?v=d589500c:1526
+loadOne @ i18next.js?v=d589500c:1556
+(anonymous) @ i18next.js?v=d589500c:1541
+prepareLoading @ i18next.js?v=d589500c:1540
+load @ i18next.js?v=d589500c:1545
+loadResources @ i18next.js?v=d589500c:1856
+setLng @ i18next.js?v=d589500c:1962
+changeLanguage @ i18next.js?v=d589500c:1967
+load @ i18next.js?v=d589500c:1823
+setTimeout
+init @ i18next.js?v=d589500c:1828
+(anonymous) @ i18n.ts:21
+i18n.ts:21 i18next::backendConnector: loading namespace common for language en failed failed parsing /locales/en/common.json to json
+output @ i18next.js?v=d589500c:208
+warn @ i18next.js?v=d589500c:201
+forward @ i18next.js?v=d589500c:236
+warn @ i18next.js?v=d589500c:225
+(anonymous) @ i18next.js?v=d589500c:1557
+resolver @ i18next.js?v=d589500c:1510
+(anonymous) @ i18next-http-backend.js?v=d589500c:404
+(anonymous) @ i18next-http-backend.js?v=d589500c:124
+Promise.then
+resolver2 @ i18next-http-backend.js?v=d589500c:123
+Promise.then
+fetchIt2 @ i18next-http-backend.js?v=d589500c:138
+requestWithFetch2 @ i18next-http-backend.js?v=d589500c:161
+request2 @ i18next-http-backend.js?v=d589500c:223
+loadUrl @ i18next-http-backend.js?v=d589500c:381
+(anonymous) @ i18next-http-backend.js?v=d589500c:371
+Promise.then
+_readAny @ i18next-http-backend.js?v=d589500c:365
+read @ i18next-http-backend.js?v=d589500c:354
+read @ i18next.js?v=d589500c:1526
+loadOne @ i18next.js?v=d589500c:1556
+(anonymous) @ i18next.js?v=d589500c:1541
+prepareLoading @ i18next.js?v=d589500c:1540
+load @ i18next.js?v=d589500c:1545
+loadResources @ i18next.js?v=d589500c:1856
+setLng @ i18next.js?v=d589500c:1962
+changeLanguage @ i18next.js?v=d589500c:1967
+load @ i18next.js?v=d589500c:1823
+setTimeout
+init @ i18next.js?v=d589500c:1828
+(anonymous) @ i18n.ts:21
+i18next.js?v=d589500c:208 i18next: languageChanged es-ES
+i18next.js?v=d589500c:208 i18next: initialized {debug: true, initAsync: true, ns: Array(1), defaultNS: 'common', fallbackLng: Array(1), …}
+auth:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"login-password" required value=​"3nt3patatA*.*">​
+AuthContext.tsx:72 [Auth] Login process started.
+AuthContext.tsx:81 [Auth] login_user RPC successful.
+AuthContext.tsx:95 [Auth] generate-jwt function successful.
+AuthContext.tsx:30 [Auth] initializeSession called from: login
+AuthContext.tsx:33 [Auth] Token decoded: {sub: 'a052de66-9eb7-45a9-a78e-5e8666d5d99c', email: 'jovizaes@gmail.com', role: 'super_admin', tenant_id: null, branch_id: null, …}
+AuthContext.tsx:37 [Auth] User state set.
+AuthContext.tsx:43 [Auth] set_session_context RPC finished.
+AuthContext.tsx:46 [Auth] Session marked as initialized.
+useSessionValidator.ts:20 [Validator] Hook running. isAuthenticated: true, sessionInitialized: true
+SuperadminSidebar.tsx:37 SuperadminSidebar: Current path: /superadmin/dashboard
+useSessionValidator.ts:7 [Validator] Calling RPC get_session_status...
+useSessionValidator.ts:32 [Validator] useEffect running. Session status from query: undefined
+useSessionValidator.ts:13 [Validator] RPC success. Response: {is_active: false}
+useSessionValidator.ts:20 [Validator] Hook running. isAuthenticated: true, sessionInitialized: true
+useSessionValidator.ts:32 [Validator] useEffect running. Session status from query: {is_active: false}
+useSessionValidator.ts:34 [Validator] Session is inactive. Logging out!
+AuthContext.tsx:112 [Auth] Logout process started.
+AuthContext.tsx:118 [Auth] Backend session context cleared.
+auth:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"login-password" required value>​flex

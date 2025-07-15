@@ -8,6 +8,12 @@ export default defineConfig({
     host: true,
     port: 5173,
     cors: true,
+    proxy: {
+      '/functions/v1': {
+        target: 'https://vtfsbogpkrcbfuhhoepf.supabase.co',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [react()],
   resolve: {

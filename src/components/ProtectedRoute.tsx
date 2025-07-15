@@ -1,42 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 const ProtectedRoute: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('supabase.auth.token');
-      // For a real application, you would also want to verify the token's validity (e.g., expiration)
-      setIsAuthenticated(!!token);
-    };
-
-    checkAuth();
-
-    // We no longer rely on supabase.auth.onAuthStateChange for our custom auth
-    // However, if you have other parts of your app that might trigger auth state changes
-    // (e.g., a logout button that clears localStorage), you might want a custom event listener here.
-
-    // Example of a custom event listener (optional, depending on your app's needs)
-    const handleStorageChange = () => {
-      const token = localStorage.getItem('supabase.auth.token');
-      setIsAuthenticated(!!token);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  if (isAuthenticated === null) {
-    return <div>Cargando autenticación...</div>; // Or a loading spinner
+  if (loading) {
+    return <div>Cargando autenticación...</div>; // Show loading state while auth is being initialized
   }
 
-  console.log("ProtectedRoute: isAuthenticated =", isAuthenticated);
-  return isAuthenticated ? <Outlet /> : <Navigate to="/auth" />;
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" />; // Redirect to login if not authenticated
+  }
+
+  // If authenticated, check user role for specific redirections
+  if (user?.role === 'super_admin') {
+    // If super_admin, ensure they are on a superadmin path
+    if (!location.pathname.startsWith('/superadmin')) {
+      return <Navigate to="/superadmin/dashboard" replace />;
+    }
+  } else if (location.pathname.startsWith('/superadmin')) {
+    // If not super_admin but trying to access superadmin dashboard, redirect to default
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

@@ -232,7 +232,7 @@ export default function Dashboard() {
         
         <StatsCard
           title="Duración Promedio"
-          value={`${stats?.averageDuration}min`}
+          value={`${stats?.averageDuration} min`}
           change="Por servicio"
           icon={Clock}
           trend="up"

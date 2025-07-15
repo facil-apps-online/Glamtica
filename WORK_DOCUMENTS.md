@@ -549,3 +549,176 @@ CREATE TABLE IF NOT EXISTS public.tenant_subscriptions (
 Se han implementado índices en las columnas `tenant_id` y `branch_id` de todas las tablas de negocio para optimizar el rendimiento de las consultas multitenant. Se han establecido claves foráneas (`FOREIGN KEY`) para mantener la integridad referencial entre las tablas, y constraints de unicidad (`UNIQUE`) para asegurar la consistencia de los datos donde sea necesario.
 
 **Estado:** Documentado.
+
+## FASE 2: Desarrollo de Módulos por Rol
+
+### 2.1 Módulo de Superadmin
+
+#### 2.1.1 Gestión de Tenants
+
+Se han establecido las bases para la gestión de tenants, incluyendo:
+
+-   **CRUD de Tenants:** Se han creado las páginas de interfaz de usuario (`src/pages/Superadmin/CreateTenant.tsx`, `src/pages/Superadmin/TenantsList.tsx`, `src/pages/Superadmin/EditTenant.tsx`, `src/pages/Superadmin/TenantDetails.tsx`, `src/pages/Superadmin/CreateTenantAdmin.tsx`) y los hooks de datos (`src/hooks/useTenants.ts`) para la interacción con la base de datos. Actualmente, las interfaces de usuario de estas páginas son marcadores de posición y requieren implementación completa.
+-   **Selector de Zonas Horarias Dinámico:** El hook `src/hooks/useTimezones.ts` permite la obtención de datos de zonas horarias, lo que sienta las bases para un selector dinámico en la creación/edición de tenants. La integración en la UI está pendiente.
+-   **Asignación de Tenant Superadmin:** Existe una página (`src/pages/Superadmin/CreateTenantAdmin.tsx`) para la asignación de administradores de tenant, aunque su interfaz de usuario es un marcador de posición.
+
+#### 2.1.2 Planes de Suscripción y Precios
+
+Se han definido las estructuras para la gestión de planes de suscripción y precios:
+
+-   **Gestión de Planes de Suscripción:** Se ha creado la página `src/pages/Superadmin/SubscriptionPlans.tsx` para la administración de planes.
+-   **Precios por País:** Se ha creado la página `src/pages/Superadmin/CountryPrices.tsx` para la configuración de precios específicos por país.
+
+#### 2.1.3 Configuración Global del Sistema
+
+Se han establecido los componentes para la configuración global del sistema:
+
+-   **Parámetros Globales:** La página `src/pages/Superadmin/GlobalSettings.tsx` está disponible para la configuración de parámetros globales.
+-   **Gestión de Idiomas:** La página `src/components/TranslationAdmin.tsx` proporciona una interfaz para la gestión de traducciones del sistema.
+
+#### 2.1.4 Monitoreo del Sistema
+
+Se han implementado las páginas y hooks para el monitoreo del sistema:
+
+-   **Dashboard de Superadmin:** La página `src/pages/Superadmin/SuperadminStats.tsx` sirve como el dashboard principal para métricas generales.
+-   **Reportes de Actividad:** Se han creado páginas para `src/pages/Superadmin/SystemAlerts.tsx`, `src/pages/Superadmin/ErrorReports.tsx`, y `src/pages/Superadmin/PerformanceMetrics.tsx`. El hook `src/hooks/useTenantAccessLogs.ts` permite la obtención de logs de acceso.
+
+#### 2.1.5 Navegación del Panel de Superadmin
+
+Se ha corregido un problema crítico de navegación:
+
+-   **Corrección de Navegación:** Se ha resuelto el problema donde todos los enlaces del menú de superadministrador redirigían a la misma ruta. La lógica en `src/components/ProtectedRoute.tsx` y `src/pages/Superadmin/SuperadminLayout.tsx` ha sido ajustada para permitir una navegación correcta y fluida entre las diferentes secciones del panel de superadministrador.
+
+**Estado de la Fase 2.1:** En desarrollo. Las bases de datos y los hooks de datos están en su lugar para la mayoría de las funcionalidades, pero muchas interfaces de usuario aún requieren implementación completa.
+---
+### Módulo: Gestión de Tenants (Superadmin)
+
+**Fecha de Finalización:** 13 de julio de 2025
+
+**Descripción General:**
+Este módulo proporciona al Superadministrador una funcionalidad completa para la Creación, Lectura, Actualización y Eliminación (CRUD) de tenants en el sistema. Se ha puesto especial énfasis en la robustez de los datos y en un flujo de trabajo eficiente.
+
+**Funcionalidades Clave:**
+1.  **CRUD Completo:**
+    -   **Crear:** Un formulario único permite crear un nuevo tenant y su usuario administrador principal en una sola operación atómica.
+    -   **Leer:** Listado de todos los tenants con su información clave.
+    -   **Actualizar:** Formulario de edición completo para modificar todos los datos del tenant.
+    -   **Eliminar:** Borrado en cascada de un tenant y todos sus datos asociados, disponible solo en entorno de desarrollo para seguridad.
+
+2.  **Recopilación de Datos Detallada:**
+    -   Se ha implementado una estructura de datos exhaustiva para cada tenant, incluyendo información de contacto, fiscal y de dirección física.
+
+3.  **Integración con Google Maps API:**
+    -   Los formularios de creación y edición utilizan la **Places API** de Google para el autocompletado de direcciones, mejorando la UX y la precisión de los datos.
+    -   La búsqueda de direcciones se restringe dinámicamente al país seleccionado por el usuario.
+    -   Se utiliza la **Maps JavaScript API** para mostrar la ubicación del tenant en un mapa interactivo.
+    -   La latitud y longitud se almacenan en la base de datos para futuras funcionalidades.
+
+**Componentes Técnicos:**
+
+-   **Base de Datos:**
+    -   Se modificó la tabla `tenants` para incluir campos estructurados como `legal_name`, `tax_id`, `contact_phone`, `whatsapp_phone`, `commercial_email`, `einvoicing_email`, `physical_address_line1`, `physical_city`, `latitude`, `longitude`, etc.
+    -   **RPC `create_tenant_with_admin`:** Función PostgreSQL transaccional que asegura la creación atómica del tenant y su administrador.
+    -   **RPC `delete_tenant_cascade`:** Función que elimina de forma segura un tenant y todos sus datos dependientes.
+
+-   **Frontend:**
+    -   **Hooks:** `useTenants`, `useTenantById`, `useUpdateTenant`, `useDeleteTenant`.
+    -   **Páginas:** `CreateTenant.tsx`, `EditTenant.tsx`, `TenantsList.tsx`.
+    -   **Componentes Reutilizables:**
+        -   `AddressAutocompleteInput.tsx`: Gestiona la interacción con la Places API de Google.
+        -   `MapDisplay.tsx`: Muestra la ubicación en un mapa.
+
+-   **Variables de Entorno:**
+    -   La funcionalidad de Google Maps depende de la clave `VITE_GOOGLE_MAPS_API_KEY` definida en el archivo `.env.local`.
+
+**Estado:** Completado y verificado.
+
+---
+### Módulo: Planes, Precios y Monitoreo (Superadmin)
+
+**Fecha de Finalización:** 13 de julio de 2025
+
+**Descripción General:**
+Este conjunto de módulos permite al Superadministrador gestionar la oferta comercial de la plataforma y monitorear su estado financiero y de rendimiento.
+
+**Funcionalidades Clave:**
+
+1.  **Gestión de Planes de Suscripción:**
+    -   CRUD completo para los planes de suscripción (ej. Mensual, Anual).
+    -   Posibilidad de definir un orden de visualización para los planes.
+
+2.  **Sistema de Precios Versionado y Automatizado:**
+    -   **Precios Base en COP:** El Superadministrador solo necesita gestionar los precios base y por sucursal extra en una única moneda (COP).
+    -   **Cálculo Automático:** Los precios para otros países se calculan automáticamente usando una tasa de cambio.
+    -   **Regla de Redondeo:** Se aplica una regla de redondeo comercial a `.99` para los precios calculados.
+    -   **Historial de Precios:** Se guarda un historial de todos los cambios de precios, permitiendo programar aumentos a futuro.
+    -   **Caché de Tasas de Cambio:** Una Edge Function (`update-exchange-rates`) actualiza diariamente una tabla local con las tasas de cambio, asegurando un alto rendimiento y bajo costo de API.
+
+3.  **Dashboard Financiero:**
+    -   Muestra métricas clave de negocio como MRR, ARR, proyecciones de ingresos y desglose de planes activos.
+    -   Utiliza una función RPC (`get_superadmin_financial_stats`) para agregar los datos de forma eficiente.
+
+4.  **Diseño Totalmente Responsive:**
+    -   Todas las interfaces, desde los formularios hasta las tablas y el dashboard, están diseñadas para funcionar de manera óptima en dispositivos móviles, tablets y escritorio.
+    -   Se utiliza un hook `useScreenSize` para renderizar componentes específicos por tamaño de pantalla (ej. tarjetas en móvil, tablas en escritorio).
+
+**Componentes Técnicos:**
+
+-   **Base de Datos:**
+    -   **Tabla `plan_price_history`:** Almacena los precios de forma versionada con una fecha de vigencia.
+    -   **Tabla `exchange_rates`:** Funciona como caché para las tasas de cambio.
+    -   **RPC `get_calculated_plan_prices`:** Calcula los precios para todas las monedas en tiempo real.
+    -   **RPC `get_superadmin_financial_stats`:** Agrega y calcula las métricas para el dashboard.
+-   **Edge Function `update-exchange-rates`:** Tarea programada (Cron Job) que actualiza las tasas de cambio.
+-   **Frontend:**
+    -   **Hooks:** `useSubscriptionPlans`, `usePlanPriceHistory`, `useCalculatedPrices`, `useFinancialStats`, `useScreenSize`.
+    -   **Páginas:** `SubscriptionPlans.tsx`, `PlanPricingManager.tsx`, `SuperadminStats.tsx`.
+    -   **Componentes:** `DatePickerWrapper.tsx` (nuevo selector de fecha), componentes de visualización de precios y gráficos.
+
+**Estado:** Completado y verificado.
+---
+### Módulo: Configuración Global del Sistema (Superadmin)
+
+**Fecha de Finalización:** 13 de julio de 2025
+
+**Descripción General:**
+Este módulo centraliza la gestión de todas las configuraciones regionales y de localización del sistema, proporcionando al Superadministrador un control total sobre cómo se presentan los datos en diferentes regiones.
+
+**Funcionalidades Clave:**
+
+1.  **Gestión de Localizaciones (Idiomas):**
+    -   Permite crear y editar "localizaciones", que son combinaciones de idioma y región (ej. "Español (Colombia)", "Inglés (USA)").
+    -   Utiliza códigos de localización completos (ej. `es-CO`) para una correcta integración con librerías de internacionalización (i18n).
+
+2.  **Gestión de Monedas:**
+    -   CRUD completo para las monedas del sistema.
+    -   Permite definir no solo el nombre, código y símbolo, sino también el **formato de visualización**: posición del símbolo, separadores de miles y decimales, y número de decimales.
+
+3.  **Gestión de Países:**
+    -   CRUD completo para los países.
+    -   Permite **asociar** a cada país una **moneda por defecto**, una **localización por defecto** y una **zona horaria por defecto** de las listas previamente configuradas.
+    -   Incluye la gestión de **prefijos telefónicos**, asociando un prefijo a cada país desde una tabla maestra.
+
+4.  **Integración en Formularios (Mejora de UX):**
+    -   **Selectores con Búsqueda (`Combobox`):** Todos los selectores en los diálogos de configuración y en los formularios de creación/edición de tenants han sido reemplazados por componentes con búsqueda, facilitando la selección en listas largas.
+    -   **Input de Teléfono Inteligente (`PhoneInput`):** Se ha implementado un componente de teléfono que:
+        -   Muestra la **bandera del país** y el prefijo en un selector.
+        -   Permite buscar el prefijo por nombre de país.
+        -   Detecta automáticamente el prefijo si el usuario lo escribe o pega en el campo de texto.
+        -   Se inicializa con el prefijo del país seleccionado para el tenant.
+
+**Componentes Técnicos:**
+
+-   **Base de Datos:**
+    -   **Tabla `languages`**: Funciona como la tabla de "Localizaciones".
+    -   **Tabla `currencies`**: Enriquecida con campos de formato.
+    -   **Tabla `countries`**: Relacionada con `languages`, `currencies` y `phone_prefixes`.
+    -   **Tabla `phone_prefixes`**: Nueva tabla maestra con una lista global de prefijos telefónicos.
+-   **Frontend:**
+    -   **Hooks:** `useLocalizations`, `useCurrencies`, `useCountries`, `usePhonePrefixes`.
+    -   **Páginas:** `LocalizationsSettings.tsx`, `CurrenciesSettings.tsx`, `CountriesSettings.tsx`.
+    -   **Componentes Reutilizables:**
+        -   `Combobox.tsx`: Nuevo componente de selector con búsqueda.
+        -   `PhoneInput.tsx`: Nuevo componente de input telefónico con prefijo y bandera.
+
+**Estado:** Completado y verificado.
