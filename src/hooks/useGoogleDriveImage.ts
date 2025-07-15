@@ -29,7 +29,7 @@ export const useGoogleDriveImage = (src?: string) => {
             return;
           }
 
-          const proxyUrl = `/functions/v1/proxy-google-drive-image?fileId=${fileId}`;
+          const proxyUrl = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/proxy-google-drive-image?fileId=${fileId}`;
           const response = await fetch(proxyUrl);
 
           if (!response.ok) {
