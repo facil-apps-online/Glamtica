@@ -722,3 +722,27 @@ Este módulo centraliza la gestión de todas las configuraciones regionales y de
         -   `PhoneInput.tsx`: Nuevo componente de input telefónico con prefijo y bandera.
 
 **Estado:** Completado y verificado.
+### Módulo: Corrección del Formato de Moneda
+
+**Fecha de Finalización:** 14 de julio de 2025
+
+**Descripción General:**
+Se ha corregido un error crítico en el módulo de gestión de monedas donde el campo `format` no se guardaba en la base de datos. Además, se ha mejorado la interfaz para que la previsualización del formato sea dinámica y coherente con la configuración.
+
+**Funcionalidades Clave:**
+
+1.  **Cálculo Automático del Formato:**
+    -   Al crear o editar una moneda, el campo `format` se genera automáticamente en el frontend a partir de los parámetros de la moneda (símbolo, posición, separadores, decimales).
+    -   Esto elimina la necesidad de que el usuario ingrese manualmente una cadena de formato compleja y asegura la consistencia de los datos.
+
+2.  **Previsualización Dinámica:**
+    -   La columna "Formato de Ejemplo" en la lista de monedas ahora utiliza los parámetros de cada moneda para renderizar una previsualización precisa y en tiempo real.
+    -   Se ha implementado una función de utilidad (`formatCurrencyExample`) dentro del componente `CurrenciesSettings.tsx` para este propósito.
+
+**Componentes Técnicos:**
+
+-   **Frontend:**
+    -   **`CurrencyDialog.tsx`:** Se ha modificado la función `onSubmit` para calcular y añadir el campo `format` al objeto de datos antes de enviarlo a la base de datos.
+    -   **`CurrenciesSettings.tsx`:** Se ha añadido la función `formatCurrencyExample` y se ha actualizado el JSX para usarla en la renderización de la tabla y las tarjetas, asegurando que la previsualización sea dinámica.
+
+**Estado:** Completado y verificado.

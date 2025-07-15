@@ -49,10 +49,23 @@ export function CurrencyDialog({ isOpen, onClose, currency }: CurrencyDialogProp
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      const decimalPart = values.decimal_places > 0
+        ? values.decimal_separator + '0'.repeat(values.decimal_places)
+        : '';
+      const numberFormat = `#${values.thousands_separator}##0${decimalPart}`;
+      const finalFormat = values.symbol_position === 'before'
+        ? `${values.symbol}${numberFormat}`
+        : `${numberFormat}${values.symbol}`;
+
+      const dataToSend = {
+        ...values,
+        format: finalFormat,
+      };
+
       if (currency) {
-        await updateMutation.mutateAsync({ ...values, id: currency.id });
+        await updateMutation.mutateAsync({ ...dataToSend, id: currency.id });
       } else {
-        await createMutation.mutateAsync(values);
+        await createMutation.mutateAsync(dataToSend);
       }
       form.reset();
       onClose();

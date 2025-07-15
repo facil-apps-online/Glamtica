@@ -43,11 +43,31 @@ inventario, POS, CRM, agenda, y más.
 ## FASE 2: Desarrollo de Módulos por Rol
 
 ### 2.1 Módulo de Superadmin
-- [x] **Gestión de Tenants**
-- [x] **Planes de Suscripción y Precios**
-- [x] **Configuración Global del Sistema**
-- [x] **Monitoreo del Sistema**
-- [x] **Navegación del Panel de Superadmin**
+- [x] **Dashboard Financiero (`SuperadminStats.tsx`)**
+- [x] **Gestión de Tenants (CRUD Completo)**
+  - [x] Listar y buscar tenants (`TenantsList.tsx`)
+  - [x] Crear nuevo tenant y administrador (`CreateTenant.tsx`)
+  - [x] Ver detalles del tenant (`TenantDetails.tsx`)
+  - [x] Editar tenant existente (`EditTenant.tsx`)
+  - [x] Gestionar Integraciones de Infraestructura por Tenant (`TenantIntegrationManager.tsx`)
+- [x] **Gestión de Planes y Precios**
+  - [x] CRUD de Planes de Suscripción (`SubscriptionPlans.tsx`, `CreateSubscriptionPlan.tsx`, `EditSubscriptionPlan.tsx`)
+  - [x] Sistema de Precios Versionado y Automatizado (`PlanPricingManager.tsx`)
+- [x] **Configuración Global del Sistema (`GlobalSettings.tsx`)**
+  - [x] Pestaña General (Datos de la empresa)
+  - [x] Gestión de Localizaciones (Idiomas)
+  - [x] Gestión de Monedas
+  - [x] Gestión de Países y Prefijos Telefónicos
+  - [x] Gestión de Integraciones de Infraestructura Global (`GlobalIntegrationsManager.tsx`)
+- [ ] **Gestión del Catálogo de Integraciones de Servicios (`Integrations.tsx`)**
+  - [ ] Definir proveedores de servicios (ej. Facturación Electrónica, SMS).
+  - [ ] Asociar proveedores a países.
+  - [ ] Definir los campos de configuración requeridos por cada proveedor.
+- [ ] **Monitoreo del Sistema**
+  - [ ] Alertas del Sistema (`SystemAlerts.tsx`)
+  - [ ] Reportes de Errores (`ErrorReports.tsx`)
+  - [ ] Métricas de Rendimiento (`PerformanceMetrics.tsx`)
+- [x] **Navegación y Layout del Panel (`SuperadminLayout.tsx`, `SuperadminSidebar.tsx`, `SuperadminHeader.tsx`)**
 
 ### 2.2 Módulo de Tenant Superadmin
 - [ ] **Configuración de la Empresa**

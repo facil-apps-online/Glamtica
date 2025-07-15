@@ -24,6 +24,22 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useScreenSize } from '@/hooks/useScreenSize';
 
+// Función de utilidad para formatear el número de ejemplo
+const formatCurrencyExample = (currency: Currency) => {
+  const number = 1234.56;
+  const [integerPart, decimalPart] = number.toFixed(currency.decimal_places).split('.');
+
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, currency.thousands_separator);
+
+  const formattedNumber = currency.decimal_places > 0
+    ? `${formattedInteger}${currency.decimal_separator}${decimalPart}`
+    : formattedInteger;
+
+  return currency.symbol_position === 'before'
+    ? `${currency.symbol}${formattedNumber}`
+    : `${formattedNumber}${currency.symbol}`;
+};
+
 export function CurrenciesSettings() {
   const { data: currencies, isLoading } = useCurrencies();
   const updateMutation = useUpdateCurrency();
@@ -83,7 +99,7 @@ export function CurrenciesSettings() {
                 </CardHeader>
                 <CardContent className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    {`${currency.symbol_position === 'before' ? currency.symbol : ''}1,234.56${currency.symbol_position === 'after' ? currency.symbol : ''}`}
+                    {formatCurrencyExample(currency)}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -133,7 +149,7 @@ export function CurrenciesSettings() {
                     <TableCell>{currency.code}</TableCell>
                     <TableCell>{currency.symbol}</TableCell>
                     <TableCell>
-                      {`${currency.symbol_position === 'before' ? currency.symbol : ''}1${currency.thousands_separator}234${currency.decimal_separator}56${currency.symbol_position === 'after' ? currency.symbol : ''}`}
+                      {formatCurrencyExample(currency)}
                     </TableCell>
                     <TableCell>
                       <Switch
