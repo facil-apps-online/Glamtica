@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS public.service_evidence (
   mime_type TEXT,
   uploaded_by UUID REFERENCES public.stylists(id),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   branch_id UUID NOT NULL REFERENCES public.branches(id) ON DELETE CASCADE
 );
@@ -744,5 +744,60 @@ Se ha corregido un error crítico en el módulo de gestión de monedas donde el 
 -   **Frontend:**
     -   **`CurrencyDialog.tsx`:** Se ha modificado la función `onSubmit` para calcular y añadir el campo `format` al objeto de datos antes de enviarlo a la base de datos.
     -   **`CurrenciesSettings.tsx`:** Se ha añadido la función `formatCurrencyExample` y se ha actualizado el JSX para usarla en la renderización de la tabla y las tarjetas, asegurando que la previsualización sea dinámica.
+
+**Estado:** Completado y verificado.
+---
+### Refactorización del Componente `ProfileSettings`
+
+**Fecha:** 2025-07-15
+
+#### Descripción del Cambio
+
+Se ha refactorizado el componente `c:/Desarrollos/Glamtica.app/src/pages/Superadmin/ProfileSettings.tsx` para optimizar y limpiar la lógica de renderizado de las pestañas del perfil de superadministrador.
+
+#### Detalles Técnicos
+
+-   **Antes:** El componente utilizaba un estado local (`activeTab`) junto con renderizado condicional de JavaScript (`&&`) para mostrar el contenido de la pestaña activa. Este enfoque era redundante, ya que el componente `Tabs` de `shadcn/ui` gestiona esta lógica de forma interna.
+-   **Después:** Se eliminó el renderizado condicional explícito. Ahora, los componentes `TabsContent` se declaran directamente como hijos de `Tabs`. El componente `Tabs` se encarga de mostrar el `TabsContent` cuyo `value` coincide con el de la `TabsTrigger` seleccionada.
+
+#### Beneficios
+
+-   **Código más Limpio:** Se reduce la verbosidad y se elimina lógica innecesaria.
+-   **Mejores Prácticas:** Se alinea el uso del componente con la documentación y las prácticas recomendadas para `shadcn/ui`.
+-   **Mantenibilidad:** El código es más fácil de leer y mantener.
+---
+### Módulo: Cambio de Contraseña Seguro
+
+**Fecha de Finalización:** 16 de julio de 2025
+
+**Descripción General:**
+Se ha rediseñado por completo el flujo de cambio de contraseña para el perfil de usuario, abordando problemas de seguridad y mejorando la experiencia de usuario. Este nuevo sistema se alinea con la arquitectura de autenticación personalizada de la aplicación.
+
+**Funcionalidades Clave:**
+
+1.  **Verificación de Contraseña Actual:**
+    -   El sistema ahora requiere que el usuario ingrese su contraseña actual como medida de seguridad antes de permitir el cambio.
+
+2.  **Hashing Consistente:**
+    -   La nueva función de base de datos utiliza exactamente el mismo algoritmo de hashing (`pgcrypto.crypt`) que la función de `login`, garantizando la compatibilidad y seguridad.
+
+3.  **Cierre de Sesión Forzado:**
+    -   Tras un cambio de contraseña exitoso, la sesión del usuario se cierra automáticamente en todos los dispositivos. Se muestra un mensaje informativo y se le redirige a la página de inicio de sesión, obligándolo a autenticarse con sus nuevas credenciales.
+
+**Componentes Técnicos:**
+
+-   **Base de Datos:**
+    -   **RPC `change_password`:** Se ha creado una nueva función PostgreSQL que:
+        1.  Recibe el ID del usuario, la contraseña actual y la nueva contraseña.
+        2.  Verifica que la contraseña actual sea correcta comparándola con el hash almacenado en `public.users`.
+        3.  Si es correcta, genera un nuevo hash para la nueva contraseña y actualiza el registro del usuario.
+        4.  Devuelve un estado de éxito o fracaso con un mensaje claro.
+    -   **Migración Versionada:** La creación de esta función está registrada en el archivo de migración `supabase/migrations/20250716120000_create_change_password_function.sql`.
+
+-   **Frontend:**
+    -   **Hook `useUpdatePassword`:** Se ha refactorizado completamente para:
+        1.  Llamar a la nueva función RPC `change_password`.
+        2.  En caso de éxito (`onSuccess`), invocar la función `logout()` del `AuthContext` para invalidar la sesión actual.
+    -   **Componente `SecurityTab.tsx`:** Se ha ajustado para manejar la nueva lógica, pasando la contraseña actual a la mutación y mostrando un mensaje de éxito claro al usuario antes del cierre de sesión.
 
 **Estado:** Completado y verificado.
