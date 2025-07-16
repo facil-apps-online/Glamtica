@@ -801,3 +801,36 @@ Se ha rediseñado por completo el flujo de cambio de contraseña para el perfil 
     -   **Componente `SecurityTab.tsx`:** Se ha ajustado para manejar la nueva lógica, pasando la contraseña actual a la mutación y mostrando un mensaje de éxito claro al usuario antes del cierre de sesión.
 
 **Estado:** Completado y verificado.
+---
+### Módulo: Estabilización de Integraciones de Google
+
+**Fecha de Finalización:** 16 de julio de 2025
+
+**Descripción General:**
+Se ha solucionado una inestabilidad crítica en el flujo de autenticación de Google (Drive y Gmail) que provocaba la sobreescritura de credenciales. La solución permite ahora gestionar ambas integraciones de forma independiente y robusta, incluso si utilizan diferentes cuentas de Google.
+
+**Funcionalidades Clave:**
+
+1.  **Flujo de Autenticación Preciso:**
+    -   Se utiliza el parámetro `state` de OAuth2 para pasar el contexto (`tenant_id` y `provider`) a través de todo el flujo de autorización.
+    -   Esto elimina la ambigüedad en la página de callback y asegura que cada servicio se gestione de forma independiente.
+
+2.  **Configuración Centralizada:**
+    -   Las credenciales de la API de Google (`client_id`, `redirect_uri`) se gestionan ahora desde una tabla `public.integrations_config` en la base de datos, en lugar de estar en `vault` o codificadas.
+
+**Componentes Técnicos:**
+
+-   **Base de Datos:**
+    -   **RPCs `get_google_auth_url` y `get_gmail_auth_url`**: Modificadas para construir un `state` enriquecido (`tenant_id:provider`) y leer la configuración desde `public.integrations_config`.
+    -   **Función `url_encode`**: Creada para codificar de forma segura los parámetros de la URL.
+    -   **Tabla `public.integrations_config`**: Nueva tabla para almacenar la configuración de la API.
+    -   Se desactivó **RLS** en `public.integrations_config` para permitir el acceso desde las funciones RPC.
+
+-   **Edge Function `google-oauth-token`**:
+    -   Modificada para recibir el `provider` desde el frontend y usarlo para una escritura precisa (`upsert`) en la tabla `tenant_integrations`.
+
+-   **Frontend:**
+    -   **`Callback.tsx`**: Actualizado para interpretar el `state` enriquecido y pasar el `provider` a la Edge Function.
+    -   **`TenantIntegrationManager.tsx`**: Corregido un bug en `handleConnect` para procesar correctamente la respuesta (un array) de las funciones RPC de la base de datos.
+
+**Estado:** Completado y verificado.

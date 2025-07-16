@@ -1,20 +1,19 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Power, PowerOff, Mail, FolderKanban } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
-import { useTenantIntegrations } from '@/hooks/useTenantIntegrations';
+import { useTenantIntegrations, useDeleteIntegration } from '@/hooks/useTenantIntegrations';
 
-// Hook para obtener la URL de autorización de Google
-const useGoogleAuthUrl = (tenantId: string) => {
+// Hook genérico para obtener URLs de autorización de Google
+const useGoogleAuthUrl = (tenantId: string, rpcName: 'get_google_auth_url' | 'get_gmail_auth_url') => {
   return useQuery({
-    queryKey: ['googleAuthUrl', tenantId],
+    queryKey: [rpcName, tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
-      const { data, error } = await supabase.rpc('get_google_auth_url', { p_tenant_id: tenantId });
+      const { data, error } = await supabase.rpc(rpcName, { p_tenant_id: tenantId });
       if (error) throw new Error(error.message);
       return data;
     },
@@ -23,96 +22,129 @@ const useGoogleAuthUrl = (tenantId: string) => {
   });
 };
 
-export const TenantIntegrationManager = ({ tenantId }) => {
-  const { refetch: getAuthUrl, isFetching } = useGoogleAuthUrl(tenantId);
+// Componente para una única integración
+const IntegrationCard = ({ title, icon, isConnected, accountEmail, onConnect, onDisconnect, isConnecting, isDisconnecting }) => {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
+      <div className="flex items-center gap-4">
+        {icon}
+        <span className="font-semibold">{title}</span>
+      </div>
+      
+      {isConnected ? (
+        <div className="flex flex-col items-start sm:items-end gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            Conectado como: <span className="font-bold text-foreground">{accountEmail}</span>
+          </div>
+          <Button onClick={onDisconnect} variant="destructive" size="sm" disabled={isDisconnecting}>
+            <PowerOff className="mr-2 h-4 w-4" />
+            {isDisconnecting ? 'Desconectando...' : 'Desconectar'}
+          </Button>
+        </div>
+      ) : (
+        <Button onClick={onConnect} disabled={isConnecting}>
+          <Power className="mr-2 h-4 w-4" />
+          {isConnecting ? 'Generando...' : `Conectar con ${title}`}
+        </Button>
+      )}
+    </div>
+  );
+};
+
+export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => {
   const { toast } = useToast();
-  const { user, updateIntegrations } = useAuth(); // Obtener user y updateIntegrations del AuthContext
-  const { data: tenantIntegrations, isLoading: isLoadingIntegrations, isError: isErrorIntegrations, error: errorIntegrations } = useTenantIntegrations(tenantId);
+  const { data: integrations, isLoading, isError, error } = useTenantIntegrations(tenantId);
+  const disconnectMutation = useDeleteIntegration();
 
-  // Obtener la integración de Google Drive de las integraciones específicas del tenant
-  const googleDriveIntegration = tenantIntegrations?.find(integration => integration.provider === 'google_drive');
+  const { refetch: getDriveAuthUrl, isFetching: isFetchingDriveUrl } = useGoogleAuthUrl(tenantId, 'get_google_auth_url');
+  const { refetch: getGmailAuthUrl, isFetching: isFetchingGmailUrl } = useGoogleAuthUrl(tenantId, 'get_gmail_auth_url');
 
-  const isConnected = !!googleDriveIntegration; // Si hay datos de integración, está conectado
-  const accountEmail = googleDriveIntegration?.account_email || null;
+  const googleDriveIntegration = integrations?.find(int => int.provider === 'google_drive');
+  const gmailIntegration = integrations?.find(int => int.provider === 'google_gmail');
 
-  const handleConnect = async () => {
+  const handleConnect = async (getAuthUrl: () => Promise<any>) => {
     try {
-      const { data, error } = await getAuthUrl();
-      if (error || !data.success) {
-        throw new Error(error?.message || 'No se pudo obtener la URL de autorización.');
+      const { data: rpcResponse, error: rpcError } = await getAuthUrl();
+
+      if (rpcError) {
+        throw new Error(rpcError.message);
       }
-      window.location.href = data.url;
-      // Después de la redirección exitosa, actualizar las integraciones en el contexto
-      // Esto se ejecutará cuando el usuario regrese de la autenticación de Google
-      if (user) {
-        await updateIntegrations(user.tenant_id, user.role);
+
+      // La respuesta de una función TABLE es un array.
+      if (!rpcResponse || !Array.isArray(rpcResponse) || rpcResponse.length === 0) {
+        throw new Error('Respuesta inválida desde el servidor.');
       }
+
+      const result = rpcResponse[0];
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo obtener la URL de autorización.');
+      }
+
+      if (!result.url) {
+        throw new Error('La URL de autorización no fue devuelta por el servidor.');
+      }
+
+      window.location.href = result.url;
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      console.error('[handleConnect] Excepción capturada:', e);
+      toast({ title: 'Error de Conexión', description: e.message, variant: 'destructive' });
     }
   };
+
+  const handleDisconnect = (provider: string, accountEmail: string | undefined) => {
+    if (!accountEmail) return;
+
+    const confirmation = window.confirm(
+      `¿Estás seguro de que quieres desconectar la integración con ${provider} para la cuenta "${accountEmail}"?`
+    );
+
+    if (confirmation) {
+      disconnectMutation.mutate(
+        { tenantId, provider },
+        {
+          onSuccess: () => {
+            toast({ title: 'Éxito', description: `La integración con ${provider} ha sido desconectada.` });
+          },
+          onError: (e: any) => {
+            toast({ title: 'Error', description: e.message, variant: 'destructive' });
+          },
+        }
+      );
+    }
+  };
+
+  if (isLoading) return <div className="p-4">Cargando integraciones...</div>;
+  if (isError) return <div className="p-4 text-red-500">Error al cargar integraciones: {error?.message}</div>;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Integraciones de Almacenamiento</CardTitle>
-        <CardDescription>Conecta una cuenta de Google Drive para almacenar los archivos de este tenant.</CardDescription>
+        <CardTitle>Integraciones de Google</CardTitle>
+        <CardDescription>Conecta los servicios de Google para ampliar la funcionalidad de la plataforma.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
-          <div className="flex items-center gap-4">
-            <img src="https://www.google.com/drive/static/images/drive/logo-drive.png" alt="Google Drive Logo" className="h-8 w-8" />
-            <span className="font-semibold">Google Drive</span>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            {isConnected ? (
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <div className="text-sm text-muted-foreground">
-                  Conectado como: <span className="font-bold text-foreground">{accountEmail}</span>
-                </div>
-              </div>
-            ) : (
-              <Button onClick={handleConnect} disabled={isFetching} className="w-full sm:w-auto">
-                {isFetching ? 'Generando...' : 'Conectar'}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {isLoadingIntegrations && <div className="p-4">Cargando otras integraciones...</div>}
-        {isErrorIntegrations && <div className="p-4 text-red-500">Error al cargar otras integraciones: {errorIntegrations?.message}</div>}
-
-        {tenantIntegrations && tenantIntegrations.length > 0 && (
-          <div className="mt-6 space-y-4">
-            <h3 className="text-lg font-semibold">Otras Integraciones Vigentes</h3>
-            {tenantIntegrations.map((integration) => (
-              <div key={integration.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 gap-4">
-                <div className="flex items-center gap-4">
-                  {integration.provider === 'google_drive' ? (
-                    <img src="https://www.google.com/drive/static/images/drive/logo-drive.png" alt="Google Drive Logo" className="h-6 w-6" />
-                  ) : (
-                    <CheckCircle className="h-6 w-6 text-gray-500" /> // Icono genérico para otros proveedores
-                  )}
-                  <span className="font-semibold capitalize">{integration.provider.replace('_', ' ')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <div className="text-sm text-muted-foreground">
-                    Conectado como: <span className="font-bold text-foreground">{integration.account_email}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tenantIntegrations && tenantIntegrations.length === 0 && !isLoadingIntegrations && !isErrorIntegrations && (
-          <div className="mt-6 p-4 text-center text-muted-foreground border rounded-lg">
-            No hay otras integraciones de almacenamiento vigentes para este tenant.
-          </div>
-        )}
-
+      <CardContent className="space-y-4">
+        <IntegrationCard
+          title="Google Drive"
+          icon={<FolderKanban className="h-8 w-8 text-blue-500" />}
+          isConnected={!!googleDriveIntegration}
+          accountEmail={googleDriveIntegration?.account_email}
+          onConnect={() => handleConnect(getDriveAuthUrl)}
+          onDisconnect={() => handleDisconnect('google_drive', googleDriveIntegration?.account_email)}
+          isConnecting={isFetchingDriveUrl}
+          isDisconnecting={disconnectMutation.isPending && disconnectMutation.variables?.provider === 'google_drive'}
+        />
+        <IntegrationCard
+          title="Gmail"
+          icon={<Mail className="h-8 w-8 text-red-500" />}
+          isConnected={!!gmailIntegration}
+          accountEmail={gmailIntegration?.account_email}
+          onConnect={() => handleConnect(getGmailAuthUrl)}
+          onDisconnect={() => handleDisconnect('google_gmail', gmailIntegration?.account_email)}
+          isConnecting={isFetchingGmailUrl}
+          isDisconnecting={disconnectMutation.isPending && disconnectMutation.variables?.provider === 'google_gmail'}
+        />
       </CardContent>
     </Card>
   );

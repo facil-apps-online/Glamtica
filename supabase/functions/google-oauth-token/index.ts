@@ -29,10 +29,18 @@ serve(async (req) => {
       }
     }
 
-    const { code, tenantId } = await req.json();
+    const { code, tenantId, provider } = await req.json();
 
-    if (!code || !tenantId) {
-      return new Response(JSON.stringify({ error: 'Missing code or tenantId' }), {
+    if (!code || !tenantId || !provider) {
+      return new Response(JSON.stringify({ error: 'Missing code, tenantId, or provider' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Validar que el provider sea uno de los esperados
+    if (provider !== 'google_drive' && provider !== 'google_gmail') {
+      return new Response(JSON.stringify({ error: 'Invalid provider specified' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -85,7 +93,7 @@ serve(async (req) => {
       .from('tenant_integrations')
       .upsert({
         tenant_id: tenantId,
-        provider: 'google_drive',
+        provider: provider, // Usar el provider dinámico
         access_token: access_token,
         encrypted_refresh_token: encryptedData,
         account_email: userEmail,

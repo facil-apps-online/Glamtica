@@ -43,13 +43,21 @@ const GoogleCallbackPage = () => {
         return;
       }
 
-      const tenantId = state;
+      // El estado ahora contiene "tenantId:provider"
+      const stateParts = state.split(':');
+      if (stateParts.length !== 2) {
+        setError('El parámetro de estado es inválido. No se puede determinar el proveedor.');
+        setMessage('Error: Estado de autenticación corrupto.');
+        return;
+      }
+
+      const [tenantId, provider] = stateParts;
 
       try {
         setMessage('Intercambiando código por tokens de acceso...');
         
         const { data, error: functionError } = await supabase.functions.invoke('google-oauth-token', {
-          body: { code, tenantId },
+          body: { code, tenantId, provider },
         });
 
         if (functionError) {
