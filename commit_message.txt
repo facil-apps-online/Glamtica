@@ -1,21 +1,7 @@
-feat(auth): Securiza y estabiliza el flujo de autenticación y perfil
+feat(superadmin): Mejorar y reparar gestión de tenants
 
-Este commit resuelve una serie de problemas críticos relacionados con la autenticación, la gestión del perfil de usuario y las integraciones con Google Drive.
-
-Cambios Principales:
-
-1.  **Securización del JWT:**
-    -   Se refactoriza la Edge Function `generate-jwt` para que lea el secreto desde las variables de entorno del servidor (`JWT_SECRET`) en lugar de recibirlo desde el cliente.
-    -   Se eliminan los envíos del secreto desde el `AuthContext` y `useProfileSettings`, cerrando una importante brecha de seguridad.
-
-2.  **Estabilización de la Subida de Avatar:**
-    -   Se corrige la Edge Function `google-drive-upload-avatar` para que verifique correctamente el JWT personalizado, solucionando los errores `401 Unauthorized`.
-    -   Se ajusta la configuración en `supabase/config.toml` para que el API Gateway no interfiera con la verificación manual del token.
-
-3.  **Corrección de Bugs en Perfil:**
-    -   Se implementa una caché de cliente para las imágenes de avatar, solucionando errores de recarga y mejorando el rendimiento.
-    -   Se corrige la lógica de actualización de perfil para que la configuración regional del usuario no se borre al cambiar el avatar.
-
-4.  **Mejoras de Funcionalidad:**
-    -   Se añade la capacidad de activar/desactivar Países e Idiomas desde la configuración global, incluyendo los interruptores en las tablas y diálogos correspondientes.
-    -   Se ajustan los formularios que dependen de estas configuraciones para que solo muestren las opciones activas.
+- Se repara la lógica de borrado en cascada de tenants, corrigiendo el orden de las sentencias DELETE y eliminando operaciones incorrectas.
+- Se mejora la UX en los formularios de creación y borrado de tenants, reemplazando los diálogos nativos (alert/confirm) por componentes AlertDialog.
+- Los desplegables de país, idioma y moneda en los formularios de creación/edición de tenants ahora solo muestran las opciones activas.
+- Se restaura el historial completo de archivos de migración de la base de datos desde el historial de Git.
+- Se añade un script (repair_migrations.bat) para facilitar la resincronización del historial de migraciones con la base de datos remota.
