@@ -31,52 +31,39 @@ interface ComboboxProps {
   placeholder?: string;
   searchPlaceholder?: string;
   emptyPlaceholder?: string;
+  disabled?: boolean;
 }
 
-export function Combobox({ 
-  options, 
-  value, 
-  onChange, 
-  placeholder = "Select an option...",
-  searchPlaceholder = "Search...",
-  emptyPlaceholder = "No options found."
+export function Combobox({
+  options,
+  value,
+  onChange,
+  placeholder = "Selecciona una opción...",
+  searchPlaceholder = "Buscar...",
+  emptyPlaceholder = "No se encontraron opciones.",
+  disabled = false,
 }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
-  const handleOpenChange = (isOpen: boolean) => {
-    console.log('Combobox: Popover open state changed to:', isOpen);
-    setOpen(isOpen);
-  };
-
-  const handleSelect = (currentValue: string) => {
-    const newValue = currentValue === value ? "" : currentValue;
-    console.log('Combobox: Item selected. New value:', newValue);
-    onChange(newValue);
-    setOpen(false);
-  };
+  const selectedLabel = options.find((option) => option.value === value)?.label;
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          onClick={() => console.log('Combobox: Trigger button clicked.')}
+          disabled={disabled}
         >
-          {value
-            ? options.find((option) => option.value === value)?.label
-            : placeholder}
+          {selectedLabel || placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
-          <CommandInput 
-            placeholder={searchPlaceholder} 
-            onValueChange={(search) => console.log('Combobox: Search input changed:', search)}
-          />
+          <CommandInput placeholder={searchPlaceholder} disabled={disabled} />
           <CommandList>
             <CommandEmpty>{emptyPlaceholder}</CommandEmpty>
             <CommandGroup>
@@ -84,7 +71,10 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.label}
-                  onSelect={() => handleSelect(option.value)}
+                  onSelect={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
                 >
                   <Check
                     className={cn(
@@ -100,5 +90,5 @@ export function Combobox({
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

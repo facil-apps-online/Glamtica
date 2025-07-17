@@ -559,3 +559,12 @@ A continuación se describen las funciones más importantes accesibles solo por 
 | | `name` | `text` | Nombre del país. |
 | | `iso_code` | `text` | Código ISO del país (ej. 'CO', 'US'). |
 | | `phone_prefix_id` | `uuid` | FK a `phone_prefixes.id`. |
+### Módulo: Mi Perfil
+
+#### Optimización de la Interfaz de Pestañas
+
+**Fecha:** 2025-07-15
+
+Se ha realizado una optimización en el componente de la página "Mi Perfil" para mejorar la forma en que se cargan y muestran las pestañas de "Información Personal", "Configuración Regional" y "Seguridad".
+
+**Nota Importante:** Esta mejora interna está **pendiente de una verificación funcional completa** para asegurar que todo sigue operando como se espera.

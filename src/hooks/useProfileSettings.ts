@@ -40,7 +40,10 @@ export const useUpdateProfile = () => {
           first_name: data.newFirstName,
           last_name: data.newLastName,
           avatar_url: data.newAvatarUrl || user.avatarUrl,
-          jwt_secret: import.meta.env.VITE_SUPABASE_JWT_SECRET,
+          country_id: user.country_id,
+          language_id: user.language_id,
+          currency_id: user.currency_id,
+          timezone_id: user.timezone_id,
         },
       });
 
@@ -121,7 +124,6 @@ export const useUpdateRegionalSettings = () => {
           language_id: data.languageId,
           currency_id: data.currencyId,
           timezone_id: data.timezoneId,
-          jwt_secret: import.meta.env.VITE_SUPABASE_JWT_SECRET,
         },
       });
 

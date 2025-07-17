@@ -130,6 +130,7 @@ export default function CreateTenant() {
     // Mantener la lógica de idioma, moneda y zona horaria
     if (watchedCountryId && countries && localizations) {
       const country = countries.find(c => c.id === watchedCountryId);
+      console.log("CreateTenant - Selected Country Data:", country); // <-- AÑADIDO PARA DEPURACIÓN
       if (country) {
         const localization = localizations.find(l => l.id === country.default_localization_id);
         if (localization) {

@@ -29,7 +29,7 @@ export default function GlobalSettings() {
       <Tabs defaultValue="general" className="w-full">
         <TabsList className={`w-full ${screenSize === 'mobile' ? 'flex-nowrap overflow-x-auto justify-start' : ''}`}>
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="localizations">Localizaciones</TabsTrigger>
+          <TabsTrigger value="localizations">Idiomas</TabsTrigger>
           <TabsTrigger value="currencies">Monedas</TabsTrigger>
           <TabsTrigger value="countries">Países</TabsTrigger>
           <TabsTrigger value="integrations">Integraciones</TabsTrigger>

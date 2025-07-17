@@ -1,24 +1,23 @@
-// Import Deno's standard server and the djwt library for signing tokens.
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-// Correctly import the necessary functions from djwt v2.2
 import { create, getNumericDate } from 'https://deno.land/x/djwt@v2.2/mod.ts'
 
-// Define CORS headers to allow requests from any origin.
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS', // Explicitly allow OPTIONS
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
-  // The browser sends an OPTIONS request first to check if the server allows the actual request.
-  // We must handle this preflight request by responding with a 200 OK and the CORS headers.
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
+  console.log('--- [generate-jwt] Invoked ---');
+  
   try {
-    // Get all the necessary data from the request body.
+    const jwtSecretExists = Deno.env.get('JWT_SECRET') !== undefined;
+    console.log(`--- [generate-jwt] JWT_SECRET found in environment: ${jwtSecretExists} ---`);
+
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
+    
     const { 
       user_id, 
       email, 
@@ -27,42 +26,43 @@ serve(async (req) => {
       branch_id, 
       first_name, 
       last_name, 
-      avatar_url, 
-      jwt_secret 
-    } = await req.json()
+      avatar_url,
+      country_id,
+      language_id,
+      currency_id,
+      timezone_id
+    } = await req.json();
 
-    console.log('[generate-jwt] Received role:', role);
-
-    // Ensure the JWT secret was passed.
+    const jwt_secret = Deno.env.get('JWT_SECRET')
     if (!jwt_secret) {
-      throw new Error('JWT secret is missing.')
+      throw new Error('JWT_SECRET is not set in Supabase environment variables.')
     }
 
-    // If the user is a super_admin, ensure their tenant_id is the global one.
     let final_tenant_id = tenant_id;
     if (role === 'super_admin') {
       final_tenant_id = '00000000-0000-0000-0000-000000000000';
     }
 
-    // Create the payload for the JWT, including all user data.
     const payload = {
       sub: user_id,
+      iss: 'supabase', // <-- AÑADIR ESTA LÍNEA
       email: email,
-      tenant_id: final_tenant_id, // Use the potentially modified tenant_id
+      tenant_id: final_tenant_id,
       branch_id: branch_id,
       first_name: first_name,
       last_name: last_name,
-      avatar_url: avatar_url, // Add avatar_url to the payload
-      aud: 'authenticated', // Add the audience claim
-      exp: getNumericDate(60 * 60 * 24), // Token expires in 24 hours
+      avatar_url: avatar_url,
+      country_id: country_id,
+      language_id: language_id,
+      currency_id: currency_id,
+      timezone_id: timezone_id,
+      aud: 'authenticated',
+      exp: getNumericDate(60 * 60 * 24),
       app_metadata: {
-        role: role, // Move role into app_metadata
+        role: role,
       },
     };
 
-    console.log('[generate-jwt] Payload before signing:', payload);
-
-    // Prepare the cryptographic key for signing.
     const key = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(jwt_secret),
@@ -71,16 +71,13 @@ serve(async (req) => {
       ["sign", "verify"]
     );
 
-    // Sign the token using the correct syntax for djwt v2.2
     const token = await create({ alg: "HS256", typ: "JWT" }, payload, key);
 
-    // Return the newly generated token.
     return new Response(
       JSON.stringify({ token }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    // Return an error response if anything fails.
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

@@ -68,6 +68,9 @@ inventario, POS, CRM, agenda, y más.
   - [ ] Reportes de Errores (`ErrorReports.tsx`)
   - [ ] Métricas de Rendimiento (`PerformanceMetrics.tsx`)
 - [x] **Navegación y Layout del Panel (`SuperadminLayout.tsx`, `SuperadminSidebar.tsx`, `SuperadminHeader.tsx`)**
+- [x] **Perfil de Superadministrador (`ProfileSettings.tsx`)**
+  - [x] Implementación de Pestañas (Info, Seguridad, Regional)
+  - [x] Corrección de Flujo de Guardado y Sincronización de Estado
 
 ### 2.2 Módulo de Tenant Superadmin
 - [ ] **Configuración de la Empresa**
@@ -83,11 +86,11 @@ inventario, POS, CRM, agenda, y más.
 - [ ] **Configuración Local de Sede**
 - [ ] **Gestión de Ciclos de Negocio**
 - [ ] **Aprobación y Trazabilidad**
+- [ ] **Gestión de Compras**
 
 ### 2.4 Módulo de Usuario Operativo
 - [x] **Acceso y Configuración Personal**
 - [ ] **Punto de Venta (POS)**
-- [ ] **Gestión de Compras**
 - [ ] **Gestión de Taller**
 - [ ] **Acceso a Reportes**
 

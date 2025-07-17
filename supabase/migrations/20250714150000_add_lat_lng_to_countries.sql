@@ -1,3 +1,0 @@
-ALTER TABLE countries
-ADD COLUMN default_latitude DOUBLE PRECISION,
-ADD COLUMN default_longitude DOUBLE PRECISION;

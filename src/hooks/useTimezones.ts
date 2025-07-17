@@ -25,8 +25,14 @@ const fetchTimezones = async (): Promise<Timezone[]> => {
 };
 
 export const useTimezones = () => {
-  return useQuery<Timezone[], Error>({
+  return useQuery<Timezone[], Error, { id: string; name: string; formattedLabel: string }[]>({
     queryKey: ['timezones'],
     queryFn: fetchTimezones,
+    select: (data) =>
+      data.map((tz) => ({
+        id: tz.id,
+        name: tz.name,
+        formattedLabel: `(UTC${tz.offset_str}) ${tz.name}`,
+      })),
   });
 };

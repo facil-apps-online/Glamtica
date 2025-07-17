@@ -109,6 +109,9 @@ export const AvatarUploader = React.memo(({
             fileBase64: base64data,
             mimeType: 'image/png',
           },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+          },
         }
       );
 

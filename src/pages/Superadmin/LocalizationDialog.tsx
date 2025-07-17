@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Localization, useCreateLocalization, useUpdateLocalization } from '@/hooks/useLocalization';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
   iso_code: z.string().min(2, "El código debe tener entre 2 y 10 caracteres.").max(10),
+  is_active: z.boolean(),
 });
 
 interface LocalizationDialogProps {
@@ -27,7 +29,14 @@ export function LocalizationDialog({ isOpen, onClose, localization }: Localizati
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: localization || { name: '', iso_code: '' },
+    defaultValues: localization ? {
+      ...localization,
+      is_active: localization.is_active ?? true,
+    } : { 
+      name: '', 
+      iso_code: '',
+      is_active: true,
+    },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -69,6 +78,26 @@ export function LocalizationDialog({ isOpen, onClose, localization }: Localizati
                 <FormMessage />
               </FormItem>
             )} />
+            <FormField
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Activo</FormLabel>
+                    <FormDescription>
+                      Si está inactivo, el idioma no se podrá seleccionar.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>

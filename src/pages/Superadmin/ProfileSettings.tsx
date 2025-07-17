@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PersonalInfoTab } from './PersonalInfoTab';
-import { cn } from '@/lib/utils'; // Importar la utilidad cn
-
-// Componente de ejemplo para la otra pestaña
-const RegionalSettingsTab = React.memo(() => <div className="mt-4">Contenido de Configuración Regional...</div>);
+import { RegionalSettingsTab } from './RegionalSettingsTab';
+import { SecurityTab } from './SecurityTab';
 
 export default function ProfileSettings() {
   const [activeTab, setActiveTab] = useState("personal"); // Estado para la pestaña activa
@@ -17,20 +15,21 @@ export default function ProfileSettings() {
           <TabsList className="w-full flex-nowrap overflow-x-auto justify-start">
             <TabsTrigger value="personal">Información Personal</TabsTrigger>
             <TabsTrigger value="regional">Configuración Regional</TabsTrigger>
+            <TabsTrigger value="security">Seguridad</TabsTrigger>
           </TabsList>
         </div>
         
-        {activeTab === "personal" && (
-          <TabsContent value="personal">
-            <PersonalInfoTab />
-          </TabsContent>
-        )}
+        <TabsContent value="personal">
+          <PersonalInfoTab />
+        </TabsContent>
 
-        {activeTab === "regional" && (
-          <TabsContent value="regional">
-            <RegionalSettingsTab />
-          </TabsContent>
-        )}
+        <TabsContent value="regional">
+          <RegionalSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecurityTab />
+        </TabsContent>
       </Tabs>
     </div>
   );

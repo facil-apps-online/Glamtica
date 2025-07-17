@@ -1,0 +1,5 @@
+feat(db): Drop currency_id from countries and update get_calculated_plan_prices function
+
+Se elimina la columna `currency_id` de la tabla `public.countries` ya que ha sido reemplazada por `default_currency_id`.
+
+Se actualiza la función `get_calculated_plan_prices` para corregir errores y asegurar el cálculo correcto de precios de planes por país, incluyendo el manejo de tasas de cambio y redondeo.

@@ -28,3 +28,11 @@ Existen 3 archivos clave para nuestro flujo de trabajo:
 3.  **`SOLUTION_LOG.md`**:
     *   **Contenido**: Una bitácora de errores encontrados y las soluciones aplicadas.
     *   **Mi Proceso**: Antes de proponer cualquier solución a un problema, debo revisar este archivo para verificar si ya existe una solución documentada y así evitar repetir el trabajo. Este archivo no debe ser limpiado ni borrado; funciona como un registro histórico.
+
+4.  **`EN_DESARROLLO.md`**:
+    *   **Contenido**: Define y actualiza el desarrollo puntual en curso.
+    *   **Flujo**: Se define un desarrollo, se agrega aquí con sus fases. A medida que se ejecuta, se documenta el progreso. Una vez terminado, su contenido puede servir para la documentación final en `WORK_DOCUMENTS.md` o `SUPERADMIN.md`, se limpia al empezar un desarrollo nuevo.
+
+**Directrices Adicionales:**
+- **Documentación en `SUPERADMIN.md`:** Siempre que se realice un cambio o se documente una funcionalidad relevante para el superadministrador, se debe actualizar también el archivo `SUPERADMIN.md` con la información pertinente.
+- **Definición del Mensaje de Commit:** Cuando se solicite un commit, si el mensaje contiene caracteres especiales o saltos de línea, se debe crear un archivo temporal (ej. `commit_message.txt`) con el contenido del mensaje y luego usar `git commit -F commit_message.txt` para realizar el commit. Esto evita problemas de interpretación del shell.

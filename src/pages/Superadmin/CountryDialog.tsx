@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Country, useCreateCountry, useUpdateCountry, useLocalizations } from '@/hooks/useLocalization';
 import { useCurrencies } from '@/hooks/useCurrencies';
 import { useTimezones } from '@/hooks/useTimezones';
@@ -21,6 +23,7 @@ const formSchema = z.object({
   default_currency_id: z.string().nullable(),
   default_localization_id: z.string().nullable(),
   timezone: z.string().nullable(),
+  is_active: z.boolean(),
 });
 
 interface CountryDialogProps {
@@ -39,17 +42,22 @@ export function CountryDialog({ isOpen, onClose, country }: CountryDialogProps) 
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: country || {
+    defaultValues: country ? {
+      ...country,
+      is_active: country.is_active ?? true,
+    } : {
       name: '',
       iso_code: '',
       phone_prefix_id: null,
       default_currency_id: null,
       default_localization_id: null,
       timezone: null,
+      is_active: true,
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    console.log('CountryDialog - onSubmit values:', values);
     try {
       if (country) {
         await updateMutation.mutateAsync({ ...values, id: country.id });
@@ -88,6 +96,26 @@ export function CountryDialog({ isOpen, onClose, country }: CountryDialogProps) 
                 </FormItem>
               )} />
             </div>
+            <FormField
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Activo</FormLabel>
+                    <FormDescription>
+                      Si está inactivo, el país no se podrá seleccionar en nuevos registros.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Controller
                 name="phone_prefix_id"

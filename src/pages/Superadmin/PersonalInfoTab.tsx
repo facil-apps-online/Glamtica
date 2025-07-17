@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUpdateProfile, useUpdatePassword } from '@/hooks/useProfileSettings';
+import { useUpdateProfile } from '@/hooks/useProfileSettings';
 import { AvatarUploader } from '@/components/AvatarUploader'; // Importar el nuevo componente
 
 const profileFormSchema = z.object({
@@ -16,29 +16,14 @@ const profileFormSchema = z.object({
   lastName: z.string().min(1, "El apellido es requerido."),
 });
 
-const passwordFormSchema = z.object({
-  currentPassword: z.string().min(1, { message: "La contraseña actual es requerida." }),
-  newPassword: z.string().min(8, { message: "La nueva contraseña debe tener al menos 8 caracteres." }),
-  confirmPassword: z.string(),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: "Las contraseñas no coinciden.",
-  path: ["confirmPassword"],
-});
-
 export const PersonalInfoTab = () => {
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const updateProfileMutation = useUpdateProfile();
-  const updatePasswordMutation = useUpdatePassword();
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { firstName: '', lastName: '' },
-  });
-
-  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
-    resolver: zodResolver(passwordFormSchema),
-    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
   useEffect(() => {
@@ -53,16 +38,6 @@ export const PersonalInfoTab = () => {
   const onProfileSubmit = (values: z.infer<typeof profileFormSchema>) => {
     updateProfileMutation.mutate(values, {
       onSuccess: () => toast({ title: 'Éxito', description: 'Perfil actualizado.' }),
-      onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
-    });
-  };
-
-  const onPasswordSubmit = (values: z.infer<typeof passwordFormSchema>) => {
-    updatePasswordMutation.mutate({ oldPassword: values.currentPassword, newPassword: values.newPassword }, {
-      onSuccess: () => {
-        toast({ title: 'Éxito', description: 'Contraseña actualizada.' });
-        passwordForm.reset();
-      },
       onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
     });
   };
@@ -119,55 +94,6 @@ export const PersonalInfoTab = () => {
               </Form>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Cambiar Contraseña</CardTitle>
-          <CardDescription>Asegúrate de usar una contraseña segura.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-              <FormField
-                control={passwordForm.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contraseña Actual</FormLabel>
-                    <FormControl><Input type="password" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nueva Contraseña</FormLabel>
-                    <FormControl><Input type="password" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirmar Nueva Contraseña</FormLabel>
-                    <FormControl><Input type="password" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={updatePasswordMutation.isPending}>
-                {updatePasswordMutation.isPending ? 'Actualizando...' : 'Actualizar Contraseña'}
-              </Button>
-            </form>
-          </Form>
         </CardContent>
       </Card>
     </div>

@@ -1,1 +1,5 @@
-Fix: Uso de URL absoluta para proxy de Google Drive en producción.
+feat(superadmin): Mejora y corrige flujo de integración de Google
+
+Este commit soluciona un error de estado obsoleto que impedía conectar un segundo servicio de Google (ej. Gmail después de Drive) sin necesidad de reiniciar la sesión.
+
+Adicionalmente, se mejoran las notificaciones (toasts) para que sean más claras y específicas, mostrando nombres amigables para el usuario ("Google Drive" en lugar de "google_drive") tanto al conectar como al desconectar un servicio.

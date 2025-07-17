@@ -15,6 +15,7 @@ export interface Country {
   iso_code: string;
   default_currency_id?: string | null;
   default_localization_id?: string | null;
+  default_timezone_id?: string | null;
   phone_prefix_id?: string | null;
   default_latitude?: number; // Añadido
   default_longitude?: number; // Añadido
@@ -87,13 +88,10 @@ export const useCountries = () => {
           *,
           currencies!default_currency_id(name, code),
           languages!default_localization_id(name),
-          phone_prefixes!phone_prefix_id(prefix),
-          default_latitude,
-          default_longitude
+          phone_prefixes!phone_prefix_id(prefix)
         `)
         .order('name');
       if (error) throw error;
-      console.log("Fetched countries data:", data); // Added console.log
       return data;
     },
   });

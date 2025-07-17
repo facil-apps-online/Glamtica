@@ -43,12 +43,47 @@ export const useTenantUsers = (tenantId: string) => {
   return useQuery<TenantUser[], Error>({
     queryKey: ['tenantUsers', tenantId],
     queryFn: async () => {
-      if (!tenantId || !user?.role) return [];
+      if (!user?.role) return [];
+
+      // Caso especial para el "Tenant 0" (Super Administradores)
+      if (tenantId === '00000000-0000-0000-0000-000000000000') {
+        if (user.role !== 'super_admin') {
+          return []; // Solo los super_admin pueden ver esta lista
+        }
+        
+        const { data, error } = await supabase
+          .from('users')
+          .select(`
+            id, email, is_active, created_at, tenant_id,
+            roles ( name )
+          `)
+          .is('tenant_id', null)
+          .eq('roles.name', 'super_admin');
+
+        if (error) {
+          throw new Error(`Error al obtener super administradores: ${error.message}`);
+        }
+
+        // Mapear la respuesta para aplanar la estructura del rol
+        return data.map(u => ({
+          id: u.id,
+          email: u.email,
+          is_active: u.is_active,
+          created_at: u.created_at,
+          tenant_id: u.tenant_id,
+          role_name: u.roles.name,
+        })) as unknown as TenantUser[];
+      }
+
+      // Lógica existente para tenants normales
       const { data, error } = await supabase.rpc('get_tenant_users', {
         target_tenant_id: tenantId,
         p_user_role: user.role,
       });
-      if (error) throw new Error(`Error al obtener usuarios del tenant: ${error.message}`);
+
+      if (error) {
+        throw new Error(`Error al obtener usuarios del tenant: ${error.message}`);
+      }
       return data as TenantUser[];
     },
     enabled: !!tenantId && !!user?.role,
