@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Power, PowerOff, Mail, FolderKanban } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantIntegrations, useDeleteIntegration } from '@/hooks/useTenantIntegrations';
@@ -54,8 +54,10 @@ const IntegrationCard = ({ title, icon, isConnected, accountEmail, onConnect, on
 
 export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: integrations, isLoading, isError, error } = useTenantIntegrations(tenantId);
   const disconnectMutation = useDeleteIntegration();
+  const popupWindow = useRef<Window | null>(null);
 
   const { refetch: getDriveAuthUrl, isFetching: isFetchingDriveUrl } = useGoogleAuthUrl(tenantId, 'get_google_auth_url');
   const { refetch: getGmailAuthUrl, isFetching: isFetchingGmailUrl } = useGoogleAuthUrl(tenantId, 'get_gmail_auth_url');
@@ -63,30 +65,62 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
   const googleDriveIntegration = integrations?.find(int => int.provider === 'google_drive');
   const gmailIntegration = integrations?.find(int => int.provider === 'google_gmail');
 
+  useEffect(() => {
+    const handleAuthMessage = (event: MessageEvent) => {
+      // Validar el origen del evento por seguridad
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const { type, success, error } = event.data;
+
+      if (type === 'google-auth-callback') {
+        if (popupWindow.current) {
+          popupWindow.current.close();
+          popupWindow.current = null;
+        }
+
+        if (success) {
+          toast({ title: 'Éxito', description: 'La integración con Google se ha completado.' });
+          queryClient.invalidateQueries({ queryKey: ['tenantIntegrations', tenantId] });
+        } else {
+          toast({ title: 'Error de Autenticación', description: error || 'No se pudo completar la integración.', variant: 'destructive' });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleAuthMessage);
+
+    return () => {
+      window.removeEventListener('message', handleAuthMessage);
+      if (popupWindow.current && !popupWindow.current.closed) {
+        popupWindow.current.close();
+      }
+    };
+  }, [queryClient, tenantId, toast]);
+
   const handleConnect = async (getAuthUrl: () => Promise<any>) => {
     try {
       const { data: rpcResponse, error: rpcError } = await getAuthUrl();
 
-      if (rpcError) {
-        throw new Error(rpcError.message);
-      }
-
-      // La respuesta de una función TABLE es un array.
-      if (!rpcResponse || !Array.isArray(rpcResponse) || rpcResponse.length === 0) {
-        throw new Error('Respuesta inválida desde el servidor.');
-      }
-
+      if (rpcError) throw new Error(rpcError.message);
+      if (!rpcResponse || !Array.isArray(rpcResponse) || rpcResponse.length === 0) throw new Error('Respuesta inválida desde el servidor.');
+      
       const result = rpcResponse[0];
+      if (!result.success) throw new Error(result.message || 'No se pudo obtener la URL de autorización.');
+      if (!result.url) throw new Error('La URL de autorización no fue devuelta por el servidor.');
 
-      if (!result.success) {
-        throw new Error(result.message || 'No se pudo obtener la URL de autorización.');
-      }
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
 
-      if (!result.url) {
-        throw new Error('La URL de autorización no fue devuelta por el servidor.');
-      }
+      popupWindow.current = window.open(
+        result.url,
+        'googleAuth',
+        `width=${width},height=${height},top=${top},left=${left}`
+      );
 
-      window.location.href = result.url;
     } catch (e: any) {
       console.error('[handleConnect] Excepción capturada:', e);
       toast({ title: 'Error de Conexión', description: e.message, variant: 'destructive' });

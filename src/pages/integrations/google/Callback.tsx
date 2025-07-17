@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -7,28 +7,27 @@ const GoogleCallbackPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('Iniciando...');
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    // --- CONSOLE LOGS PARA DEBUG ---
-    console.log('[Callback Page] useEffect triggered.');
-    console.log(`[Callback Page] Auth loading state: ${authLoading}`);
-    console.log(`[Callback Page] User object:`, user);
-    // --- FIN DE CONSOLE LOGS ---
+    const postMessageAndClose = (success: boolean, error?: string) => {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'google-auth-callback', success, error }, window.location.origin);
+        window.close();
+      }
+    };
 
     if (authLoading) {
-      console.log('[Callback Page] Auth is loading. Waiting...');
       setMessage('Verificando sesión de superadministrador...');
       return;
     }
 
     const processAuth = async () => {
-      console.log('[Callback Page] Starting processAuth function.');
       if (user?.role !== 'super_admin') {
-        console.error(`[Callback Page] Access denied. User role is: '${user?.role}'. Required: 'super_admin'.`);
-        setError('Acceso denegado. Debes ser un superadministrador.');
+        const authError = 'Acceso denegado. Debes ser un superadministrador.';
+        setError(authError);
         setMessage('Error de autenticación.');
+        postMessageAndClose(false, authError);
         return;
       }
 
@@ -36,18 +35,28 @@ const GoogleCallbackPage = () => {
       const params = new URLSearchParams(location.search);
       const code = params.get('code');
       const state = params.get('state');
+      const authError = params.get('error');
 
-      if (!code || !state) {
-        setError('Parámetros de autenticación inválidos o faltantes.');
-        setMessage('Error: No se pudo completar la autenticación.');
+      if (authError) {
+        setError(`Error de Google: ${authError}`);
+        postMessageAndClose(false, `Error de Google: ${authError}`);
         return;
       }
 
-      // El estado ahora contiene "tenantId:provider"
+      if (!code || !state) {
+        const paramError = 'Parámetros de autenticación inválidos o faltantes.';
+        setError(paramError);
+        setMessage('Error: No se pudo completar la autenticación.');
+        postMessageAndClose(false, paramError);
+        return;
+      }
+
       const stateParts = state.split(':');
       if (stateParts.length !== 2) {
-        setError('El parámetro de estado es inválido. No se puede determinar el proveedor.');
+        const stateError = 'El parámetro de estado es inválido.';
+        setError(stateError);
         setMessage('Error: Estado de autenticación corrupto.');
+        postMessageAndClose(false, stateError);
         return;
       }
 
@@ -55,31 +64,27 @@ const GoogleCallbackPage = () => {
 
       try {
         setMessage('Intercambiando código por tokens de acceso...');
-        
-        const { data, error: functionError } = await supabase.functions.invoke('google-oauth-token', {
+        const { error: functionError } = await supabase.functions.invoke('google-oauth-token', {
           body: { code, tenantId, provider },
         });
 
         if (functionError) {
-          console.error("[Callback Page] Raw functionError object:", functionError);
-          throw new Error(`Edge Function returned a non-2xx status code. Details: ${functionError.message}`);
+          throw new Error(`La función de Supabase falló: ${functionError.message}`);
         }
         
-        setMessage('¡Integración completada exitosamente! Redirigiendo...');
-        
-        setTimeout(() => {
-          navigate(`/superadmin/tenants/${tenantId}`);
-        }, 2000);
+        setMessage('¡Integración completada exitosamente!');
+        postMessageAndClose(true);
 
       } catch (e: any) {
         console.error('Error during token exchange:', e);
         setError(`Error al procesar la autenticación: ${e.message}`);
         setMessage('Ocurrió un error inesperado.');
+        postMessageAndClose(false, e.message);
       }
     };
 
     processAuth();
-  }, [authLoading, user, location, navigate]);
+  }, [authLoading, user, location]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -90,10 +95,10 @@ const GoogleCallbackPage = () => {
           <div>
             <p className="text-red-500 bg-red-100 p-3 rounded">{error}</p>
             <button
-              onClick={() => navigate('/superadmin')}
+              onClick={() => window.close()}
               className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Volver al Panel
+              Cerrar Ventana
             </button>
           </div>
         )}
