@@ -1,0 +1,159 @@
+DROP FUNCTION IF EXISTS public.log_audit_action(text, text, uuid, jsonb, jsonb, inet, text, jsonb, uuid, uuid);
+DROP FUNCTION IF EXISTS public.log_audit_action(text, text, uuid, jsonb, jsonb, inet, text, jsonb);
+DROP FUNCTION IF EXISTS public.log_audit_action(text, text, uuid, jsonb, jsonb, inet, text, jsonb, uuid);
+
+CREATE OR REPLACE FUNCTION public.log_audit_action(
+    p_action text,
+    p_object_type text DEFAULT NULL,
+    p_object_id uuid DEFAULT NULL,
+    p_old_value jsonb DEFAULT NULL,
+    p_new_value jsonb DEFAULT NULL,
+    p_ip_address inet DEFAULT NULL,
+    p_user_agent text DEFAULT NULL,
+    p_metadata jsonb DEFAULT NULL,
+    p_tenant_id uuid DEFAULT NULL,
+    p_branch_id uuid DEFAULT NULL
+)
+RETURNS void AS $$
+DECLARE
+    v_user_id uuid;
+    v_tenant_id uuid;
+    v_branch_id uuid;
+BEGIN
+    -- Intenta obtener user_id del contexto de la sesión actual
+    SELECT auth.uid() INTO v_user_id;
+    
+    -- Prioriza los IDs pasados como parámetro, luego el contexto de la sesión
+    v_tenant_id := COALESCE(p_tenant_id, current_setting('app.tenant_id', true)::uuid);
+    v_branch_id := COALESCE(p_branch_id, current_setting('app.branch_id', true)::uuid);
+
+    INSERT INTO public.audit_logs (
+        user_id,
+        tenant_id,
+        branch_id,
+        action,
+        object_type,
+        object_id,
+        old_value,
+        new_value,
+        ip_address,
+        user_agent,
+        metadata
+    ) VALUES (
+        v_user_id,
+        v_tenant_id,
+        v_branch_id,
+        p_action,
+        p_object_type,
+        p_object_id,
+        p_old_value,
+        p_new_value,
+        p_ip_address,
+        p_user_agent,
+        p_metadata
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+DROP FUNCTION IF EXISTS public.login_user; -- Drops all overloads of login_user
+
+CREATE OR REPLACE FUNCTION public.login_user(
+    p_email TEXT,
+    p_password TEXT,
+    p_request_ip INET DEFAULT NULL, -- IP de la solicitud
+    p_user_agent TEXT DEFAULT NULL,  -- User-Agent de la solicitud
+    p_jwt_secret TEXT DEFAULT NULL,   -- JWT Secret (temporalmente desde frontend)
+    p_audience TEXT DEFAULT NULL      -- Nuevo parámetro para el Audience
+)
+RETURNS JSON AS $$
+DECLARE
+    user_record RECORD;
+    jwt_token TEXT;
+    jwt_secret_val TEXT;
+    edge_function_url TEXT;
+    http_response_record RECORD; -- To capture the http_post response tuple
+    edge_function_response_json JSON; -- To store the parsed JSON from Edge Function
+BEGIN
+    -- Find the user by email
+    SELECT
+        u.id, u.password_hash, u.tenant_id, u.branch_id, r.name AS role_name
+    INTO
+        user_record
+    FROM
+        public.users u
+    JOIN
+        public.roles r ON u.role_id = r.id
+    WHERE
+        u.email = p_email AND u.is_active = TRUE;
+
+    -- Check if user exists and password is correct
+    IF user_record.id IS NULL OR user_record.password_hash IS NULL OR public.crypt(p_password, user_record.password_hash) <> user_record.password_hash THEN
+        -- Log failed login attempt
+        PERFORM public.log_audit_action(
+            p_action := 'user_login_failed'::text,
+            p_object_type := 'users'::text,
+            p_object_id := user_record.id,
+            p_metadata := json_build_object('email', p_email, 'reason', 'Invalid credentials')::jsonb,
+            p_ip_address := p_request_ip,
+            p_user_agent := p_user_agent,
+            p_tenant_id := user_record.tenant_id,
+            p_branch_id := user_record.branch_id
+        );
+        RETURN json_build_object('success', FALSE, 'message', 'Credenciales inválidas');
+    END IF;
+
+    -- Use the provided JWT secret parameter
+    jwt_secret_val := p_jwt_secret;
+
+    IF jwt_secret_val IS NULL OR jwt_secret_val = '' THEN
+        RAISE EXCEPTION 'JWT secret is not provided to the function.';
+    END IF;
+
+    -- Construct Edge Function URL (hardcoded for now, will be passed from frontend)
+    edge_function_url := 'https://vtfsbogpkrcbfuhhoepf.supabase.co/functions/v1/generate-jwt'; -- HARDCODED FOR DEBUGGING
+
+    -- Call Edge Function to generate JWT
+    SELECT * FROM http_post(
+        edge_function_url,
+        json_build_object(
+            'user_id', user_record.id,
+            'email', p_email,
+            'role', user_record.role_name,
+            'tenant_id', user_record.tenant_id,
+            'branch_id', user_record.branch_id,
+            'jwt_secret', jwt_secret_val,
+            'audience', p_audience -- Pass audience to Edge Function
+        )::text,
+        'application/json'
+    ) INTO http_response_record;
+
+    -- Check HTTP status and parse response content
+    IF http_response_record.status <> 200 THEN
+        RAISE EXCEPTION 'Failed to generate JWT: Status %, Content: %', http_response_record.status, http_response_record.content;
+    END IF;
+
+    -- Parse the content as JSON
+    edge_function_response_json := http_response_record.content::json;
+
+    -- Extract the token
+    jwt_token := edge_function_response_json->>'token';
+
+    -- Log successful login attempt
+    PERFORM public.log_audit_action(
+        p_action := 'user_login_success'::text,
+        p_object_type := 'users'::text,
+        p_object_id := user_record.id,
+        p_metadata := json_build_object('email', p_email)::jsonb,
+        p_ip_address := p_request_ip,
+        p_user_agent := p_user_agent,
+        p_tenant_id := user_record.tenant_id,
+        p_branch_id := user_record.branch_id
+    );
+
+    RETURN json_build_object('success', TRUE, 'token', jwt_token);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant usage on the function to public (or authenticated) users
+GRANT EXECUTE ON FUNCTION public.login_user(TEXT, TEXT, INET, TEXT, TEXT, TEXT) TO public;

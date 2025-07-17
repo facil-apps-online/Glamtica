@@ -80,6 +80,28 @@ export default function EditTenant() {
   const watchedLat = form.watch('latitude');
   const watchedLng = form.watch('longitude');
 
+  // Opciones filtradas para los desplegables
+  const activeCountryOptions = useMemo(() => 
+    countries?.filter(c => c.is_active).map(c => ({ value: c.id, label: c.name })) || [],
+    [countries]
+  );
+  
+  const activeLocalizationOptions = useMemo(() => 
+    localizations?.filter(l => l.is_active).map(l => ({ value: l.iso_code, label: l.name })) || [],
+    [localizations]
+  );
+
+  const activeCurrencyOptions = useMemo(() => 
+    currencies?.filter(c => c.is_active).map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })) || [],
+    [currencies]
+  );
+
+  const timezoneOptions = useMemo(() => 
+    timezones?.map(t => ({ value: t.name, label: t.name })) || [],
+    [timezones]
+  );
+
+  // Lógica para la restricción de Google Maps (usa la lista completa de países)
   const countryRestriction = useMemo(() => {
     if (!watchedCountryId || !countries) return '';
     return countries.find(c => c.id === watchedCountryId)?.iso_code || '';
@@ -100,7 +122,7 @@ export default function EditTenant() {
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
-  }, [tenant, form]);
+  }, [tenant, form, toast]);
 
   useEffect(() => {
     if (tenant) {
@@ -125,14 +147,13 @@ export default function EditTenant() {
         physical_state: tenant.physical_state || '',
         physical_postal_code: tenant.physical_postal_code || '',
         website: tenant.website || '',
-        latitude: tenant.latitude || null, // Asegurar que se inicialice con null si no hay valor
-        longitude: tenant.longitude || null, // Asegurar que se inicialice con null si no hay valor
+        latitude: tenant.latitude || null,
+        longitude: tenant.longitude || null,
       });
     }
   }, [tenant, form]);
 
   useEffect(() => {
-    // Mantener la lógica de idioma, moneda y zona horaria
     if (watchedCountryId && countries && localizations) {
       const country = countries.find(c => c.id === watchedCountryId);
       if (country) {
@@ -227,16 +248,16 @@ export default function EditTenant() {
             <h2 className="text-lg font-semibold mb-4">Configuración Regional</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Controller name="country_id" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={countries?.map(c => ({ value: c.id, label: c.name })) || []} value={countries?.map(c => ({ value: c.id, label: c.name })).find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>
+                <FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={activeCountryOptions} value={activeCountryOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>
               )} />
               <Controller name="default_language_code" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={localizations?.map(l => ({ value: l.iso_code, label: l.name })) || []} value={localizations?.map(l => ({ value: l.iso_code, label: l.name })).find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>
+                <FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={activeLocalizationOptions} value={activeLocalizationOptions.find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>
               )} />
               <Controller name="default_currency_id" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={currencies?.map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })) || []} value={currencies?.map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })).find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>
+                <FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={activeCurrencyOptions} value={activeCurrencyOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>
               )} />
               <Controller name="default_timezone" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezones?.map(t => ({ value: t.name, label: t.name })) || []} value={timezones?.map(t => ({ value: t.name, label: t.name })).find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>
+                <FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezoneOptions} value={timezoneOptions.find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>
               )} />
             </div>
           </div>

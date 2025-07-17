@@ -23,6 +23,15 @@ import { useNavigate } from 'react-router-dom';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
 import { PhoneInput } from '@/components/PhoneInput';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const formSchema = z.object({
   // Tenant fields
@@ -57,12 +66,18 @@ const formSchema = z.object({
   path: ["admin_confirm_password"],
 });
 
+type Credentials = {
+  email: string;
+  pass: string;
+}
+
 export default function CreateTenant() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  
+  const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const { data: timezones, isLoading: isLoadingTimezones } = useTimezones();
   const { data: localizations, isLoading: isLoadingLocalizations } = useLocalizations();
@@ -103,12 +118,33 @@ export default function CreateTenant() {
   const watchedLat = form.watch('latitude');
   const watchedLng = form.watch('longitude');
 
+  // Opciones filtradas para los desplegables
+  const activeCountryOptions = useMemo(() => 
+    countries?.filter(c => c.is_active).map(c => ({ value: c.id, label: c.name })) || [],
+    [countries]
+  );
+  
+  const activeLocalizationOptions = useMemo(() => 
+    localizations?.filter(l => l.is_active).map(l => ({ value: l.iso_code, label: l.name })) || [],
+    [localizations]
+  );
+
+  const activeCurrencyOptions = useMemo(() => 
+    currencies?.filter(c => c.is_active).map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })) || [],
+    [currencies]
+  );
+
+  const timezoneOptions = useMemo(() => 
+    timezones?.map(t => ({ value: t.name, label: t.name })) || [],
+    [timezones]
+  );
+
+  // Lógica para la restricción de Google Maps (usa la lista completa de países)
   const countryRestriction = useMemo(() => {
     if (!watchedCountryId || !countries) return '';
     return countries.find(c => c.id === watchedCountryId)?.iso_code || '';
   }, [watchedCountryId, countries]);
 
-  // Obtener ubicación del dispositivo al cargar la página
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -118,19 +154,16 @@ export default function CreateTenant() {
         },
         (error) => {
           console.error("Error al obtener la ubicación del dispositivo:", error);
-          // Opcional: mostrar un toast al usuario si la ubicación no se pudo obtener
           toast({ title: 'Error', description: 'No se pudo obtener la ubicación actual del dispositivo.', variant: 'destructive' });
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
-  }, []);
+  }, [toast, form]);
 
   useEffect(() => {
-    // Mantener la lógica de idioma, moneda y zona horaria
     if (watchedCountryId && countries && localizations) {
       const country = countries.find(c => c.id === watchedCountryId);
-      console.log("CreateTenant - Selected Country Data:", country); // <-- AÑADIDO PARA DEPURACIÓN
       if (country) {
         const localization = localizations.find(l => l.id === country.default_localization_id);
         if (localization) {
@@ -197,13 +230,19 @@ export default function CreateTenant() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       toast({ title: '¡Éxito!', description: `Tenant "${data.name}" y administrador creados.` });
-      alert(`Credenciales del Administrador:\n\nEmail: ${data.admin_email}\nContraseña: ${data.admin_password}\n\nGuarde esta información en un lugar seguro.`);
-      navigate('/superadmin/tenants');
+      setCredentials({ email: data.admin_email, pass: data.admin_password });
+      setIsAlertOpen(true);
     },
     onError: (error) => {
+      console.error("Error creating tenant:", error);
       toast({ title: 'Error', description: `Error al crear: ${error.message}`, variant: 'destructive' });
     },
   });
+
+  const handleAlertClose = () => {
+    setIsAlertOpen(false);
+    navigate('/superadmin/tenants');
+  };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     createTenantMutation.mutate(values);
@@ -214,149 +253,172 @@ export default function CreateTenant() {
   }
 
   return (
-    <div className="w-full">
-      <h1 className="text-2xl font-bold mb-6">Crear Nuevo Tenant y Administrador</h1>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" autoComplete="off">
-          
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4">Información Principal</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <Controller
-                name="subscription_status"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem><FormLabel>Estado de Suscripción</FormLabel>
-                  <SearchableSelect
-                    options={[{value: 'trial', label: 'Trial'}, {value: 'active', label: 'Activo'}, {value: 'inactive', label: 'Inactivo'}, {value: 'cancelled', label: 'Cancelado'}]}
-                    value={[{value: 'trial', label: 'Trial'}, {value: 'active', label: 'Activo'}, {value: 'inactive', label: 'Inactivo'}, {value: 'cancelled', label: 'Cancelado'}].find(o => o.value === field.value) || null}
-                    onChange={(option) => field.onChange(option ? option.value : '')}
-                    placeholder="Selecciona un estado"
-                  /></FormItem>
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4">Configuración Regional</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Controller name="country_id" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={countries?.map(c => ({ value: c.id, label: c.name })) || []} value={countries?.map(c => ({ value: c.id, label: c.name })).find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>
-              )} />
-              <Controller name="default_language_code" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={localizations?.map(l => ({ value: l.iso_code, label: l.name })) || []} value={localizations?.map(l => ({ value: l.iso_code, label: l.name })).find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>
-              )} />
-              <Controller name="default_currency_id" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={currencies?.map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })) || []} value={currencies?.map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })).find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>
-              )} />
-              <Controller name="default_timezone" control={form.control} render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezones?.map(t => ({ value: t.name, label: t.name })) || []} value={timezones?.map(t => ({ value: t.name, label: t.name })).find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>
-              )} />
-            </div>
-          </div>
-
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4">Información de Contacto</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <FormField control={form.control} name="contact_phone" render={({ field }) => (
-                <FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (
-                <FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="commercial_email" render={({ field }) => (
-                <FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </div>
-            </div>
-
+    <>
+      <div className="w-full">
+        <h1 className="text-2xl font-bold mb-6">Crear Nuevo Tenant y Administrador</h1>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" autoComplete="off">
+            
             <div className="p-6 border rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">Información Fiscal</h2>
+              <h2 className="text-lg font-semibold mb-4">Información Principal</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={form.control} name="legal_name" render={({ field }) => (
-                  <FormItem><FormLabel>Razón Social / Nombre Legal</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
-                <FormField control={form.control} name="tax_id" render={({ field }) => (
-                  <FormItem><FormLabel>ID Fiscal (NIT, CUIT, etc.)</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+                <Controller
+                  name="subscription_status"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormItem><FormLabel>Estado de Suscripción</FormLabel>
+                    <SearchableSelect
+                      options={[{value: 'trial', label: 'Trial'}, {value: 'active', label: 'Activo'}, {value: 'inactive', label: 'Inactivo'}, {value: 'cancelled', label: 'Cancelado'}]}
+                      value={[{value: 'trial', label: 'Trial'}, {value: 'active', label: 'Activo'}, {value: 'inactive', label: 'Inactivo'}, {value: 'cancelled', label: 'Cancelado'}].find(o => o.value === field.value) || null}
+                      onChange={(option) => field.onChange(option ? option.value : '')}
+                      placeholder="Selecciona un estado"
+                    /></FormItem>
+                  )}
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <FormField control={form.control} name="billing_address" render={({ field }) => (
-                  <FormItem><FormLabel>Dirección de Facturación</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+            </div>
+
+            <div className="p-6 border rounded-lg">
+              <h2 className="text-lg font-semibold mb-4">Configuración Regional</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Controller name="country_id" control={form.control} render={({ field }) => (
+                  <FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={activeCountryOptions} value={activeCountryOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>
                 )} />
-                <FormField control={form.control} name="einvoicing_email" render={({ field }) => (
-                  <FormItem><FormLabel>Email para Facturación Electrónica</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                <Controller name="default_language_code" control={form.control} render={({ field }) => (
+                  <FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={activeLocalizationOptions} value={activeLocalizationOptions.find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>
+                )} />
+                <Controller name="default_currency_id" control={form.control} render={({ field }) => (
+                  <FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={activeCurrencyOptions} value={activeCurrencyOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>
+                )} />
+                <Controller name="default_timezone" control={form.control} render={({ field }) => (
+                  <FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezoneOptions} value={timezoneOptions.find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>
                 )} />
               </div>
             </div>
 
             <div className="p-6 border rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">Dirección Física</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <FormItem>
-                    <FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel>
-                    <FormControl>
-                      <AddressAutocompleteInput 
-                        onPlaceSelected={handlePlaceSelected}
-                        countryRestriction={countryRestriction}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                  <FormField control={form.control} name="physical_address_line1" render={({ field }) => (
-                    <FormItem><FormLabel>Dirección (Línea 1)</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+              <h2 className="text-lg font-semibold mb-4">Información de Contacto</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <FormField control={form.control} name="contact_phone" render={({ field }) => (
+                  <FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (
+                  <FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="commercial_email" render={({ field }) => (
+                  <FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
-                  <FormField control={form.control} name="physical_address_line2" render={({ field }) => (
-                    <FormItem><FormLabel>Dirección (Línea 2)</FormLabel><FormControl><Input autoComplete="off" placeholder="Apto, Oficina, etc. (Opcional)" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <FormField control={form.control} name="physical_city" render={({ field }) => (
-                      <FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="physical_state" render={({ field }) => (
-                      <FormItem><FormLabel>Estado / Provincia</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="physical_postal_code" render={({ field }) => (
-                      <FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                  </div>
-                   <FormField control={form.control} name="website" render={({ field }) => (
-                      <FormItem><FormLabel>Sitio Web</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
                 </div>
-                {watchedLat !== null && watchedLng !== null && (
-                  <div className="w-full h-[400px] rounded-lg overflow-hidden">
-                    <MapDisplay latitude={watchedLat} longitude={watchedLng} />
+              </div>
+
+              <div className="p-6 border rounded-lg">
+                <h2 className="text-lg font-semibold mb-4">Información Fiscal</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="legal_name" render={({ field }) => (
+                    <FormItem><FormLabel>Razón Social / Nombre Legal</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="tax_id" render={({ field }) => (
+                    <FormItem><FormLabel>ID Fiscal (NIT, CUIT, etc.)</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <FormField control={form.control} name="billing_address" render={({ field }) => (
+                    <FormItem><FormLabel>Dirección de Facturación</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="einvoicing_email" render={({ field }) => (
+                    <FormItem><FormLabel>Email para Facturación Electrónica</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+              </div>
+
+              <div className="p-6 border rounded-lg">
+                <h2 className="text-lg font-semibold mb-4">Dirección Física</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <FormItem>
+                      <FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel>
+                      <FormControl>
+                        <AddressAutocompleteInput 
+                          onPlaceSelected={handlePlaceSelected}
+                          countryRestriction={countryRestriction}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                    <FormField control={form.control} name="physical_address_line1" render={({ field }) => (
+                      <FormItem><FormLabel>Dirección (Línea 1)</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="physical_address_line2" render={({ field }) => (
+                      <FormItem><FormLabel>Dirección (Línea 2)</FormLabel><FormControl><Input autoComplete="off" placeholder="Apto, Oficina, etc. (Opcional)" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <FormField control={form.control} name="physical_city" render={({ field }) => (
+                        <FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="physical_state" render={({ field }) => (
+                        <FormItem><FormLabel>Estado / Provincia</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="physical_postal_code" render={({ field }) => (
+                        <FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                     <FormField control={form.control} name="website" render={({ field }) => (
+                        <FormItem><FormLabel>Sitio Web</FormLabel><FormControl><Input autoComplete="off" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
                   </div>
-                )}
+                  {watchedLat !== null && watchedLng !== null && (
+                    <div className="w-full h-[400px] rounded-lg overflow-hidden">
+                      <MapDisplay latitude={watchedLat} longitude={watchedLng} />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="p-6 border rounded-lg bg-blue-50">
-              <h2 className="text-lg font-semibold mb-4">Administrador Principal del Tenant</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField control={form.control} name="admin_email" render={({ field }) => (
-                  <FormItem><FormLabel>Email del Administrador</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="admin_password" render={({ field }) => (
-                  <FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input autoComplete="new-password" type="password" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="admin_confirm_password" render={({ field }) => (
-                  <FormItem><FormLabel>Confirmar Contraseña</FormLabel><FormControl><Input autoComplete="new-password" type="password" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+              <div className="p-6 border rounded-lg bg-blue-50">
+                <h2 className="text-lg font-semibold mb-4">Administrador Principal del Tenant</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <FormField control={form.control} name="admin_email" render={({ field }) => (
+                    <FormItem><FormLabel>Email del Administrador</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="admin_password" render={({ field }) => (
+                    <FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input autoComplete="new-password" type="password" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="admin_confirm_password" render={({ field }) => (
+                    <FormItem><FormLabel>Confirmar Contraseña</FormLabel><FormControl><Input autoComplete="new-password" type="password" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
               </div>
-            </div>
 
-            <Button type="submit" disabled={createTenantMutation.isPending}>
-              {createTenantMutation.isPending ? 'Creando...' : 'Crear Tenant y Administrador'}
-            </Button>
-          </form>
-        </Form>
-      </div>
+              <Button type="submit" disabled={createTenantMutation.isPending}>
+                {createTenantMutation.isPending ? 'Creando...' : 'Crear Tenant y Administrador'}
+              </Button>
+            </form>
+          </Form>
+        </div>
+
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¡Credenciales del Administrador!</AlertDialogTitle>
+              <AlertDialogDescription>
+                El tenant y su administrador principal han sido creados. Por favor, guarda estas credenciales en un lugar seguro. 
+                No podrás volver a ver la contraseña.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="my-4 space-y-2">
+              <p><strong>Email:</strong> {credentials?.email}</p>
+              <p><strong>Contraseña:</strong> {credentials?.pass}</p>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={handleAlertClose}>
+                Entendido, he guardado las credenciales
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+    </>
   );
 }

@@ -1,0 +1,6 @@
+ALTER TABLE public.tenant_integrations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow super_admin to manage global integrations" ON public.tenant_integrations;
+
+CREATE POLICY "Allow super_admin to select global integrations" ON public.tenant_integrations FOR SELECT
+    USING ( (auth.jwt() ->> 'role') = 'super_admin' );

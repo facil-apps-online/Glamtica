@@ -1,5 +1,21 @@
-feat(superadmin): Mejora y corrige flujo de integración de Google
+feat(auth): Securiza y estabiliza el flujo de autenticación y perfil
 
-Este commit soluciona un error de estado obsoleto que impedía conectar un segundo servicio de Google (ej. Gmail después de Drive) sin necesidad de reiniciar la sesión.
+Este commit resuelve una serie de problemas críticos relacionados con la autenticación, la gestión del perfil de usuario y las integraciones con Google Drive.
 
-Adicionalmente, se mejoran las notificaciones (toasts) para que sean más claras y específicas, mostrando nombres amigables para el usuario ("Google Drive" en lugar de "google_drive") tanto al conectar como al desconectar un servicio.
+Cambios Principales:
+
+1.  **Securización del JWT:**
+    -   Se refactoriza la Edge Function `generate-jwt` para que lea el secreto desde las variables de entorno del servidor (`JWT_SECRET`) en lugar de recibirlo desde el cliente.
+    -   Se eliminan los envíos del secreto desde el `AuthContext` y `useProfileSettings`, cerrando una importante brecha de seguridad.
+
+2.  **Estabilización de la Subida de Avatar:**
+    -   Se corrige la Edge Function `google-drive-upload-avatar` para que verifique correctamente el JWT personalizado, solucionando los errores `401 Unauthorized`.
+    -   Se ajusta la configuración en `supabase/config.toml` para que el API Gateway no interfiera con la verificación manual del token.
+
+3.  **Corrección de Bugs en Perfil:**
+    -   Se implementa una caché de cliente para las imágenes de avatar, solucionando errores de recarga y mejorando el rendimiento.
+    -   Se corrige la lógica de actualización de perfil para que la configuración regional del usuario no se borre al cambiar el avatar.
+
+4.  **Mejoras de Funcionalidad:**
+    -   Se añade la capacidad de activar/desactivar Países e Idiomas desde la configuración global, incluyendo los interruptores en las tablas y diálogos correspondientes.
+    -   Se ajustan los formularios que dependen de estas configuraciones para que solo muestren las opciones activas.
