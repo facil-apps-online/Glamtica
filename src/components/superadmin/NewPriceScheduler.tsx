@@ -16,8 +16,8 @@ import { format } from 'date-fns';
 
 const newPriceSchema = z.object({
   subscription_plan_id: z.string().min(1, "Debe seleccionar un plan."),
-  base_price_cop: z.coerce.number().min(0, "El precio debe ser positivo."),
-  extra_branch_price_cop: z.coerce.number().min(0, "El precio debe ser positivo."),
+  base_price_cop: z.coerce.number().gt(0, "El precio debe ser mayor que cero."),
+  extra_branch_price_cop: z.coerce.number().min(0, "El precio puede ser cero o positivo."),
   effective_date: z.date({ required_error: "Debe seleccionar una fecha." }),
 });
 

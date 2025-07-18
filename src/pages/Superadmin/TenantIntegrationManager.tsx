@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Power, PowerOff, Mail, FolderKanban } from 'lucide-react';
+import { CheckCircle, Power, PowerOff, Mail, FolderKanban, Send } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +33,7 @@ const useGoogleAuthUrl = (tenantId: string, rpcName: 'get_google_auth_url' | 'ge
   });
 };
 
-const IntegrationCard = ({ title, icon, isConnected, accountEmail, onConnect, onDisconnect, isConnecting, isDisconnecting }) => {
+const IntegrationCard = ({ title, icon, isConnected, accountEmail, onConnect, onDisconnect, isConnecting, isDisconnecting, onTest, isTesting }) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
       <div className="flex items-center gap-4">
@@ -43,14 +43,25 @@ const IntegrationCard = ({ title, icon, isConnected, accountEmail, onConnect, on
       
       {isConnected ? (
         <div className="flex flex-col items-start sm:items-end gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Conectado como: <span className="font-bold text-foreground">{accountEmail}</span>
+          <div className="flex items-start gap-2 text-sm">
+            <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-muted-foreground">Conectado como:</span>
+              <span className="font-bold text-foreground break-all">{accountEmail}</span>
+            </div>
           </div>
-          <Button onClick={onDisconnect} variant="destructive" size="sm" disabled={isDisconnecting}>
-            <PowerOff className="mr-2 h-4 w-4" />
-            {isDisconnecting ? 'Desconectando...' : 'Desconectar'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {onTest && (
+              <Button onClick={onTest} variant="secondary" size="sm" disabled={isTesting}>
+                <Send className="mr-2 h-4 w-4" />
+                {isTesting ? 'Encolando...' : 'Enviar Prueba'}
+              </Button>
+            )}
+            <Button onClick={onDisconnect} variant="destructive" size="sm" disabled={isDisconnecting}>
+              <PowerOff className="mr-2 h-4 w-4" />
+              {isDisconnecting ? 'Desconectando...' : 'Desconectar'}
+            </Button>
+          </div>
         </div>
       ) : (
         <Button onClick={onConnect} disabled={isConnecting}>
@@ -82,6 +93,7 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
   }>({ isOpen: false, provider: null, accountEmail: null });
 
   const [connectingProvider, setConnectingProvider] = useState<Provider | null>(null);
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   const { refetch: getDriveAuthUrl, isFetching: isFetchingDriveUrl } = useGoogleAuthUrl(tenantId, 'get_google_auth_url');
   const { refetch: getGmailAuthUrl, isFetching: isFetchingGmailUrl } = useGoogleAuthUrl(tenantId, 'get_gmail_auth_url');
@@ -161,6 +173,45 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
     );
   };
 
+  const handleSendTestEmail = async () => {
+    setIsSendingTest(true);
+    try {
+      // Paso 1: Encolar el trabajo y obtener el ID del nuevo job.
+      const { data: jobData, error: rpcError } = await supabase.rpc('enqueue_test_email');
+
+      if (rpcError) throw rpcError;
+      if (!jobData.success) throw new Error(jobData.message);
+
+      toast({
+        title: "Correo Encolado",
+        description: "El trabajo ha sido creado. Invocando al trabajador...",
+      });
+
+      // Paso 2: Invocar a la Edge Function, pasándole el job recién creado.
+      // La Edge Function espera un 'record', así que simulamos ese formato.
+      const { error: functionError } = await supabase.functions.invoke('process-email-queue', {
+        body: { record: jobData.job },
+      });
+
+      if (functionError) throw functionError;
+
+      toast({
+        title: "Trabajador Invocado",
+        description: "El proceso de envío ha comenzado en segundo plano.",
+      });
+
+    } catch (error: any) {
+      console.error("Error en el proceso de envío de prueba:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo completar el proceso de envío.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
   if (isLoading) return <div className="p-4">Cargando integraciones...</div>;
   if (isError) return <div className="p-4 text-red-500">Error al cargar integraciones: {error?.message}</div>;
 
@@ -191,6 +242,8 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
             onDisconnect={() => handleDisconnectRequest('google_gmail', gmailIntegration?.account_email)}
             isConnecting={isFetchingGmailUrl}
             isDisconnecting={disconnectMutation.isPending && disconnectMutation.variables?.provider === 'google_gmail'}
+            onTest={handleSendTestEmail}
+            isTesting={isSendingTest}
           />
         </CardContent>
       </Card>

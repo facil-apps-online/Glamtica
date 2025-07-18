@@ -51,3 +51,24 @@ export const useCreatePlanPrice = () => {
     },
   });
 };
+
+// DELETE a plan price history record
+const deletePlanPrice = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('plan_price_history')
+    .delete()
+    .match({ id });
+
+  if (error) throw new Error(error.message);
+};
+
+export const useDeletePlanPrice = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: deletePlanPrice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan_price_history_all'] });
+      queryClient.invalidateQueries({ queryKey: ['calculated_prices'] });
+    },
+  });
+};

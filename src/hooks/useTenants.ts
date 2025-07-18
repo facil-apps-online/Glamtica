@@ -5,19 +5,22 @@ export interface Tenant {
   id: string;
   name: string;
   subscription_status: string;
-  default_language_code: string;
-  default_currency_id: string;
-  default_timezone: string;
   created_at: string;
   updated_at: string;
+  default_language_code?: string | null;
+  default_currency_id?: string | null;
+  default_timezone?: string | null;
+  contact_person?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   country_id?: string | null;
-  countries?: { name: string } | null;
-
+  is_active?: boolean | null;
+  logo_url?: string | null;
+  notes?: string | null;
   legal_name?: string | null;
   tax_id?: string | null;
   billing_address?: string | null;
   website?: string | null;
-  contact_phone?: string | null;
   whatsapp_phone?: string | null;
   commercial_email?: string | null;
   einvoicing_email?: string | null;
@@ -26,8 +29,9 @@ export interface Tenant {
   physical_city?: string | null;
   physical_state?: string | null;
   physical_postal_code?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  countries?: { name: string } | null; // Mantenemos esta estructura para la UI
 }
 
 interface TenantFilters {
@@ -36,29 +40,20 @@ interface TenantFilters {
 
 // GET all tenants with filters
 const fetchTenants = async (filters: TenantFilters): Promise<Tenant[]> => {
-  let query = supabase
-    .from('tenants')
-    .select(`
-      *,
-      countries ( name )
-    `);
-
-  if (filters.searchTerm) {
-    const searchTerm = `%${filters.searchTerm}%`;
-    query = query.or(
-      `name.ilike.${searchTerm},legal_name.ilike.${searchTerm},commercial_email.ilike.${searchTerm},tax_id.ilike.${searchTerm}`
-    );
-  }
-
-  query = query.order('name', { ascending: true });
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('get_tenants_with_metrics', {
+    search_term_param: filters.searchTerm || null,
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return data;
+  // La RPC devuelve `country_name`, pero la interfaz `Tenant` espera `countries: { name: string }`
+  // Mapeamos la respuesta para que coincida con la interfaz esperada.
+  return data.map(tenant => ({
+    ...tenant,
+    countries: tenant.country_name ? { name: tenant.country_name } : null,
+  }));
 };
 
 export const useTenants = (filters: TenantFilters = {}) => {

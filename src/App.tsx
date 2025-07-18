@@ -48,7 +48,7 @@ function App() {
       <BrowserRouter>
         <AuthProvider supabaseClient={supabase}>
           <AppInitializer>
-            <Toaster />
+            <Toaster position="bottom-right" />
             <Routes>
               <Route path="/setup-superadmin" element={<SetupSuperadmin />} />
               <Route path="/auth" element={<AuthPage />} />
