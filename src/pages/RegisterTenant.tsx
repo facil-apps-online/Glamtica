@@ -247,7 +247,7 @@ export default function RegisterTenant() {
       exit="out"
       variants={pageVariants}
       transition={pageTransition}
-      className="h-screen w-full bg-brand-primary lg:relative"
+      className="min-h-screen w-full bg-brand-primary lg:h-screen lg:grid lg:grid-cols-2 lg:overflow-hidden"
     >
       {/* Columna Izquierda - Panel de Bienvenida */}
       <div className="hidden lg:absolute lg:left-0 lg:top-0 lg:w-1/2 lg:h-full lg:flex lg:flex-col lg:items-center lg:justify-center p-10 text-white">
