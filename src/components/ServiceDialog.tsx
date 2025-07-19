@@ -99,7 +99,7 @@ export const ServiceDialog = ({ service, trigger }: ServiceDialogProps) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {service ? "Editar Servicio" : "Nuevo Servicio"}

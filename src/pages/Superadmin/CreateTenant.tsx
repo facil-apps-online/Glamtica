@@ -400,7 +400,7 @@ export default function CreateTenant() {
         </div>
 
         <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="w-[95vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>¡Credenciales del Administrador!</AlertDialogTitle>
               <AlertDialogDescription>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -8,24 +8,44 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion';
+import Logo from '@/assets/images/glamtica.app.png';
 
-// ... (keep existing imports)
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    y: 20,
+  },
+  in: {
+    opacity: 1,
+    y: 0,
+  },
+  out: {
+    opacity: 0,
+    y: -20,
+  },
+};
+
+const pageTransition = {
+  type: 'tween',
+  ease: 'anticipate',
+  duration: 0.5,
+};
+
 
 const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [businessName, setBusinessName] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth(); // Get login function from AuthContext
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password); // Use login from AuthContext
+      await login(email, password);
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo.",
@@ -42,67 +62,46 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // Call the register_new_tenant RPC function
-      const { data, error } = await supabase.rpc('register_new_tenant', {
-        p_business_name: businessName,
-        p_admin_email: email,
-        p_admin_password: password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Registro exitoso",
-        description: "Tu tenant ha sido creado. Ahora puedes iniciar sesión.",
-      });
-      // After successful registration, user should manually log in
-      // or you can automatically redirect to login tab
-      // For now, just reset form and let user log in
-      setEmail('');
-      setPassword('');
-      setBusinessName('');
-
-    } catch (error: any) {
-      toast({
-        title: "Error de registro",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Tabs defaultValue="login" className="w-[400px]">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-          <TabsTrigger value="register">Registrarse</TabsTrigger>
-        </TabsList>
-        <TabsContent value="login">
-          <Card>
-            <CardHeader>
-              <CardTitle>Iniciar Sesión</CardTitle>
-              <CardDescription>Accede a tu cuenta de Glamtica.app</CardDescription>
+    <motion.div
+      initial="initial"
+      animate="in"
+      exit="out"
+      variants={pageVariants}
+      transition={pageTransition}
+      className="min-h-screen w-full bg-brand-primary lg:grid lg:grid-cols-2"
+    >
+      {/* Columna Izquierda - Panel de Bienvenida */}
+      <div className="hidden lg:flex flex-col items-center justify-center p-10 text-white">
+        <img src={Logo} alt="Glamtica.app Logo" className="w-48 h-48 mb-6" />
+        <h1 className="text-4xl font-bold text-center">Bienvenido a Glamtica.app</h1>
+        <p className="mt-4 text-lg text-center text-gray-300">La solución todo en uno para la gestión de tu negocio de belleza.</p>
+      </div>
+
+      {/* Columna Derecha - Formulario */}
+      <div className="flex items-center justify-center p-6 sm:p-12 lg:bg-background">
+        <div className="w-full max-w-md">
+          {/* Logo para la vista móvil */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <img src={Logo} alt="Glamtica.app Logo" className="w-36 h-36" />
+          </div>
+          <Card className="border-none shadow-none lg:border lg:shadow-sm">
+            <CardHeader className="text-center lg:text-left">
+              <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
+              <CardDescription>Accede a tu cuenta para continuar</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <form onSubmit={handleLogin}>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="tu@ejemplo.com"
+                    placeholder=""
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="bg-gray-50"
                   />
                 </div>
                 <div className="space-y-2">
@@ -113,64 +112,29 @@ const AuthPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="bg-gray-50"
                   />
                 </div>
-                <Button type="submit" className="w-full mt-6" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full mt-6" 
+                  disabled={loading}
+                >
                   {loading ? "Cargando..." : "Iniciar Sesión"}
                 </Button>
               </form>
             </CardContent>
+            <CardFooter className="flex justify-center text-sm">
+              <p>¿No tienes una cuenta?&nbsp;
+                <Link to="/register-tenant" className="font-semibold text-brand-primary hover:underline">
+                  Regístrate aquí
+                </Link>
+              </p>
+            </CardFooter>
           </Card>
-        </TabsContent>
-        <TabsContent value="register">
-          <Card>
-            <CardHeader>
-              <CardTitle>Registrarse</CardTitle>
-              <CardDescription>Crea una nueva cuenta de tenant</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <form onSubmit={handleRegister}>
-                <div className="space-y-2">
-                  <Label htmlFor="register-business-name">Nombre del Negocio</Label>
-                  <Input
-                    id="register-business-name"
-                    type="text"
-                    placeholder="Mi Salón de Belleza"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email del Administrador</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="admin@tu-negocio.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Contraseña</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full mt-6" disabled={loading}>
-                  {loading ? "Registrando..." : "Registrarse"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 

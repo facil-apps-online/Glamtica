@@ -71,7 +71,7 @@ export default function PerformanceMetrics() {
     <div className="space-y-8 md:p-6">
       {/* API Health Section */}
       <div>
-        <h2 className="text-xl font-bold">Salud de la API (Supabase)</h2>
+        <h2 className="text-xl font-bold">Salud de la Base de Datos</h2>
         <p className="text-muted-foreground">Datos de los últimos 60 minutos. Se actualiza automáticamente.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -101,10 +101,33 @@ export default function PerformanceMetrics() {
         />
       </div>
 
+      
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ChartCard
+            title="Peticiones por Minuto (RPM)"
+            description="Volumen de tráfico que maneja el Backend."
+            isLoading={isLoadingApi}
+        >
+            <LineChart data={formattedRpmData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time_bucket" stroke="#888888" fontSize={12} />
+                <YAxis stroke="#888888" fontSize={12} />
+                <Tooltip
+                    contentStyle={{
+                        backgroundColor: "hsl(var(--background))",
+                        borderColor: "hsl(var(--border))"
+                    }}
+                />
+                <Line type="monotone" dataKey="request_count" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+            </LineChart>
+        </ChartCard>
+      </div>
+
       {/* Server Health Section */}
       <div className="pt-4">
         <h2 className="text-xl font-bold">Salud de la Infraestructura (Servidor)</h2>
-        <p className="text-muted-foreground">Métricas en tiempo real del Droplet. Se actualiza automáticamente.</p>
+        <p className="text-muted-foreground">Monitor en tiempo real (Se actualiza automáticamente).</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -133,26 +156,7 @@ export default function PerformanceMetrics() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ChartCard
-            title="Peticiones por Minuto (RPM)"
-            description="Volumen de tráfico que maneja la API."
-            isLoading={isLoadingApi}
-        >
-            <LineChart data={formattedRpmData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time_bucket" stroke="#888888" fontSize={12} />
-                <YAxis stroke="#888888" fontSize={12} />
-                <Tooltip
-                    contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        borderColor: "hsl(var(--border))"
-                    }}
-                />
-                <Line type="monotone" dataKey="request_count" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-            </LineChart>
-        </ChartCard>
-      </div>
+
     </div>
   );
 }

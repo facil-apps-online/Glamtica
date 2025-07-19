@@ -834,3 +834,33 @@ Se ha solucionado una inestabilidad crítica en el flujo de autenticación de Go
     -   **`TenantIntegrationManager.tsx`**: Corregido un bug en `handleConnect` para procesar correctamente la respuesta (un array) de las funciones RPC de la base de datos.
 
 **Estado:** Completado y verificado.
+
+---
+
+# Arquitectura de Envío de Correos Transaccionales
+
+## Resumen Técnico
+
+El sistema utiliza una arquitectura de cola de trabajos asíncrona para garantizar un envío de correos fiable y escalable, sin bloquear la interfaz de usuario.
+
+### Componentes Clave
+
+1.  **Tabla `email_queue` (Cola de Trabajos):**
+    *   Actúa como el buffer central. Cualquier parte del sistema que necesite enviar un correo (registro de usuario, recordatorios, etc.) no lo envía directamente, sino que inserta una "orden de trabajo" en esta tabla.
+    *   Almacena el `recipient_user_id`, el `template_type` y los datos dinámicos (`template_data`).
+    *   Registra el estado del trabajo (`PENDING`, `PROCESSING`, `SENT`, `FAILED`), los intentos y los mensajes de error.
+
+2.  **RPC `enqueue_..._email()` (Punto de Entrada):**
+    *   Funciones de base de datos muy simples y rápidas cuyo único propósito es insertar un nuevo trabajo en la tabla `email_queue`.
+    *   Devuelven una respuesta inmediata al cliente, confirmando que el trabajo ha sido encolado.
+
+3.  **Edge Function `process-email-queue` (El Trabajador):**
+    *   Es el cerebro del sistema y se ejecuta en segundo plano.
+    *   Se invoca cuando hay un nuevo trabajo.
+    *   **Orquesta todo el proceso de forma síncrona:**
+        a. Marca el trabajo como `PROCESSING`.
+        b. Obtiene todos los datos necesarios de la base de datos (usuario, plantilla, integración de Gmail).
+        c. **Maneja el refresco de tokens:** Llama a la RPC `decrypt_secret` para obtener el `refresh_token` limpio, lo usa para solicitar un nuevo `access_token` a Google y actualiza la base de datos.
+        d. Procesa la plantilla HTML con los datos dinámicos.
+        e. Envía el correo a través de la API de Gmail.
+        f. Actualiza el estado final del trabajo en la tabla `email_queue` a `SENT` o `FAILED`.

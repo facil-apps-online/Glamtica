@@ -67,11 +67,11 @@ export default function SubscriptionPlans() {
                 </Button>
                 <Button
                   variant="destructive"
-                  size="sm"
+                  size="icon"
                   onClick={() => handleDelete(plan.id, plan.name)}
                   disabled={deletePlanMutation.isPending}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Borrar
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </CardFooter>
             </Card>
@@ -104,12 +104,12 @@ export default function SubscriptionPlans() {
                   </Button>
                   <Button
                     variant="destructive"
-                    size="sm"
+                    size="icon"
                     className="ml-2"
                     onClick={() => handleDelete(plan.id, plan.name)}
                     disabled={deletePlanMutation.isPending}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" /> Borrar
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>

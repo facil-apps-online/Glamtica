@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useTenantUsers, useUpdateUserStatus, useCreateTenantUser, useRoles, useCreatePasswordResetToken } from '@/hooks/useTenantUsers';
+import React, { useState, useMemo } from 'react';
+import { useTenantUsers, useUpdateUserStatus, useCreateTenantUser, useRoles, useCreatePasswordResetToken, TenantUser } from '@/hooks/useTenantUsers';
 import { useBranches } from '@/hooks/useBranches';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -27,14 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
-import { MoreHorizontal, PlusCircle, Copy } from 'lucide-react';
+import { PlusCircle, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useScreenSize } from '@/hooks/useScreenSize';
@@ -49,6 +43,13 @@ const roleLabels: { [key: string]: string } = {
   tenant_super_admin: 'Super Admin Tenant',
   tenant_admin: 'Administrador',
   tenant_user: 'Usuario',
+};
+
+const roleOrder: { [key: string]: number } = {
+  super_admin: 1,
+  tenant_super_admin: 2,
+  tenant_admin: 3,
+  tenant_user: 4,
 };
 
 const addUserFormSchema = z.object({
@@ -71,6 +72,19 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const [recoveryLink, setRecoveryLink] = useState('');
+
+  const sortedUsers = useMemo(() => {
+    if (!users) return [];
+    return [...users].sort((a, b) => {
+      const roleA_Order = roleOrder[a.role_name] || 99;
+      const roleB_Order = roleOrder[b.role_name] || 99;
+
+      if (roleA_Order !== roleB_Order) {
+        return roleA_Order - roleB_Order;
+      }
+      return a.email.localeCompare(b.email);
+    });
+  }, [users]);
 
   const handleStatusChange = (userId: string, currentStatus: boolean) => {
     updateUserStatusMutation.mutate({ userId, newStatus: !currentStatus, tenantId }, {
@@ -101,13 +115,11 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
   };
 
   const copyToClipboard = () => {
-    // Método moderno (preferido)
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(recoveryLink)
         .then(() => toast({ title: 'Copiado', description: 'Enlace copiado al portapapeles.' }))
         .catch(err => console.error('Error con navigator.clipboard: ', err));
     } else {
-      // Método alternativo (fallback)
       const textArea = document.createElement("textarea");
       textArea.value = recoveryLink;
       textArea.style.position = "absolute";
@@ -128,10 +140,10 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
 
   if (isLoadingUsers || isLoadingRoles || isLoadingBranches) return <div className="p-4 text-center">Cargando datos...</div>;
 
-  const userContent = users && users.length > 0 ? (
+  const userContent = sortedUsers && sortedUsers.length > 0 ? (
     screenSize === 'mobile' ? (
       <div className="space-y-4">
-        {users.map((user) => (
+        {sortedUsers.map((user: TenantUser) => (
           <Card key={user.id}>
             <CardHeader>
               <CardTitle className="truncate text-base">{user.email}</CardTitle>
@@ -149,12 +161,9 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
               </div>
             </CardContent>
             <CardFooter>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="w-full"><MoreHorizontal className="mr-2 h-4 w-4" /> Acciones</Button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>Resetear Contraseña</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button variant="outline" size="sm" className="w-full" onClick={() => handleResetPassword(user.id)}>
+                Resetear Contraseña
+              </Button>
             </CardFooter>
           </Card>
         ))}
@@ -168,19 +177,16 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {sortedUsers.map((user: TenantUser) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.email}</TableCell>
                 <TableCell><Badge variant="secondary">{roleLabels[user.role_name] || user.role_name}</Badge></TableCell>
                 <TableCell><Switch checked={user.is_active} onCheckedChange={() => handleStatusChange(user.id, user.is_active)} disabled={updateUserStatusMutation.isPending} /></TableCell>
                 <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>Resetear Contraseña</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button variant="ghost" size="sm" onClick={() => handleResetPassword(user.id)}>
+                    Resetear Contraseña
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -208,7 +214,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       </Card>
       <AddUserDialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen} onSubmit={handleCreateUser} roles={roles || []} branches={branches || []} isSubmitting={createUserMutation.isPending} />
       <Dialog open={showRecoveryDialog} onOpenChange={setShowRecoveryDialog}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Enlace de Recuperación Generado</DialogTitle>
             <DialogDescription>Copia el siguiente enlace y envíalo al usuario. Este enlace es de un solo uso y expirará en 1 hora.</DialogDescription>

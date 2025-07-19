@@ -78,7 +78,7 @@ export default function Services() {
                 Gestionar Categorías
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Gestionar Categorías de Servicios</DialogTitle>
               </DialogHeader>

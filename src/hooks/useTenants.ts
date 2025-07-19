@@ -31,7 +31,7 @@ export interface Tenant {
   physical_postal_code?: string | null;
   latitude?: string | null;
   longitude?: string | null;
-  countries?: { name: string } | null; // Mantenemos esta estructura para la UI
+  countries?: { name: string; iso_code: string } | null; // Mantenemos esta estructura para la UI
 }
 
 interface TenantFilters {
@@ -52,7 +52,7 @@ const fetchTenants = async (filters: TenantFilters): Promise<Tenant[]> => {
   // Mapeamos la respuesta para que coincida con la interfaz esperada.
   return data.map(tenant => ({
     ...tenant,
-    countries: tenant.country_name ? { name: tenant.country_name } : null,
+    countries: tenant.country_name ? { name: tenant.country_name, iso_code: tenant.country_iso_code } : null,
   }));
 };
 

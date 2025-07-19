@@ -99,14 +99,10 @@ inventario, POS, CRM, agenda, y más.
 ## FASE 3: Funcionalidades Avanzadas
 
 ### 3.1 Integración y APIs
-- [x] **Integración con Almacenamiento en la Nube (Google Drive)**
-  - [x] Implementar la página de callback de OAuth de Google.
-  - [x] Depuración de la Edge Function de intercambio de tokens (`google-oauth-token`).
-  - [x] Implementar la lógica de subida de archivos a Google Drive.
-- [x] **Integración con Almacenamiento en la Nube (Google Drive)**
-  - [x] Implementar la página de callback de OAuth de Google.
-  - [x] Depuración de la Edge Function de intercambio de tokens (`google-oauth-token`).
-  - [x] Implementar la lógica de subida de archivos a Google Drive.
+- [x] **Integración con Google (Drive y Gmail)**
+  - [x] Refactorización para gestión separada de Drive y Gmail.
+  - [x] Implementación de flujos de conexión y desconexión individuales.
+  - [x] Creación de Edge Function para revocación de tokens.
 - [EN PROGRESO] **APIs REST**
 - [ ] **Integraciones externas**
 

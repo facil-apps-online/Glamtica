@@ -35,7 +35,7 @@ export const CancelAppointmentDialog = ({
       <AlertDialogTrigger asChild>
         {children}
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="w-[95vw] sm:max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle>¿Cancelar cita?</AlertDialogTitle>
           <AlertDialogDescription>

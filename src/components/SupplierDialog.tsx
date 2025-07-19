@@ -97,7 +97,7 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {supplier ? "Editar Proveedor" : "Nuevo Proveedor"}

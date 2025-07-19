@@ -1,0 +1,74 @@
+from flask import Flask, jsonify
+import requests
+from prometheus_client import parser
+
+app = Flask(__name__)
+
+def get_metrics_content():
+    """Fetches metrics content from node_exporter."""
+    try:
+        response = requests.get('http://localhost:9100/metrics', timeout=5)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching metrics: {e}")
+        return None
+
+def parse_metrics(content):
+    """Parses the raw text content into a dictionary of metrics."""
+    metrics = {}
+    for family in parser.text_string_to_metric_families(content):
+        for sample in family.samples:
+            metrics[sample.name] = {'labels': sample.labels, 'value': sample.value}
+    return metrics
+
+def get_root_filesystem_metric(content, metric_name):
+    """Finds a specific filesystem metric for the root ('/') mountpoint."""
+    for family in parser.text_string_to_metric_families(content):
+        if family.name == metric_name:
+            for sample in family.samples:
+                if sample.labels.get('mountpoint') == '/':
+                    return sample.value
+    return 0
+
+@app.route('/api/server-metrics')
+def server_metrics():
+    content = get_metrics_content()
+    if not content:
+        return jsonify({"error": "Could not fetch metrics from node_exporter"}), 500
+
+    raw_metrics = parse_metrics(content)
+
+    # Memory RAM
+    mem_total_bytes = raw_metrics.get('node_memory_MemTotal_bytes', {}).get('value', 0)
+    mem_available_bytes = raw_metrics.get('node_memory_MemAvailable_bytes', {}).get('value', 0)
+    mem_used_bytes = mem_total_bytes - mem_available_bytes
+    mem_usage_percent = (mem_used_bytes / mem_total_bytes) * 100 if mem_total_bytes > 0 else 0
+
+    # Disk (root filesystem '/')
+    disk_size_bytes = get_root_filesystem_metric(content, 'node_filesystem_size_bytes')
+    disk_avail_bytes = get_root_filesystem_metric(content, 'node_filesystem_avail_bytes')
+    disk_used_bytes = disk_size_bytes - disk_avail_bytes
+    disk_usage_percent = (disk_used_bytes / disk_size_bytes) * 100 if disk_size_bytes > 0 else 0
+
+    # CPU Load (1-minute average)
+    load1 = raw_metrics.get('node_load1', {}).get('value', 0)
+
+    response = {
+        "cpu_load_1m": round(load1, 2),
+        "memory": {
+            "total_gb": round(mem_total_bytes / (1024**3), 2),
+            "used_gb": round(mem_used_bytes / (1024**3), 2),
+            "usage_percent": round(mem_usage_percent, 2)
+        },
+        "disk": {
+            "total_gb": round(disk_size_bytes / (1024**3), 2),
+            "used_gb": round(disk_used_bytes / (1024**3), 2),
+            "usage_percent": round(disk_usage_percent, 2)
+        }
+    }
+    return jsonify(response)
+
+if __name__ == '__main__':
+    # Use a production-ready WSGI server like Gunicorn or Waitress instead of app.run in production
+    app.run(host='127.0.0.1', port=5000)

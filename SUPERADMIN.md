@@ -568,3 +568,17 @@ A continuación se describen las funciones más importantes accesibles solo por 
 Se ha realizado una optimización en el componente de la página "Mi Perfil" para mejorar la forma en que se cargan y muestran las pestañas de "Información Personal", "Configuración Regional" y "Seguridad".
 
 **Nota Importante:** Esta mejora interna está **pendiente de una verificación funcional completa** para asegurar que todo sigue operando como se espera.
+
+---
+
+# Gestión de Plantillas de Correo
+
+El sistema utiliza un motor de plantillas para todas las comunicaciones por correo electrónico. Como superadministrador, tienes control total sobre el contenido de estas plantillas.
+
+## ¿Cómo Funciona?
+
+1.  **Plantillas Maestras**: Tú defines y gestionas un conjunto de plantillas maestras para cada evento del sistema (ej. "Bienvenida de Usuario", "Recordatorio de Cita") y para cada idioma soportado.
+2.  **Control del Tenant**: Los administradores de cada tenant no pueden editar el contenido de tus plantillas, pero pueden **activar o desactivar** ciertas comunicaciones para su negocio (ej. pueden desactivar los recordatorios de citas si no los necesitan).
+3.  **Propagación Automática**: Al crear una nueva plantilla maestra (ej. "Resumen de Ventas Semanal"), puedes marcarla para que se "propague" a todos los tenants nuevos. Esto significa que automáticamente les aparecerá la opción para activar o desactivar esta nueva comunicación en su panel.
+
+*(Nota: La interfaz para gestionar estas plantillas y configuraciones se desarrollará en una fase posterior.)*

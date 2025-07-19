@@ -249,7 +249,7 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
       </Card>
 
       <AlertDialog open={disconnectAlert.isOpen} onOpenChange={(isOpen) => setDisconnectAlert({ ...disconnectAlert, isOpen })}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
             <AlertDialogDescription>

@@ -55,7 +55,7 @@ export function LocalizationDialog({ isOpen, onClose, localization }: Localizati
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{localization ? 'Editar Localización' : 'Crear Nueva Localización'}</DialogTitle>
           <DialogDescription>

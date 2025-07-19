@@ -90,7 +90,19 @@ export default function TenantsList() {
                     <CardTitle>{tenant.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <div><strong>País:</strong> {tenant.countries?.name || 'N/A'}</div>
+                    <div className="flex items-center gap-2">
+                      <strong>País:</strong>
+                      {tenant.countries?.iso_code ? (
+                        <img
+                          src={`https://flagcdn.com/w20/${tenant.countries.iso_code.toLowerCase()}.png`}
+                          alt={`Bandera de ${tenant.countries.name}`}
+                          className="w-5 h-auto"
+                        />
+                      ) : (
+                        <span className="w-5 h-3"></span> // Espacio reservado
+                      )}
+                      <span>{tenant.countries?.name || 'N/A'}</span>
+                    </div>
                     <div><strong>Estado:</strong> <Badge variant="outline">{tenant.subscription_status}</Badge></div>
                   </CardContent>
                   <CardFooter className="flex justify-end gap-2">
@@ -106,11 +118,11 @@ export default function TenantsList() {
                     </Button>
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleDeleteRequest(tenant.id, tenant.name)}
                       disabled={deleteTenantMutation.isPending}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" /> Borrar
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -131,7 +143,20 @@ export default function TenantsList() {
                   <TableRow key={tenant.id}>
                     <TableCell className="font-medium">{tenant.name}</TableCell>
                     <TableCell><Badge variant="outline">{tenant.subscription_status}</Badge></TableCell>
-                    <TableCell>{tenant.countries?.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {tenant.countries?.iso_code ? (
+                          <img
+                            src={`https://flagcdn.com/w20/${tenant.countries.iso_code.toLowerCase()}.png`}
+                            alt={`Bandera de ${tenant.countries.name}`}
+                            className="w-5 h-auto"
+                          />
+                        ) : (
+                          <span className="w-5 h-3"></span> // Espacio reservado si no hay bandera
+                        )}
+                        <span>{tenant.countries?.name || 'N/A'}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" asChild>
                         <Link to={`/superadmin/tenants/${tenant.id}`}>
@@ -164,7 +189,7 @@ export default function TenantsList() {
       </div>
 
       <AlertDialog open={deleteAlert.isOpen} onOpenChange={(isOpen) => setDeleteAlert({ ...deleteAlert, isOpen })}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
             <AlertDialogDescription>

@@ -71,7 +71,7 @@ export function CountryDialog({ isOpen, onClose, country }: CountryDialogProps) 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{country ? 'Editar País' : 'Crear Nuevo País'}</DialogTitle>
           <DialogDescription>

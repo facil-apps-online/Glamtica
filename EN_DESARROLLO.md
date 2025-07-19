@@ -1,29 +1,23 @@
-# Tarea: Refactorización y Separación de Integraciones de Google (En Curso)
+# Tarea: Sistema de Emails Transaccionales (Backend y Documentación Completos)
 
-**Objetivo:** Reestructurar el módulo para gestionar las integraciones de Google (Drive y Gmail) de forma separada y robusta, permitiendo la conexión y desconexión individual de cada servicio.
-
-**Fase 1: Reestructuración de la Interfaz de Usuario**
-- [x] **Modificar `TenantIntegrationManager.tsx`**: Mostrar dos secciones/tarjetas distintas, una para "Google Drive" y otra para "Gmail". Cada una con su propio estado y botones.
-
-**Fase 2: Lógica de Autorización Separada**
-- [x] **RPC para Gmail**: Crear una nueva función `get_gmail_auth_url` que solicite únicamente los scopes de Gmail.
-- [x] **RPC para Drive**: Mantener la función `get_google_auth_url` existente solo para los scopes de Drive.
-- [x] **Callback Inteligente**: Actualizar la página de callback de OAuth para manejar ambas autorizaciones y guardar el `provider` correcto (`google_drive` o `google_gmail`).
-
-**Fase 3: Implementación de Desconexión (Pendiente)**
-- [x] **Revisar RPC `delete_tenant_integration`**: Asegurarse de que la función de borrado funcione correctamente para un proveedor específico.
-- [x] **Crear Edge Function `revoke-google-token`**: Implementar la lógica para invalidar el token en los servidores de Google.
-- [x] **Conectar UI**: Implementar la lógica completa en los botones "Desconectar" de cada servicio.
+**Objetivo:** Crear un sistema asíncrono y robusto para el envío de correos transaccionales, gestionado por el superadmin y configurable por los tenants.
 
 ---
-# Tarea: Integración con Gmail para Envío de Comunicaciones (Depende de Refactorización)
 
-**Fase 1: Autorización**
-- [x] **Completar la Fase 2 de la Refactorización**: La autorización de Gmail ahora se maneja como parte de la tarea de refactorización de integraciones.
+### Fase 1: Arquitectura de Backend - [COMPLETADA]
 
-**Fase 2: Envío de Correos**
-- [ ] **Crear Función RPC `send_email_via_gmail`**: Desarrollar la función que obtenga los tokens y llame a la API de Gmail.
-- [ ] **Implementar Lógica de Refresco de Token**.
+- [x] **Diseñar y crear la tabla `email_templates`**: Almacena las plantillas maestras.
+- [x] **Diseñar y crear la tabla `tenant_template_settings`**: Permite a cada tenant activar/desactivar envíos.
+- [x] **Diseñar y crear la tabla `email_queue`**: Actúa como cola de trabajos para el envío asíncrono.
+- [x] **Implementar la Edge Function `process-email-queue`**: Orquesta todo el proceso de envío.
+- [x] **Implementar RPCs de soporte**: `encrypt_secret`, `decrypt_secret` y `enqueue_test_email`.
+- [x] **Validación de Extremo a Extremo**: Se ha enviado exitosamente un correo de prueba.
+- [x] **Documentación**: Se ha actualizado `WORK_DOCUMENTS.md` y `SUPERADMIN.md` con la nueva arquitectura.
 
-**Fase 3: Interfaz de Usuario**
-- [ ] **Crear Componente de Envío**: Diseñar un formulario en el frontend para redactar y enviar correos.
+---
+
+### Fase 2: Interfaz de Usuario (Frontend - Pendiente)
+
+- [ ] **Panel de Superadmin**: Crear una interfaz para que el superadmin pueda crear, editar y gestionar las `email_templates` maestras.
+- [ ] **Panel de Tenant**: Crear la interfaz en la configuración del tenant para que pueda ver la lista de comunicaciones disponibles y usar los interruptores (`is_active`) en `tenant_template_settings`.
+- [ ] **Limpieza de Código de Prueba**: Eliminar la RPC `enqueue_test_email` y el botón de prueba del frontend.

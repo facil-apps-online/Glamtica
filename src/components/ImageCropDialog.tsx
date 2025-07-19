@@ -107,7 +107,7 @@ export const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Recortar Avatar</DialogTitle>
           <DialogDescription>

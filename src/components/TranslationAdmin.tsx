@@ -148,7 +148,7 @@ const TranslationAdmin: React.FC = () => {
       </Table>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{currentTranslation?.id ? 'Editar Traducción' : 'Añadir Nueva Traducción'}</DialogTitle>
           </DialogHeader>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useCurrencies, useUpdateCurrency, useDeleteCurrency, Currency } from '@/hooks/useCurrencies';
+import { useCurrencies, useUpdateCurrency, Currency } from '@/hooks/useCurrencies';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,16 +12,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useScreenSize } from '@/hooks/useScreenSize';
 
 // Función de utilidad para formatear el número de ejemplo
@@ -43,28 +33,14 @@ const formatCurrencyExample = (currency: Currency) => {
 export function CurrenciesSettings() {
   const { data: currencies, isLoading } = useCurrencies();
   const updateMutation = useUpdateCurrency();
-  const deleteMutation = useDeleteCurrency();
   const screenSize = useScreenSize();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<Currency | undefined>(undefined);
 
   const handleEdit = (currency: Currency) => {
     setSelectedCurrency(currency);
     setIsDialogOpen(true);
-  };
-
-  const handleDelete = (currency: Currency) => {
-    setSelectedCurrency(currency);
-    setIsAlertOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (selectedCurrency) {
-      deleteMutation.mutate(selectedCurrency.id);
-      setIsAlertOpen(false);
-    }
   };
 
   const handleToggleActive = (currency: Currency) => {
@@ -112,19 +88,9 @@ export function CurrenciesSettings() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full">
-                        <MoreHorizontal className="mr-2 h-4 w-4" /> Acciones
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(currency)}>Editar</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(currency)} className="text-red-600">
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => handleEdit(currency)}>
+                    Editar
+                  </Button>
                 </CardFooter>
               </Card>
             ))}
@@ -158,20 +124,9 @@ export function CurrenciesSettings() {
                       />
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(currency)}>Editar</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(currency)} className="text-red-600">
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(currency)}>
+                        Editar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -188,21 +143,6 @@ export function CurrenciesSettings() {
           currency={selectedCurrency}
         />
       )}
-
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Si la moneda está en uso, no se podrá eliminar.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Continuar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }

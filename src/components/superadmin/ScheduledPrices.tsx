@@ -133,7 +133,7 @@ export function ScheduledPrices({ isLoading, history }) {
       </Card>
 
       <AlertDialog open={deleteAlert.isOpen} onOpenChange={(isOpen) => setDeleteAlert({ ...deleteAlert, isOpen })}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
             <AlertDialogDescription>

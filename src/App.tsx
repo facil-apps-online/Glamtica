@@ -52,6 +52,7 @@ function App() {
             <Routes>
               <Route path="/setup-superadmin" element={<SetupSuperadmin />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/register-tenant" element={<RegisterTenant />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
 

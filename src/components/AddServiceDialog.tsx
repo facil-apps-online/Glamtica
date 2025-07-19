@@ -79,7 +79,7 @@ export const AddServiceDialog = ({ children, attentionId, attentionDate, attenti
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agregar Servicio Adicional</DialogTitle>
         </DialogHeader>

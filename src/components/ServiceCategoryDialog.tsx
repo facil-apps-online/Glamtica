@@ -68,7 +68,7 @@ export const ServiceCategoryDialog = ({ category, trigger }: ServiceCategoryDial
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="w-[95vw] sm:max-w-[400px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {category ? "Editar Categoría" : "Nueva Categoría"}

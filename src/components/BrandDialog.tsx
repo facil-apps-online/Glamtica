@@ -66,7 +66,7 @@ export const BrandDialog = ({ brand, trigger }: BrandDialogProps) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {brand ? "Editar Marca" : "Nueva Marca"}

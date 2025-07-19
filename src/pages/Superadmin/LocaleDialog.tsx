@@ -69,7 +69,7 @@ export function LocaleDialog({ isOpen, onClose }: LocaleDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Añadir Nueva Localización</DialogTitle>
         </DialogHeader>

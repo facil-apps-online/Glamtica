@@ -1,7 +1,15 @@
-feat(superadmin): Mejorar y reparar gestión de tenants
+feat(superadmin): Implementa dashboard de métricas y mejoras visuales
 
-- Se repara la lógica de borrado en cascada de tenants, corrigiendo el orden de las sentencias DELETE y eliminando operaciones incorrectas.
-- Se mejora la UX en los formularios de creación y borrado de tenants, reemplazando los diálogos nativos (alert/confirm) por componentes AlertDialog.
-- Los desplegables de país, idioma y moneda en los formularios de creación/edición de tenants ahora solo muestran las opciones activas.
-- Se restaura el historial completo de archivos de migración de la base de datos desde el historial de Git.
-- Se añade un script (repair_migrations.bat) para facilitar la resincronización del historial de migraciones con la base de datos remota.
+Se introduce un nuevo dashboard de métricas de rendimiento para el panel de superadministrador, proporcionando visibilidad sobre la salud de la API y la infraestructura del servidor.
+
+Características principales:
+- **Métricas de API:** Se implementa un patrón de RPC con medición integrada para recolectar y mostrar la latencia, tasa de errores y RPM de las consultas del backend. La primera métrica implementada es la del listado de tenants.
+- **Métricas de Infraestructura:** Se configura un sistema de monitoreo en el servidor de producción (DigitalOcean Droplet) usando `node_exporter` y un servicio intermediario en Python/Flask para recolectar y exponer métricas de CPU, RAM y Disco.
+- **Integración con Frontend:** El dashboard consume estos datos de forma segura y los muestra en tiempo real.
+- **Documentación:** Se añaden los archivos `METRICS.md` y `api_metricas.md` que documentan la arquitectura de las métricas y el proceso de configuración del servidor.
+
+Mejoras visuales adicionales:
+- Se unifica la posición del `Toaster` (notificaciones) a la esquina inferior derecha en todas las vistas.
+- Se ajusta el padding en la vista móvil del nuevo dashboard de métricas.
+- Se mejora la legibilidad de la información de conexión en las tarjetas de integración de Google.
+- Se añaden validaciones en el formulario de programación de precios para evitar valores de cero.

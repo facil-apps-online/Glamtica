@@ -88,7 +88,7 @@ export default function Clients() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="w-[95vw] sm:max-w-md">
                     <AlertDialogHeader>
                       <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
                       <AlertDialogDescription>

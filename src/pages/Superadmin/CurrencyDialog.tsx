@@ -76,7 +76,7 @@ export function CurrencyDialog({ isOpen, onClose, currency }: CurrencyDialogProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{currency ? 'Editar Moneda' : 'Crear Nueva Moneda'}</DialogTitle>
           <DialogDescription>
