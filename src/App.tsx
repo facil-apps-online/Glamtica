@@ -29,7 +29,8 @@ import SystemAlerts from "@/pages/Superadmin/SystemAlerts";
 import ErrorReports from "@/pages/Superadmin/ErrorReports";
 import PerformanceMetrics from "@/pages/Superadmin/PerformanceMetrics";
 import IntegrationsPage from "@/pages/Superadmin/Integrations";
-import ProfileSettings from "@/pages/Superadmin/ProfileSettings"; // Nueva importación
+import IntegrationProviderForm from "@/pages/Superadmin/IntegrationProviderForm"; // <-- Nueva importación
+import ProfileSettings from "@/pages/Superadmin/ProfileSettings";
 import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
 import TranslationAdmin from "@/components/TranslationAdmin";
@@ -74,7 +75,9 @@ function App() {
                   <Route path="error-reports" element={<ErrorReports />} />
                   <Route path="performance-metrics" element={<PerformanceMetrics />} />
                   <Route path="integrations" element={<IntegrationsPage />} />
-                  <Route path="profile-settings" element={<ProfileSettings />} /> {/* Nueva ruta */}
+                  <Route path="integrations/new" element={<IntegrationProviderForm />} /> {/* <-- Nueva ruta */}
+                  <Route path="integrations/edit/:id" element={<IntegrationProviderForm />} /> {/* <-- Nueva ruta */}
+                  <Route path="profile-settings" element={<ProfileSettings />} />
                 </Route>
 
                 <Route path="/" element={<Layout><Index /></Layout>}>

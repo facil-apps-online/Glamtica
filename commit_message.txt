@@ -1,0 +1,8 @@
+refactor: Eliminar referencias de 'lovable' y actualizar metadatos
+
+Se realiza una limpieza completa del proyecto para eliminar todas las menciones al generador de código 'lovable.dev'.
+
+- Se actualiza el `README.md` para reflejar la información del proyecto.
+- Se modifican las metaetiquetas en `index.html` para corregir la previsualización en redes sociales (ej. WhatsApp).
+- Se mejora el `manifest.json` con el nombre y descripción de la aplicación.
+- Se regeneran los archivos de bloqueo de dependencias.

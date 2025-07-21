@@ -1,89 +1,124 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
-
-// Definir el ID global para el superadministrador (debe coincidir con useTenantIntegrations)
-const SUPERADMIN_GLOBAL_TENANT_ID = '00000000-0000-0000-0000-000000000000';
-
-// Hook para obtener la URL de autorización de Google para el superadministrador
-const useGoogleAuthUrlForSuperadmin = () => {
-  return useQuery({
-    queryKey: ['googleAuthUrlSuperadmin', SUPERADMIN_GLOBAL_TENANT_ID],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_google_auth_url', { p_tenant_id: SUPERADMIN_GLOBAL_TENANT_ID });
-      if (error) throw new Error(error.message);
-      return data;
-    },
-    enabled: false,
-    retry: false,
-  });
-};
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PlusCircle, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useIntegrationCategories, useDeleteIntegrationCategory, IntegrationCategory } from '@/hooks/useIntegrationCategories';
+import { CategoryDialog } from './CategoryDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 export const GlobalIntegrationsManager = () => {
-  const { refetch: getAuthUrl, isFetching } = useGoogleAuthUrlForSuperadmin();
-  const { toast } = useToast();
-  const { user, integrations, updateIntegrations } = useAuth(); // Obtener user, integrations y updateIntegrations del AuthContext
+  const { data: categories, isLoading, error } = useIntegrationCategories();
+  const deleteMutation = useDeleteIntegrationCategory();
+  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<IntegrationCategory | null>(null);
 
-  // Obtener la integración de Google Drive del AuthContext
-  const googleDriveIntegration = integrations?.find(integration => integration.provider === 'google_drive' && integration.tenant_id === SUPERADMIN_GLOBAL_TENANT_ID);
+  const handleCreate = () => {
+    setSelectedCategory(null);
+    setIsDialogOpen(true);
+  };
 
-  const isConnected = !!googleDriveIntegration; // Si hay datos de integración, está conectado
-  const accountEmail = googleDriveIntegration?.account_email || null;
+  const handleEdit = (category: IntegrationCategory) => {
+    setSelectedCategory(category);
+    setIsDialogOpen(true);
+  };
 
-  const handleConnect = async () => {
-    try {
-      const { data, error } = await getAuthUrl();
-      if (error || !data.success) {
-        throw new Error(error?.message || 'No se pudo obtener la URL de autorización.');
-      }
-      window.location.href = data.url;
-      // Después de la redirección exitosa, actualizar las integraciones en el contexto
-      // Esto se ejecutará cuando el usuario regrese de la autenticación de Google
-      if (user) {
-        await updateIntegrations(user.tenant_id, user.role);
-      }
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+  const handleDelete = (category: IntegrationCategory) => {
+    setSelectedCategory(category);
+    setIsAlertOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedCategory) {
+      deleteMutation.mutate(selectedCategory.id, {
+        onSuccess: () => setIsAlertOpen(false),
+      });
     }
   };
 
+  if (isLoading) return <p>Cargando categorías...</p>;
+  if (error) return <p className="text-red-500">Error: {error.message}</p>;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Integración de Almacenamiento Global (Superadmin)</CardTitle>
-        <CardDescription>Conecta una cuenta de Google Drive para almacenar los archivos globales del sistema (ej. avatares de superadmin).</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
-          <div className="flex items-center gap-4">
-            <img src="https://www.google.com/drive/static/images/drive/logo-drive.png" alt="Google Drive Logo" className="h-8 w-8" />
-            <span className="font-semibold">Google Drive</span>
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Categorías de Integración</CardTitle>
+            <CardDescription>Define los tipos de integraciones disponibles en el sistema.</CardDescription>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            {user && user.role === 'super_admin' ? (
-              isConnected ? (
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <div className="text-sm text-muted-foreground">
-                    Conectado como: <span className="font-bold text-foreground">{accountEmail}</span>
-                  </div>
-                </div>
-              ) : (
-                <Button onClick={handleConnect} disabled={isFetching} className="w-full sm:w-auto">
-                  {isFetching ? 'Generando...' : 'Conectar'}
-                </Button>
-              )
-            ) : (
-              <div className="text-sm text-muted-foreground">Solo el superadministrador puede gestionar esta integración.</div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          <Button onClick={handleCreate}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Crear Categoría
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories?.map((category) => (
+                <TableRow key={category.id}>
+                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell className="font-mono">{category.slug}</TableCell>
+                  <TableCell>{category.description}</TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(category)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(category)} className="text-red-600">
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <CategoryDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        category={selectedCategory}
+      />
+
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará la categoría "{selectedCategory?.name}".
+              No podrás eliminarla si está siendo usada por algún proveedor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
