@@ -39,10 +39,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. Obtener el refresh_token encriptado de la base de datos
+    // 1. Obtener las credenciales encriptadas de la base de datos
     const { data: integration, error: fetchError } = await supabaseAdmin
       .from('tenant_integrations')
-      .select('encrypted_refresh_token')
+      .select('encrypted_credentials, nonce')
       .eq('tenant_id', tenantId)
       .eq('provider', 'google_drive')
       .single();
@@ -51,15 +51,37 @@ serve(async (req) => {
       throw new Error(`Integration not found or error fetching: ${fetchError?.message || 'No data'}`);
     }
 
-    // 2. Desencriptar el refresh_token
-    const { data: decryptedData, error: decryptError } = await supabaseAdmin.rpc(
-      'decrypt_secret',
-      { encrypted_value: integration.encrypted_refresh_token }
+    if (!integration.encrypted_credentials || !integration.nonce) {
+      throw new Error('La integración no tiene credenciales encriptadas o nonce.');
+    }
+
+    // 2. Desencriptar el refresh_token usando la Edge Function
+    const { data: decryptedResponse, error: decryptError } = await supabaseAdmin.functions.invoke(
+      'decrypt-secret',
+      {
+        body: {
+          encryptedData: integration.encrypted_credentials,
+          iv: integration.nonce,
+        },
+      }
     );
 
-    if (decryptError) throw decryptError;
+    if (decryptError) {
+      throw new Error(`Failed to invoke decrypt-secret function: ${decryptError.message}`);
+    }
 
-    const refreshToken = decryptedData;
+    // La respuesta de la función es un JSON con la clave 'decryptedText'
+    const credentialsJson = decryptedResponse.decryptedText;
+    if (!credentialsJson) {
+      throw new Error('La respuesta de descifrado no contenía "decryptedText".');
+    }
+    
+    const credentials = JSON.parse(credentialsJson);
+    const refreshToken = credentials.refresh_token;
+
+    if (!refreshToken) {
+      throw new Error("El campo 'refresh_token' no se encontró en las credenciales descifradas.");
+    }
 
     // 3. Usar el refresh_token para obtener un nuevo access_token
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {

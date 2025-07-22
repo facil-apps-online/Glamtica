@@ -6,6 +6,10 @@ export interface GlobalSettings {
   base_currency_id: string | null;
   default_tax_rate: number | null;
   default_tax_name: string | null;
+  company_name: string | null;
+  contact_email: string | null;
+  address: string | null;
+  trial_duration_days: number | null;
   updated_at: string;
 }
 

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useScreenSize } from '@/hooks/useScreenSize'; // Importar el nuevo hook
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { TrialSettingsForm } from '@/components/superadmin/TrialSettingsForm';
 
 export default function SubscriptionPlans() {
   const { data: plans, isLoading, isError, error } = useSubscriptionPlans();
@@ -117,6 +118,10 @@ export default function SubscriptionPlans() {
           </TableBody>
         </Table>
       )}
+
+      <div className="mt-8">
+        <TrialSettingsForm />
+      </div>
     </div>
   );
 }

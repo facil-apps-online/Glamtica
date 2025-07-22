@@ -6,11 +6,22 @@ import { LocalizationsSettings } from './LocalizationsSettings';
 import { CurrenciesSettings } from './CurrenciesSettings';
 import { CountriesSettings } from './CountriesSettings';
 import { GlobalIntegrationsManager } from './GlobalIntegrationsManager';
+import { HttpMethodSettings } from './HttpMethodSettings';
+import { BodyFormatSettings } from './BodyFormatSettings';
+import { AuthMethodSettings } from './AuthMethodSettings';
 
 import { useTenantById } from '@/hooks/useTenants';
 import { MapDisplay } from '@/components/MapDisplay';
 
 const GLOBAL_TENANT_ID = '00000000-0000-0000-0000-000000000000';
+
+const IntegrationParameters = () => (
+  <div className="space-y-6">
+    <HttpMethodSettings />
+    <BodyFormatSettings />
+    <AuthMethodSettings />
+  </div>
+);
 
 export default function GlobalSettings() {
   const screenSize = useScreenSize();
@@ -32,7 +43,8 @@ export default function GlobalSettings() {
           <TabsTrigger value="localizations">Idiomas</TabsTrigger>
           <TabsTrigger value="currencies">Monedas</TabsTrigger>
           <TabsTrigger value="countries">Países</TabsTrigger>
-          <TabsTrigger value="integrations">Integraciones</TabsTrigger>
+          <TabsTrigger value="integration_categories">Catálogo de Integraciones</TabsTrigger>
+          <TabsTrigger value="integration_params">Parámetros de Integración</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -125,8 +137,12 @@ export default function GlobalSettings() {
           <CountriesSettings />
         </TabsContent>
 
-        <TabsContent value="integrations">
+        <TabsContent value="integration_categories">
           <GlobalIntegrationsManager />
+        </TabsContent>
+
+        <TabsContent value="integration_params">
+          <IntegrationParameters />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,7 +1,8 @@
+import { useIntegrationProviders } from '@/hooks/useIntegrationProviders';
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Power, PowerOff, Mail, FolderKanban, Send } from 'lucide-react';
+import { CheckCircle, Power, PowerOff, Mail, FolderKanban, Send, Globe } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type Provider = 'google_drive' | 'google_gmail';
+type Provider = 'google_drive' | 'google_gmail' | string;
 
 const useGoogleAuthUrl = (tenantId: string, rpcName: 'get_google_auth_url' | 'get_gmail_auth_url') => {
   return useQuery({
@@ -66,24 +67,27 @@ const IntegrationCard = ({ title, icon, isConnected, accountEmail, onConnect, on
       ) : (
         <Button onClick={onConnect} disabled={isConnecting}>
           <Power className="mr-2 h-4 w-4" />
-          {isConnecting ? 'Generando...' : `Conectar con ${title}`}
+          {isConnecting ? 'Conectar...' : `Conectar con ${title}`}
         </Button>
       )}
     </div>
   );
 };
 
-const formatProviderName = (provider: Provider | string | null): string => {
+const formatProviderName = (provider: Provider | null): string => {
   if (!provider) return '';
   if (provider === 'google_drive') return 'Google Drive';
   if (provider === 'google_gmail') return 'Gmail';
-  return provider;
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
 };
+
+import IntegrationConfigDialog from '@/components/superadmin/IntegrationConfigDialog';
 
 export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: integrations, isLoading, isError, error } = useTenantIntegrations(tenantId);
+  const { data: availableProviders, isLoading: isLoadingProviders } = useIntegrationProviders();
   const disconnectMutation = useDeleteIntegration();
 
   const [disconnectAlert, setDisconnectAlert] = useState<{
@@ -94,12 +98,28 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
 
   const [connectingProvider, setConnectingProvider] = useState<Provider | null>(null);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [configProvider, setConfigProvider] = useState<any | null>(null);
 
   const { refetch: getDriveAuthUrl, isFetching: isFetchingDriveUrl } = useGoogleAuthUrl(tenantId, 'get_google_auth_url');
   const { refetch: getGmailAuthUrl, isFetching: isFetchingGmailUrl } = useGoogleAuthUrl(tenantId, 'get_gmail_auth_url');
 
   const googleDriveIntegration = integrations?.find(int => int.provider === 'google_drive');
   const gmailIntegration = integrations?.find(int => int.provider === 'google_gmail');
+
+  const configuredProviderSlugs = integrations?.map(int => int.provider) || [];
+
+  const configuredGenericIntegrations = integrations?.filter(
+    int => int.provider !== 'google_drive' && int.provider !== 'google_gmail'
+  ) || [];
+
+  const unconfiguredProviders = availableProviders?.filter(
+    provider => {
+      if (!provider.slug || provider.status !== 'active') return false;
+      // No mostrar los proveedores de Google en la lista de disponibles, ya que tienen su propia UI
+      const isGoogleProvider = provider.slug.startsWith('google_');
+      return !isGoogleProvider && !configuredProviderSlugs.includes(provider.slug);
+    }
+  );
 
   useEffect(() => {
     const handleAuthMessage = (event: MessageEvent) => {
@@ -176,7 +196,6 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
   const handleSendTestEmail = async () => {
     setIsSendingTest(true);
     try {
-      // Paso 1: Encolar el trabajo y obtener el ID del nuevo job.
       const { data: jobData, error: rpcError } = await supabase.rpc('enqueue_test_email');
 
       if (rpcError) throw rpcError;
@@ -187,8 +206,6 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
         description: "El trabajo ha sido creado. Invocando al trabajador...",
       });
 
-      // Paso 2: Invocar a la Edge Function, pasándole el job recién creado.
-      // La Edge Function espera un 'record', así que simulamos ese formato.
       const { error: functionError } = await supabase.functions.invoke('process-email-queue', {
         body: { record: jobData.job },
       });
@@ -248,12 +265,82 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
         </CardContent>
       </Card>
 
+      {(configuredGenericIntegrations.length > 0 || (unconfiguredProviders && unconfiguredProviders.length > 0)) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Otras Integraciones</CardTitle>
+            <CardDescription>Conecta servicios de terceros para potenciar tu negocio.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Integraciones Genéricas Ya Configradas */}
+            {configuredGenericIntegrations.map(integration => {
+              const providerInfo = availableProviders?.find(p => p.slug === integration.provider);
+              return (
+                <div key={integration.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
+                  <div className="flex items-center gap-4">
+                    {providerInfo?.logo_url ? (
+                      <img src={providerInfo.logo_url} alt={`${providerInfo.name} logo`} className="h-8 w-8 object-contain" />
+                    ) : (
+                      <div className="h-8 w-8 bg-gray-200 rounded-md flex items-center justify-center">
+                        <Globe className="h-5 w-5 text-gray-500" />
+                      </div>
+                    )}
+                    <span className="font-semibold">{providerInfo?.name || integration.provider}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setConfigProvider(providerInfo)}>
+                      Gestionar
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDisconnectRequest(integration.provider, 'esta integración')}>
+                      Desconectar
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Integraciones Disponibles para Configurar */}
+            {isLoadingProviders ? (
+              <p className="text-sm text-muted-foreground">Cargando integraciones disponibles...</p>
+            ) : unconfiguredProviders && unconfiguredProviders.length > 0 ? (
+              unconfiguredProviders.map(provider => (
+                <div key={provider.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
+                  <div className="flex items-center gap-4">
+                    {provider.logo_url ? (
+                      <img src={provider.logo_url} alt={`${provider.name} logo`} className="h-8 w-8 object-contain" />
+                    ) : (
+                      <div className="h-8 w-8 bg-gray-200 rounded-md flex items-center justify-center">
+                        <Globe className="h-5 w-5 text-gray-500" />
+                      </div>
+                    )}
+                    <span className="font-semibold">{provider.name}</span>
+                  </div>
+                  <Button onClick={() => setConfigProvider(provider)}>
+                    <Power className="mr-2 h-4 w-4" />
+                    Configurar
+                  </Button>
+                </div>
+              ))
+            ) : (
+              configuredGenericIntegrations.length === 0 && <p className="text-sm text-muted-foreground">No hay otras integraciones disponibles.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <IntegrationConfigDialog
+        isOpen={!!configProvider}
+        onOpenChange={(isOpen) => !isOpen && setConfigProvider(null)}
+        provider={configProvider}
+        tenantId={tenantId}
+      />
+
       <AlertDialog open={disconnectAlert.isOpen} onOpenChange={(isOpen) => setDisconnectAlert({ ...disconnectAlert, isOpen })}>
         <AlertDialogContent className="w-[95vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción desconectará la integración con <strong>{formatProviderName(disconnectAlert.provider)}</strong> para la cuenta <strong>{disconnectAlert.accountEmail}</strong>. 
+              Esta acción desconectará la integración con <strong>{formatProviderName(disconnectAlert.provider)}</strong>. 
               No podrás utilizar las funcionalidades asociadas hasta que vuelvas a conectarla.
             </AlertDialogDescription>
           </AlertDialogHeader>

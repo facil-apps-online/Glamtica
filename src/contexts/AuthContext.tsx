@@ -6,11 +6,13 @@ interface TenantIntegration {
   id: string;
   tenant_id: string | null;
   provider: string;
-  access_token: string;
-  encrypted_refresh_token: any;
-  account_email: string;
+  access_token: string | null;
+  account_email: string | null;
   created_at: string;
   updated_at: string;
+  expires_at: string | null;
+  encrypted_credentials?: string | null; // Campo nuevo y opcional
+  nonce?: string | null; // Campo nuevo y opcional
 }
 
 interface AuthUser {
@@ -47,11 +49,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const [integrations, setIntegrations] = useState<TenantIntegration[] | null>(null);
   const navigate = useNavigate();
 
-  const fetchTenantIntegrations = async (currentTenantId: string | null | undefined, currentUserRole: string | undefined) => {
-    if (!currentTenantId) return [];
+  const fetchTenantIntegrations = async (currentTenantId: string | null | undefined, currentUserRole: string | undefined, currentUserId: string | undefined) => {
+    if (!currentTenantId || !currentUserRole || !currentUserId) return [];
     const { data, error } = await supabaseClient.rpc('get_tenant_integrations', {
       p_tenant_id: currentTenantId,
       p_user_role: currentUserRole,
+      p_requesting_user_id: currentUserId, // Pasar el ID del usuario para la verificación
+      p_environment: null,
     });
     if (error && error.code !== 'PGRST116') {
       console.error('[AuthContext - fetchTenantIntegrations] Query error:', error);
@@ -60,9 +64,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     return data || [];
   };
 
-  const updateIntegrations = async (currentTenantId: string | null | undefined, currentUserRole: string | undefined) => {
+  const updateIntegrations = async (currentTenantId: string | null | undefined, currentUserRole: string | undefined, currentUserId: string | undefined) => {
     try {
-      const fetchedIntegrations = await fetchTenantIntegrations(currentTenantId, currentUserRole);
+      const fetchedIntegrations = await fetchTenantIntegrations(currentTenantId, currentUserRole, currentUserId);
       setIntegrations(fetchedIntegrations);
     } catch (error) {
       console.error('[AuthContext - updateIntegrations] Failed to update integrations:', error);
@@ -91,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
           timezone_id: decodedToken.timezone_id || null,
         };
         setUser(currentUser);
-        updateIntegrations(decodedToken.tenant_id, decodedToken.app_metadata.role);
+        updateIntegrations(decodedToken.tenant_id, decodedToken.app_metadata.role, decodedToken.sub);
       } else {
         logout();
       }

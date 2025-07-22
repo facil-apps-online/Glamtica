@@ -2,9 +2,11 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import FeaturesInput from '@/components/ui/FeaturesInput';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,7 +26,7 @@ const formSchema = z.object({
   is_active: z.boolean().default(true),
   max_users: z.coerce.number().int().positive().optional().nullable(),
   max_branches: z.coerce.number().int().positive().optional().nullable(),
-  features: z.string().optional().nullable(),
+  features: z.array(z.string()).default([]), // El schema ahora espera un array de strings
 });
 
 export default function EditSubscriptionPlan() {
@@ -37,7 +39,14 @@ export default function EditSubscriptionPlan() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {},
+    defaultValues: {
+      name: '',
+      description: '',
+      is_active: true,
+      max_users: null,
+      max_branches: null,
+      features: [],
+    },
   });
 
   useEffect(() => {
@@ -48,7 +57,7 @@ export default function EditSubscriptionPlan() {
         is_active: plan.is_active,
         max_users: plan.max_users,
         max_branches: plan.max_branches,
-        features: plan.features ? plan.features.join(', ') : '',
+        features: plan.features || [], // Ahora se asigna directamente el array
       });
     }
   }, [plan, form]);
@@ -57,7 +66,6 @@ export default function EditSubscriptionPlan() {
     const planData = {
       id: planId,
       ...values,
-      features: values.features ? values.features.split(',').map(f => f.trim()) : null,
     };
 
     updatePlanMutation.mutate(planData, {
@@ -140,8 +148,11 @@ export default function EditSubscriptionPlan() {
               <FormItem>
                 <FormLabel>Lista de Características</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ej: Facturación, Inventario (separadas por comas)" {...field} value={field.value ?? ''} />
+                  <FeaturesInput {...field} />
                 </FormControl>
+                <FormDescription>
+                  Escribe una característica y presiona Enter o coma para añadirla.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

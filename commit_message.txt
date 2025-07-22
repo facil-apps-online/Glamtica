@@ -1,8 +1,20 @@
-refactor: Eliminar referencias de 'lovable' y actualizar metadatos
+feat(superadmin): Implementa el motor de gestión de integraciones
 
-Se realiza una limpieza completa del proyecto para eliminar todas las menciones al generador de código 'lovable.dev'.
+Se introduce un sistema completo para que el superadministrador pueda definir y gestionar proveedores de integración (ej. facturación, pagos) por país.
 
-- Se actualiza el `README.md` para reflejar la información del proyecto.
-- Se modifican las metaetiquetas en `index.html` para corregir la previsualización en redes sociales (ej. WhatsApp).
-- Se mejora el `manifest.json` con el nombre y descripción de la aplicación.
-- Se regeneran los archivos de bloqueo de dependencias.
+- **CRUD de Categorías:**
+  - Se añade una tabla y un gestor en la UI para crear, editar y eliminar tipos de integración (ej: "Facturación Electrónica").
+  - La gestión se encuentra en `Configuración Global > Integraciones`.
+
+- **Gestor de Proveedores:**
+  - Se crea un dashboard en `/superadmin/integrations` para listar los proveedores definidos.
+  - Se implementa un formulario completo para crear/editar proveedores, permitiendo definir:
+    - Información básica (nombre, país, categoría).
+    - Un `slug` programático para uso interno.
+    - Endpoints de API para entornos de prueba y producción.
+    - Un constructor de campos para las credenciales que debe proporcionar el tenant.
+    - Un compositor visual (placeholder) para mapear el JSON de la API a las variables de Glamtica.
+
+- **Backend:**
+  - Se añaden todas las migraciones de base de datos necesarias para las tablas `integration_categories` y `integration_providers`.
+  - Se ajustan los permisos de las nuevas tablas para alinearse con la arquitectura de seguridad existente (GRANT).

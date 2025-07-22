@@ -13,10 +13,10 @@ interface TenantIntegration {
   updated_at: string;
 }
 
-export const useTenantIntegrations = (tenantId: string) => {
+export const useTenantIntegrations = (tenantId: string, environment?: 'test' | 'production') => {
   const { user } = useAuth();
   return useQuery<TenantIntegration[], Error>({
-    queryKey: ['tenantIntegrations', tenantId, user?.role],
+    queryKey: ['tenantIntegrations', tenantId, user?.role, environment],
     queryFn: async () => {
       if (!tenantId || !user?.role) {
         throw new Error('Tenant ID and user role are required to fetch integrations.');
@@ -25,6 +25,7 @@ export const useTenantIntegrations = (tenantId: string) => {
       const { data, error } = await supabase.rpc('get_tenant_integrations', {
         p_tenant_id: tenantId,
         p_user_role: user.role,
+        p_environment: environment ?? null, // Asegurar que siempre se pasa null si es undefined
       });
 
       if (error) {
@@ -32,7 +33,7 @@ export const useTenantIntegrations = (tenantId: string) => {
       }
       return data || [];
     },
-    enabled: !!tenantId && !!user?.role, // Only run the query if tenantId and user role are available
+    enabled: !!tenantId && !!user?.role,
   });
 };
 

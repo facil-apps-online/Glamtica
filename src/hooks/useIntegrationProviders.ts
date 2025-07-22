@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
-// Interfaces (sin cambios)
+// --- Interfaces ---
 export interface ApiSchemaNode {
   id: string;
   key: string;
@@ -23,20 +23,35 @@ export interface ApiEndpoints {
   test: string;
   production: string;
 }
+export interface HttpHeader {
+  id: string;
+  name: string;
+  value: string;
+}
 export interface IntegrationProvider {
   id: string;
   name: string;
   slug: string;
-  logo_url: string; // Corregido: de logoUrl a logo_url
+  logo_url: string;
   country_id: string;
   category_id: string;
   status: 'active' | 'inactive';
   endpoints: ApiEndpoints;
   configSchema: ConfigField[];
   apiSchema: ApiSchemaNode[];
+  // Nuevos campos para la lógica de construcción de solicitudes
+  http_method_id?: string;
+  body_format_id?: string;
+  auth_method_id?: string;
+  http_headers?: HttpHeader[];
+  authentication_config?: any;
+  body_template?: string;
+  response_mapping?: any;
 }
 
-// Hook para obtener todos los proveedores (leyendo de la DB)
+// --- Hooks ---
+
+// Hook para obtener todos los proveedores
 export const useIntegrationProviders = () => {
   return useQuery<IntegrationProvider[], Error>({
     queryKey: ['integrationProviders'],
@@ -46,17 +61,17 @@ export const useIntegrationProviders = () => {
         .select('*')
         .order('name');
       if (error) throw new Error(error.message);
+      // Mapeo para asegurar que los campos JSONB se parseen correctamente si es necesario
       return data.map(p => ({
         ...p,
-        endpoints: typeof p.endpoints === 'string' ? JSON.parse(p.endpoints) : p.endpoints,
-        configSchema: p.config_schema, // Mapeo directo
-        apiSchema: p.api_schema, // Mapeo directo
+        configSchema: p.config_schema,
+        apiSchema: p.api_schema,
       })) as IntegrationProvider[];
     },
   });
 };
 
-// Hook para obtener un proveedor por ID (leyendo de la DB)
+// Hook para obtener un proveedor por ID
 export const useIntegrationProvider = (id: string | undefined) => {
   return useQuery<IntegrationProvider | undefined, Error>({
     queryKey: ['integrationProvider', id],
@@ -71,7 +86,6 @@ export const useIntegrationProvider = (id: string | undefined) => {
       if (!data) return undefined;
       return {
         ...data,
-        endpoints: typeof data.endpoints === 'string' ? JSON.parse(data.endpoints) : data.endpoints,
         configSchema: data.config_schema,
         apiSchema: data.api_schema,
       } as IntegrationProvider;
@@ -80,14 +94,14 @@ export const useIntegrationProvider = (id: string | undefined) => {
   });
 };
 
-// Hook para crear/actualizar un proveedor (escribiendo en la DB)
+// Hook para crear/actualizar un proveedor
 export const useUpsertIntegrationProvider = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (provider: Partial<IntegrationProvider>) => {
-      // Mapeamos los nombres del frontend a los de la DB
+      // Mapeamos los nombres del frontend a los de la DB si es necesario
       const { configSchema, apiSchema, ...rest } = provider;
       const providerToSave = {
         ...rest,
@@ -107,7 +121,7 @@ export const useUpsertIntegrationProvider = () => {
     onSuccess: (data, variables) => {
       toast({ title: `Proveedor ${variables.id ? 'actualizado' : 'creado'} con éxito.` });
       queryClient.invalidateQueries({ queryKey: ['integrationProviders'] });
-      queryClient.invalidateQueries({ queryKey: ['integrationProvider', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['integrationProvider', data.id] });
     },
     onError: (error) => {
       toast({ title: 'Error al guardar', description: error.message, variant: 'destructive' });

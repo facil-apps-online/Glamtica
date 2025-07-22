@@ -116,18 +116,36 @@ serve(async (req) => {
 
     const googleDriveIntegration = integrationsData.find(integration => integration.provider === 'google_drive');
 
-    if (!googleDriveIntegration || !googleDriveIntegration.encrypted_refresh_token) {
-      throw new Error('Google Drive integration not found or missing refresh token.');
+    if (!googleDriveIntegration || !googleDriveIntegration.encrypted_credentials || !googleDriveIntegration.nonce) {
+      throw new Error('La integración de Google Drive no se encontró o le faltan las credenciales encriptadas.');
     }
 
-    // 5. Decrypt the refresh_token
-    const { data: decryptedRefreshToken, error: decryptError } = await supabaseAdmin.rpc(
-      'decrypt_secret',
-      { encrypted_value: googleDriveIntegration.encrypted_refresh_token }
+    // 5. Desencriptar el refresh_token usando la Edge Function
+    const { data: decryptedResponse, error: decryptError } = await supabaseAdmin.functions.invoke(
+      'decrypt-secret',
+      {
+        body: {
+          encryptedData: googleDriveIntegration.encrypted_credentials,
+          iv: googleDriveIntegration.nonce,
+        },
+      }
     );
 
-    if (decryptError) throw decryptError;
-    const refreshToken = decryptedRefreshToken;
+    if (decryptError) {
+      throw new Error(`Failed to invoke decrypt-secret function: ${decryptError.message}`);
+    }
+
+    const credentialsJson = decryptedResponse.decryptedText;
+    if (!credentialsJson) {
+      throw new Error('La respuesta de descifrado no contenía "decryptedText".');
+    }
+
+    const credentials = JSON.parse(credentialsJson);
+    const refreshToken = credentials.refresh_token;
+
+    if (!refreshToken) {
+      throw new Error("El campo 'refresh_token' no se encontró en las credenciales descifradas.");
+    }
 
     // 6. Use the refresh_token to get a new access_token
     const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');

@@ -76,26 +76,37 @@ serve(async (req) => {
     const userInfo = await userInfoResponse.json();
     const userEmail = userInfo.email;
 
-    // 3. Guardar en la base de datos
+    // 3. Cifrar el refresh token usando la nueva Edge Function
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const encryptResponse = await fetch(`${supabaseUrl}/functions/v1/encrypt-secret`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+      },
+      body: JSON.stringify({ textToEncrypt: refresh_token }),
+    });
+
+    if (!encryptResponse.ok) {
+      const errorBody = await encryptResponse.json();
+      throw new Error(`Encryption failed: ${JSON.stringify(errorBody)}`);
+    }
+    const { encryptedData, iv } = await encryptResponse.json();
+
+    // 4. Guardar en la base de datos
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
+      supabaseUrl ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
-
-    const { data: encryptedData, error: encryptError } = await supabaseAdmin.rpc(
-        'encrypt_secret', 
-        { secret_value: refresh_token }
-    );
-
-    if (encryptError) throw encryptError;
 
     const { error: dbError } = await supabaseAdmin
       .from('tenant_integrations')
       .upsert({
         tenant_id: tenantId,
-        provider: provider, // Usar el provider dinámico
+        provider: provider,
         access_token: access_token,
-        encrypted_refresh_token: encryptedData,
+        encrypted_credentials: encryptedData, // Nueva columna
+        nonce: iv, // Nueva columna
         account_email: userEmail,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'tenant_id, provider' });

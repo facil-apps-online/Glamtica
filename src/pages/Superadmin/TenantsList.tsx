@@ -52,6 +52,16 @@ export default function TenantsList() {
     });
   };
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'trial': return 'warning';
+      case 'trial_ended': return 'destructive';
+      case 'inactive': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
   return (
     <>
       <div className="w-full py-4 md:p-6">
@@ -103,7 +113,7 @@ export default function TenantsList() {
                       )}
                       <span>{tenant.countries?.name || 'N/A'}</span>
                     </div>
-                    <div><strong>Estado:</strong> <Badge variant="outline">{tenant.subscription_status}</Badge></div>
+                    <div><strong>Estado:</strong> <Badge variant={getStatusVariant(tenant.subscription_status)}>{tenant.subscription_status}</Badge></div>
                   </CardContent>
                   <CardFooter className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" asChild>
@@ -142,7 +152,7 @@ export default function TenantsList() {
                 {tenants.map((tenant) => (
                   <TableRow key={tenant.id}>
                     <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell><Badge variant="outline">{tenant.subscription_status}</Badge></TableCell>
+                    <TableCell><Badge variant={getStatusVariant(tenant.subscription_status)}>{tenant.subscription_status}</Badge></TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {tenant.countries?.iso_code ? (

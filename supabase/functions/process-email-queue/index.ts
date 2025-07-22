@@ -36,22 +36,43 @@ serve(async (req) => {
       const { data: template, error: templateError } = await supabaseAdmin.from('email_templates').select('subject, body_html').eq('template_type', job.template_type).eq('language_id', languageId).single();
       if (templateError) throw new Error(`Template not found: ${templateError.message}`);
 
-      let { data: integration, error: integrationError } = await supabaseAdmin.from('tenant_integrations').select('id, access_token, encrypted_refresh_token, expires_at, account_email').eq('provider', 'google_gmail').eq('tenant_id', '00000000-0000-0000-0000-000000000000').single();
+      let { data: integration, error: integrationError } = await supabaseAdmin.from('tenant_integrations').select('id, access_token, encrypted_credentials, nonce, expires_at, account_email').eq('provider', 'google_gmail').eq('tenant_id', '00000000-0000-0000-0000-000000000000').single();
       if (integrationError) throw new Error(`Gmail integration not found: ${integrationError.message}`);
 
       let accessToken = integration.access_token;
 
       if (!integration.expires_at || new Date(integration.expires_at) < new Date()) {
         
-        // --- LÓGICA DE DESENCRIPTACIÓN CORREGIDA ---
-        // Llamar a la RPC de la base de datos para desencriptar
-        const { data: decryptedData, error: decryptError } = await supabaseAdmin.rpc('decrypt_secret', {
-          encrypted_value: integration.encrypted_refresh_token
-        });
+        if (!integration.encrypted_credentials || !integration.nonce) {
+          throw new Error('La integración no tiene credenciales encriptadas o nonce.');
+        }
 
-        if (decryptError) throw new Error(`Failed to decrypt token: ${decryptError.message}`);
-        const refreshToken = decryptedData;
-        // --- FIN DE LA CORRECCIÓN ---
+        // Desencriptar el refresh_token usando la Edge Function
+        const { data: decryptedResponse, error: decryptError } = await supabaseAdmin.functions.invoke(
+          'decrypt-secret',
+          {
+            body: {
+              encryptedData: integration.encrypted_credentials,
+              iv: integration.nonce,
+            },
+          }
+        );
+
+        if (decryptError) {
+          throw new Error(`Failed to invoke decrypt-secret function: ${decryptError.message}`);
+        }
+
+        const credentialsJson = decryptedResponse.decryptedText;
+        if (!credentialsJson) {
+          throw new Error('La respuesta de descifrado no contenía "decryptedText".');
+        }
+        
+        const credentials = JSON.parse(credentialsJson);
+        const refreshToken = credentials.refresh_token;
+
+        if (!refreshToken) {
+          throw new Error("El campo 'refresh_token' no se encontró en las credenciales descifradas.");
+        }
 
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
             method: 'POST',
