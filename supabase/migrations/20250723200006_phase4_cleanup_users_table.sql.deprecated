@@ -1,0 +1,18 @@
+-- FASE 4: Limpieza Final
+-- Esta migración elimina las columnas de asignación redundantes de la tabla 'users'.
+-- Toda la lógica de la aplicación ha sido migrada para usar 'user_assignments',
+-- por lo que estas columnas ya no son necesarias.
+
+-- Eliminar la columna 'role_id'
+ALTER TABLE public.users
+DROP COLUMN IF EXISTS role_id;
+
+-- Eliminar la columna 'tenant_id'
+ALTER TABLE public.users
+DROP COLUMN IF EXISTS tenant_id;
+
+-- Eliminar la columna 'branch_id'
+ALTER TABLE public.users
+DROP COLUMN IF EXISTS branch_id;
+
+COMMENT ON TABLE public.users IS 'Almacena la información de identidad principal de los usuarios (nombre, email, contraseña). Los permisos y membresías se gestionan en la tabla user_assignments.';

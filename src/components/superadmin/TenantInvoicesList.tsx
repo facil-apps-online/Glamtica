@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, FileText } from 'lucide-react';
+import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 interface TenantInvoicesListProps {
   tenantId: string;
@@ -12,6 +13,7 @@ interface TenantInvoicesListProps {
 
 export function TenantInvoicesList({ tenantId }: TenantInvoicesListProps) {
   const { data: invoices, isLoading, isError, error } = useInvoicesByTenant(tenantId);
+  const { formatPrice } = usePriceFormat(); // Usar el hook
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -65,7 +67,7 @@ export function TenantInvoicesList({ tenantId }: TenantInvoicesListProps) {
                 <TableCell>{new Date(invoice.issue_date).toLocaleDateString()}</TableCell>
                 <TableCell>{new Date(invoice.due_date).toLocaleDateString()}</TableCell>
                 <TableCell className="text-right">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: invoice.currency_code }).format(invoice.total_amount)}
+                  {formatPrice(invoice.total_amount)}
                 </TableCell>
                 <TableCell>
                   <Badge variant={getStatusVariant(invoice.status)}>{invoice.status}</Badge>

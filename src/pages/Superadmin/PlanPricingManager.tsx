@@ -11,15 +11,10 @@ import { PriceHistory } from '@/components/superadmin/PriceHistory';
 import { ScheduledPrices } from '@/components/superadmin/ScheduledPrices';
 
 export default function PlanPricingManager() {
-  const { data: calculatedPrices, isLoading: isLoadingCalculated, isError: isErrorCalculated, error: errorCalculated } = useCalculatedPrices();
-  const { data: plans, isLoading: isLoadingPlans, isError: isErrorPlans, error: errorPlans } = useSubscriptionPlans();
-  const { data: priceHistory, isLoading: isLoadingHistory, isError: isErrorHistory, error: errorHistory } = useAllPlanPriceHistory();
+  const { data: calculatedPrices, isLoading: isLoadingCalculated } = useCalculatedPrices();
+  const { data: priceHistory, isLoading: isLoadingHistory } = usePlanPriceHistory();
 
-  console.log('Datos de calculatedPrices:', calculatedPrices);
-  console.log('Datos de plans:', plans);
-  console.log('Datos de priceHistory:', priceHistory);
-  
-  const isLoading = isLoadingCalculated || isLoadingPlans || isLoadingHistory;
+  const isLoading = isLoadingPlans || isLoadingCalculated || isLoadingHistory;
   const isError = isErrorCalculated || isErrorPlans || isErrorHistory;
   const error = errorCalculated || errorPlans || errorHistory;
 

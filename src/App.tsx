@@ -7,12 +7,13 @@ import Appointments from "@/pages/Appointments";
 import Clients from "@/pages/Clients";
 import Services from "@/pages/Services";
 import Stylists from "@/pages/Stylists";
+import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import BranchesPage from "@/pages/Settings/Branches"; // Importar la nueva página
 import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
-import Reports from "@/pages/Reports";
 import CreateTenant from "@/pages/Superadmin/CreateTenant";
 import TenantsList from "@/pages/Superadmin/TenantsList";
 import EditTenant from "@/pages/Superadmin/EditTenant";
@@ -30,7 +31,7 @@ import ErrorReports from "@/pages/Superadmin/ErrorReports";
 import PerformanceMetrics from "@/pages/Superadmin/PerformanceMetrics";
 import IntegrationsPage from "@/pages/Superadmin/Integrations";
 import IntegrationProviderForm from "@/pages/Superadmin/IntegrationProviderForm"; // <-- Nueva importación
-import ProfileSettings from "@/pages/Superadmin/ProfileSettings";
+import ProfileSettings from "@/pages/ProfileSettings"; // Corregir la ruta de importación
 import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
 import TranslationAdmin from "@/components/TranslationAdmin";
@@ -63,6 +64,7 @@ function App() {
                 <Route path="/superadmin" element={<SuperadminLayout />}>
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<SuperadminStats />} />
+                  <Route path="profile-settings" element={<ProfileSettings />} /> {/* RUTA AÑADIDA */}
                   <Route path="create-tenant" element={<CreateTenant />} />
                   <Route path="tenants" element={<TenantsList />} />
                   <Route path="tenants/:tenantId/edit" element={<EditTenant />} />
@@ -77,13 +79,13 @@ function App() {
                   <Route path="error-reports" element={<ErrorReports />} />
                   <Route path="performance-metrics" element={<PerformanceMetrics />} />
                   <Route path="integrations" element={<IntegrationsPage />} />
-                  <Route path="integrations/new" element={<IntegrationProviderForm />} /> {/* <-- Nueva ruta */}
-                  <Route path="integrations/edit/:id" element={<IntegrationProviderForm />} /> {/* <-- Nueva ruta */}
-                  <Route path="profile-settings" element={<ProfileSettings />} />
+                  <Route path="integrations/new" element={<IntegrationProviderForm />} />
+                  <Route path="integrations/edit/:id" element={<IntegrationProviderForm />} />
                 </Route>
 
                 <Route path="/" element={<Layout><Index /></Layout>}>
                   <Route index element={<Index />} />
+                  <Route path="profile-settings" element={<ProfileSettings />} /> {/* RUTA AÑADIDA */}
                   <Route path="appointments" element={<Appointments />} />
                   <Route path="clients" element={<Clients />} />
                   <Route path="products" element={<Products />} />
@@ -92,6 +94,7 @@ function App() {
                   <Route path="stylists" element={<Stylists />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="settings/branches" element={<BranchesPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />
                   <Route path="tenant-admin/settings" element={<TenantSettings />} />
                   <Route path="*" element={<NotFound />} />

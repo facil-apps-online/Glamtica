@@ -56,17 +56,8 @@ export function CountryDialog({ isOpen, onClose, country }: CountryDialogProps) 
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log('CountryDialog - onSubmit values:', values);
-    try {
-      if (country) {
-        await updateMutation.mutateAsync({ ...values, id: country.id });
-      } else {
-        await createMutation.mutateAsync(values);
-      }
-      form.reset();
-      onClose();
-    } catch (error) {}
+  const onSubmit = (values: z.infer<typeof countryFormSchema>) => {
+    onSave(values);
   };
 
   return (

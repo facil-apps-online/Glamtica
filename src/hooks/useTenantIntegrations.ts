@@ -11,6 +11,7 @@ interface TenantIntegration {
   account_email: string;
   created_at: string;
   updated_at: string;
+  is_active: boolean;
 }
 
 export const useTenantIntegrations = (tenantId: string, environment?: 'test' | 'production') => {
@@ -25,7 +26,8 @@ export const useTenantIntegrations = (tenantId: string, environment?: 'test' | '
       const { data, error } = await supabase.rpc('get_tenant_integrations', {
         p_tenant_id: tenantId,
         p_user_role: user.role,
-        p_environment: environment ?? null, // Asegurar que siempre se pasa null si es undefined
+        p_requesting_user_id: user.id, // <-- Parámetro añadido
+        p_environment: environment ?? null,
       });
 
       if (error) {

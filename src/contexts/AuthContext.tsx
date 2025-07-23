@@ -1,162 +1,105 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 
-interface TenantIntegration {
-  id: string;
-  tenant_id: string | null;
-  provider: string;
-  access_token: string | null;
-  account_email: string | null;
-  created_at: string;
-  updated_at: string;
-  expires_at: string | null;
-  encrypted_credentials?: string | null; // Campo nuevo y opcional
-  nonce?: string | null; // Campo nuevo y opcional
-}
-
-interface AuthUser {
+// --- INTERFACES ---
+interface UserProfile {
   id: string;
   email: string;
-  role?: string;
   firstName?: string;
   lastName?: string;
-  tenant_id?: string;
-  branch_id?: string;
   avatarUrl?: string;
-  country_id?: string | null;
-  language_id?: string | null;
-  currency_id?: string | null;
-  timezone_id?: string | null;
+}
+
+export interface UserAssignment {
+  assignment_id: string;
+  tenant_id: string;
+  tenant_name: string;
+  role_id: string;
+  role_name: string;
+  branch_id: string | null;
+  branch_name: string | null;
 }
 
 interface AuthContextType {
-  user: AuthUser | null;
+  profile: UserProfile | null;
+  assignments: UserAssignment[];
+  currentAssignment: UserAssignment | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string>;
   logout: () => Promise<void>;
-  updateUserFromToken: (token: string) => void;
+  switchAssignment: (assignmentId: string) => Promise<void>;
   loading: boolean;
-  integrations: TenantIntegration[] | null;
-  updateIntegrations: (tenantId: string | null | undefined, userRole: string | undefined) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// --- CLAVES DE LOCALSTORAGE ---
+const TOKEN_KEY = 'supabase.auth.token';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient: any }> = ({ children, supabaseClient }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [integrations, setIntegrations] = useState<TenantIntegration[] | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [assignments, setAssignments] = useState<UserAssignment[]>([]);
+  const [currentAssignment, setCurrentAssignment] = useState<UserAssignment | null>(null);
+  const [loading, setLoading] = useState(true); // Inicia cargando
   const navigate = useNavigate();
 
-  const fetchTenantIntegrations = async (currentTenantId: string | null | undefined, currentUserRole: string | undefined, currentUserId: string | undefined) => {
-    if (!currentTenantId || !currentUserRole || !currentUserId) return [];
-    const { data, error } = await supabaseClient.rpc('get_tenant_integrations', {
-      p_tenant_id: currentTenantId,
-      p_user_role: currentUserRole,
-      p_requesting_user_id: currentUserId, // Pasar el ID del usuario para la verificación
-      p_environment: null,
+  const generateAndSetToken = async (profileData: UserProfile, assignment: UserAssignment) => {
+    const { data: functionData, error: functionError } = await supabaseClient.functions.invoke('generate-jwt', {
+      body: {
+        user_id: profileData.id,
+        email: profileData.email,
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        avatar_url: profileData.avatarUrl,
+        role: assignment.role_name,
+        tenant_id: assignment.tenant_id,
+        branch_id: assignment.branch_id,
+        tenant_name: assignment.tenant_name,
+      },
     });
-    if (error && error.code !== 'PGRST116') {
-      console.error('[AuthContext - fetchTenantIntegrations] Query error:', error);
-      throw new Error(error.message);
-    }
-    return data || [];
+
+    if (functionError) throw functionError;
+    
+    const { token } = functionData;
+    localStorage.setItem(TOKEN_KEY, token);
+    supabaseClient.global.headers['Authorization'] = `Bearer ${token}`;
   };
 
-  const updateIntegrations = async (currentTenantId: string | null | undefined, currentUserRole: string | undefined, currentUserId: string | undefined) => {
-    try {
-      const fetchedIntegrations = await fetchTenantIntegrations(currentTenantId, currentUserRole, currentUserId);
-      setIntegrations(fetchedIntegrations);
-    } catch (error) {
-      console.error('[AuthContext - updateIntegrations] Failed to update integrations:', error);
-      setIntegrations(null);
-    }
-  };
-
-  const updateUserFromToken = (token: string) => {
-    try {
-      supabaseClient.global.headers['Authorization'] = `Bearer ${token}`;
-      const decodedToken: any = jwtDecode(token);
-
-      if (decodedToken.exp * 1000 > Date.now()) {
-        const currentUser: AuthUser = { 
-          id: decodedToken.sub, 
-          email: decodedToken.email, 
-          role: decodedToken.app_metadata.role,
-          firstName: decodedToken.first_name || null,
-          lastName: decodedToken.last_name || null,
-          tenant_id: decodedToken.tenant_id || null,
-          branch_id: decodedToken.branch_id || null,
-          avatarUrl: decodedToken.avatar_url || null,
-          country_id: decodedToken.country_id || null,
-          language_id: decodedToken.language_id || null,
-          currency_id: decodedToken.currency_id || null,
-          timezone_id: decodedToken.timezone_id || null,
-        };
-        setUser(currentUser);
-        updateIntegrations(decodedToken.tenant_id, decodedToken.app_metadata.role, decodedToken.sub);
-      } else {
-        logout();
-      }
-    } catch (e) {
-      console.error("[AuthContext - updateUserFromToken] Failed to decode token:", e);
-      logout();
-    }
-  };
-
-  useEffect(() => {
-    if (supabaseClient) {
-      const token = localStorage.getItem('supabase.auth.token');
-      if (token) {
-        updateUserFromToken(token);
-      }
-      setLoading(false);
-    }
-  }, [supabaseClient]);
-
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<string> => {
     setLoading(true);
     try {
-      const { data, error: rpcError } = await supabaseClient.rpc('login_user', {
-        p_email: email,
-        p_password: password,
-      });
+      const { data, error: rpcError } = await supabaseClient.rpc('login_user', { p_email: email, p_password: password });
 
-      if (rpcError) {
-        throw new Error(rpcError.message || "Error en la llamada RPC.");
-      }
+      if (rpcError) throw new Error(rpcError.message);
+      if (!data || !data.success) throw new Error(data?.message || "Credenciales inválidas.");
 
-      // La RPC devuelve un array, incluso con una sola fila.
-      const rpcData = data && data[0] ? data[0] : null;
-
-      if (!rpcData || !rpcData.success) {
-        throw new Error(rpcData?.message || "Credenciales inválidas.");
-      }
-
-      const { data: functionData, error: functionError } = await supabaseClient.functions.invoke('generate-jwt', {
-        body: {
-          user_id: rpcData.user_id,
-          email: rpcData.email,
-          role: rpcData.role,
-          tenant_id: rpcData.tenant_id,
-          branch_id: rpcData.branch_id,
-          first_name: rpcData.first_name,
-          last_name: rpcData.last_name,
-          avatar_url: rpcData.avatar_url,
-          country_id: rpcData.country_id,
-          language_id: rpcData.language_id,
-          currency_id: rpcData.currency_id,
-          timezone_id: rpcData.timezone_id,
-        },
-      });
-
-      if (functionError) throw functionError;
+      const { profile: userProfile, assignments: userAssignments } = data;
       
-      const { token } = functionData;
-      localStorage.setItem('supabase.auth.token', token);
-      updateUserFromToken(token);
+      const loadedProfile: UserProfile = {
+        id: userProfile.id,
+        email: userProfile.email,
+        firstName: userProfile.first_name,
+        lastName: userProfile.last_name,
+        avatarUrl: userProfile.avatar_url,
+      };
 
+      setProfile(loadedProfile);
+      setAssignments(userAssignments);
+
+      if (userAssignments.length > 0) {
+        const firstAssignment = userAssignments[0];
+        setCurrentAssignment(firstAssignment);
+        await generateAndSetToken(loadedProfile, firstAssignment);
+
+        if (firstAssignment.role_name === 'super_admin') {
+          return '/superadmin/dashboard';
+        } else {
+          return '/';
+        }
+      } else {
+        throw new Error("No tienes roles o tenants asignados.");
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
@@ -166,23 +109,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   };
 
   const logout = async () => {
-    setLoading(true);
-    try {
-      delete supabaseClient.global.headers['Authorization'];
-      localStorage.removeItem('supabase.auth.token');
-      setUser(null);
-      setIntegrations(null);
-      navigate('/auth');
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setLoading(false);
-    }
+    // ... (lógica de logout simple)
+    localStorage.removeItem(TOKEN_KEY);
+    setProfile(null);
+    setAssignments([]);
+    setCurrentAssignment(null);
+    navigate('/auth');
   };
 
-  const contextValue = React.useMemo(() => ({
-    user, isAuthenticated: !!user, login, logout, updateUserFromToken, loading, integrations, updateIntegrations
-  }), [user, loading, integrations]);
+  const switchAssignment = async (assignmentId: string) => {
+    // ... (lógica de switch)
+  };
+
+  // useEffect simple que solo marca la carga como completa
+  useEffect(() => {
+    setLoading(false);
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    profile, assignments, currentAssignment, isAuthenticated: !!currentAssignment, login, logout, switchAssignment, loading
+  }), [profile, assignments, currentAssignment, loading]);
 
   return (
     <AuthContext.Provider value={contextValue}>

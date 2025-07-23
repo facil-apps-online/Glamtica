@@ -11,9 +11,6 @@ serve(async (req) => {
   console.log('--- [generate-jwt] Invoked ---');
   
   try {
-    const jwtSecretExists = Deno.env.get('JWT_SECRET') !== undefined;
-    console.log(`--- [generate-jwt] JWT_SECRET found in environment: ${jwtSecretExists} ---`);
-
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
     }
@@ -22,7 +19,7 @@ serve(async (req) => {
       user_id, 
       email, 
       role, 
-      tenant_id, 
+      tenant_id, // <--- Se recibe directamente de la DB
       branch_id, 
       first_name, 
       last_name, 
@@ -30,7 +27,8 @@ serve(async (req) => {
       country_id,
       language_id,
       currency_id,
-      timezone_id
+      timezone_id,
+      tenant_name // <--- Se recibe directamente de la DB
     } = await req.json();
 
     const jwt_secret = Deno.env.get('JWT_SECRET')
@@ -38,16 +36,18 @@ serve(async (req) => {
       throw new Error('JWT_SECRET is not set in Supabase environment variables.')
     }
 
-    let final_tenant_id = tenant_id;
-    if (role === 'super_admin') {
-      final_tenant_id = '00000000-0000-0000-0000-000000000000';
-    }
+    // --- LÓGICA OBSOLETA ELIMINADA ---
+    // let final_tenant_id = tenant_id;
+    // if (role === 'super_admin') {
+    //   final_tenant_id = '00000000-0000-0000-0000-000000000000';
+    // }
+    // ---------------------------------
 
     const payload = {
       sub: user_id,
-      iss: 'supabase', // <-- AÑADIR ESTA LÍNEA
+      iss: 'supabase',
       email: email,
-      tenant_id: final_tenant_id,
+      tenant_id: tenant_id, // <--- Se usa el valor directo
       branch_id: branch_id,
       first_name: first_name,
       last_name: last_name,
@@ -56,6 +56,7 @@ serve(async (req) => {
       language_id: language_id,
       currency_id: currency_id,
       timezone_id: timezone_id,
+      tenant_name: tenant_name,
       aud: 'authenticated',
       exp: getNumericDate(60 * 60 * 24),
       app_metadata: {

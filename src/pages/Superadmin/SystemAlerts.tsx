@@ -1,14 +1,15 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
-export default function SystemAlerts() {
-  useEffect(() => {
-    console.log("SystemAlerts: Rendered.");
+const SystemAlerts: React.FC = () => {
+  React.useEffect(() => {
   }, []);
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-2xl font-bold mb-6">Alertas del Sistema</h1>
-      <p>Contenido de la página de Alertas del Sistema.</p>
+    <div>
+      <h1>Alertas del Sistema</h1>
+      <p>Esta página mostrará las alertas importantes del sistema.</p>
     </div>
   );
-}
+};
+
+export default SystemAlerts;

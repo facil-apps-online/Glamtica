@@ -1,14 +1,15 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
-export default function ErrorReports() {
-  useEffect(() => {
-    console.log("ErrorReports: Rendered.");
+const ErrorReports: React.FC = () => {
+  React.useEffect(() => {
   }, []);
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-2xl font-bold mb-6">Reportes de Errores</h1>
-      <p>Contenido de la página de Reportes de Errores.</p>
+    <div>
+      <h1>Reportes de Errores</h1>
+      <p>Esta página mostrará los reportes de errores del sistema.</p>
     </div>
   );
-}
+};
+
+export default ErrorReports;

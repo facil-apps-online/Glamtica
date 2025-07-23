@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUserSubscriptionPlans } from '@/hooks/useUserSubscriptionPlans';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriceFormat } from '@/hooks/usePriceFormat';
@@ -22,7 +22,7 @@ const pageTransition = {
 };
 
 export default function SubscribePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth(); // Obtener también la función logout
   const { data: plans, isLoading } = useUserSubscriptionPlans();
   const { formatPrice } = usePriceFormat();
   
@@ -146,6 +146,19 @@ export default function SubscribePage() {
             ))}
           </div>
           {error && <p className="text-sm text-red-500 text-center mt-4">{error}</p>}
+
+          {/* Footer para cerrar sesión */}
+          <div className="text-center mt-8">
+            <p className="text-sm text-muted-foreground">
+              ¿No es tu cuenta?{' '}
+              <button
+                onClick={logout}
+                className="font-semibold text-brand-primary hover:underline focus:outline-none"
+              >
+                Cerrar Sesión
+              </button>
+            </p>
+          </div>
         </div>
       </div>
 

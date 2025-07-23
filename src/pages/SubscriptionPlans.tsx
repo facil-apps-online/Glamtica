@@ -23,11 +23,6 @@ const SubscriptionPlans = () => {
     return allPrices.filter(price => price.country_id === user.country_id);
   }, [allPrices, user?.country_id]);
 
-  // DEBUG LOGS: Añadidos para depurar el problema de los precios
-  console.log('[SubscriptionPlans] Raw data from useCalculatedPrices:', allPrices);
-  console.log('[SubscriptionPlans] User country_id:', user?.country_id);
-  console.log('[SubscriptionPlans] Filtered plans for user country:', plansForUserCountry);
-
   const handleSelectPlan = async (planPriceId: string) => {
     setIsRedirecting(true);
     setError(null);

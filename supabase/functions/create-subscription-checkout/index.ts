@@ -23,24 +23,54 @@ serve(async (req) => {
       throw new Error('tenantId, planId y redirectUrl son requeridos.');
     }
 
-    // 1. Obtener el precio activo más reciente para el plan seleccionado
+    // 1. Obtener la configuración de Wompi del tenant propietario.
+    const { data: systemOwnerTenant, error: ownerError } = await supabaseAdmin
+      .from('tenants')
+      .select('id')
+      .eq('is_system_owner', true)
+      .single();
+    if (ownerError) throw new Error(`Error al buscar el tenant propietario: ${ownerError.message}`);
+    if (!systemOwnerTenant) throw new Error('No se ha configurado un tenant como propietario del sistema.');
+
+    const { data: integration, error: integrationError } = await supabaseAdmin
+      .from('tenant_integrations')
+      .select('encrypted_credentials, nonce, environment')
+      .eq('tenant_id', systemOwnerTenant.id)
+      .eq('provider', 'wompi-co')
+      .eq('is_active', true)
+      .single();
+    if (integrationError) throw new Error('No se encontró una configuración de Wompi activa para el tenant propietario.');
+
+    // 2. Obtener el precio del plan y el precio por sucursal extra.
     const { data: priceData, error: priceError } = await supabaseAdmin
       .from('plan_price_history')
-      .select('id, base_price_cop')
+      .select('id, base_price_cop, extra_branch_price_cop')
       .eq('subscription_plan_id', planId)
       .lte('effective_date', new Date().toISOString())
       .order('effective_date', { ascending: false })
       .limit(1)
       .single();
-
     if (priceError) throw new Error(`Error al obtener el precio del plan: ${priceError.message}`);
     if (!priceData) throw new Error(`No se encontró un precio activo para el plan ${planId}.`);
 
-    const amountInCents = priceData.base_price_cop * 100;
-    const currency = 'COP'; // Asumiendo COP, ya que el precio base está en COP
-    const planPriceId = priceData.id; // Este es el ID del registro de precio
+    const basePrice = priceData.base_price_cop;
+    const extraBranchPrice = priceData.extra_branch_price_cop;
+    const planPriceId = priceData.id;
 
-    // 2. Crear el intento de pago (Payment Intent)
+    // 3. Contar las sucursales existentes del tenant.
+    const { count: branchCount, error: countError } = await supabaseAdmin
+      .from('branches')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId);
+    if (countError) throw new Error(`Error al contar las sucursales: ${countError.message}`);
+
+    // 4. Calcular el costo total.
+    const extraBranches = Math.max(0, (branchCount ?? 0) - 1);
+    const totalAmount = basePrice + (extraBranches * extraBranchPrice);
+    const amountInCents = totalAmount * 100;
+    const currency = 'COP';
+
+    // 5. Crear el intento de pago con el monto total calculado.
     const reference = `glamtica_${tenantId}_${Date.now()}`;
     const { data: intent, error: intentError } = await supabaseAdmin
       .from('payment_intents')
@@ -50,34 +80,21 @@ serve(async (req) => {
         amount_in_cents: amountInCents,
         currency: currency,
         reference: reference,
-        metadata: {
-          type: 'SUBSCRIPTION_RENEWAL',
-          plan_price_id: planPriceId, // Guardamos el ID del precio específico
+        environment: integration.environment,
+        metadata: { 
+          type: 'SUBSCRIPTION_PAYMENT', 
+          plan_price_id: planPriceId,
+          base_price: basePrice,
+          extra_branches: extraBranches,
+          extra_branch_price: extraBranchPrice,
+          total_amount: totalAmount
         },
       })
       .select()
       .single();
-
     if (intentError) throw new Error(`Error al crear el intento de pago: ${intentError.message}`);
 
-    // 3. Obtener las credenciales de Wompi y generar la firma (lógica similar a la anterior)
-    const { data: tenantData, error: tenantError } = await supabaseAdmin
-      .from('tenants')
-      .select('integrations_mode')
-      .eq('id', tenantId)
-      .single();
-    if (tenantError) throw new Error(`Error al obtener el tenant: ${tenantError.message}`);
-    const environment = tenantData.integrations_mode === 'test' ? 'test' : 'production';
-
-    const { data: integration, error: integrationError } = await supabaseAdmin
-      .from('tenant_integrations')
-      .select('encrypted_credentials, nonce')
-      .eq('tenant_id', tenantId)
-      .eq('provider', 'wompi-co')
-      .eq('environment', environment)
-      .single();
-    if (integrationError) throw new Error(`No se encontró la configuración de Wompi para el entorno ${environment}.`);
-
+    // 6. Desencriptar credenciales y generar firma.
     const { data: decryptedResponse, error: decryptError } = await supabaseAdmin.functions.invoke(
       'decrypt-secret',
       { body: { encryptedData: integration.encrypted_credentials, iv: integration.nonce } }
@@ -89,7 +106,7 @@ serve(async (req) => {
     const concatenation = `${reference}${amountInCents}${currency}${integrity_secret}`;
     const signature = new Sha256().update(concatenation).hex();
 
-    // 4. Devolver los datos para el formulario de checkout
+    // 7. Devolver datos para el checkout.
     const checkoutData = {
       'public-key': public_key,
       'currency': currency,
@@ -105,6 +122,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    console.error('Error en create-subscription-checkout:', error);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

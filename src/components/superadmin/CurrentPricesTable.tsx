@@ -4,10 +4,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useScreenSize } from '@/hooks/useScreenSize';
+import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 export function CurrentPricesTable({ plans, calculatedPrices, isLoading }) {
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
+  const { formatPrice } = usePriceFormat(); // Usar el hook
   const { countries, pricesByCountry } = useMemo(() => {
     if (!calculatedPrices || !plans) return { countries: [], pricesByCountry: {} };
     const uniqueCountries = [...new Map(calculatedPrices.map(p => [p.country_id, { id: p.country_id, name: p.country_name }])).values()];
@@ -37,8 +39,8 @@ export function CurrentPricesTable({ plans, calculatedPrices, isLoading }) {
                           <li key={index} className="flex justify-between items-baseline text-sm">
                             <span className="font-medium">{priceInfo.plan_name}:</span>
                             <div className="text-right">
-                              <p>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: priceInfo.currency_code, maximumFractionDigits: 2 }).format(priceInfo.calculated_price)}</p>
-                              <p className="text-xs text-muted-foreground">+ Sucursal: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: priceInfo.currency_code, maximumFractionDigits: 2 }).format(priceInfo.calculated_extra_branch_price)}</p>
+                              <p>{formatPrice(priceInfo.calculated_price)}</p>
+                              <p className="text-xs text-muted-foreground">+ Sucursal: {formatPrice(priceInfo.calculated_extra_branch_price)}</p>
                             </div>
                           </li>
                         )
@@ -65,8 +67,8 @@ export function CurrentPricesTable({ plans, calculatedPrices, isLoading }) {
                         <TableCell key={index} className="text-center">
                           {priceInfo ? (
                             <div>
-                              <p>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: priceInfo.currency_code, maximumFractionDigits: 2 }).format(priceInfo.calculated_price)}</p>
-                              <p className="text-xs text-muted-foreground">+ Sucursal: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: priceInfo.currency_code, maximumFractionDigits: 2 }).format(priceInfo.calculated_extra_branch_price)}</p>
+                              <p>{formatPrice(priceInfo.calculated_price)}</p>
+                              <p className="text-xs text-muted-foreground">+ Sucursal: {formatPrice(priceInfo.calculated_extra_branch_price)}</p>
                             </div>
                           ) : 'N/A'}
                         </TableCell>

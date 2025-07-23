@@ -5,11 +5,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { format, subDays, parseISO, startOfToday } from 'date-fns';
+import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 export function PriceHistory({ isLoading, history }) {
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
   const today = startOfToday();
+  const { formatPrice } = usePriceFormat(); // Usar el hook
 
   const previousPrices = useMemo(() => {
     if (!history) return [];
@@ -36,8 +38,8 @@ export function PriceHistory({ isLoading, history }) {
                   <CardHeader className="p-4"><CardTitle className="text-base">{item.subscription_plans.name}</CardTitle></CardHeader>
                   <CardContent className="p-4 pt-0 text-sm space-y-1">
                     <p><strong>Vigente hasta:</strong> {format(subDays(parseISO(item.effective_date), 1), 'dd MMM yyyy')}</p>
-                    <p><strong>Precio Base:</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.base_price_cop)}</p>
-                    <p><strong>Precio Sucursal:</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.extra_branch_price_cop)}</p>
+                    <p><strong>Precio Base:</strong> {formatPrice(item.base_price_cop)}</p>
+                    <p><strong>Precio Sucursal:</strong> {formatPrice(item.extra_branch_price_cop)}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -56,8 +58,8 @@ export function PriceHistory({ isLoading, history }) {
                 {previousPrices.map(item => (
                   <TableRow key={item.id}>
                     <TableCell>{item.subscription_plans.name}</TableCell>
-                    <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.base_price_cop)}</TableCell>
-                    <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.extra_branch_price_cop)}</TableCell>
+                    <TableCell>{formatPrice(item.base_price_cop)}</TableCell>
+                    <TableCell>{formatPrice(item.extra_branch_price_cop)}</TableCell>
                     <TableCell>{format(subDays(parseISO(item.effective_date), 1), 'dd MMM yyyy')}</TableCell>
                   </TableRow>
                 ))}

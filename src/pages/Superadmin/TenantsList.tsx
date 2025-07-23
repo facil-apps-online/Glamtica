@@ -52,12 +52,13 @@ export default function TenantsList() {
     });
   };
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string | null): VariantProps<typeof badgeVariants>['variant'] => {
+    if (!status) return 'outline';
     switch (status) {
-      case 'active': return 'success';
-      case 'trial': return 'warning';
-      case 'trial_ended': return 'destructive';
-      case 'inactive': return 'secondary';
+      case 'activo': return 'activo';
+      case 'gracia': return 'gracia';
+      case 'suspendido': return 'suspendido';
+      case 'cancelado': return 'cancelado';
       default: return 'outline';
     }
   };

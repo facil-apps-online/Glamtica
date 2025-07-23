@@ -1,0 +1,45 @@
+-- FASE 1: COEXISTENCIA (Corregido)
+-- Esta migración introduce la nueva tabla 'user_assignments' y la puebla con los datos
+-- existentes de la tabla 'users'. Durante esta fase, los datos de asignación
+-- estarán duplicados temporalmente para no romper la lógica existente.
+
+-- Paso 1: Crear la nueva tabla para manejar las asignaciones de usuarios.
+CREATE TABLE IF NOT EXISTS public.user_assignments (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE RESTRICT,
+    branch_id UUID REFERENCES public.branches(id) ON DELETE CASCADE, -- Puede ser NULL
+
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+
+    -- Un usuario no puede tener la misma combinación de rol, tenant y sucursal dos veces.
+    CONSTRAINT unique_user_assignment UNIQUE (user_id, tenant_id, role_id, branch_id)
+);
+
+-- Habilitar RLS para la nueva tabla
+ALTER TABLE public.user_assignments ENABLE ROW LEVEL SECURITY;
+COMMENT ON TABLE public.user_assignments IS 'Almacena las membresías de los usuarios a diferentes tenants y sucursales con roles específicos.';
+
+-- Paso 2: Poblar la tabla 'user_assignments' con los datos actuales de 'users'.
+-- Esto asegura que todos los usuarios existentes tengan su correspondiente entrada
+-- en el nuevo sistema de asignaciones, leyendo directamente los datos existentes.
+-- Se usa ON CONFLICT para que la migración pueda ser re-ejecutada sin errores.
+INSERT INTO public.user_assignments (user_id, tenant_id, role_id, branch_id)
+SELECT
+    id as user_id,
+    tenant_id,
+    role_id,
+    branch_id
+FROM
+    public.users
+WHERE
+    tenant_id IS NOT NULL AND role_id IS NOT NULL
+ON CONFLICT (user_id, tenant_id, role_id, branch_id) DO NOTHING;
+
+-- Trigger para mantener actualizado el campo 'updated_at'
+CREATE OR REPLACE TRIGGER trigger_user_assignments_updated_at
+  BEFORE UPDATE ON public.user_assignments
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();

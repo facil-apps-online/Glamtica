@@ -1,20 +1,27 @@
-feat(superadmin): Implementa el motor de gestión de integraciones
+feat(subscriptions): Implementar flujo de pago de suscripciones con Wompi
 
-Se introduce un sistema completo para que el superadministrador pueda definir y gestionar proveedores de integración (ej. facturación, pagos) por país.
+Se introduce un sistema completo para la renovación de suscripciones utilizando la pasarela de pago Wompi.
 
-- **CRUD de Categorías:**
-  - Se añade una tabla y un gestor en la UI para crear, editar y eliminar tipos de integración (ej: "Facturación Electrónica").
-  - La gestión se encuentra en `Configuración Global > Integraciones`.
+- **Flujo de Pago:** Los tenants con suscripciones vencidas son dirigidos a una página dedicada para seleccionar y pagar un nuevo plan.
+- **Precios Dinámicos:** La página de planes muestra precios calculados y formateados según el país del tenant.
+- **Integración Segura con Wompi:**
+  - Se crea la Edge Function `create-subscription-checkout` para generar sesiones de pago seguras.
+  - Se implementa la Edge Function `wompi-webhook-handler` para procesar notificaciones de pago y confirmar transacciones.
+  - Se añade la función RPC `activate_subscription` para actualizar el estado de la suscripción del tenant tras un pago exitoso.
+- **Auditoría:** Se añaden las tablas `payments` y `payment_intents` para una trazabilidad completa de las transacciones.
 
-- **Gestor de Proveedores:**
-  - Se crea un dashboard en `/superadmin/integrations` para listar los proveedores definidos.
-  - Se implementa un formulario completo para crear/editar proveedores, permitiendo definir:
-    - Información básica (nombre, país, categoría).
-    - Un `slug` programático para uso interno.
-    - Endpoints de API para entornos de prueba y producción.
-    - Un constructor de campos para las credenciales que debe proporcionar el tenant.
-    - Un compositor visual (placeholder) para mapear el JSON de la API a las variables de Glamtica.
+refactor(integrations): Modernizar lógica de integraciones y cifrado
 
-- **Backend:**
-  - Se añaden todas las migraciones de base de datos necesarias para las tablas `integration_categories` y `integration_providers`.
-  - Se ajustan los permisos de las nuevas tablas para alinearse con la arquitectura de seguridad existente (GRANT).
+Se refactoriza el sistema de gestión de integraciones y se mejora la seguridad del manejo de credenciales.
+
+- **Gestión Dinámica:** El panel de Superadministrador ahora permite configurar cualquier proveedor de integración de forma dinámica.
+- **Entornos de Prueba/Producción:** Se implementa la capacidad de gestionar credenciales para entornos de prueba y producción.
+- **Seguridad Mejorada:** La lógica de cifrado se migra de funciones de base de datos a Edge Functions dedicadas (`encrypt-secret`, `decrypt-secret`).
+- **Corrección de Bugs:** Se solucionan múltiples errores críticos relacionados con políticas de RLS, llamadas a RPC y el sistema de autenticación personalizado.
+
+feat(plans): Mejorar gestión de planes de suscripción
+
+Se mejora la experiencia de usuario en la gestión de planes desde el panel de Superadministrador.
+
+- **Campo de Características:** Se añade un campo `features` (array de texto) a la tabla `subscription_plans`.
+- **Editor de Etiquetas:** Se reemplaza el campo de texto simple por un editor de etiquetas (`react-tag-input`) en el formulario de edición de planes, mejorando la usabilidad.

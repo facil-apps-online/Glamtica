@@ -54,7 +54,9 @@ export const StylistDialog = ({ stylist, trigger }: StylistDialogProps) => {
       is_active: true,
     };
 
-    console.log('Stylist data:', stylistData);
+    if (stylistData) {
+      form.reset(stylistData);
+    }
     // Aquí iría la lógica para crear/actualizar el estilista
     
     setOpen(false);

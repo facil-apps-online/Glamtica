@@ -1,7 +1,8 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
 interface Client {
   id: string;
@@ -13,13 +14,27 @@ interface Client {
 }
 
 export const useClients = () => {
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
+  const tenantId = currentAssignment?.tenant_id;
+
   return useQuery({
-    queryKey: ['clients'],
+    // El queryKey ahora incluye el tenant y la sucursal para que se actualice automáticamente
+    queryKey: ['clients', tenantId, selectedBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!tenantId) return [];
+
+      let query = supabase
         .from('clients')
         .select('*')
-        .order('name');
+        .eq('tenant_id', tenantId);
+
+      // Si hay una sucursal seleccionada (y no es 'todas'), añadir el filtro
+      if (selectedBranchId !== 'all') {
+        query = query.eq('branch_id', selectedBranchId);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) {
         throw error;
@@ -27,12 +42,20 @@ export const useClients = () => {
 
       return data as Client[];
     },
+    // La consulta solo se ejecuta si hay un tenantId
+    enabled: !!tenantId,
   });
 };
+
+// --- MUTACIONES (Crear, Actualizar, Eliminar) ---
+// Estas no necesitan grandes cambios, pero es buena práctica asegurar que
+// invaliden la query correcta.
 
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
@@ -46,7 +69,8 @@ export const useCreateClient = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      // Invalidar todas las queries de clientes para este tenant
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
       toast({
         title: "Cliente creado",
         description: "El cliente ha sido agregado exitosamente.",
@@ -66,6 +90,8 @@ export const useCreateClient = () => {
 export const useUpdateClient = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async ({ 
@@ -86,7 +112,7 @@ export const useUpdateClient = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
       toast({
         title: "Cliente actualizado",
         description: "Los datos del cliente han sido actualizados.",
@@ -106,6 +132,8 @@ export const useUpdateClient = () => {
 export const useDeleteClient = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -117,7 +145,7 @@ export const useDeleteClient = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
       toast({
         title: "Cliente eliminado",
         description: "El cliente ha sido eliminado del sistema.",

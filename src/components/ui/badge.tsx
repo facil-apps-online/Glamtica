@@ -14,11 +14,16 @@ const badgeVariants = cva(
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        success:
-          "border-transparent bg-green-500 text-primary-foreground hover:bg-green-500/80",
-        warning:
-          "border-transparent bg-yellow-500 text-primary-foreground hover:bg-yellow-500/80",
         outline: "text-foreground",
+        // Nuevas variantes de estado de suscripción
+        activo:
+          "border-transparent bg-green-100 text-green-800",
+        gracia:
+          "border-transparent bg-yellow-100 text-yellow-800",
+        suspendido:
+          "border-transparent bg-red-100 text-red-800",
+        cancelado:
+          "border-transparent bg-gray-100 text-gray-800",
       },
     },
     defaultVariants: {

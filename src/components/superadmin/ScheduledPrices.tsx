@@ -19,12 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeletePlanPrice } from '@/hooks/usePlanPriceHistory';
 import { useToast } from '@/hooks/use-toast';
+import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 export function ScheduledPrices({ isLoading, history }) {
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
   const today = startOfToday();
   const { toast } = useToast();
+  const { formatPrice } = usePriceFormat(); // Usar el hook
 
   const deleteMutation = useDeletePlanPrice();
 
@@ -64,8 +66,8 @@ export function ScheduledPrices({ isLoading, history }) {
       </CardHeader>
       <CardContent className="p-4 pt-0 text-sm space-y-1">
         <p><strong>Vigente desde:</strong> {format(parseISO(item.effective_date), 'dd MMM yyyy')}</p>
-        <p><strong>Nuevo Precio Base:</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.base_price_cop)}</p>
-        <p><strong>Nuevo Precio Sucursal:</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.extra_branch_price_cop)}</p>
+        <p><strong>Nuevo Precio Base:</strong> {formatPrice(item.base_price_cop)}</p>
+        <p><strong>Nuevo Precio Sucursal:</strong> {formatPrice(item.extra_branch_price_cop)}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Button
@@ -98,8 +100,8 @@ export function ScheduledPrices({ isLoading, history }) {
           <TableRow key={item.id}>
             <TableCell>{format(parseISO(item.effective_date), 'dd MMM yyyy')}</TableCell>
             <TableCell>{item.subscription_plans.name}</TableCell>
-            <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.base_price_cop)}</TableCell>
-            <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.extra_branch_price_cop)}</TableCell>
+            <TableCell>{formatPrice(item.base_price_cop)}</TableCell>
+            <TableCell>{formatPrice(item.extra_branch_price_cop)}</TableCell>
             <TableCell className="text-right">
               <Button
                 variant="ghost"

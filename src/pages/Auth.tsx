@@ -45,12 +45,12 @@ const AuthPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const redirectUrl = await login(email, password); // Capturar la URL
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo.",
       });
-      navigate('/');
+      navigate(redirectUrl); // Usar la URL devuelta
     } catch (error: any) {
       toast({
         title: "Error de inicio de sesión",

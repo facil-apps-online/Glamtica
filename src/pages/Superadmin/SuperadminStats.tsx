@@ -4,18 +4,12 @@ import { StatsCard } from '@/components/StatsCard';
 import { DollarSign, TrendingUp, CalendarClock, Users, PieChart, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { motion, AnimatePresence } from 'framer-motion'; // Importamos motion y AnimatePresence
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 export default function SuperadminStats() {
   const { data: stats, isLoading, isError, error } = useFinancialStats();
+  const { formatPrice } = usePriceFormat(); // Usar el hook
 
   const planDistributionData = [
     { name: 'Mensual', value: stats?.active_monthly_plans ?? 0 },
@@ -26,7 +20,7 @@ export default function SuperadminStats() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
   return (
-    <AnimatePresence mode="wait"> {/* Usamos AnimatePresence para animar la entrada/salida de los estados */}
+    <AnimatePresence mode="wait">
       {isLoading && (
         <motion.div
           key="loading"
@@ -76,16 +70,16 @@ export default function SuperadminStats() {
 
           {/* KPIs Principales */}
           <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            <StatsCard title="Ingresos Mensuales (MRR)" value={formatCurrency(stats?.mrr ?? 0)} icon={DollarSign} />
-            <StatsCard title="Ingresos Anuales (ARR)" value={formatCurrency(stats?.arr ?? 0)} icon={TrendingUp} />
+            <StatsCard title="Ingresos Mensuales (MRR)" value={formatPrice(stats?.mrr ?? 0)} icon={DollarSign} />
+            <StatsCard title="Ingresos Anuales (ARR)" value={formatPrice(stats?.arr ?? 0)} icon={TrendingUp} />
             <StatsCard title="Nuevos Tenants (30 días)" value={stats?.new_tenants_last_30_days ?? 0} icon={Users} />
           </div>
 
           {/* Proyecciones y Rendimiento */}
           <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            <StatsCard title="Proyectado (7 días)" value={formatCurrency(stats?.projected_revenue_next_7_days ?? 0)} icon={CalendarClock} />
-            <StatsCard title="Proyectado (30 días)" value={formatCurrency(stats?.projected_revenue_next_30_days ?? 0)} icon={CalendarClock} />
-            <StatsCard title="Renovado (Últimos 30 días)" value={formatCurrency(stats?.renewed_revenue_last_30_days ?? 0)} icon={CalendarClock} />
+            <StatsCard title="Proyectado (7 días)" value={formatPrice(stats?.projected_revenue_next_7_days ?? 0)} icon={CalendarClock} />
+            <StatsCard title="Proyectado (30 días)" value={formatPrice(stats?.projected_revenue_next_30_days ?? 0)} icon={CalendarClock} />
+            <StatsCard title="Renovado (Últimos 30 días)" value={formatPrice(stats?.renewed_revenue_last_30_days ?? 0)} icon={CalendarClock} />
           </div>
 
           {/* Gráficos */}

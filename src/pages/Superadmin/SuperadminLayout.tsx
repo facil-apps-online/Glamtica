@@ -1,29 +1,25 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { SuperadminSidebar } from "@/components/SuperadminSidebar";
-import { SuperadminHeader } from "@/components/SuperadminHeader";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar"; // Usar el sidebar unificado
+import { Header } from "@/components/Header"; // Usar el header unificado
 import { motion, AnimatePresence } from "framer-motion";
+import { superadminNavigationConfig } from "@/config/superadminNavigation"; // Importar la config del menú
 
 function MainContent() {
-  const { open } = useSidebar();
-  const sidebarWidth = open ? '16rem' : '3rem'; 
-  const location = useLocation(); // Hook para obtener la ubicación actual
+  const location = useLocation();
 
   return (
-    <div 
-      className="flex-1 flex flex-col"
-      style={{ width: `calc(100% - ${sidebarWidth})` }}
-    >
-      <SuperadminHeader />
-      <main className="flex-1 overflow-y-auto p-6">
-        <AnimatePresence mode="wait"> {/* Espera a que la salida termine antes de montar la nueva entrada */}
+    <div className="flex-1 flex flex-col w-full overflow-hidden">
+      <Header panelTitle="Glamtica Control Panel" />
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <AnimatePresence mode="wait">
           <motion.div
-            key={location.pathname} // Clave única para cada ruta para que AnimatePresence detecte el cambio
-            initial={{ opacity: 0, y: 10 }} // Estado inicial (invisible, ligeramente abajo)
-            animate={{ opacity: 1, y: 0 }} // Estado animado (visible, posición original)
-            exit={{ opacity: 0, y: -10 }} // Estado de salida (invisible, ligeramente arriba)
-            transition={{ duration: 0.2 }} // Duración de la transición
-            className="h-full w-full" // Asegura que ocupe el espacio para la animación
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="h-full w-full"
           >
             <Outlet />
           </motion.div>
@@ -37,7 +33,12 @@ export function SuperadminLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <SuperadminSidebar />
+        <AppSidebar 
+          menuConfig={superadminNavigationConfig} 
+          homeUrl="/superadmin"
+          title="Glamtica"
+          subtitle="Super Admin"
+        />
         <MainContent />
       </div>
     </SidebarProvider>

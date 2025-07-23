@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import {
@@ -11,24 +10,74 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar, // Importar el hook
+  useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  BarChart3,
-  Calendar,
-  Package,
-  Scissors,
-  Settings,
-  UserCheck,
-  Users,
-  User2,
-  ShoppingCart,
-  TrendingUp,
-  Warehouse,
-} from "lucide-react";
+import { Building2, Scissors } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranches } from "@/hooks/useBranches";
+import { Skeleton } from "./ui/skeleton";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { setOpenMobile } = useSidebar(); // Obtener la función para cerrar el menú
+// --- TIPOS (sin cambios) ---
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  roles: string[];
+}
+interface NavGroup {
+  group: string;
+  items: NavItem[];
+}
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  menuConfig: NavGroup[];
+  homeUrl?: string;
+  title?: string;
+  subtitle?: string;
+}
+
+// --- COMPONENTE FOOTER (para mostrar la sucursal) ---
+const BranchFooter: React.FC = () => {
+  const { currentAssignment } = useAuth();
+  const { data: branches, isLoading } = useBranches(currentAssignment?.tenant_id || '');
+
+  if (isLoading) {
+    return (
+      <SidebarFooter>
+        <div className="p-2">
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </SidebarFooter>
+    );
+  }
+
+  const currentBranch = branches?.find(b => b.id === currentAssignment?.branch_id);
+
+  if (!currentBranch) {
+    return null;
+  }
+
+  return (
+    <SidebarFooter>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton className="cursor-default hover:bg-transparent">
+            <Building2 />
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate text-xs text-muted-foreground">Sucursal</span>
+              <span className="truncate font-semibold">{currentBranch.name}</span>
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarFooter>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL (Corregido y Unificado) ---
+export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", subtitle = "Panel", ...props }: AppSidebarProps) {
+  const { setOpenMobile } = useSidebar();
+  const { currentAssignment } = useAuth();
+  const userRole = currentAssignment?.role_name;
 
   const handleLinkClick = () => {
     setOpenMobile(false);
@@ -40,149 +89,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link to="/" onClick={handleLinkClick}>
+              <Link to={homeUrl} onClick={handleLinkClick}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <Scissors className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Salón Glamtica.App</span>
-                  <span className="truncate text-xs">Glamtica.app</span>
+                  <span className="truncate font-semibold">{title}</span>
+                  <span className="truncate text-xs">{subtitle}</span>
                 </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Gestión Principal</SidebarGroupLabel>
-          <SidebarMenu>
-            {data.navMain.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.url} onClick={handleLinkClick}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Inventario</SidebarGroupLabel>
-          <SidebarMenu>
-            {data.inventory.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.url} onClick={handleLinkClick}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Análisis</SidebarGroupLabel>
-          <SidebarMenu>
-            {data.analytics.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.url} onClick={handleLinkClick}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-        
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Configuración</SidebarGroupLabel>
-          <SidebarMenu>
-            {data.projects.map((item) => (
-              <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton asChild>
-                  <Link to={item.url} onClick={handleLinkClick}>
-                    <item.icon />
-                    <span>{item.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        {menuConfig.map((group) => {
+          const filteredItems = group.items.filter(item => userRole && item.roles.includes(userRole));
+          if (filteredItems.length === 0) return null;
+
+          return (
+            <SidebarGroup key={group.group}>
+              <SidebarGroupLabel>{group.group}</SidebarGroupLabel>
+              <SidebarMenu>
+                {filteredItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <Link to={item.url} onClick={handleLinkClick}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton>
-              <User2 />
-              <span>Administrador</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+
+      { (userRole === 'tenant_admin' || userRole === 'tenant_user') && <BranchFooter />}
     </Sidebar>
   );
 }
-
-// Data for the sidebar
-const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: BarChart3,
-    },
-    {
-      title: "Citas",
-      url: "/appointments",
-      icon: Calendar,
-    },
-    {
-      title: "Clientes",
-      url: "/clients",
-      icon: Users,
-    },
-    {
-      title: "Servicios",
-      url: "/services",
-      icon: Scissors,
-    },
-    {
-      title: "Estilistas",
-      url: "/stylists",
-      icon: UserCheck,
-    },
-  ],
-  inventory: [
-    {
-      title: "Productos",
-      url: "/products",
-      icon: Package,
-    },
-    {
-      title: "Inventario",
-      url: "/inventory",
-      icon: Warehouse,
-    },
-  ],
-  analytics: [
-    {
-      title: "Reportes",
-      url: "/reports",
-      icon: TrendingUp,
-    },
-  ],
-  projects: [
-    {
-      name: "Configuración",
-      url: "/settings",
-      icon: Settings,
-    },
-  ],
-};
