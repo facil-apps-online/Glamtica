@@ -23,6 +23,7 @@ export interface UserAssignment {
   role_name: string;
   branch_id: string | null;
   branch_name: string | null;
+  status: 'active' | 'inactive'; // CAMPO AÑADIDO
 }
 
 interface AuthContextType {
@@ -98,9 +99,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     setLoading(true);
     try {
       const { data, error: rpcError } = await supabaseClient.rpc('login_user', { p_email: email, p_password: password });
+
       if (rpcError) throw new Error(rpcError.message);
       if (!data || !data.success) throw new Error(data?.message || "Credenciales inválidas.");
+      
       const { profile: userProfile, assignments: userAssignments } = data;
+      
       const loadedProfile: UserProfile = {
         id: userProfile.id,
         email: userProfile.email,
@@ -112,20 +116,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         currency_id: userProfile.currency_id,
         timezone_id: userProfile.timezone_id,
       };
-      if (userAssignments.length === 0) throw new Error("No tienes roles o tenants asignados.");
-      const superAdminAssignment = userAssignments.find(a => a.role_name === 'super_admin');
-      const assignmentToSet = superAdminAssignment || userAssignments[0];
+
+      if (!userAssignments || userAssignments.length === 0) throw new Error("No tienes roles o tenants asignados.");
+
+      // LÓGICA ACTUALIZADA
+      const superAdminAssignment = userAssignments.find(a => a.role_name === 'super_admin' && a.status === 'active');
+      const firstActiveAssignment = userAssignments.find(a => a.status === 'active');
+      const assignmentToSet = superAdminAssignment || firstActiveAssignment;
+
+      if (!assignmentToSet) {
+        throw new Error("No tienes ninguna asignación activa. Contacta al administrador.");
+      }
+
       setProfile(loadedProfile);
       setAssignments(userAssignments);
       setCurrentAssignment(assignmentToSet);
       localStorage.setItem(PROFILE_KEY, JSON.stringify(loadedProfile));
       localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(userAssignments));
       localStorage.setItem(CURRENT_ASSIGNMENT_KEY, JSON.stringify(assignmentToSet));
+      
       await generateAndSetToken(loadedProfile, assignmentToSet);
+      
       return assignmentToSet.role_name === 'super_admin' ? '/superadmin/dashboard' : '/';
     } catch (error: any) {
       console.error('Login error:', error);
-      await logout();
+      // await logout(); // TEMPORARILY COMMENTED OUT FOR DEBUGGING
       throw error;
     } finally {
       setLoading(false);
@@ -147,6 +162,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const switchAssignment = async (assignmentId: string) => {
     const newAssignment = assignments.find(a => a.assignment_id === assignmentId);
     if (newAssignment && profile) {
+      if (newAssignment.status !== 'active') {
+        alert("No puedes cambiar a una asignación inactiva.");
+        return;
+      }
       setLoading(true);
       setCurrentAssignment(newAssignment);
       localStorage.setItem(CURRENT_ASSIGNMENT_KEY, JSON.stringify(newAssignment));
@@ -169,7 +188,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         supabaseClient.global.headers['Authorization'] = `Bearer ${token}`;
         setProfile(JSON.parse(storedProfile));
         setAssignments(JSON.parse(storedAssignments));
-        setCurrentAssignment(JSON.parse(storedCurrentAssignment));
+        const current = JSON.parse(storedCurrentAssignment);
+        if (current.status !== 'active') {
+          throw new Error("La asignación actual ya no está activa.");
+        }
+        setCurrentAssignment(current);
       }
     } catch (error) {
       logout();
