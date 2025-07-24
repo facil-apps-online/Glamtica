@@ -1,0 +1,169 @@
+import React, { useState, useMemo } from 'react';
+import { useBranches } from '@/hooks/useBranches';
+import { Button } from '@/components/ui/button';
+import { PlusCircle, Power } from 'lucide-react';
+import { CreateBranchDialog } from './CreateBranchDialog';
+import { BranchCard } from './BranchCard';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { useScreenSize } from '@/hooks/useScreenSize';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { BranchActions } from './BranchActions';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ActivateBranchesBatchDialog } from './ActivateBranchesBatchDialog'; // IMPORT
+
+const statusConfig = {
+  active: { label: 'Activa', className: 'bg-green-100 text-green-800' },
+  pending_activation: { label: 'Pendiente', className: 'bg-yellow-100 text-yellow-800' },
+  archived: { label: 'Archivada', className: 'bg-slate-100 text-slate-800' },
+};
+
+export function BranchesTab() {
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false); // STATE
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
+  const { data: branches, isLoading, error } = useBranches();
+  const queryClient = useQueryClient();
+  const { currentAssignment } = useAuth();
+  const screenSize = useScreenSize();
+
+  const pendingBranches = useMemo(() => {
+    return branches?.filter(b => b.status === 'pending_activation') || [];
+  }, [branches]);
+
+  const handleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['branches', currentAssignment?.tenant_id] });
+    setSelectedBranchIds([]);
+    setBatchActivateDialogOpen(false); // Close dialog on success
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedBranchIds(pendingBranches.map(b => b.id));
+    } else {
+      setSelectedBranchIds([]);
+    }
+  };
+
+  const handleSelectRow = (branchId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedBranchIds(prev => [...prev, branchId]);
+    } else {
+      setSelectedBranchIds(prev => prev.filter(id => id !== branchId));
+    }
+  };
+
+  const renderContent = () => {
+    if (isLoading) {
+      return screenSize === 'mobile'
+        ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}</div>
+        : <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+    }
+
+    if (error) {
+      return <p className="text-red-500">Error al cargar las sucursales: {error.message}</p>;
+    }
+
+    if (!branches || branches.length === 0) {
+      return <p>No tienes sucursales adicionales. ¡Crea la primera!</p>
+    }
+
+    if (screenSize === 'mobile') {
+      return (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {branches.map((branch) => (
+            <BranchCard key={branch.id} branch={branch} onSuccess={handleSuccess} />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={selectedBranchIds.length > 0 && selectedBranchIds.length === pendingBranches.length}
+                  onCheckedChange={handleSelectAll}
+                  disabled={pendingBranches.length === 0}
+                />
+              </TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Dirección</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {branches.map((branch) => {
+              const config = statusConfig[branch.status] || statusConfig.archived;
+              const isSelected = selectedBranchIds.includes(branch.id);
+              return (
+                <TableRow key={branch.id} data-state={isSelected ? "selected" : ""}>
+                  <TableCell>
+                    {branch.status === 'pending_activation' && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => handleSelectRow(branch.id, !!checked)}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium">{branch.name} {branch.is_main_branch && <Badge variant="secondary" className="ml-2">Principal</Badge>}</TableCell>
+                  <TableCell className="text-slate-600">{branch.address}</TableCell>
+                  <TableCell>
+                    <Badge className={config.className}>{config.label}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <BranchActions branch={branch} onSuccess={handleSuccess} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-4">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-primary">Gestionar Sucursales</h2>
+          <p className="text-slate-600">Crea, activa y administra tus sucursales.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedBranchIds.length > 0 && (
+            <Button variant="outline" onClick={() => setBatchActivateDialogOpen(true)}>
+              <Power className="mr-2 h-4 w-4" />
+              Activar Seleccionadas ({selectedBranchIds.length})
+            </Button>
+          )}
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Añadir Sucursal
+          </Button>
+        </div>
+      </div>
+
+      {renderContent()}
+
+      <CreateBranchDialog
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={handleSuccess}
+      />
+
+      <ActivateBranchesBatchDialog
+        isOpen={isBatchActivateDialogOpen}
+        onOpenChange={setBatchActivateDialogOpen}
+        branchIds={selectedBranchIds}
+        onSuccess={handleSuccess}
+      />
+    </div>
+  );
+}

@@ -7,29 +7,29 @@ const GoogleCallbackPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('Iniciando...');
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { currentAssignment, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    const postMessageAndClose = (success: boolean, error?: string) => {
-      if (window.opener) {
-        window.opener.postMessage({ type: 'google-auth-callback', success, error }, window.location.origin);
-        window.close();
-      }
-    };
+    useEffect(() => {
+        const postMessageAndClose = (success: boolean, error?: string) => {
+            if (window.opener) {
+                window.opener.postMessage({ type: 'google-auth-callback', success, error }, window.location.origin);
+                window.close();
+            }
+        };
 
-    if (authLoading) {
-      setMessage('Verificando sesión de superadministrador...');
-      return;
-    }
+        if (authLoading) {
+            setMessage('Verificando sesión de superadministrador...');
+            return;
+        }
 
-    const processAuth = async () => {
-      if (user?.role !== 'super_admin') {
-        const authError = 'Acceso denegado. Debes ser un superadministrador.';
-        setError(authError);
-        setMessage('Error de autenticación.');
-        postMessageAndClose(false, authError);
-        return;
-      }
+        const processAuth = async () => {
+            if (currentAssignment?.role_name !== 'super_admin') {
+                const authError = 'Acceso denegado. Debes ser un superadministrador.';
+                setError(authError);
+                setMessage('Error de autenticación.');
+                postMessageAndClose(false, authError);
+                return;
+            }
 
       setMessage('Procesando autenticación de Google...');
       const params = new URLSearchParams(location.search);
@@ -84,7 +84,7 @@ const GoogleCallbackPage = () => {
     };
 
     processAuth();
-  }, [authLoading, user, location]);
+  }, [authLoading, currentAssignment, location]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">

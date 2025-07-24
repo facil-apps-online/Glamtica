@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile } from '@/hooks/useProfileSettings';
-import { AvatarUploader } from '@/components/AvatarUploader'; // Importar el nuevo componente
+import { AvatarUploader } from '@/components/AvatarUploader';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido."),
@@ -17,7 +17,7 @@ const profileFormSchema = z.object({
 });
 
 export const PersonalInfoTab = () => {
-  const { user, loading } = useAuth();
+  const { profile, loading } = useAuth(); // Corregido: user -> profile
   const { toast } = useToast();
   const updateProfileMutation = useUpdateProfile();
 
@@ -27,13 +27,13 @@ export const PersonalInfoTab = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (profile) { // Corregido: user -> profile
       profileForm.reset({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
       });
     }
-  }, [user, profileForm]);
+  }, [profile, profileForm]); // Corregido: user -> profile
 
   const onProfileSubmit = (values: z.infer<typeof profileFormSchema>) => {
     updateProfileMutation.mutate(values, {
@@ -46,7 +46,7 @@ export const PersonalInfoTab = () => {
     <div className="space-y-6 mt-4">
       <Card>
         <CardHeader>
-          <CardTitle>Información de Perfil</CardTitle>
+          <CardTitle className="text-primary">Información de Perfil</CardTitle>
           <CardDescription>Actualiza tu nombre y foto de perfil.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -54,8 +54,8 @@ export const PersonalInfoTab = () => {
             {/* Columna Izquierda: Avatar */}
             <div className="flex flex-col items-center md:items-start space-y-4">
               <h3 className="font-medium">Avatar</h3>
-              {!loading && user && (
-                <AvatarUploader size="lg" />
+              {!loading && profile && (
+                <AvatarUploader size="lg" initialAvatarUrl={profile.avatarUrl} />
               )}
             </div>
 

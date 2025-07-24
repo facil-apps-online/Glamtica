@@ -15,54 +15,44 @@ serve(async (req) => {
       return new Response('ok', { headers: corsHeaders });
     }
     
+    const body = await req.json();
+    console.log('[generate-jwt] Received body:', body);
+
     const { 
-      user_id, 
-      email, 
-      role, 
-      tenant_id, // <--- Se recibe directamente de la DB
-      branch_id, 
-      first_name, 
-      last_name, 
-      avatar_url,
-      country_id,
-      language_id,
-      currency_id,
-      timezone_id,
-      tenant_name // <--- Se recibe directamente de la DB
-    } = await req.json();
+      user_id, email, role, tenant_id, branch_id, first_name, 
+      last_name, avatar_url, country_id, language_id, currency_id, 
+      timezone_id, tenant_name 
+    } = body;
 
     const jwt_secret = Deno.env.get('JWT_SECRET')
     if (!jwt_secret) {
       throw new Error('JWT_SECRET is not set in Supabase environment variables.')
     }
 
-    // --- LÓGICA OBSOLETA ELIMINADA ---
-    // let final_tenant_id = tenant_id;
-    // if (role === 'super_admin') {
-    //   final_tenant_id = '00000000-0000-0000-0000-000000000000';
-    // }
-    // ---------------------------------
-
+    // --- NEW PAYLOAD STRUCTURE ---
+    // All custom claims are moved into app_metadata
     const payload = {
       sub: user_id,
       iss: 'supabase',
       email: email,
-      tenant_id: tenant_id, // <--- Se usa el valor directo
-      branch_id: branch_id,
-      first_name: first_name,
-      last_name: last_name,
-      avatar_url: avatar_url,
-      country_id: country_id,
-      language_id: language_id,
-      currency_id: currency_id,
-      timezone_id: timezone_id,
-      tenant_name: tenant_name,
       aud: 'authenticated',
       exp: getNumericDate(60 * 60 * 24),
       app_metadata: {
         role: role,
+        tenant_id: tenant_id,
+        branch_id: branch_id,
+        tenant_name: tenant_name,
+        first_name: first_name,
+        last_name: last_name,
+        avatar_url: avatar_url,
+        country_id: country_id,
+        language_id: language_id,
+        currency_id: currency_id,
+        timezone_id: timezone_id,
       },
     };
+
+    console.log('[generate-jwt] Signing JWT with new payload structure:', payload);
 
     const key = await crypto.subtle.importKey(
       "raw",
@@ -73,12 +63,14 @@ serve(async (req) => {
     );
 
     const token = await create({ alg: "HS256", typ: "JWT" }, payload, key);
+    console.log('[generate-jwt] Generated Token (first 30 chars):', token.substring(0, 30) + '...');
 
     return new Response(
       JSON.stringify({ token }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('[generate-jwt] Error:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

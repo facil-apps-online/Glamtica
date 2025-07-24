@@ -112,7 +112,7 @@ export default function Products() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Productos</h1>
+          <h1 className="text-3xl font-bold text-primary">Productos</h1>
           <p className="text-slate-600">Gestiona tu inventario de productos</p>
         </div>
         <ProductDialog />
@@ -121,7 +121,7 @@ export default function Products() {
       {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-primary">
             <Search className="w-5 h-5" />
             Filtros
           </CardTitle>
@@ -278,7 +278,7 @@ export default function Products() {
           {filteredProducts?.length === 0 && (
             <div className="text-center py-8">
               <Package className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
+              <h3 className="text-lg font-medium text-primary mb-2">
                 No se encontraron productos
               </h3>
               <p className="text-slate-600">

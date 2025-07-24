@@ -66,7 +66,7 @@ export const StylistDialog = ({ stylist, trigger }: StylistDialogProps) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Estilista
           </Button>
@@ -74,7 +74,7 @@ export const StylistDialog = ({ stylist, trigger }: StylistDialogProps) => {
       </DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-primary">
             <UserCheck className="w-5 h-5" />
             {stylist ? "Editar Estilista" : "Nuevo Estilista"}
           </DialogTitle>

@@ -64,7 +64,7 @@ export const SecurityTab = () => {
     <div className="space-y-6 mt-4">
       <Card>
         <CardHeader>
-          <CardTitle>Cambiar Contraseña</CardTitle>
+          <CardTitle className="text-primary">Cambiar Contraseña</CardTitle>
           <CardDescription>Actualiza tu contraseña de acceso. Se recomienda usar una contraseña segura.</CardDescription>
         </CardHeader>
         <CardContent>

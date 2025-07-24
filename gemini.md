@@ -33,6 +33,45 @@ Existen 3 archivos clave para nuestro flujo de trabajo:
     *   **Contenido**: Define y actualiza el desarrollo puntual en curso.
     *   **Flujo**: Se define un desarrollo, se agrega aquí con sus fases. A medida que se ejecuta, se documenta el progreso. Una vez terminado, su contenido puede servir para la documentación final en `WORK_DOCUMENTS.md` o `SUPERADMIN.md`, se limpia al empezar un desarrollo nuevo.
 
+**Gestión de Migraciones (Sistema de Timestamps Secuenciales):**
+- **Objetivo:** Evitar conflictos de timestamps y asegurar un orden de ejecución predecible para las migraciones de base de datos.
+- **Archivo Clave:** `timestamps.md`. Este archivo es la única fuente de verdad para la versión de la siguiente migración.
+- **Proceso:**
+    1.  Leer la última línea (el último número) del archivo `timestamps.md`.
+    2.  Incrementar ese número en 1 para obtener la nueva versión.
+    3.  Usar esta nueva versión para nombrar el archivo de migración (ej. `supabase/migrations/<version>_descripcion_migracion.sql`).
+    4.  Añadir la nueva versión como una nueva línea al final de `timestamps.md` para que esté lista para la siguiente migración.
+
 **Directrices Adicionales:**
 - **Documentación en `SUPERADMIN.md`:** Siempre que se realice un cambio o se documente una funcionalidad relevante para el superadministrador, se debe actualizar también el archivo `SUPERADMIN.md` con la información pertinente.
 - **Definición del Mensaje de Commit:** Cuando se solicite un commit, si el mensaje contiene caracteres especiales o saltos de línea, se debe crear un archivo temporal (ej. `commit_message.txt`) con el contenido del mensaje y luego usar `git commit -F commit_message.txt` para realizar el commit. Esto evita problemas de interpretación del shell.
+
+---
+
+### **Protocolo de Desarrollo en Proyectos Maduros (Principio de Cero Asunciones)**
+
+Dada la complejidad y el estado avanzado del proyecto, mi directriz principal es: **NUNCA ASUMIR, SIEMPRE VERIFICAR**.
+
+1.  **Fuente de Verdad de la Base de Datos (Regla Maestra):**
+    *   Antes de proponer o ejecutar cualquier cambio en la base de datos (migraciones, funciones RPC) o código que la consuma (hooks), **mi primer paso obligatorio es leer y analizar el archivo `DB_SCHEMA.md`**.
+    *   Este archivo contiene el diccionario de datos y procedimientos, y toda mi lógica debe basarse en la estructura definida en él.
+
+2.  **Análisis Exhaustivo Antes de Actuar:**
+    *   Antes de escribir o modificar **cualquier** línea de código, debo realizar un análisis del contexto (revisando `DB_SCHEMA.md` y usando `search_file_content`).
+    *   **Para modificaciones:** Debo encontrar todos los lugares donde se utiliza la función o componente que voy a cambiar para entender el impacto de mis cambios.
+    *   **Para creaciones:** Debo analizar los archivos y componentes relacionados para asegurar que mi nuevo código sigue los patrones y convenciones existentes.
+
+3.  **Desarrollo Incremental y Verificado:**
+    *   Dividiré cada tarea en los pasos más pequeños y atómicos posibles.
+    *   **No avanzaré al siguiente paso hasta que el paso actual haya sido verificado explícitamente por ti.**
+    *   Después de cada cambio significativo (una migración, un cambio en un hook, una modificación de UI), me detendré y te pediré que lo pruebes.
+
+4.  **Prohibido Declarar Victoria Prematura:**
+    *   No declararé una tarea o fase como "completa" o "lista" basándome solo en que he escrito el código.
+    *   La única definición de "completo" es: "El usuario ha probado la funcionalidad y ha confirmado que opera como se espera, sin errores ni efectos secundarios inesperados".
+
+5.  **Gestión de Archivos de Trabajo:**
+    *   Los archivos `WORK_PLAN.md` y `WORK_DOCUMENTS.md` son registros históricos. **Siempre añadiré el nuevo contenido al final de estos archivos.** Nunca los limpiaré ni sobrescribiré.
+
+6.  **La Documentación es el Último Paso, Post-Verificación:**
+    *   La documentación en `WORK_DOCUMENTS.md` o cualquier otro archivo solo se redactará **después** de que la funcionalidad completa haya sido probada, verificada y confirmada por ti como estable y correcta.

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Interfaz que coincide con los datos devueltos por la nueva función RPC
+// Interface remains the same as the returned data structure is unchanged
 export interface UserSubscriptionPlan {
   plan_id: string;
   plan_name: string;
@@ -14,28 +14,31 @@ export interface UserSubscriptionPlan {
   calculated_extra_branch_price: number;
   currency_code: string;
   currency_symbol: string;
+  base_price: number;
+  active_branches_count: number;
 }
 
-const fetchUserSubscriptionPlans = async (userId: string): Promise<UserSubscriptionPlan[]> => {
-  if (!userId) return [];
+const fetchTenantSubscriptionPlans = async (tenantId: string): Promise<UserSubscriptionPlan[]> => {
+  if (!tenantId) return [];
 
-  const { data, error } = await supabase.rpc('get_subscription_plans_for_user', {
-    p_user_id: userId,
+  const { data, error } = await supabase.rpc('get_subscription_plans_for_tenant', {
+    p_tenant_id: tenantId,
   });
 
   if (error) {
-    throw new Error(`Error fetching user subscription plans: ${error.message}`);
+    throw new Error(`Error fetching tenant subscription plans: ${error.message}`);
   }
   return data || [];
 };
 
-export const useUserSubscriptionPlans = () => {
-  const { user } = useAuth();
-  const userId = user?.id;
+export const useTenantSubscriptionPlans = () => {
+  const { currentAssignment, loading: isAuthLoading } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useQuery<UserSubscriptionPlan[], Error>({
-    queryKey: ['user_subscription_plans', userId],
-    queryFn: () => fetchUserSubscriptionPlans(userId!),
-    enabled: !!userId, // Solo ejecutar la query si tenemos un userId
+    queryKey: ['tenant_subscription_plans', tenantId],
+    queryFn: () => fetchTenantSubscriptionPlans(tenantId!),
+    // Enable the query only when auth is loaded and we have a tenantId
+    enabled: !isAuthLoading && !!tenantId,
   });
 };

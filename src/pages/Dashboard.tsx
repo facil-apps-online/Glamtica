@@ -154,7 +154,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold text-primary">
           Dashboard
         </h1>
         <p className="text-slate-600 mt-2">
@@ -242,7 +242,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-primary">
               <Calendar className="w-5 h-5 text-blue-600" />
               Citas de Hoy ({todayAppointments?.length || 0})
             </CardTitle>
@@ -292,7 +292,7 @@ export default function Dashboard() {
 
         <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-primary">
               <TrendingUp className="w-5 h-5 text-blue-600" />
               Servicios Más Populares (30 días)
             </CardTitle>
@@ -338,7 +338,7 @@ export default function Dashboard() {
       {/* Gráfico de ventas mensuales comparativo */}
       <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-primary">
             <TrendingUp className="w-5 h-5 text-green-600" />
             Comparación de Ventas Mensuales
           </CardTitle>

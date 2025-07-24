@@ -158,7 +158,12 @@ export const TenantIntegrationManager = ({ tenantId }: { tenantId: string }) => 
         const providerName = formatProviderName(connectingProvider);
         if (success) {
           toast({ title: 'Éxito', description: `La integración con ${providerName} se ha completado.` });
-          queryClient.invalidateQueries({ queryKey: ['tenantIntegrations', tenantId] });
+          // Invalidar todas las consultas que coincidan con el inicio de la clave
+          queryClient.invalidateQueries({ 
+            predicate: query => 
+              query.queryKey[0] === 'tenantIntegrations' && 
+              query.queryKey[1] === tenantId 
+          });
           queryClient.resetQueries({ queryKey: ['get_google_auth_url', tenantId] });
           queryClient.resetQueries({ queryKey: ['get_gmail_auth_url', tenantId] });
         } else {

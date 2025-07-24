@@ -84,7 +84,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
       },
-      body: JSON.stringify({ textToEncrypt: refresh_token }),
+      body: JSON.stringify({ dataToEncrypt: refresh_token }),
     });
 
     if (!encryptResponse.ok) {
@@ -99,17 +99,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    const upsertData = {
+      tenant_id: tenantId,
+      provider: provider,
+      access_token: access_token,
+      encrypted_credentials: encryptedData,
+      nonce: iv,
+      account_email: userEmail,
+      updated_at: new Date().toISOString(),
+      environment: 'production', // Añadir explícitamente el entorno
+    };
+
     const { error: dbError } = await supabaseAdmin
       .from('tenant_integrations')
-      .upsert({
-        tenant_id: tenantId,
-        provider: provider,
-        access_token: access_token,
-        encrypted_credentials: encryptedData, // Nueva columna
-        nonce: iv, // Nueva columna
-        account_email: userEmail,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'tenant_id, provider' });
+      .upsert(upsertData, { onConflict: 'tenant_id, provider, environment' }); // Corregir onConflict
 
     if (dbError) throw dbError;
 

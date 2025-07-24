@@ -1,27 +1,20 @@
-feat(subscriptions): Implementar flujo de pago de suscripciones con Wompi
+feat(auth): Implementar sistema de asignaciones de usuario flexibles
 
-Se introduce un sistema completo para la renovación de suscripciones utilizando la pasarela de pago Wompi.
+Se refactoriza por completo el sistema de autenticación y permisos para pasar de un modelo de rol único por usuario a un sistema de asignaciones múltiples y flexibles.
 
-- **Flujo de Pago:** Los tenants con suscripciones vencidas son dirigidos a una página dedicada para seleccionar y pagar un nuevo plan.
-- **Precios Dinámicos:** La página de planes muestra precios calculados y formateados según el país del tenant.
-- **Integración Segura con Wompi:**
-  - Se crea la Edge Function `create-subscription-checkout` para generar sesiones de pago seguras.
-  - Se implementa la Edge Function `wompi-webhook-handler` para procesar notificaciones de pago y confirmar transacciones.
-  - Se añade la función RPC `activate_subscription` para actualizar el estado de la suscripción del tenant tras un pago exitoso.
-- **Auditoría:** Se añaden las tablas `payments` y `payment_intents` para una trazabilidad completa de las transacciones.
+**Cambios Arquitectónicos:**
+- Se introduce la tabla `user_assignments` como única fuente de verdad para los permisos, permitiendo que un usuario tenga múltiples roles en diferentes tenants y sucursales.
+- La tabla `users` se limpia para contener únicamente información de identidad.
+- Todas las funciones de backend (RPCs) y políticas de seguridad (RLS) han sido refactorizadas para operar con el nuevo modelo de asignaciones.
+- El `AuthContext` en el frontend se ha rediseñado para manejar un perfil de usuario y una lista de asignaciones, incluyendo un contexto de asignación activa.
 
-refactor(integrations): Modernizar lógica de integraciones y cifrado
+**Nuevas Funcionalidades y Mejoras:**
+- **Selector de Contexto:** Los usuarios con múltiples asignaciones ahora tienen un desplegable en el `Header` para cambiar de contexto (tenant/rol) dinámicamente.
+- **Filtro de Sucursal Global:** El rol `tenant_super_admin` ahora dispone de un filtro global en el `Header` para visualizar los datos de "Todas las Sucursales" o de una sucursal específica.
+- **Unificación de UI:** Se ha unificado el formato de precios en toda la aplicación a través del hook `usePriceFormat`, que ahora respeta la jerarquía de configuración Usuario > Tenant. Se han unificado también los estilos de padding y los componentes de layout entre los portales de Superadmin y Tenant.
 
-Se refactoriza el sistema de gestión de integraciones y se mejora la seguridad del manejo de credenciales.
+**Correcciones:**
+- Se solucionan numerosos errores de login, redirección y carga de datos que surgieron de inconsistencias entre el frontend y el backend.
+- Se refactorizan múltiples componentes y hooks para alinearlos con la nueva arquitectura, eliminando código duplicado y "quemado".
 
-- **Gestión Dinámica:** El panel de Superadministrador ahora permite configurar cualquier proveedor de integración de forma dinámica.
-- **Entornos de Prueba/Producción:** Se implementa la capacidad de gestionar credenciales para entornos de prueba y producción.
-- **Seguridad Mejorada:** La lógica de cifrado se migra de funciones de base de datos a Edge Functions dedicadas (`encrypt-secret`, `decrypt-secret`).
-- **Corrección de Bugs:** Se solucionan múltiples errores críticos relacionados con políticas de RLS, llamadas a RPC y el sistema de autenticación personalizado.
-
-feat(plans): Mejorar gestión de planes de suscripción
-
-Se mejora la experiencia de usuario en la gestión de planes desde el panel de Superadministrador.
-
-- **Campo de Características:** Se añade un campo `features` (array de texto) a la tabla `subscription_plans`.
-- **Editor de Etiquetas:** Se reemplaza el campo de texto simple por un editor de etiquetas (`react-tag-input`) en el formulario de edición de planes, mejorando la usabilidad.
+Este commit representa una mejora fundamental en la escalabilidad y robustez de la arquitectura de la aplicación.

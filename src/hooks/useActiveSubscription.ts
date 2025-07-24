@@ -7,6 +7,7 @@ export type SubscriptionStatus = 'activo' | 'gracia' | 'suspendido' | 'cancelado
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
   end_date: string | null;
+  plan_name: string | null;
 }
 
 const fetchSubscriptionStatus = async (tenantId: string): Promise<SubscriptionInfo | null> => {

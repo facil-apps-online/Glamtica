@@ -4,76 +4,51 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // Hook para actualizar el perfil del usuario
 export const useUpdateProfile = () => {
-  const { user, updateUserFromToken } = useAuth();
+  const { profile, updateCurrentProfile } = useAuth();
 
   return useMutation<any, Error, { firstName: string; lastName: string; avatarUrl?: string }>({
     mutationFn: async ({ firstName, lastName, avatarUrl }) => {
-      if (!user?.id) throw new Error("Usuario no autenticado.");
+      if (!profile?.id) throw new Error("Usuario no autenticado.");
 
-      console.log('[useUpdateProfile] Calling RPC update_user_profile with:', {
-        p_user_id: user.id,
-        p_first_name: firstName,
-        p_last_name: lastName,
-        p_avatar_url: avatarUrl || user.avatarUrl,
-      });
+      const newAvatar = avatarUrl === undefined ? profile.avatarUrl : avatarUrl;
 
       const { data, error } = await supabase.rpc('update_user_profile', {
-        p_user_id: user.id,
+        p_user_id: profile.id,
         p_first_name: firstName,
         p_last_name: lastName,
-        p_avatar_url: avatarUrl || user.avatarUrl,
+        p_avatar_url: newAvatar,
       });
+
       if (error) throw error;
-      return { ...data, newFirstName: firstName, newLastName: lastName, newAvatarUrl: avatarUrl };
-    },
-    onSuccess: async (data) => {
-      if (!user) return;
       
-      console.log('[useUpdateProfile] Profile updated successfully. Generating new token...');
-      const { data: functionData, error: functionError } = await supabase.functions.invoke('generate-jwt', {
-        body: {
-          user_id: user.id,
-          email: user.email,
-          role: user.role,
-          tenant_id: user.tenant_id,
-          branch_id: user.branch_id,
-          first_name: data.newFirstName,
-          last_name: data.newLastName,
-          avatar_url: data.newAvatarUrl || user.avatarUrl,
-          country_id: user.country_id,
-          language_id: user.language_id,
-          currency_id: user.currency_id,
-          timezone_id: user.timezone_id,
-        },
-      });
-
-      if (functionError) throw functionError;
-
-      const { token } = functionData;
-      console.log('[useUpdateProfile] New token generated. Updating context...');
-      localStorage.setItem('supabase.auth.token', token);
-      updateUserFromToken(token);
+      return { ...profile, firstName, lastName, avatarUrl: newAvatar };
+    },
+    onSuccess: (updatedProfileData) => {
+      // Sincronizar el estado del AuthContext con los nuevos datos
+      // Esto regenerará el token y actualizará el localStorage
+      if (updateCurrentProfile) {
+        updateCurrentProfile(updatedProfileData);
+      }
     },
   });
 };
 
 // Hook para actualizar la contraseña del usuario
 export const useUpdatePassword = () => {
-  const { user, logout } = useAuth();
+  const { profile, logout } = useAuth();
 
   return useMutation<any, Error, { currentPassword, newPassword }>({
     mutationFn: async ({ currentPassword, newPassword }) => {
-      if (!user?.id) throw new Error("Usuario no autenticado.");
+      if (!profile?.id) throw new Error("Usuario no autenticado.");
 
       const { data, error } = await supabase.rpc('change_password', {
-        p_user_id: user.id,
+        p_user_id: profile.id,
         p_current_password: currentPassword,
         p_new_password: newPassword,
       });
 
       if (error) throw error;
 
-      // La RPC devuelve un array, incluso con una sola fila.
       const rpcData = data && data[0] ? data[0] : null;
       if (!rpcData || !rpcData.success) {
         throw new Error(rpcData?.message || "Error al cambiar la contraseña.");
@@ -82,7 +57,6 @@ export const useUpdatePassword = () => {
       return rpcData;
     },
     onSuccess: () => {
-      // Forzar cierre de sesión para que el usuario inicie sesión con la nueva contraseña.
       logout();
     },
   });
@@ -90,48 +64,34 @@ export const useUpdatePassword = () => {
 
 // Hook para actualizar la configuración regional del usuario
 export const useUpdateRegionalSettings = () => {
-  const { user, updateUserFromToken } = useAuth();
+  const { profile, updateCurrentProfile } = useAuth();
 
   return useMutation<any, Error, { countryId?: string | null; languageId?: string | null; currencyId?: string | null; timezoneId?: string | null; }>({
-    mutationFn: async ({ countryId, languageId, currencyId, timezoneId }) => {
-      if (!user?.id) throw new Error("Usuario no autenticado.");
+    mutationFn: async (settings) => {
+      if (!profile?.id) throw new Error("Usuario no autenticado.");
 
       const { data, error } = await supabase.rpc('update_user_regional_settings', {
-        p_user_id: user.id,
-        p_country_id: countryId,
-        p_language_id: languageId,
-        p_currency_id: currencyId,
-        p_timezone_id: timezoneId,
+        p_user_id: profile.id,
+        p_country_id: settings.countryId,
+        p_language_id: settings.languageId,
+        p_currency_id: settings.currencyId,
+        p_timezone_id: settings.timezoneId,
       });
 
       if (error) throw error;
-      return { countryId, languageId, currencyId, timezoneId };
+      return settings;
     },
-    onSuccess: async (data) => {
-      if (!user) return;
-
-      const { data: functionData, error: functionError } = await supabase.functions.invoke('generate-jwt', {
-        body: {
-          user_id: user.id,
-          email: user.email,
-          role: user.role,
-          tenant_id: user.tenant_id,
-          branch_id: user.branch_id,
-          first_name: user.firstName,
-          last_name: user.lastName,
-          avatar_url: user.avatarUrl,
-          country_id: data.countryId,
-          language_id: data.languageId,
-          currency_id: data.currencyId,
-          timezone_id: data.timezoneId,
-        },
-      });
-
-      if (functionError) throw functionError;
-
-      const { token } = functionData;
-      localStorage.setItem('supabase.auth.token', token);
-      updateUserFromToken(token);
+    onSuccess: (newSettings) => {
+      if (!profile || !updateCurrentProfile) return;
+      
+      const updatedProfile = {
+        ...profile,
+        country_id: newSettings.countryId ?? profile.country_id,
+        language_id: newSettings.languageId ?? profile.language_id,
+        currency_id: newSettings.currencyId ?? profile.currency_id,
+        timezone_id: newSettings.timezoneId ?? profile.timezone_id,
+      };
+      updateCurrentProfile(updatedProfile);
     },
   });
 };

@@ -10,10 +10,12 @@ import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage';
 
 interface AvatarUploaderProps {
   size?: 'sm' | 'md' | 'lg';
+  initialAvatarUrl?: string;
 }
 
 export const AvatarUploader = React.memo(({
-  size = 'md'
+  size = 'md',
+  initialAvatarUrl
 }: AvatarUploaderProps) => {
   const avatarSizeClasses = {
     sm: 'h-12 w-12',
@@ -21,7 +23,7 @@ export const AvatarUploader = React.memo(({
     lg: 'h-32 w-32',
   };
   const currentAvatarSizeClass = avatarSizeClasses[size];
-  const { user, integrations } = useAuth();
+  const { profile, currentAssignment } = useAuth();
   const { toast } = useToast();
   const updateProfileMutation = useUpdateProfile();
   const [uploading, setUploading] = useState(false);
@@ -39,9 +41,7 @@ export const AvatarUploader = React.memo(({
     };
   }, [croppedPreviewUrl]);
 
-  const googleDriveIntegration = integrations?.find(integration => integration.provider === 'google_drive');
-
-  const { displayUrl: userAvatarDisplayUrl } = useGoogleDriveImage(user?.avatarUrl);
+  const { displayUrl: userAvatarDisplayUrl } = useGoogleDriveImage(initialAvatarUrl);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -84,33 +84,27 @@ export const AvatarUploader = React.memo(({
       toast({ title: 'Error', description: 'No hay ninguna imagen recortada para subir.', variant: 'destructive' });
       return;
     }
-    if (!user) {
-      toast({ title: 'Error', description: 'Usuario no autenticado.', variant: 'destructive' });
-      return;
-    }
-    if (!googleDriveIntegration) {
-      toast({ title: 'Error', description: 'La integración con Google Drive no está configurada.', variant: 'destructive' });
+    if (!profile || !currentAssignment) {
+      toast({ title: 'Error', description: 'Usuario o asignación actual no encontrados.', variant: 'destructive' });
       return;
     }
 
     setUploading(true);
 
     try {
-      const fileName = `avatar_${user.id}.png`;
+      const fileName = `avatar_${profile.id}.png`;
       const base64data = await readFileAsBase64(croppedImage);
 
       const { data, error: uploadError } = await supabase.functions.invoke(
-        'google-drive-upload-avatar',
+        'google-drive-upload',
         {
           body: {
-            tenantId: googleDriveIntegration.tenant_id,
-            userId: user.id,
+            tenantId: currentAssignment.tenant_id,
             fileName: fileName,
             fileBase64: base64data,
             mimeType: 'image/png',
-          },
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('supabase.auth.token')}`,
+            uploadContext: 'Avatars',
+            contextId: profile.id,
           },
         }
       );
@@ -120,9 +114,9 @@ export const AvatarUploader = React.memo(({
 
       updateProfileMutation.mutate(
         {
-          firstName: user.firstName || '',
-          lastName: user.lastName || '',
-          avatarUrl: data.avatarUrl,
+          firstName: profile.firstName || '',
+          lastName: profile.lastName || '',
+          avatarUrl: data.fileId,
         },
         {
           onSuccess: () => {
@@ -153,10 +147,10 @@ export const AvatarUploader = React.memo(({
   };
 
   const getInitials = () => {
-    if (user?.firstName) {
-      return `${user.firstName[0]}${user.lastName ? user.lastName[0] : ''}`.toUpperCase();
+    if (profile?.firstName) {
+      return `${profile.firstName[0]}${profile.lastName ? profile.lastName[0] : ''}`.toUpperCase();
     }
-    return user?.email?.[0].toUpperCase() || '?';
+    return profile?.email?.[0].toUpperCase() || '?';
   };
 
   return (

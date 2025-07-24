@@ -93,7 +93,7 @@ export const ServiceDialog = ({ service, trigger }: ServiceDialogProps) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Servicio
           </Button>
@@ -101,7 +101,7 @@ export const ServiceDialog = ({ service, trigger }: ServiceDialogProps) => {
       </DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-primary">
             {service ? "Editar Servicio" : "Nuevo Servicio"}
           </DialogTitle>
         </DialogHeader>

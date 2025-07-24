@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,34 +21,34 @@ const regionalSettingsFormSchema = z.object({
 });
 
 export const RegionalSettingsTab = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth(); // Corregido: user -> profile
   const { toast } = useToast();
-  const { data: countries, isLoading: isLoadingCountries } = useCountries();
-  const { data: localizations, isLoading: isLoadingLocalizations } = useLocalizations();
-  const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();
-  const { data: timezones, isLoading: isLoadingTimezones } = useTimezones();
+  const { data: countries } = useCountries();
+  const { data: localizations } = useLocalizations();
+  const { data: currencies } = useCurrencies();
+  const { data: timezones } = useTimezones();
   const updateRegionalSettingsMutation = useUpdateRegionalSettings();
 
   const form = useForm<z.infer<typeof regionalSettingsFormSchema>>({
     resolver: zodResolver(regionalSettingsFormSchema),
     defaultValues: {
-      countryId: user?.country_id || null,
-      languageId: user?.language_id || null,
-      currencyId: user?.currency_id || null,
-      timezoneId: user?.timezone_id || null,
+      countryId: profile?.country_id || null,
+      languageId: profile?.language_id || null,
+      currencyId: profile?.currency_id || null,
+      timezoneId: profile?.timezone_id || null,
     },
   });
 
   useEffect(() => {
-    if (user) {
+    if (profile) { // Corregido: user -> profile
       form.reset({
-        countryId: user.country_id || null,
-        languageId: user.language_id || null,
-        currencyId: user.currency_id || null,
-        timezoneId: user.timezone_id || null,
+        countryId: profile.country_id || null,
+        languageId: profile.language_id || null,
+        currencyId: profile.currency_id || null,
+        timezoneId: profile.timezone_id || null,
       });
     }
-  }, [user, form]);
+  }, [profile, form]); // Corregido: user -> profile
 
   const onSubmit = (values: z.infer<typeof regionalSettingsFormSchema>) => {
     updateRegionalSettingsMutation.mutate(values, {
@@ -82,7 +82,7 @@ export const RegionalSettingsTab = () => {
     <div className="space-y-6 mt-4">
       <Card>
         <CardHeader>
-          <CardTitle>Configuración Regional</CardTitle>
+          <CardTitle className="text-primary">Configuración Regional</CardTitle>
           <CardDescription>Define tu país, idioma, moneda y zona horaria preferidos.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -114,7 +114,6 @@ export const RegionalSettingsTab = () => {
                       placeholder="Selecciona un país"
                       isClearable={false}
                     />
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -131,7 +130,6 @@ export const RegionalSettingsTab = () => {
                       onChange={(option) => field.onChange(option ? option.value : '')}
                       placeholder="Selecciona un idioma"
                     />
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -148,7 +146,6 @@ export const RegionalSettingsTab = () => {
                       onChange={(option) => field.onChange(option ? option.value : '')}
                       placeholder="Selecciona una moneda"
                     />
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -165,7 +162,6 @@ export const RegionalSettingsTab = () => {
                       onChange={(option) => field.onChange(option ? option.value : '')}
                       placeholder="Selecciona una zona horaria"
                     />
-                    <FormMessage />
                   </FormItem>
                 )}
               />

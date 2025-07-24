@@ -62,7 +62,7 @@ export default function Appointments() {
     <div className="container mx-auto p-6">
       <div className="container mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Agenda de Atenciones</h1>
+          <h1 className="text-3xl font-bold text-primary">Agenda de Atenciones</h1>
           <AttentionDialog>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -186,7 +186,7 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
-            <CardTitle className="text-lg">{attention.clients.name}</CardTitle>
+            <CardTitle className="text-lg text-primary">{attention.clients.name}</CardTitle>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />

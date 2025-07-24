@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { verify } from 'https://deno.land/x/djwt@v2.2/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Helper function to find or create a folder in Google Drive
 async function findOrCreateFolder(
   folderName: string,
   parentFolderId: string | null,
@@ -29,6 +29,8 @@ async function findOrCreateFolder(
   if (searchResult.files.length > 0) {
     return searchResult.files[0].id;
   }
+
+  // If not found, create it
   const createMetadata = {
     name: folderName,
     mimeType: 'application/vnd.google-apps.folder',
@@ -53,110 +55,68 @@ async function findOrCreateFolder(
   return createdFolder.id;
 }
 
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // 1. Verify the JWT from the Authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new Error('Missing or invalid Authorization header');
-    }
-    const token = authHeader.split(' ')[1];
-
-    const jwtSecret = Deno.env.get('JWT_SECRET');
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET is not set in environment variables');
-    }
-    
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(jwtSecret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign", "verify"]
-    );
-
-    const decodedPayload = await verify(token, key, "HS256");
-    
-    const userId = decodedPayload.sub;
-    const userRole = decodedPayload.app_metadata?.role;
-    const userTenantId = decodedPayload.tenant_id;
-
-    if (!userId || !userRole || !userTenantId) {
-      throw new Error('Token is missing required user information.');
-    }
-
-    // 2. Extract parameters from the request body
-    const { fileName, fileBase64, mimeType } = await req.json();
-    if (!fileName || !fileBase64 || !mimeType) {
-      return new Response(JSON.stringify({ error: 'Missing required body parameters' }), {
+    // 1. Extract parameters from the request body
+    const { tenantId, fileBase64, mimeType, fileName, uploadContext, contextId } = await req.json();
+    if (!tenantId || !fileBase64 || !mimeType || !fileName || !uploadContext || !contextId) {
+      return new Response(JSON.stringify({ error: 'Missing required body parameters: tenantId, fileBase64, mimeType, fileName, uploadContext, contextId are required.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // 3. Create Supabase admin client for elevated operations
+    // 2. Create Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 4. Fetch tenant integrations using the verified user details
-    const { data: integrationsData, error: fetchIntegrationsError } = await supabaseAdmin.rpc(
-      'get_tenant_integrations', 
-      { p_tenant_id: userTenantId, p_user_role: userRole }
-    );
-
-    if (fetchIntegrationsError || !integrationsData || integrationsData.length === 0) {
-      throw new Error(`Failed to fetch tenant integrations: ${fetchIntegrationsError?.message || 'No integrations found'}`);
+    // 3. Determine the correct tenantId for the integration lookup
+    let integrationTenantId = tenantId;
+    if (uploadContext === 'Avatars') {
+      const { data: ownerId, error: rpcError } = await supabaseAdmin.rpc('get_system_owner_tenant_id');
+      if (rpcError) throw new Error(`Could not get system owner tenant ID: ${rpcError.message}`);
+      if (!ownerId) throw new Error('System owner tenant ID not found.');
+      integrationTenantId = ownerId;
     }
 
-    const googleDriveIntegration = integrationsData.find(integration => integration.provider === 'google_drive');
+    // 4. Fetch the Google Drive integration using the determined tenantId
+    const { data: googleDriveIntegration, error: fetchIntegrationError } = await supabaseAdmin
+      .from('tenant_integrations')
+      .select('*')
+      .eq('tenant_id', integrationTenantId)
+      .eq('provider', 'google_drive')
+      .single();
 
-    if (!googleDriveIntegration || !googleDriveIntegration.encrypted_credentials || !googleDriveIntegration.nonce) {
-      throw new Error('La integración de Google Drive no se encontró o le faltan las credenciales encriptadas.');
+    if (fetchIntegrationError) throw new Error(`Failed to fetch Google Drive integration for tenant ${integrationTenantId}: ${fetchIntegrationError.message}`);
+    if (!googleDriveIntegration.encrypted_credentials || !googleDriveIntegration.nonce) {
+      throw new Error('La integración de Google Drive no tiene las credenciales encriptadas.');
     }
 
-    // 5. Desencriptar el refresh_token usando la Edge Function
+    // 5. Decrypt the refresh_token
     const { data: decryptedResponse, error: decryptError } = await supabaseAdmin.functions.invoke(
       'decrypt-secret',
-      {
-        body: {
-          encryptedData: googleDriveIntegration.encrypted_credentials,
-          iv: googleDriveIntegration.nonce,
-        },
-      }
+      { body: { encryptedData: googleDriveIntegration.encrypted_credentials, iv: googleDriveIntegration.nonce } }
     );
 
-    if (decryptError) {
-      throw new Error(`Failed to invoke decrypt-secret function: ${decryptError.message}`);
-    }
-
-    const credentialsJson = decryptedResponse.decryptedText;
-    if (!credentialsJson) {
-      throw new Error('La respuesta de descifrado no contenía "decryptedText".');
-    }
-
-    const credentials = JSON.parse(credentialsJson);
-    const refreshToken = credentials.refresh_token;
-
-    if (!refreshToken) {
-      throw new Error("El campo 'refresh_token' no se encontró en las credenciales descifradas.");
-    }
-
-    // 6. Use the refresh_token to get a new access_token
-    const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
-    const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
+    if (decryptError) throw new Error(`Failed to invoke decrypt-secret function: ${decryptError.message}`);
     
+    const refreshToken = decryptedResponse.decryptedText;
+    if (!refreshToken) throw new Error('La respuesta de descifrado no contenía "decryptedText".');
+
+    // 5. Use the refresh_token to get a new access_token
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID'),
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET'),
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
       }),
@@ -170,37 +130,19 @@ serve(async (req) => {
     const tokens = await tokenResponse.json();
     const accessToken = tokens.access_token;
 
-    let parentFolderId = googleDriveIntegration.folder_id;
+    // 6. Create dynamic folder structure
+    const rootFolderId = await findOrCreateFolder('Glamtica', null, accessToken);
+    const contextFolderId = await findOrCreateFolder(uploadContext, rootFolderId, accessToken);
+    const finalFolderId = await findOrCreateFolder(contextId, contextFolderId, accessToken);
 
-    if (!parentFolderId) {
-      const glamticaFolderId = await findOrCreateFolder('Glamtica', null, accessToken);
-      const avatarsFolderId = await findOrCreateFolder('Avatars', glamticaFolderId, accessToken);
-      parentFolderId = await findOrCreateFolder(userId, avatarsFolderId, accessToken);
-
-      const { error: updateIntegrationError } = await supabaseAdmin
-        .from('tenant_integrations')
-        .update({ folder_id: parentFolderId })
-        .eq('id', googleDriveIntegration.id);
-
-      if (updateIntegrationError) {
-        console.warn('Failed to update integration with folder_id:', updateIntegrationError);
-      }
-    }
-
+    // 7. Upload the file to Google Drive
     const fileBuffer = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
     const boundary = '----------GlamticaFileBoundary';
     const now = new Date();
     const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-    const lastDotIndex = fileName.lastIndexOf('.');
-    const extension = lastDotIndex !== -1 ? fileName.substring(lastDotIndex) : '';
-    const newFileName = `${timestamp}_${userId}${extension}`;
+    const newFileName = `${timestamp}_${fileName}`;
 
-    const metadata = {
-      name: newFileName,
-      mimeType: mimeType,
-      parents: [parentFolderId],
-    };
-
+    const metadata = { name: newFileName, mimeType, parents: [finalFolderId] };
     const encoder = new TextEncoder();
     const metadataPart = encoder.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`);
     const mediaPart = encoder.encode(`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`);
@@ -236,42 +178,24 @@ serve(async (req) => {
     const driveFile = await uploadResponse.json();
     const fileId = driveFile.id;
 
-    const permissionResponse = await fetch(
+    // 8. Make the file public
+    await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
       {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          role: 'reader',
-          type: 'anyone',
-        }),
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
       }
     );
 
-    if (!permissionResponse.ok) {
-      const errorBody = await permissionResponse.json();
-      console.warn('Failed to set public permission on Google Drive file:', errorBody);
-    }
-
-    const directViewUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-
-    const { error: dbError } = await supabaseAdmin
-      .from('users')
-      .update({ avatar_url: directViewUrl })
-      .eq('id', userId);
-
-    if (dbError) throw dbError;
-
-    return new Response(JSON.stringify({ success: true, avatarUrl: directViewUrl }), {
+    // 9. Return only the fileId
+    return new Response(JSON.stringify({ success: true, fileId: fileId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in Google Drive upload avatar flow:', error);
+    console.error('Error in generic Google Drive upload flow:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

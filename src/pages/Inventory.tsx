@@ -54,7 +54,7 @@ export default function Inventory() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-primary">
             Gestión de Inventario
           </h1>
           <p className="text-slate-600 mt-2">
@@ -207,7 +207,7 @@ export default function Inventory() {
         <TabsContent value="purchases" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-primary">
                 <ShoppingCart className="w-5 h-5" />
                 Compras Recientes
               </CardTitle>
@@ -260,7 +260,7 @@ export default function Inventory() {
         <TabsContent value="suppliers" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Proveedores Activos</CardTitle>
+              <CardTitle className="text-primary">Proveedores Activos</CardTitle>
             </CardHeader>
             <CardContent>
               {suppliers?.filter(s => s.is_active).length === 0 ? (
@@ -280,7 +280,7 @@ export default function Inventory() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {suppliers?.filter(s => s.is_active).map((supplier) => (
                     <div key={supplier.id} className="p-4 border rounded-lg">
-                      <h4 className="font-medium">{supplier.name}</h4>
+                      <h4 className="font-medium text-primary">{supplier.name}</h4>
                       <p className="text-sm text-slate-600">
                         {supplier.identification_type}: {supplier.identification_number}
                       </p>
@@ -302,7 +302,7 @@ export default function Inventory() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Productos Más Vendidos</CardTitle>
+                <CardTitle className="text-primary">Productos Más Vendidos</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-slate-500 text-center py-8">
@@ -313,7 +313,7 @@ export default function Inventory() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Análisis de Costos</CardTitle>
+                <CardTitle className="text-primary">Análisis de Costos</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-slate-500 text-center py-8">

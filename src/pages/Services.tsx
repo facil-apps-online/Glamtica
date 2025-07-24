@@ -63,7 +63,7 @@ export default function Services() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-primary">
             Servicios
           </h1>
           <p className="text-slate-600 mt-2">
@@ -80,7 +80,7 @@ export default function Services() {
             </DialogTrigger>
             <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Gestionar Categorías de Servicios</DialogTitle>
+                <DialogTitle className="text-primary">Gestionar Categorías de Servicios</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex justify-end">
@@ -128,7 +128,6 @@ export default function Services() {
           <Button 
             key={categoryId} 
             variant={selectedCategory === categoryId ? "default" : "outline"} 
-            className="hover:bg-blue-50"
             onClick={() => setSelectedCategory(categoryId)}
           >
             {getCategoryName(categoryId)}
@@ -155,7 +154,7 @@ export default function Services() {
                   />
                 </div>
               </div>
-              <CardTitle className="text-xl">{service.name}</CardTitle>
+              <CardTitle className="text-xl text-primary">{service.name}</CardTitle>
               {service.service_categories && (
                 <Badge variant="outline" className="w-fit">
                   {service.service_categories.name}
@@ -207,7 +206,7 @@ export default function Services() {
       {filteredServices?.length === 0 && (
         <div className="text-center py-12">
           <Scissors className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">No hay servicios</h3>
+          <h3 className="text-lg font-semibold text-primary mb-2">No hay servicios</h3>
           <p className="text-slate-600 mb-4">
             {selectedCategory === "Todos" 
               ? "No tienes servicios creados aún." 

@@ -91,7 +91,7 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-green-600 to-blue-600 text-white hover:shadow-lg transition-all duration-300">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Proveedor
           </Button>
@@ -99,7 +99,7 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
       </DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-primary">
             {supplier ? "Editar Proveedor" : "Nuevo Proveedor"}
           </DialogTitle>
         </DialogHeader>

@@ -28,7 +28,7 @@ export default function Stylists() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-primary">
             Estilistas y Barberos
           </h1>
           <p className="text-slate-600 mt-2">
@@ -54,7 +54,7 @@ export default function Stylists() {
                       <User className="w-8 h-8 text-blue-600" />
                     </div>
                     <div className="flex-1">
-                      <CardTitle className="text-xl">{stylist.name}</CardTitle>
+                      <CardTitle className="text-xl text-primary">{stylist.name}</CardTitle>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {stylist.specialties?.map((specialty) => (
                           <Badge key={specialty} variant="outline" className="text-xs">
@@ -152,7 +152,7 @@ export default function Stylists() {
           {stylists?.length === 0 && (
             <div className="text-center py-12">
               <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No hay estilistas</h3>
+              <h3 className="text-lg font-medium text-primary mb-2">No hay estilistas</h3>
               <p className="text-slate-600 mb-4">Comienza agregando tu primer estilista</p>
               <StylistDialog />
             </div>
@@ -161,7 +161,7 @@ export default function Stylists() {
 
         <TabsContent value="requests" className="space-y-6">
           <div className="text-center mb-6">
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Gestión de Solicitudes de Permisos</h3>
+            <h3 className="text-lg font-medium text-primary mb-2">Gestión de Solicitudes de Permisos</h3>
             <p className="text-slate-600">Revisa y aprueba las solicitudes de permisos del equipo</p>
           </div>
           
@@ -171,7 +171,7 @@ export default function Stylists() {
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-blue-600" />
                 </div>
-                <h4 className="font-medium text-slate-900">{stylist.name}</h4>
+                <h4 className="font-medium text-primary">{stylist.name}</h4>
               </div>
               <TimeOffRequestsList stylistId={stylist.id} canApprove={true} />
             </div>

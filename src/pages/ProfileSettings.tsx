@@ -9,7 +9,7 @@ export default function ProfileSettings() {
 
   return (
     <div className="w-full py-4 md:p-6 space-y-6">
-      <h1 className="text-2xl md:text-3xl font-bold px-4 md:px-0">Mi Perfil</h1>
+      <h1 className="text-2xl md:text-3xl font-bold px-4 md:px-0 text-primary">Mi Perfil</h1>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="px-4 md:px-0">
           <TabsList className="w-full flex-nowrap overflow-x-auto justify-start">

@@ -27,8 +27,18 @@ serve(async (req) => {
       .eq('id', job.id);
 
     try {
-      const { data: user, error: userError } = await supabaseAdmin.from('users').select('id, email, language_id, tenant_id').eq('id', job.recipient_user_id).single();
+      const { data: user, error: userError } = await supabaseAdmin.from('users').select('id, email, language_id').eq('id', job.recipient_user_id).single();
       if (userError) throw new Error(`User not found: ${userError.message}`);
+
+      // Dinámicamente encontrar el tenant_id del usuario (que en este caso es el superadmin)
+      const { data: assignment, error: assignmentError } = await supabaseAdmin
+        .from('user_assignments')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+      
+      if (assignmentError || !assignment) throw new Error(`Super admin tenant assignment not found: ${assignmentError?.message}`);
 
       const defaultLangId = 'f1154a99-712d-49fe-9c36-86e8360fbaa9';
       const languageId = user.language_id || defaultLangId;
@@ -36,8 +46,9 @@ serve(async (req) => {
       const { data: template, error: templateError } = await supabaseAdmin.from('email_templates').select('subject, body_html').eq('template_type', job.template_type).eq('language_id', languageId).single();
       if (templateError) throw new Error(`Template not found: ${templateError.message}`);
 
-      let { data: integration, error: integrationError } = await supabaseAdmin.from('tenant_integrations').select('id, access_token, encrypted_credentials, nonce, expires_at, account_email').eq('provider', 'google_gmail').eq('tenant_id', '00000000-0000-0000-0000-000000000000').single();
-      if (integrationError) throw new Error(`Gmail integration not found: ${integrationError.message}`);
+      // Usar el tenant_id del superadmin para encontrar la integración correcta
+      let { data: integration, error: integrationError } = await supabaseAdmin.from('tenant_integrations').select('id, access_token, encrypted_credentials, nonce, expires_at, account_email').eq('provider', 'google_gmail').eq('tenant_id', assignment.tenant_id).single();
+      if (integrationError) throw new Error(`Gmail integration not found for tenant ${assignment.tenant_id}: ${integrationError.message}`);
 
       let accessToken = integration.access_token;
 
@@ -62,16 +73,9 @@ serve(async (req) => {
           throw new Error(`Failed to invoke decrypt-secret function: ${decryptError.message}`);
         }
 
-        const credentialsJson = decryptedResponse.decryptedText;
-        if (!credentialsJson) {
-          throw new Error('La respuesta de descifrado no contenía "decryptedText".');
-        }
-        
-        const credentials = JSON.parse(credentialsJson);
-        const refreshToken = credentials.refresh_token;
-
+        const refreshToken = decryptedResponse.decryptedText;
         if (!refreshToken) {
-          throw new Error("El campo 'refresh_token' no se encontró en las credenciales descifradas.");
+          throw new Error('La respuesta de descifrado no contenía "decryptedText".');
         }
 
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {

@@ -43,7 +43,6 @@ import { supabase } from "@/lib/supabaseClient";
 import SetupSuperadmin from "@/pages/SetupSuperadmin";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import GoogleCallbackPage from "@/pages/integrations/google/Callback";
-import SubscribePage from "@/pages/SubscribePage";
 
 function App() {
   return (
@@ -58,7 +57,6 @@ function App() {
               <Route path="/register-tenant" element={<RegisterTenant />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
-              <Route path="/subscribe" element={<SubscribePage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/superadmin" element={<SuperadminLayout />}>

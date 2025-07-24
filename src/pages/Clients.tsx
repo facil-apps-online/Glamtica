@@ -34,17 +34,17 @@ export default function Clients() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            {t('clients.title')}
+          <h1 className="text-3xl font-bold text-primary">
+            Clientes
           </h1>
           <p className="text-slate-600 mt-2">
             Gestiona la información de tus clientes
           </p>
         </div>
         <ClientDialog>
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
-            {t('clients.add')}
+            Nuevo Cliente
           </Button>
         </ClientDialog>
       </div>
@@ -58,7 +58,7 @@ export default function Clients() {
                   <User className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
-              <CardTitle className="text-xl">{client.name}</CardTitle>
+              <CardTitle className="text-xl text-primary">{client.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -78,7 +78,7 @@ export default function Clients() {
                 <ClientDialog client={client} isEdit>
                   <Button variant="outline" size="sm" className="flex-1">
                     <Edit className="w-4 h-4 mr-1" />
-                    {t('common.edit')}
+                    Editar
                   </Button>
                 </ClientDialog>
                 
@@ -121,7 +121,7 @@ export default function Clients() {
           <ClientDialog>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              {t('clients.add')}
+              Nuevo Cliente
             </Button>
           </ClientDialog>
         </div>

@@ -110,7 +110,7 @@ export const ProductDialog = ({ product, trigger }: ProductDialogProps) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Producto
           </Button>
@@ -118,7 +118,7 @@ export const ProductDialog = ({ product, trigger }: ProductDialogProps) => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-primary">
             {product ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>

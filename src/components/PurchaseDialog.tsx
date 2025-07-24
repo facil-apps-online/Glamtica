@@ -124,7 +124,7 @@ export const PurchaseDialog = ({ trigger }: PurchaseDialogProps) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-green-600 to-blue-600 text-white hover:shadow-lg transition-all duration-300">
+          <Button>
             <ShoppingCart className="w-4 h-4 mr-2" />
             Nueva Compra
           </Button>
@@ -132,7 +132,7 @@ export const PurchaseDialog = ({ trigger }: PurchaseDialogProps) => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nueva Compra</DialogTitle>
+          <DialogTitle className="text-primary">Nueva Compra</DialogTitle>
           <p className="text-sm text-slate-600">
             Método de costeo actual: <span className="font-semibold">{costingMethodLabel}</span>
           </p>
