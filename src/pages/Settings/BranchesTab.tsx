@@ -1,18 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { useBranches } from '@/hooks/useBranches';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Power } from 'lucide-react';
+import { PlusCircle, Power, Store } from 'lucide-react';
 import { CreateBranchDialog } from './CreateBranchDialog';
 import { BranchCard } from './BranchCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BranchActions } from './BranchActions';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ActivateBranchesBatchDialog } from './ActivateBranchesBatchDialog'; // IMPORT
+import { ActivateBranchesBatchDialog } from './ActivateBranchesBatchDialog';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const statusConfig = {
   active: { label: 'Activa', className: 'bg-green-100 text-green-800' },
@@ -20,13 +20,16 @@ const statusConfig = {
   archived: { label: 'Archivada', className: 'bg-slate-100 text-slate-800' },
 };
 
-export function BranchesTab() {
+interface BranchesTabProps {
+  tenantId?: string;
+}
+
+export function BranchesTab({ tenantId }: BranchesTabProps) {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
-  const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false); // STATE
+  const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
-  const { data: branches, isLoading, error } = useBranches();
+  const { data: branches, isLoading, error } = useBranches(tenantId);
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
   const screenSize = useScreenSize();
 
   const pendingBranches = useMemo(() => {
@@ -34,9 +37,9 @@ export function BranchesTab() {
   }, [branches]);
 
   const handleSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['branches', currentAssignment?.tenant_id] });
+    queryClient.invalidateQueries({ queryKey: ['branches', tenantId] });
     setSelectedBranchIds([]);
-    setBatchActivateDialogOpen(false); // Close dialog on success
+    setBatchActivateDialogOpen(false);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -67,14 +70,14 @@ export function BranchesTab() {
     }
 
     if (!branches || branches.length === 0) {
-      return <p>No tienes sucursales adicionales. ¡Crea la primera!</p>
+      return <p>No hay sucursales para este tenant.</p>
     }
 
     if (screenSize === 'mobile') {
       return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {branches.map((branch) => (
-            <BranchCard key={branch.id} branch={branch} onSuccess={handleSuccess} />
+            <BranchCard key={branch.id} branch={branch} onSuccess={handleSuccess} tenantId={tenantId} />
           ))}
         </div>
       );
@@ -118,7 +121,7 @@ export function BranchesTab() {
                     <Badge className={config.className}>{config.label}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <BranchActions branch={branch} onSuccess={handleSuccess} />
+                    <BranchActions branch={branch} onSuccess={handleSuccess} tenantId={tenantId} />
                   </TableCell>
                 </TableRow>
               );
@@ -131,31 +134,40 @@ export function BranchesTab() {
 
   return (
     <div className="mt-4">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-primary">Gestionar Sucursales</h2>
-          <p className="text-slate-600">Crea, activa y administra tus sucursales.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {selectedBranchIds.length > 0 && (
-            <Button variant="outline" onClick={() => setBatchActivateDialogOpen(true)}>
-              <Power className="mr-2 h-4 w-4" />
-              Activar Seleccionadas ({selectedBranchIds.length})
-            </Button>
-          )}
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Sucursal
-          </Button>
-        </div>
-      </div>
-
-      {renderContent()}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-6 w-6" />
+                Gestionar Sucursales
+              </CardTitle>
+              <CardDescription>Crea, activa y administra las sucursales del tenant.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedBranchIds.length > 0 && (
+                <Button variant="outline" onClick={() => setBatchActivateDialogOpen(true)}>
+                  <Power className="mr-2 h-4 w-4" />
+                  Activar ({selectedBranchIds.length})
+                </Button>
+              )}
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Añadir Sucursal
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {renderContent()}
+        </CardContent>
+      </Card>
 
       <CreateBranchDialog
         isOpen={isCreateDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSuccess={handleSuccess}
+        tenantId={tenantId}
       />
 
       <ActivateBranchesBatchDialog
@@ -163,6 +175,7 @@ export function BranchesTab() {
         onOpenChange={setBatchActivateDialogOpen}
         branchIds={selectedBranchIds}
         onSuccess={handleSuccess}
+        tenantId={tenantId}
       />
     </div>
   );

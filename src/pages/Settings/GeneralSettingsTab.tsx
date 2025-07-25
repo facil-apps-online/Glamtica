@@ -15,8 +15,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
 import { PhoneInput } from '@/components/PhoneInput';
-import { Save } from 'lucide-react';
+import { Save, Building } from 'lucide-react';
 import { TenantAdminGeneralView } from './TenantAdminGeneralView';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const formSchema = z.object({
   name: z.string().min(2, "El nombre comercial es requerido."),
@@ -102,7 +103,7 @@ export function GeneralSettingsTab() {
         latitude: tenant.latitude || null,
         longitude: tenant.longitude || null,
       });
-      setIsInitialLoad(false); // Marcar que la carga inicial ha terminado
+      setIsInitialLoad(false);
     }
   }, [tenant, form.reset]);
 
@@ -145,70 +146,99 @@ export function GeneralSettingsTab() {
   if (isLoadingTenant) return <div className="mt-4">Cargando...</div>;
 
   return (
-    <div className="mt-4">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" autoComplete="off">
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4 text-primary">Información Principal</h2>
-            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-          </div>
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building className="h-6 w-6" />
+          Configuración General
+        </CardTitle>
+        <CardDescription>Administra la información principal y regional de tu negocio.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" autoComplete="off">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Información Principal</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+              </CardContent>
+            </Card>
 
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4 text-primary">Configuración Regional</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Controller name="country_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={activeCountryOptions} value={activeCountryOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>)} />
-              <Controller name="default_language_code" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={activeLocalizationOptions} value={activeLocalizationOptions.find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>)} />
-              <Controller name="default_currency_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={activeCurrencyOptions} value={activeCurrencyOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>)} />
-              <Controller name="default_timezone" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezoneOptions} value={timezoneOptions.find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>)} />
-            </div>
-          </div>
-
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4 text-primary">Información de Contacto</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-            </div>
-          </div>
-
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4 text-primary">Información Fiscal</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField control={form.control} name="legal_name" render={({ field }) => (<FormItem><FormLabel>Razón Social / Nombre Legal</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="tax_id" render={({ field }) => (<FormItem><FormLabel>ID Fiscal (NIT, CUIT, etc.)</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <FormField control={form.control} name="billing_address" render={({ field }) => (<FormItem><FormLabel>Dirección de Facturación</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="einvoicing_email" render={({ field }) => (<FormItem><FormLabel>Email para Facturación Electrónica</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-            </div>
-          </div>
-
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold mb-4 text-primary">Dirección Física</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <FormItem><FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel><FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} defaultValue={tenant?.physical_address_line1 || ''} countryRestriction={countryRestriction} /></FormControl><FormMessage /></FormItem>
-                <FormField control={form.control} name="physical_address_line1" render={({ field }) => (<FormItem><FormLabel>Dirección (Línea 1)</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="physical_address_line2" render={({ field }) => (<FormItem><FormLabel>Dirección (Línea 2)</FormLabel><FormControl><Input autoComplete="off" placeholder="Apto, Oficina, etc. (Opcional)" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField control={form.control} name="physical_city" render={({ field }) => (<FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="physical_state" render={({ field }) => (<FormItem><FormLabel>Estado / Provincia</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="physical_postal_code" render={({ field }) => (<FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Configuración Regional</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <Controller name="country_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={activeCountryOptions} value={activeCountryOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>)} />
+                  <Controller name="default_language_code" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={activeLocalizationOptions} value={activeLocalizationOptions.find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>)} />
+                  <Controller name="default_currency_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={activeCurrencyOptions} value={activeCurrencyOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>)} />
+                  <Controller name="default_timezone" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezoneOptions} value={timezoneOptions.find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>)} />
                 </div>
-                <FormField control={form.control} name="website" render={({ field }) => (<FormItem><FormLabel>Sitio Web</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-              </div>
-              {watchedLat !== null && watchedLng !== null && (<div className="w-full h-[400px] rounded-lg overflow-hidden"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>)}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Información de Contacto</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Información Fiscal</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="legal_name" render={({ field }) => (<FormItem><FormLabel>Razón Social / Nombre Legal</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="tax_id" render={({ field }) => (<FormItem><FormLabel>ID Fiscal (NIT, CUIT, etc.)</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <FormField control={form.control} name="billing_address" render={({ field }) => (<FormItem><FormLabel>Dirección de Facturación</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="einvoicing_email" render={({ field }) => (<FormItem><FormLabel>Email para Facturación Electrónica</FormLabel><FormControl><Input autoComplete="off" type="email" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Dirección Física</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <FormItem><FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel><FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} defaultValue={tenant?.physical_address_line1 || ''} countryRestriction={countryRestriction} /></FormControl><FormMessage /></FormItem>
+                    <FormField control={form.control} name="physical_address_line1" render={({ field }) => (<FormItem><FormLabel>Dirección (Línea 1)</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="physical_address_line2" render={({ field }) => (<FormItem><FormLabel>Dirección (Línea 2)</FormLabel><FormControl><Input autoComplete="off" placeholder="Apto, Oficina, etc. (Opcional)" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <FormField control={form.control} name="physical_city" render={({ field }) => (<FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="physical_state" render={({ field }) => (<FormItem><FormLabel>Estado / Provincia</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="physical_postal_code" render={({ field }) => (<FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
+                    <FormField control={form.control} name="website" render={({ field }) => (<FormItem><FormLabel>Sitio Web</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                  </div>
+                  {watchedLat !== null && watchedLng !== null && (<div className="w-full h-[400px] rounded-lg overflow-hidden"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>)}
+                </div>
+              </CardContent>
+            </Card>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={updateTenantMutation.isPending}>
+                <Save className="w-4 h-4 mr-2" />
+                {updateTenantMutation.isPending ? 'Guardando Cambios...' : 'Guardar Cambios'}
+              </Button>
             </div>
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" disabled={updateTenantMutation.isPending}>
-              <Save className="w-4 h-4 mr-2" />
-              {updateTenantMutation.isPending ? 'Guardando Cambios...' : 'Guardar Cambios'}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

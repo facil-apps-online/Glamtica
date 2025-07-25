@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,30 +20,26 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Role } from '@/hooks/useTenantUsers';
-import { Branch } from '@/hooks/useBranches';
+import { supabase } from '@/lib/supabaseClient';
+import { useDebounce } from '@/hooks/useDebounce';
+import { LinkUserFormValues } from '@/hooks/useLinkUserToTenant';
 
-// Esquema de validación actualizado
-const formSchema = z.object({
+// Esquema de validación base (sin rol ni sucursal)
+const baseSchema = z.object({
   email: z.string().email({ message: 'Por favor, introduce un email válido.' }),
+  firstName: z.string().min(1, { message: 'El nombre es obligatorio.' }),
+  lastName: z.string().min(1, { message: 'El apellido es obligatorio.' }),
+});
+
+// Esquema para cuando el usuario es nuevo (requiere contraseña)
+const newUserSchema = baseSchema.extend({
   password: z.string().min(8, { message: 'La contraseña debe tener al menos 8 caracteres.' }),
-  roleId: z.string().uuid({ message: 'Debe seleccionar un rol.' }),
-  branchId: z.string().uuid({ message: 'Debe seleccionar una sucursal.' }),
 });
 
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: z.infer<typeof formSchema>) => void;
-  roles: Role[];
-  branches: Branch[];
+  onSubmit: (values: LinkUserFormValues) => void;
   isSubmitting: boolean;
 }
 
@@ -51,31 +47,74 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   open,
   onOpenChange,
   onSubmit,
-  roles,
-  branches,
   isSubmitting,
 }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      roleId: '',
-      branchId: '',
-    },
+  const [userExists, setUserExists] = useState(false);
+  const [isCheckingUser, setIsCheckingUser] = useState(false);
+
+  const form = useForm<z.infer<typeof newUserSchema>>({
+    resolver: zodResolver(userExists ? baseSchema : newUserSchema),
+    defaultValues: { email: '', firstName: '', lastName: '', password: '' },
   });
+  
+  // Resetear el estado cuando el diálogo se cierra
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+      setUserExists(false);
+    }
+  }, [open, form]);
+
+  const checkUserExists = useCallback(async (email: string) => {
+    if (!email || !z.string().email().safeParse(email).success) {
+      setUserExists(false);
+      return;
+    }
+    setIsCheckingUser(true);
+    try {
+      const { data, error } = await supabase.rpc('check_user_exists_by_email', { p_email: email });
+      if (error) throw error;
+      setUserExists(data);
+      if (data) {
+        form.clearErrors('password');
+      }
+    } catch (error) {
+      console.error("Error checking user existence:", error);
+    } finally {
+      setIsCheckingUser(false);
+    }
+  }, [form]);
+
+  const debouncedCheckUser = useDebounce(checkUserExists, 500);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const email = e.target.value;
+    form.setValue('email', email);
+    debouncedCheckUser(email);
+  };
+  
+  const handleFormSubmit = (values: z.infer<typeof newUserSchema>) => {
+    const submissionValues: LinkUserFormValues = { ...values };
+    if (userExists) {
+      delete submissionValues.password;
+    }
+    onSubmit(submissionValues);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Añadir Nuevo Usuario</DialogTitle>
+          <DialogTitle>Invitar Usuario al Negocio</DialogTitle>
           <DialogDescription>
-            Completa los datos para crear un nuevo usuario en este tenant.
+            {userExists 
+              ? "Este usuario ya existe en la plataforma. Se le vinculará a tu negocio."
+              : "Completa los datos para crear un nuevo usuario y vincularlo a tu negocio."
+            }
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="email"
@@ -83,7 +122,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="usuario@ejemplo.com" {...field} />
+                    <Input placeholder="usuario@ejemplo.com" {...field} onChange={handleEmailChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -91,12 +130,12 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
             />
             <FormField
               control={form.control}
-              name="password"
+              name="firstName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contraseña</FormLabel>
+                  <FormLabel>Nombre</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="********" {...field} />
+                    <Input placeholder="John" {...field} disabled={userExists} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -104,58 +143,38 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
             />
             <FormField
               control={form.control}
-              name="roleId"
+              name="lastName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Rol</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un rol" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Apellido</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Doe" {...field} disabled={userExists} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="branchId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sucursal</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+            {!userExists && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contraseña</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una sucursal" />
-                      </SelectTrigger>
+                      <Input type="password" placeholder="********" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creando...' : 'Crear Usuario'}
+              <Button type="submit" disabled={isSubmitting || isCheckingUser}>
+                {isSubmitting ? 'Guardando...' : (userExists ? 'Vincular Usuario' : 'Crear y Vincular')}
               </Button>
             </DialogFooter>
           </form>

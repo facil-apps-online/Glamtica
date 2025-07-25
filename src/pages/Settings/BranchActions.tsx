@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Power, Archive } from 'lucide-react';
+import { MoreHorizontal, Archive } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ActivateBranchDialog } from './ActivateBranchDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useArchiveBranch } from '@/hooks/useBranches';
 
-export function BranchActions({ branch, onSuccess }) {
-  const [isActivateDialogOpen, setActivateDialogOpen] = useState(false);
+export function BranchActions({ branch, onSuccess, tenantId }) {
   const { toast } = useToast();
-  const archiveBranchMutation = useArchiveBranch();
+  const archiveBranchMutation = useArchiveBranch(tenantId);
 
   const handleArchive = () => {
     archiveBranchMutation.mutate(branch.id, {
@@ -24,7 +22,7 @@ export function BranchActions({ branch, onSuccess }) {
   };
 
   if (branch.is_main_branch || branch.status === 'pending_activation') {
-    return null; // No actions for the main branch or pending activation (must use batch)
+    return null;
   }
 
   if (branch.status === 'active') {
@@ -45,5 +43,5 @@ export function BranchActions({ branch, onSuccess }) {
     );
   }
 
-  return null; // No actions for archived branches
+  return null;
 }

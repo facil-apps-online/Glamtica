@@ -10,7 +10,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-export function ActivateBranchesBatchDialog({ isOpen, onOpenChange, branchIds, onSuccess }) {
+export function ActivateBranchesBatchDialog({ isOpen, onOpenChange, branchIds, onSuccess, tenantId }) {
   const { toast } = useToast();
   const { currentAssignment, profile, loading: isAuthLoading } = useAuth(); // Get assignment, profile and loading status
   const { formatPrice } = usePriceFormat();
@@ -23,7 +23,7 @@ export function ActivateBranchesBatchDialog({ isOpen, onOpenChange, branchIds, o
     isLoading: isCalculating, 
     isError: isCalculationError, 
     error: calculationError,
-  } = useCalculateBatchProration(branchIds, { 
+  } = useCalculateBatchProration(tenantId, branchIds, { 
     enabled: isOpen && branchIds.length > 0 
   });
 

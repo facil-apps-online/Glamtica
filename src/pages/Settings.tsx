@@ -6,7 +6,8 @@ import { BranchesTab } from "./settings/BranchesTab";
 import { UsersTab } from "./settings/UsersTab";
 import { TributarioTab } from "./settings/TributarioTab";
 import { InventorySettingsTab } from "./settings/InventorySettingsTab";
-import { SubscriptionTab } from "./settings/SubscriptionTab"; // Import new tab
+import { SubscriptionTab } from "./settings/SubscriptionTab";
+import { Building, Users, Store, CreditCard, FileText, Box } from 'lucide-react';
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -17,6 +18,13 @@ export default function Settings() {
 
   const isSuperAdmin = userRole === 'tenant_super_admin';
   const isAdmin = userRole === 'tenant_admin';
+
+  const renderTrigger = (value: string, icon: React.ReactNode, label: string) => (
+    <TabsTrigger value={value} className="flex items-center gap-2">
+      {icon}
+      {label}
+    </TabsTrigger>
+  );
 
   return (
     <div className="space-y-6">
@@ -31,12 +39,12 @@ export default function Settings() {
 
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full flex-nowrap overflow-x-auto justify-start">
-          <TabsTrigger value="general">General</TabsTrigger>
-          {isSuperAdmin && <TabsTrigger value="branches">Sucursales</TabsTrigger>}
-          {(isSuperAdmin || isAdmin) && <TabsTrigger value="users">Usuarios</TabsTrigger>}
-          {(isSuperAdmin || isAdmin) && <TabsTrigger value="inventory">Inventario</TabsTrigger>}
-          {isSuperAdmin && <TabsTrigger value="tributario">Tributario</TabsTrigger>}
-          {isSuperAdmin && <TabsTrigger value="subscription">Suscripción</TabsTrigger>}
+          {renderTrigger("general", <Building className="h-4 w-4" />, "General")}
+          {isSuperAdmin && renderTrigger("branches", <Store className="h-4 w-4" />, "Sucursales")}
+          {(isSuperAdmin || isAdmin) && renderTrigger("users", <Users className="h-4 w-4" />, "Usuarios")}
+          {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
+          {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
+          {isSuperAdmin && renderTrigger("subscription", <CreditCard className="h-4 w-4" />, "Suscripción")}
         </TabsList>
         
         <TabsContent value="general">

@@ -6,7 +6,7 @@ import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { useWompiCheckout } from '@/hooks/useWompiCheckout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, CreditCard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays } from 'date-fns';
@@ -134,68 +134,79 @@ export function SubscriptionTab() {
   }
 
   return (
-    <div className="mt-4">
-      <CurrentSubscriptionStatus />
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="h-6 w-6" />
+          Suscripción
+        </CardTitle>
+        <CardDescription>
+          Gestiona tu plan actual y explora otras opciones para tu negocio.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <CurrentSubscriptionStatus />
 
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-primary">Planes Disponibles</h2>
-        <p className="text-slate-600">
-          Actualiza o cambia tu plan para acceder a nuevas funcionalidades.
-        </p>
-      </div>
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-primary">Planes Disponibles</h2>
+          <p className="text-slate-600">
+            Actualiza o cambia tu plan para acceder a nuevas funcionalidades.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans?.map(plan => (
-          <Card key={plan.plan_id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-xl">{plan.plan_name}</CardTitle>
-              <CardDescription>{plan.plan_description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col">
-              <div className="mb-4">
-                <span className="text-4xl font-bold">
-                  {formatPrice(plan.calculated_price)}
-                </span>
-                <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Plan Base</span>
-                    <span>{formatPrice(plan.base_price)}</span>
-                  </div>
-                  {plan.active_branches_count > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {plans?.map(plan => (
+            <Card key={plan.plan_id} className="flex flex-col">
+              <CardHeader>
+                <CardTitle className="text-xl">{plan.plan_name}</CardTitle>
+                <CardDescription>{plan.plan_description}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow flex flex-col">
+                <div className="mb-4">
+                  <span className="text-4xl font-bold">
+                    {formatPrice(plan.calculated_price)}
+                  </span>
+                  <div className="text-xs text-muted-foreground mt-2 space-y-1">
                     <div className="flex justify-between">
-                      <span>Sucursales ({plan.active_branches_count})</span>
-                      <span>{formatPrice(plan.active_branches_count * plan.calculated_extra_branch_price)}</span>
+                      <span>Plan Base</span>
+                      <span>{formatPrice(plan.base_price)}</span>
                     </div>
-                  )}
-                  <hr className="my-1" />
-                  <div className="flex justify-between font-bold">
-                    <span>Total</span>
-                    <span>{formatPrice(plan.calculated_price)}</span>
+                    {plan.active_branches_count > 0 && (
+                      <div className="flex justify-between">
+                        <span>Sucursales ({plan.active_branches_count})</span>
+                        <span>{formatPrice(plan.active_branches_count * plan.calculated_extra_branch_price)}</span>
+                      </div>
+                    )}
+                    <hr className="my-1" />
+                    <div className="flex justify-between font-bold">
+                      <span>Total</span>
+                      <span>{formatPrice(plan.calculated_price)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <ul className="space-y-2 text-sm flex-grow mt-4">
-                {plan.plan_features?.map((feature, index) => (
-                  <li key={index} className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500" /> {feature}</li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                onClick={() => handleSelectPlan(plan)}
-                disabled={wompiCheckoutMutation.isPending}
-              >
-                {wompiCheckoutMutation.isPending ? 'Procesando...' : 'Seleccionar Plan'}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-      
-      {wompiCheckoutMutation.error && <p className="text-sm text-red-500 text-center mt-4">{wompiCheckoutMutation.error.message}</p>}
+                <ul className="space-y-2 text-sm flex-grow mt-4">
+                  {plan.plan_features?.map((feature, index) => (
+                    <li key={index} className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500" /> {feature}</li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  className="w-full"
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={wompiCheckoutMutation.isPending}
+                >
+                  {wompiCheckoutMutation.isPending ? 'Procesando...' : 'Seleccionar Plan'}
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+        
+        {wompiCheckoutMutation.error && <p className="text-sm text-red-500 text-center mt-4">{wompiCheckoutMutation.error.message}</p>}
 
-      <form ref={formRef} action="https://checkout.wompi.co/p/" method="GET" style={{ display: 'none' }}></form>
-    </div>
+        <form ref={formRef} action="https://checkout.wompi.co/p/" method="GET" style={{ display: 'none' }}></form>
+      </CardContent>
+    </Card>
   );
 }

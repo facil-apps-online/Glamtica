@@ -7,6 +7,7 @@ import { TenantUsersManager } from './TenantUsersManager';
 import { TenantIntegrationManager } from './TenantIntegrationManager';
 import { TenantSubscriptionsManager } from '@/components/superadmin/TenantSubscriptionsManager';
 import { TenantInvoicesList } from '@/components/superadmin/TenantInvoicesList';
+import { BranchesTab } from '../Settings/BranchesTab';
 
 export default function TenantDetails() {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -88,6 +89,8 @@ export default function TenantDetails() {
       <TenantIntegrationManager tenantId={tenantId} />
       
       <TenantUsersManager tenantId={tenantId} />
+
+      <BranchesTab tenantId={tenantId} />
     </div>
   );
 }

@@ -14,10 +14,10 @@ const statusConfig = {
   archived: { label: 'Archivada', color: 'bg-slate-500' },
 };
 
-export function BranchCard({ branch, onSuccess }) {
+export function BranchCard({ branch, onSuccess, tenantId }) {
   const [isActivateDialogOpen, setActivateDialogOpen] = useState(false);
   const { toast } = useToast();
-  const archiveBranchMutation = useArchiveBranch();
+  const archiveBranchMutation = useArchiveBranch(tenantId);
 
   const handleArchive = async () => {
     archiveBranchMutation.mutate(branch.id, {
@@ -74,6 +74,7 @@ export function BranchCard({ branch, onSuccess }) {
         branchId={branch.id}
         branchName={branch.name}
         onSuccess={onSuccess}
+        tenantId={tenantId}
       />
     </Card>
   );

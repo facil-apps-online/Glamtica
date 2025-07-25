@@ -18,9 +18,9 @@ export interface Branch {
 }
 
 // GET branches by calling the RPC function
-export const useBranches = () => {
+export const useBranches = (tenantIdParam?: string) => {
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useQuery<Branch[], Error>({
     queryKey: ['branches', tenantId],
@@ -35,10 +35,10 @@ export const useBranches = () => {
 };
 
 // CREATE a branch using RPC
-export const useCreateBranch = () => {
+export const useCreateBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (vars: { p_name: string; p_address?: string }) => {
@@ -54,10 +54,10 @@ export const useCreateBranch = () => {
 };
 
 // UPDATE a branch using RPC
-export const useUpdateBranch = () => {
+export const useUpdateBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (vars: { p_branch_id: string; p_name: string; p_address: string }) => {
@@ -73,10 +73,10 @@ export const useUpdateBranch = () => {
 };
 
 // DELETE a branch using RPC
-export const useDeleteBranch = () => {
+export const useDeleteBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (p_branch_id: string) => {
@@ -92,10 +92,10 @@ export const useDeleteBranch = () => {
 };
 
 // ACTIVATE a branch using RPC
-export const useActivateBranch = () => {
+export const useActivateBranch = (tenantIdParam?: string) => {
     const queryClient = useQueryClient();
     const { currentAssignment } = useAuth();
-    const tenantId = currentAssignment?.tenant_id;
+    const tenantId = tenantIdParam || currentAssignment?.tenant_id;
   
     return useMutation({
       mutationFn: async (p_branch_id: string) => {
@@ -114,10 +114,10 @@ export const useActivateBranch = () => {
   };
 
 // ARCHIVE a branch using RPC
-export const useArchiveBranch = () => {
+export const useArchiveBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (p_branch_id: string) => {
@@ -133,10 +133,10 @@ export const useArchiveBranch = () => {
 };
 
 // ACTIVATE a batch of branches using RPC
-export const useActivateBranchesBatch = () => {
+export const useActivateBranchesBatch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async (p_branch_ids: string[]) => {
@@ -158,9 +158,9 @@ export const useActivateBranchesBatch = () => {
 };
 
 // CALCULATE prorated cost for a batch of branches
-export const useCalculateBatchProration = (branchIds: string[], options: { enabled: boolean }) => {
+export const useCalculateBatchProration = (tenantIdParam: string, branchIds: string[], options: { enabled: boolean }) => {
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useQuery({
     queryKey: ['batchProration', tenantId, branchIds],
