@@ -6,10 +6,10 @@ import Index from "@/pages/Index";
 import Appointments from "@/pages/Appointments";
 import Clients from "@/pages/Clients";
 import Services from "@/pages/Services";
-import Stylists from "@/pages/Stylists";
+import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
-import BranchesPage from "@/pages/Settings/Branches"; // Importar la nueva página
+import BranchesPage from "@/pages/Settings/Branches";
 import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
@@ -30,8 +30,11 @@ import SystemAlerts from "@/pages/Superadmin/SystemAlerts";
 import ErrorReports from "@/pages/Superadmin/ErrorReports";
 import PerformanceMetrics from "@/pages/Superadmin/PerformanceMetrics";
 import IntegrationsPage from "@/pages/Superadmin/Integrations";
-import IntegrationProviderForm from "@/pages/Superadmin/IntegrationProviderForm"; // <-- Nueva importación
-import ProfileSettings from "@/pages/ProfileSettings"; // Corregir la ruta de importación
+import IntegrationProviderForm from "@/pages/Superadmin/IntegrationProviderForm";
+import PlatformsList from '@/pages/Superadmin/Platforms/PlatformsList';
+import CreatePlatform from '@/pages/Superadmin/Platforms/CreatePlatform';
+import EditPlatform from '@/pages/Superadmin/Platforms/EditPlatform';
+import ProfileSettings from "@/pages/ProfileSettings";
 import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
 import TranslationAdmin from "@/components/TranslationAdmin";
@@ -44,6 +47,8 @@ import SetupSuperadmin from "@/pages/SetupSuperadmin";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import GoogleCallbackPage from "@/pages/integrations/google/Callback";
 
+import UpdatePasswordPage from "@/pages/UpdatePasswordPage";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -55,19 +60,22 @@ function App() {
               <Route path="/setup-superadmin" element={<SetupSuperadmin />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/register-tenant" element={<RegisterTenant />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/update-password" element={<UpdatePasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/superadmin" element={<SuperadminLayout />}>
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<SuperadminStats />} />
-                  <Route path="profile-settings" element={<ProfileSettings />} /> {/* RUTA AÑADIDA */}
+                  <Route path="profile-settings" element={<ProfileSettings />} />
                   <Route path="create-tenant" element={<CreateTenant />} />
                   <Route path="tenants" element={<TenantsList />} />
                   <Route path="tenants/:tenantId/edit" element={<EditTenant />} />
                   <Route path="tenants/:tenantId" element={<TenantDetails />} />
                   <Route path="tenants/:tenantId/create-admin" element={<CreateTenantAdmin />} />
+                  <Route path="platforms" element={<PlatformsList />} />
+                  <Route path="platforms/create" element={<CreatePlatform />} />
+                  <Route path="platforms/edit/:id" element={<EditPlatform />} />
                   <Route path="subscription-plans" element={<SubscriptionPlans />} />
                   <Route path="subscription-plans/create" element={<CreateSubscriptionPlan />} />
                   <Route path="subscription-plans/edit/:planId" element={<EditSubscriptionPlan />} />
@@ -83,13 +91,13 @@ function App() {
 
                 <Route path="/" element={<Layout><Index /></Layout>}>
                   <Route index element={<Index />} />
-                  <Route path="profile-settings" element={<ProfileSettings />} /> {/* RUTA AÑADIDA */}
+                  <Route path="profile-settings" element={<ProfileSettings />} />
                   <Route path="appointments" element={<Appointments />} />
                   <Route path="clients" element={<Clients />} />
                   <Route path="products" element={<Products />} />
                   <Route path="inventory" element={<Inventory />} />
                   <Route path="services" element={<Services />} />
-                  <Route path="stylists" element={<Stylists />} />
+                  <Route path="team" element={<Team />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="settings/branches" element={<BranchesPage />} />

@@ -864,3 +864,42 @@ El sistema utiliza una arquitectura de cola de trabajos asíncrona para garantiz
         d. Procesa la plantilla HTML con los datos dinámicos.
         e. Envía el correo a través de la API de Gmail.
         f. Actualiza el estado final del trabajo en la tabla `email_queue` a `SENT` o `FAILED`.
+---
+### Módulo: Gestión de Plataformas (CRUD)
+
+**Fecha:** 26 de julio de 2025
+
+**Objetivo:**
+Implementar un módulo completo y seguro para que el `super_admin` pueda gestionar las diferentes plataformas (aplicaciones) del ecosistema.
+
+**Arquitectura y Decisiones Clave:**
+
+1.  **Lógica Centralizada en Edge Function:** En lugar de realizar consultas directas a la base de datos desde el frontend, se optó por centralizar toda la lógica de negocio en una nueva Edge Function dedicada. Esto mejora la seguridad, el control y la capacidad de monitorización.
+
+2.  **Función Dedicada `superadmin-actions`:** Se creó una nueva Edge Function (`supabase/functions/superadmin-actions`) exclusivamente para las operaciones del portal de superadministración. Esto separa las preocupaciones, manteniendo el código más limpio y organizado en comparación con añadir esta lógica a la ya existente `user-actions`.
+
+3.  **Instrumentación de Métricas:** Siguiendo el patrón de monitorización del proyecto, cada acción dentro de la Edge Function (`get_platforms`, `create_platform`, etc.) mide su tiempo de ejecución y registra el resultado en la tabla `api_request_metrics`. Esto se hace dentro de un bloque `try...finally` para garantizar que la métrica se registre incluso si la operación falla.
+
+**Componentes Creados y Modificados:**
+
+*   **Backend (Edge Function):**
+    *   `supabase/functions/superadmin-actions/index.ts`: (Nuevo) Contiene toda la lógica para el CRUD de plataformas, incluyendo la validación de datos y la inserción de métricas.
+
+*   **Frontend (Páginas y Componentes):**
+    *   `src/pages/Superadmin/Platforms/`: (Nuevo Directorio)
+    *   `src/pages/Superadmin/Platforms/PlatformsList.tsx`: (Nuevo) Muestra la lista de plataformas, maneja la carga de datos y las acciones de editar/eliminar.
+    *   `src/pages/Superadmin/Platforms/PlatformForm.tsx`: (Nuevo) Componente reutilizable con `react-hook-form` y `zod` para la validación y gestión del formulario de creación/edición.
+    *   `src/pages/Superadmin/Platforms/CreatePlatform.tsx`: (Nuevo) Página que utiliza `PlatformForm` para crear nuevas plataformas.
+    *   `src/pages/Superadmin/Platforms/EditPlatform.tsx`: (Nuevo) Página que obtiene los datos de una plataforma por su ID y utiliza `PlatformForm` para la edición.
+
+*   **Configuración y Rutas:**
+    *   `src/config/superadminNavigation.ts`: (Modificado) Se añadió un nuevo grupo "Administración" con el enlace a "Plataformas".
+    *   `src/App.tsx`: (Modificado) Se añadieron las rutas para las nuevas páginas del CRUD de plataformas y se importaron los componentes necesarios.
+
+**Troubleshooting (Problemas Resueltos):**
+
+1.  **Error de Referencia (`ReferenceError`):** Durante el desarrollo, la aplicación falló porque los nuevos componentes de las páginas de plataformas (`PlatformsList`, etc.) no estaban importados en `App.tsx` donde se definían sus rutas. Se solucionó añadiendo las sentencias `import` correspondientes.
+
+2.  **Error de CORS:** Tras solucionar el primer error, la página de plataformas no podía cargar datos debido a un error de CORS. Se diagnosticó correctamente que la causa raíz no era la configuración de CORS, sino que la nueva Edge Function `superadmin-actions` no había sido desplegada en el entorno de Supabase. El despliegue de la función resolvió el problema.
+
+**Estado:** Completado y verificado.

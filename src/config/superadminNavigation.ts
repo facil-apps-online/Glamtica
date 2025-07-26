@@ -41,6 +41,23 @@ export const superadminNavigationConfig = [
     ]
   },
   {
+    group: "Administración",
+    items: [
+      {
+        title: "Plataformas",
+        url: "/superadmin/platforms",
+        icon: Server,
+        roles: ['super_admin']
+      },
+      {
+        title: "Gestión de Accesos",
+        url: "/superadmin/access-management",
+        icon: Users,
+        roles: ['super_admin']
+      }
+    ]
+  },
+  {
     group: "Sistema",
     items: [
       {
