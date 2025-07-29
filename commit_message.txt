@@ -1,0 +1,11 @@
+feat(superadmin): Implementar CRUD de plataformas
+
+Se introduce un módulo completo para la gestión de plataformas (aplicaciones) en el portal de superadministración, sentando las bases para la arquitectura multi-plataforma.
+
+Principales Características:
+
+- **Arquitectura Basada en Edge Function:** Se crea una nueva Edge Function dedicada (`superadmin-actions`) para centralizar toda la lógica de negocio del CRUD, mejorando la seguridad y la monitorización.
+- **Instrumentación de Métricas:** Cada acción dentro de la nueva Edge Function se integra con el sistema de monitorización existente, registrando el tiempo de respuesta y el estado en la tabla `api_request_metrics`.
+- **Interfaz de Usuario Robusta:** Se desarrollan nuevos componentes en React utilizando `shadcn/ui`, `react-hook-form` y `zod` para crear una experiencia de usuario consistente y con validaciones robustas para listar, crear, editar y eliminar plataformas.
+- **Navegación y Rutas:** Se actualiza la configuración de navegación del superadministrador y se añaden las rutas correspondientes para integrar el nuevo módulo en la aplicación.
+- **Documentación:** Se actualizan los archivos `WORK_DOCUMENTS.md` y `glamtica.md` para reflejar los cambios arquitectónicos y la nueva funcionalidad.

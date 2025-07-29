@@ -6,9 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 interface ServiceCommission {
   id: string;
   service_id: string;
-  stylist_id: string;
+  user_id: string;
   commission_rate: number;
-  can_perform: boolean;
   created_at: string;
   updated_at: string;
   services?: {
@@ -16,63 +15,54 @@ interface ServiceCommission {
     name: string;
     price: number;
   };
-  stylists?: {
+  users?: {
     id: string;
-    name: string;
+    first_name: string;
+    last_name: string;
   };
 }
 
 interface CreateServiceCommissionData {
   service_id: string;
-  stylist_id: string;
+  user_id: string;
+  branch_id: string;
   commission_rate: number;
-  can_perform?: boolean;
 }
 
-export const useServiceCommissions = (serviceId?: string) => {
+export const useServiceCommissions = (serviceId?: string, branchId?: string) => {
   return useQuery({
-    queryKey: ['service-commissions', serviceId],
+    queryKey: ['service-commissions', serviceId, branchId],
     queryFn: async () => {
       let query = supabase
-        .from('service_stylist_commissions')
-        .select(`
-          *,
-          services (id, name, price),
-          stylists (id, name)
-        `)
+        .from('service_user_commissions')
+        .select(`*, services(id, name, price), users(id, first_name, last_name)`)
         .order('created_at', { ascending: false });
 
-      if (serviceId) {
-        query = query.eq('service_id', serviceId);
-      }
+      if (serviceId) query = query.eq('service_id', serviceId);
+      if (branchId) query = query.eq('branch_id', branchId);
 
       const { data, error } = await query;
-
       if (error) throw error;
       return data as ServiceCommission[];
     },
-    enabled: !serviceId || !!serviceId,
+    enabled: !!branchId,
   });
 };
 
-export const useStylistServiceCommissions = (stylistId: string) => {
+export const useUserServiceCommissions = (userId: string) => {
   return useQuery({
-    queryKey: ['service-commissions', 'stylist', stylistId],
+    queryKey: ['service-commissions', 'user', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('service_stylist_commissions')
-        .select(`
-          *,
-          services (id, name, price, duration_minutes)
-        `)
-        .eq('stylist_id', stylistId)
-        .eq('can_perform', true)
+        .from('service_user_commissions')
+        .select(`*, services(id, name, price, duration_minutes)`)
+        .eq('user_id', userId)
         .order('services(name)');
 
       if (error) throw error;
       return data as ServiceCommission[];
     },
-    enabled: !!stylistId,
+    enabled: !!userId,
   });
 };
 
@@ -83,11 +73,8 @@ export const useCreateServiceCommission = () => {
   return useMutation({
     mutationFn: async (data: CreateServiceCommissionData) => {
       const { data: result, error } = await supabase
-        .from('service_stylist_commissions')
-        .insert({
-          ...data,
-          can_perform: data.can_perform ?? true,
-        })
+        .from('service_user_commissions')
+        .insert(data)
         .select()
         .single();
 
@@ -96,18 +83,10 @@ export const useCreateServiceCommission = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-commissions'] });
-      toast({
-        title: "Comisión agregada",
-        description: "La comisión del servicio se ha configurado correctamente.",
-      });
+      toast({ title: "Comisión agregada" });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo agregar la comisión del servicio.",
-        variant: "destructive",
-      });
-      console.error('Error creating service commission:', error);
+      toast({ title: "Error", description: "No se pudo agregar la comisión.", variant: "destructive" });
     },
   });
 };
@@ -117,15 +96,9 @@ export const useUpdateServiceCommission = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      id, 
-      updates 
-    }: { 
-      id: string; 
-      updates: Partial<CreateServiceCommissionData> 
-    }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateServiceCommissionData> }) => {
       const { data, error } = await supabase
-        .from('service_stylist_commissions')
+        .from('service_user_commissions')
         .update(updates)
         .eq('id', id)
         .select()
@@ -136,18 +109,10 @@ export const useUpdateServiceCommission = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-commissions'] });
-      toast({
-        title: "Comisión actualizada",
-        description: "Los cambios se han guardado correctamente.",
-      });
+      toast({ title: "Comisión actualizada" });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la comisión del servicio.",
-        variant: "destructive",
-      });
-      console.error('Error updating service commission:', error);
+      toast({ title: "Error", description: "No se pudo actualizar la comisión.", variant: "destructive" });
     },
   });
 };
@@ -159,7 +124,7 @@ export const useDeleteServiceCommission = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('service_stylist_commissions')
+        .from('service_user_commissions')
         .delete()
         .eq('id', id);
 
@@ -167,18 +132,10 @@ export const useDeleteServiceCommission = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-commissions'] });
-      toast({
-        title: "Comisión eliminada",
-        description: "La comisión del servicio se ha eliminado.",
-      });
+      toast({ title: "Comisión eliminada" });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar la comisión del servicio.",
-        variant: "destructive",
-      });
-      console.error('Error deleting service commission:', error);
+      toast({ title: "Error", description: "No se pudo eliminar la comisión.", variant: "destructive" });
     },
   });
 };

@@ -1,96 +1,60 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TenantIntegration {
   id: string;
-  tenant_id: string | null;
+  tenant_id: string;
   provider: string;
-  access_token: string;
-  encrypted_refresh_token: any; 
   account_email: string;
   created_at: string;
   updated_at: string;
+  environment: string;
   is_active: boolean;
 }
 
-export const useTenantIntegrations = (tenantId: string, environment?: 'test' | 'production') => {
-  const { profile, currentAssignment } = useAuth();
+// Helper function to invoke the superadmin-actions Edge Function
+const invokeSuperadminAction = async (action: string, payload?: any) => {
+  const { data, error } = await supabase.functions.invoke('superadmin-actions', {
+    body: { action, payload },
+  });
+  if (error) throw new Error(error.message);
+  if (data.success === false) {
+    throw new Error(data.message);
+  }
+  return data;
+};
+
+// --- GET Integrations (Superadmin View) ---
+const fetchTenantIntegrations = async (tenantId: string): Promise<TenantIntegration[]> => {
+  if (!tenantId) return [];
+  // No environment is passed, so the backend returns all integrations for the tenant
+  return invokeSuperadminAction('get_tenant_integrations', { tenantId });
+};
+
+export const useTenantIntegrations = (tenantId: string) => {
   return useQuery<TenantIntegration[], Error>({
-    queryKey: ['tenantIntegrations', tenantId, currentAssignment?.role_name, environment],
-    queryFn: async () => {
-      if (!tenantId || !currentAssignment?.role_name || !profile?.id) {
-        throw new Error('Tenant ID, user role, and user ID are required to fetch integrations.');
-      }
-
-      const { data, error } = await supabase.rpc('get_tenant_integrations', {
-        p_tenant_id: tenantId,
-        p_user_role: currentAssignment.role_name,
-        p_requesting_user_id: profile.id,
-        p_environment: environment ?? null,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      return data || [];
-    },
-    enabled: !!tenantId && !!currentAssignment?.role_name && !!profile?.id,
+    // The queryKey no longer includes environment
+    queryKey: ['tenantIntegrations', tenantId],
+    queryFn: () => fetchTenantIntegrations(tenantId),
+    enabled: !!tenantId,
   });
 };
 
+// --- DELETE Integration (Superadmin View) ---
+const deleteTenantIntegration = async (integrationId: string): Promise<any> => {
+  return invokeSuperadminAction('delete_tenant_integration', { integrationId });
+};
+
 export const useDeleteIntegration = () => {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation<any, Error, { tenantId: string; provider: string }>({
-    mutationFn: async ({ tenantId, provider }) => {
-      console.log('[useDeleteIntegration] Initiating mutation with:', { tenantId, provider });
-
-      if (!user?.id) {
-        console.error('[useDeleteIntegration] Error: User ID is missing.');
-        throw new Error('User is not authenticated.');
-      }
-
-      console.log('[useDeleteIntegration] Calling RPC "disconnect_google_provider" with params:', {
-        p_tenant_id: tenantId,
-        p_provider: provider,
-        p_requesting_user_id: user.id,
-      });
-
-      const { data, error } = await supabase.rpc('disconnect_google_provider', {
-        p_tenant_id: tenantId,
-        p_provider: provider,
-        p_requesting_user_id: user.id,
-      });
-
-      if (error) {
-        console.error('[useDeleteIntegration] RPC Error:', error);
-        throw error;
-      }
-      
-      console.log('[useDeleteIntegration] RPC Success Data:', data);
-      if (!data || !data.success) {
-        console.error('[useDeleteIntegration] RPC returned non-success:', data);
-        throw new Error(data?.message || "Error al eliminar la integración.");
-      }
-      
-      return data;
-    },
+  return useMutation<any, Error, { integrationId: string; tenantId: string }>({
+    mutationFn: ({ integrationId }) => deleteTenantIntegration(integrationId),
     onSuccess: (data, variables) => {
-      console.log('[useDeleteIntegration] onSuccess callback triggered.', { data, variables });
-      const queryKey = ['tenantIntegrations', variables.tenantId, user?.role];
-      
-      queryClient.setQueryData(queryKey, (oldData: any[] | undefined) => {
-        const newData = oldData ? oldData.filter(integration => integration.provider !== variables.provider) : [];
-        console.log('[useDeleteIntegration] Manually updating cache.', { oldData, newData });
-        return newData;
+      // Invalidate the query to refetch the list of integrations
+      queryClient.invalidateQueries({ 
+        queryKey: ['tenantIntegrations', variables.tenantId] 
       });
-
-      queryClient.invalidateQueries({ queryKey: ['tenantIntegrations', variables.tenantId] });
     },
-    onError: (error, variables) => {
-      console.error('[useDeleteIntegration] onError callback triggered.', { error, variables });
-    }
   });
 };

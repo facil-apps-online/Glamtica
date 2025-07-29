@@ -136,8 +136,8 @@ export function SubscriptionTab() {
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-6 w-6" />
+        <CardTitle className="flex items-center gap-2 text-primary">
+          <CreditCard className="h-5 w-5" />
           Suscripción
         </CardTitle>
         <CardDescription>

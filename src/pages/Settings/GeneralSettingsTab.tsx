@@ -148,8 +148,8 @@ export function GeneralSettingsTab() {
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building className="h-6 w-6" />
+        <CardTitle className="flex items-center gap-2 text-primary">
+          <Building className="h-5 w-5" />
           Configuración General
         </CardTitle>
         <CardDescription>Administra la información principal y regional de tu negocio.</CardDescription>

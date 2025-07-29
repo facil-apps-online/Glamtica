@@ -6,28 +6,29 @@ export interface TenantSubscription {
   start_date: string;
   end_date: string | null;
   is_active: boolean;
+  is_trial: boolean | null;
   plan_name: string;
   branch_name: string | null;
 }
 
+// Helper function to invoke the superadmin-actions Edge Function
+const invokeSuperadminAction = async (action: string, payload?: any) => {
+  const { data, error } = await supabase.functions.invoke('superadmin-actions', {
+    body: { action, payload },
+  });
+  if (error) throw new Error(error.message);
+  // The Edge Function now returns the final mapped data, so we just return it.
+  // We also need to check for a potential error message from the function itself.
+  if (data.success === false) {
+    throw new Error(data.message);
+  }
+  return data;
+};
+
+
 const fetchSubscriptionsByTenant = async (tenantId: string): Promise<TenantSubscription[]> => {
   if (!tenantId) return [];
-
-  const { data, error } = await supabase
-    .from('tenant_subscriptions')
-    .select('id, start_date, end_date, is_active, subscription_plans(name), branches(name)')
-    .eq('tenant_id', tenantId)
-    .order('start_date', { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data.map(sub => ({
-    ...sub,
-    plan_name: sub.subscription_plans.name,
-    branch_name: sub.branches ? sub.branches.name : 'General',
-  }));
+  return invokeSuperadminAction('get_subscriptions_by_tenant', { tenantId });
 };
 
 export const useSubscriptionsByTenant = (tenantId: string) => {

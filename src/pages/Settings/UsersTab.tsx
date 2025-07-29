@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { TenantUsersManager } from '@/pages/Superadmin/TenantUsersManager';
+import { TenantUsersManager } from '@/components/TenantUsersManager';
 
 export function UsersTab() {
   const { currentAssignment } = useAuth();

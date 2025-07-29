@@ -19,8 +19,8 @@ export interface Branch {
 
 // GET branches by calling the RPC function
 export const useBranches = (tenantIdParam?: string) => {
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth(); // Use session which is more generic
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useQuery<Branch[], Error>({
     queryKey: ['branches', tenantId],
@@ -37,8 +37,8 @@ export const useBranches = (tenantIdParam?: string) => {
 // CREATE a branch using RPC
 export const useCreateBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth();
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
     mutationFn: async (vars: { p_name: string; p_address?: string }) => {
@@ -56,8 +56,8 @@ export const useCreateBranch = (tenantIdParam?: string) => {
 // UPDATE a branch using RPC
 export const useUpdateBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth();
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
     mutationFn: async (vars: { p_branch_id: string; p_name: string; p_address: string }) => {
@@ -75,8 +75,8 @@ export const useUpdateBranch = (tenantIdParam?: string) => {
 // DELETE a branch using RPC
 export const useDeleteBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth();
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
     mutationFn: async (p_branch_id: string) => {
@@ -94,8 +94,8 @@ export const useDeleteBranch = (tenantIdParam?: string) => {
 // ACTIVATE a branch using RPC
 export const useActivateBranch = (tenantIdParam?: string) => {
     const queryClient = useQueryClient();
-    const { currentAssignment } = useAuth();
-    const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+    const { session } = useAuth();
+    const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
   
     return useMutation({
       mutationFn: async (p_branch_id: string) => {
@@ -116,8 +116,8 @@ export const useActivateBranch = (tenantIdParam?: string) => {
 // ARCHIVE a branch using RPC
 export const useArchiveBranch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth();
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
     mutationFn: async (p_branch_id: string) => {
@@ -135,8 +135,8 @@ export const useArchiveBranch = (tenantIdParam?: string) => {
 // ACTIVATE a batch of branches using RPC
 export const useActivateBranchesBatch = (tenantIdParam?: string) => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth();
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
     mutationFn: async (p_branch_ids: string[]) => {
@@ -159,8 +159,8 @@ export const useActivateBranchesBatch = (tenantIdParam?: string) => {
 
 // CALCULATE prorated cost for a batch of branches
 export const useCalculateBatchProration = (tenantIdParam: string, branchIds: string[], options: { enabled: boolean }) => {
-  const { currentAssignment } = useAuth();
-  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
+  const { session } = useAuth();
+  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useQuery({
     queryKey: ['batchProration', tenantId, branchIds],

@@ -29,6 +29,7 @@ interface FormData {
 }
 
 const RECAPTCHA_SECRET_KEY = Deno.env.get('RECAPTCHA_SECRET_KEY');
+const GLAMTICA_PLATFORM_ID = Deno.env.get('GLAMTICA_PLATFORM_ID'); // <-- Get Platform ID from env
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,17 +45,21 @@ serve(async (req) => {
     const body: FormData = await req.json();
     const { recaptcha_token, ...formData } = body;
 
+    // --- Server-side validation ---
     if (!RECAPTCHA_SECRET_KEY) {
       throw new Error('El secreto de reCAPTCHA no está configurado en el servidor.');
     }
+    if (!GLAMTICA_PLATFORM_ID) {
+      throw new Error('El ID de la plataforma por defecto no está configurado en el servidor.');
+    }
 
+    // --- reCAPTCHA verification ---
     const recaptchaUrl = 'https://www.google.com/recaptcha/api/siteverify';
     const response = await fetch(recaptchaUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `secret=${RECAPTCHA_SECRET_KEY}&response=${recaptcha_token}`,
     });
-
     const recaptchaData = await response.json();
 
     if (!recaptchaData.success) {
@@ -64,44 +69,44 @@ serve(async (req) => {
       });
     }
 
-    const supabaseClient = createClient(
+    // Use the SERVICE_ROLE_KEY for this operation to bypass RLS
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Llamamos a la función RPC existente, inyectando el estado de la suscripción
-    const { data: rpcData, error: rpcError } = await supabaseClient.rpc('create_tenant_with_admin', {
-      name: formData.name,
-      subscription_status: 'trial', // <-- CAMBIO CLAVE: Forzamos el estado a 'trial'
-      country_id: formData.country_id,
-      default_language_code: formData.default_language_code,
-      default_currency_id: formData.default_currency_id,
-      default_timezone: formData.default_timezone,
-      contact_phone: formData.contact_phone,
-      whatsapp_phone: formData.whatsapp_phone,
-      commercial_email: formData.commercial_email,
-      legal_name: formData.legal_name,
-      tax_id: formData.tax_id,
-      billing_address: formData.billing_address,
-      einvoicing_email: formData.einvoicing_email,
-      physical_address_line1: formData.physical_address_line1,
-      physical_address_line2: formData.physical_address_line2,
-      physical_city: formData.physical_city,
-      physical_state: formData.physical_state,
-      physical_postal_code: formData.physical_postal_code,
-      website: formData.website,
-      latitude: formData.latitude,
-      longitude: formData.longitude,
-      admin_email: formData.admin_email,
-      admin_password: formData.admin_password,
+    // --- Call the updated RPC function ---
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('create_tenant_with_admin', {
+      p_platform_id: GLAMTICA_PLATFORM_ID, // <-- Pass the platform ID
+      p_name: formData.name,
+      p_country_id: formData.country_id,
+      p_default_language_code: formData.default_language_code,
+      p_default_currency_id: formData.default_currency_id,
+      p_default_timezone: formData.default_timezone,
+      p_contact_phone: formData.contact_phone,
+      p_whatsapp_phone: formData.whatsapp_phone,
+      p_commercial_email: formData.commercial_email,
+      p_legal_name: formData.legal_name,
+      p_tax_id: formData.tax_id,
+      p_billing_address: formData.billing_address,
+      p_einvoicing_email: formData.einvoicing_email,
+      p_physical_address_line1: formData.physical_address_line1,
+      p_physical_address_line2: formData.physical_address_line2,
+      p_physical_city: formData.physical_city,
+      p_physical_state: formData.physical_state,
+      p_physical_postal_code: formData.physical_postal_code,
+      p_website: formData.website,
+      p_latitude: formData.latitude,
+      p_longitude: formData.longitude,
+      p_admin_email: formData.admin_email,
+      // The RPC no longer takes the password directly
     });
 
     if (rpcError) {
       throw new Error(rpcError.message);
     }
 
-    return new Response(JSON.stringify(rpcData), {
+    return new Response(JSON.stringify({ success: true, data: rpcData }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

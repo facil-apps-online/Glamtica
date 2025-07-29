@@ -6,37 +6,41 @@ import { useToast } from "@/hooks/use-toast";
 export interface ProductCommission {
   id: string;
   product_id: string;
-  stylist_id: string;
+  user_id: string;
   commission_rate: number;
   created_at: string;
   updated_at: string;
-  stylists?: {
+  users?: {
     id: string;
-    name: string;
+    first_name: string;
+    last_name: string;
   };
 }
 
-export const useProductCommissions = (productId: string) => {
+interface CreateProductCommissionData {
+  product_id: string;
+  user_id: string;
+  branch_id: string;
+  commission_rate: number;
+}
+
+export const useProductCommissions = (productId?: string, branchId?: string) => {
   return useQuery({
-    queryKey: ['product-commissions', productId],
+    queryKey: ['product-commissions', productId, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('product_stylist_commissions')
-        .select(`
-          *,
-          stylists (
-            id,
-            name
-          )
-        `)
-        .eq('product_id', productId);
+      let query = supabase
+        .from('product_user_commissions')
+        .select(`*, users(id, first_name, last_name)`)
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
+      if (productId) query = query.eq('product_id', productId);
+      if (branchId) query = query.eq('branch_id', branchId);
 
+      const { data, error } = await query;
+      if (error) throw error;
       return data as ProductCommission[];
     },
+    enabled: !!branchId,
   });
 };
 
@@ -45,13 +49,9 @@ export const useCreateProductCommission = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (commissionData: {
-      product_id: string;
-      stylist_id: string;
-      commission_rate: number;
-    }) => {
+    mutationFn: async (commissionData: CreateProductCommissionData) => {
       const { data, error } = await supabase
-        .from('product_stylist_commissions')
+        .from('product_user_commissions')
         .insert([commissionData])
         .select()
         .single();
@@ -61,18 +61,10 @@ export const useCreateProductCommission = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions', data.product_id] });
-      toast({
-        title: "Comisión asignada",
-        description: "La comisión ha sido asignada exitosamente.",
-      });
+      toast({ title: "Comisión asignada" });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo asignar la comisión. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-      console.error('Error creating commission:', error);
+      toast({ title: "Error", description: "No se pudo asignar la comisión.", variant: "destructive" });
     },
   });
 };
@@ -82,39 +74,23 @@ export const useUpdateProductCommission = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      id, 
-      commission_rate,
-      product_id 
-    }: { 
-      id: string; 
-      commission_rate: number;
-      product_id: string;
-    }) => {
+    mutationFn: async ({ id, commission_rate }: { id: string; commission_rate: number }) => {
       const { data, error } = await supabase
-        .from('product_stylist_commissions')
+        .from('product_user_commissions')
         .update({ commission_rate })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return { data, product_id };
+      return data;
     },
-    onSuccess: ({ product_id }) => {
-      queryClient.invalidateQueries({ queryKey: ['product-commissions', product_id] });
-      toast({
-        title: "Comisión actualizada",
-        description: "La comisión ha sido actualizada exitosamente.",
-      });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['product-commissions', data.product_id] });
+      toast({ title: "Comisión actualizada" });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la comisión. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-      console.error('Error updating commission:', error);
+      toast({ title: "Error", description: "No se pudo actualizar la comisión.", variant: "destructive" });
     },
   });
 };
@@ -126,7 +102,7 @@ export const useDeleteProductCommission = () => {
   return useMutation({
     mutationFn: async ({ id, product_id }: { id: string; product_id: string }) => {
       const { error } = await supabase
-        .from('product_stylist_commissions')
+        .from('product_user_commissions')
         .delete()
         .eq('id', id);
 
@@ -135,18 +111,10 @@ export const useDeleteProductCommission = () => {
     },
     onSuccess: (product_id) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions', product_id] });
-      toast({
-        title: "Comisión eliminada",
-        description: "La comisión ha sido eliminada exitosamente.",
-      });
+      toast({ title: "Comisión eliminada" });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar la comisión. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-      console.error('Error deleting commission:', error);
+      toast({ title: "Error", description: "No se pudo eliminar la comisión.", variant: "destructive" });
     },
   });
 };

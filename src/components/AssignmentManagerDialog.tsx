@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useUserAssignments, useUpdateUserAssignments, AssignmentFormValue } from '@/hooks/useUserAssignments';
-import { useRoles } from '@/hooks/useTenantUsers';
+import { useRoles } from '@/hooks/useRoles';
 import { useBranches } from '@/hooks/useBranches';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

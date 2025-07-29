@@ -14,26 +14,7 @@ import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
-import CreateTenant from "@/pages/Superadmin/CreateTenant";
-import TenantsList from "@/pages/Superadmin/TenantsList";
-import EditTenant from "@/pages/Superadmin/EditTenant";
-import TenantDetails from "@/pages/Superadmin/TenantDetails";
-import CreateTenantAdmin from "@/pages/Superadmin/CreateTenantAdmin";
-import SubscriptionPlans from "@/pages/Superadmin/SubscriptionPlans";
-import CreateSubscriptionPlan from "@/pages/Superadmin/CreateSubscriptionPlan";
-import EditSubscriptionPlan from "@/pages/Superadmin/EditSubscriptionPlan";
-import PlanPricingManager from "@/pages/Superadmin/PlanPricingManager";
-import GlobalSettings from "@/pages/Superadmin/GlobalSettings";
-import { SuperadminLayout } from "@/pages/Superadmin/SuperadminLayout";
-import SuperadminStats from "@/pages/Superadmin/SuperadminStats";
-import SystemAlerts from "@/pages/Superadmin/SystemAlerts";
-import ErrorReports from "@/pages/Superadmin/ErrorReports";
-import PerformanceMetrics from "@/pages/Superadmin/PerformanceMetrics";
-import IntegrationsPage from "@/pages/Superadmin/Integrations";
-import IntegrationProviderForm from "@/pages/Superadmin/IntegrationProviderForm";
-import PlatformsList from '@/pages/Superadmin/Platforms/PlatformsList';
-import CreatePlatform from '@/pages/Superadmin/Platforms/CreatePlatform';
-import EditPlatform from '@/pages/Superadmin/Platforms/EditPlatform';
+import SuperadminRoutes from '@/pages/Superadmin/routes';
 import ProfileSettings from "@/pages/ProfileSettings";
 import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
@@ -43,7 +24,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthPage from "@/pages/Auth";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
-import SetupSuperadmin from "@/pages/SetupSuperadmin";
+import SetupSuperadmin from "@/pages/Superadmin/pages/SetupSuperadmin";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import GoogleCallbackPage from "@/pages/integrations/google/Callback";
 
@@ -64,30 +45,7 @@ function App() {
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
 
               <Route element={<ProtectedRoute />}>
-                <Route path="/superadmin" element={<SuperadminLayout />}>
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<SuperadminStats />} />
-                  <Route path="profile-settings" element={<ProfileSettings />} />
-                  <Route path="create-tenant" element={<CreateTenant />} />
-                  <Route path="tenants" element={<TenantsList />} />
-                  <Route path="tenants/:tenantId/edit" element={<EditTenant />} />
-                  <Route path="tenants/:tenantId" element={<TenantDetails />} />
-                  <Route path="tenants/:tenantId/create-admin" element={<CreateTenantAdmin />} />
-                  <Route path="platforms" element={<PlatformsList />} />
-                  <Route path="platforms/create" element={<CreatePlatform />} />
-                  <Route path="platforms/edit/:id" element={<EditPlatform />} />
-                  <Route path="subscription-plans" element={<SubscriptionPlans />} />
-                  <Route path="subscription-plans/create" element={<CreateSubscriptionPlan />} />
-                  <Route path="subscription-plans/edit/:planId" element={<EditSubscriptionPlan />} />
-                  <Route path="plan-pricing" element={<PlanPricingManager />} />
-                  <Route path="global-settings" element={<GlobalSettings />} />
-                  <Route path="system-alerts" element={<SystemAlerts />} />
-                  <Route path="error-reports" element={<ErrorReports />} />
-                  <Route path="performance-metrics" element={<PerformanceMetrics />} />
-                  <Route path="integrations" element={<IntegrationsPage />} />
-                  <Route path="integrations/new" element={<IntegrationProviderForm />} />
-                  <Route path="integrations/edit/:id" element={<IntegrationProviderForm />} />
-                </Route>
+                <Route path="/superadmin/*" element={<SuperadminRoutes />} />
 
                 <Route path="/" element={<Layout><Index /></Layout>}>
                   <Route index element={<Index />} />

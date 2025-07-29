@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePickerWrapper } from "@/components/ui/DatePicker"; // Importar el nuevo componente
+import { DatePickerWrapper } from "@/components/ui/DatePicker";
 import { Plus } from "lucide-react";
-import { useCreateTimeOffRequest } from "@/hooks/useStylistTimeOff";
+import { useCreateTimeOffRequest } from "@/hooks/useUserTimeOff";
+import { format } from 'date-fns';
 
 interface TimeOffRequestDialogProps {
-  stylistId: string;
+  userId: string;
   trigger?: React.ReactNode;
 }
 
@@ -22,15 +23,13 @@ const TIME_OFF_TYPES = [
   { value: 'other', label: 'Otro' },
 ];
 
-export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialogProps) => {
+export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogProps) => {
   const [open, setOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [type, setType] = useState("");
   const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
   const [isPartialDay, setIsPartialDay] = useState(false);
 
   const createRequestMutation = useCreateTimeOffRequest();
@@ -38,28 +37,23 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!startDate || !endDate || !type) return;
+    if (!startDate || !endDate) return;
 
     try {
       await createRequestMutation.mutateAsync({
-        stylist_id: stylistId,
-        start_date: startDate,
-        end_date: endDate,
+        user_id: userId,
+        start_date: format(startDate, 'yyyy-MM-dd'),
+        end_date: format(endDate, 'yyyy-MM-dd'),
         start_time: isPartialDay ? startTime : undefined,
         end_time: isPartialDay ? endTime : undefined,
-        type,
         reason: reason || undefined,
-        notes: notes || undefined,
       });
 
-      // Reset form
       setStartDate(null);
       setEndDate(null);
       setStartTime("");
       setEndTime("");
-      setType("");
       setReason("");
-      setNotes("");
       setIsPartialDay(false);
       setOpen(false);
     } catch (error) {
@@ -71,33 +65,17 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
             Solicitar Permiso
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Solicitar Permiso o Ausencia</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tipo de Permiso</Label>
-            <Select value={type} onValueChange={setType} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona el tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_OFF_TYPES.map((timeOffType) => (
-                  <SelectItem key={timeOffType.value} value={timeOffType.value}>
-                    {timeOffType.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fecha de Inicio</Label>
@@ -106,7 +84,6 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
                 onChange={setStartDate}
               />
             </div>
-
             <div className="space-y-2">
               <Label>Fecha de Fin</Label>
               <DatePickerWrapper
@@ -122,7 +99,6 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
               id="partialDay"
               checked={isPartialDay}
               onChange={(e) => setIsPartialDay(e.target.checked)}
-              className="rounded"
             />
             <Label htmlFor="partialDay">Permiso parcial (especificar horas)</Label>
           </div>
@@ -152,7 +128,7 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
 
           <div className="space-y-2">
             <Label htmlFor="reason">Motivo</Label>
-            <Input
+            <Textarea
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -160,29 +136,11 @@ export const TimeOffRequestDialog = ({ stylistId, trigger }: TimeOffRequestDialo
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notas Adicionales</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Información adicional..."
-              rows={3}
-            />
-          </div>
-
           <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={createRequestMutation.isPending || !startDate || !endDate || !type}
-            >
+            <Button type="submit" disabled={createRequestMutation.isPending || !startDate || !endDate}>
               {createRequestMutation.isPending ? 'Enviando...' : 'Enviar Solicitud'}
             </Button>
           </div>

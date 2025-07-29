@@ -4,60 +4,59 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormItem, FormLabel } from '@/components/ui/form';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCountries, useLocalizations } from '@/hooks/useLocalization';
 import { useCurrencies } from '@/hooks/useCurrencies';
 import { useTimezones } from '@/hooks/useTimezones';
-import { useUpdateRegionalSettings } from '@/hooks/useProfileSettings';
+import { useUpdateRegionalSettings } from '@/hooks/useProfileSettings'; // Hook específico
 
 const regionalSettingsFormSchema = z.object({
-  countryId: z.string().uuid("Debe ser un UUID válido.").optional().nullable(),
-  languageId: z.string().uuid("Debe ser un UUID válido.").optional().nullable(),
-  currencyId: z.string().uuid("Debe ser un UUID válido.").optional().nullable(),
-  timezoneId: z.string().optional().nullable(),
+  country_id: z.string().uuid("Debe ser un UUID válido.").optional().nullable(),
+  language_id: z.string().uuid("Debe ser un UUID válido.").optional().nullable(),
+  currency_id: z.string().uuid("Debe ser un UUID válido.").optional().nullable(),
+  timezone: z.string().optional().nullable(),
 });
 
 export const RegionalSettingsTab = () => {
-  const { profile } = useAuth(); // Corregido: user -> profile
+  const { profile } = useAuth();
   const { toast } = useToast();
-  const { data: countries } = useCountries();
-  const { data: localizations } = useLocalizations();
-  const { data: currencies } = useCurrencies();
-  const { data: timezones } = useTimezones();
-  const updateRegionalSettingsMutation = useUpdateRegionalSettings();
+  const { data: countries, isLoading: isLoadingCountries } = useCountries();
+  const { data: localizations, isLoading: isLoadingLocalizations } = useLocalizations();
+  const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();
+  const { data: timezones, isLoading: isLoadingTimezones } = useTimezones();
+  const regionalSettingsMutation = useUpdateRegionalSettings(); // Mutación específica
 
   const form = useForm<z.infer<typeof regionalSettingsFormSchema>>({
     resolver: zodResolver(regionalSettingsFormSchema),
     defaultValues: {
-      countryId: profile?.country_id || null,
-      languageId: profile?.language_id || null,
-      currencyId: profile?.currency_id || null,
-      timezoneId: profile?.timezone_id || null,
+      country_id: null,
+      language_id: null,
+      currency_id: null,
+      timezone: null,
     },
   });
 
   useEffect(() => {
-    if (profile) { // Corregido: user -> profile
+    if (profile) {
       form.reset({
-        countryId: profile.country_id || null,
-        languageId: profile.language_id || null,
-        currencyId: profile.currency_id || null,
-        timezoneId: profile.timezone_id || null,
+        country_id: profile.country_id || null,
+        language_id: profile.language_id || null,
+        currency_id: profile.currency_id || null,
+        timezone: profile.timezone || null,
       });
     }
-  }, [profile, form]); // Corregido: user -> profile
+  }, [profile, form.reset]);
 
   const onSubmit = (values: z.infer<typeof regionalSettingsFormSchema>) => {
-    updateRegionalSettingsMutation.mutate(values, {
+    regionalSettingsMutation.mutate(values, {
       onSuccess: () => toast({ title: 'Éxito', description: 'Configuración regional actualizada.' }),
       onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
     });
   };
 
-  // Opciones filtradas
   const activeCountryOptions = useMemo(() => 
     countries?.filter(c => c.is_active).map(c => ({ value: c.id, label: c.name })) || [],
     [countries]
@@ -74,9 +73,11 @@ export const RegionalSettingsTab = () => {
   );
 
   const timezoneOptions = useMemo(() => 
-    timezones?.map(t => ({ value: t.id, label: t.formattedLabel })) || [],
+    timezones?.map(t => ({ value: t.name, label: t.name })) || [],
     [timezones]
   );
+
+  const isLoading = isLoadingCountries || isLoadingLocalizations || isLoadingCurrencies || isLoadingTimezones;
 
   return (
     <div className="space-y-6 mt-4">
@@ -89,7 +90,7 @@ export const RegionalSettingsTab = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <Controller
-                name="countryId"
+                name="country_id"
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
@@ -101,25 +102,20 @@ export const RegionalSettingsTab = () => {
                         field.onChange(option ? option.value : null);
                         const selectedCountry = countries?.find(c => c.id === option?.value);
                         if (selectedCountry) {
-                          form.setValue('languageId', selectedCountry.default_localization_id || null);
-                          form.setValue('currencyId', selectedCountry.default_currency_id || null);
-                          const defaultTimezone = timezones?.find(t => t.name === selectedCountry.timezone);
-                          form.setValue('timezoneId', defaultTimezone?.id || null);
-                        } else {
-                          form.setValue('languageId', null);
-                          form.setValue('currencyId', null);
-                          form.setValue('timezoneId', null);
+                          form.setValue('language_id', selectedCountry.default_localization_id || null, { shouldDirty: true });
+                          form.setValue('currency_id', selectedCountry.default_currency_id || null, { shouldDirty: true });
+                          form.setValue('timezone', selectedCountry.timezone || null, { shouldDirty: true });
                         }
                       }}
                       placeholder="Selecciona un país"
-                      isClearable={false}
+                      isLoading={isLoading}
                     />
                   </FormItem>
                 )}
               />
 
               <Controller
-                name="languageId"
+                name="language_id"
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
@@ -127,15 +123,16 @@ export const RegionalSettingsTab = () => {
                     <SearchableSelect
                       options={activeLanguageOptions}
                       value={activeLanguageOptions.find(l => l.value === field.value) || null}
-                      onChange={(option) => field.onChange(option ? option.value : '')}
+                      onChange={(option) => field.onChange(option ? option.value : null)}
                       placeholder="Selecciona un idioma"
+                      isLoading={isLoading}
                     />
                   </FormItem>
                 )}
               />
 
               <Controller
-                name="currencyId"
+                name="currency_id"
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
@@ -143,15 +140,16 @@ export const RegionalSettingsTab = () => {
                     <SearchableSelect
                       options={activeCurrencyOptions}
                       value={activeCurrencyOptions.find(c => c.value === field.value) || null}
-                      onChange={(option) => field.onChange(option ? option.value : '')}
+                      onChange={(option) => field.onChange(option ? option.value : null)}
                       placeholder="Selecciona una moneda"
+                      isLoading={isLoading}
                     />
                   </FormItem>
                 )}
               />
 
               <Controller
-                name="timezoneId"
+                name="timezone"
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
@@ -159,16 +157,19 @@ export const RegionalSettingsTab = () => {
                     <SearchableSelect
                       options={timezoneOptions}
                       value={timezoneOptions.find(t => t.value === field.value) || null}
-                      onChange={(option) => field.onChange(option ? option.value : '')}
+                      onChange={(option) => field.onChange(option ? option.value : null)}
                       placeholder="Selecciona una zona horaria"
+                      isLoading={isLoading}
                     />
                   </FormItem>
                 )}
               />
 
-              <Button type="submit" disabled={updateRegionalSettingsMutation.isPending}>
-                {updateRegionalSettingsMutation.isPending ? 'Guardando...' : 'Guardar Configuración'}
-              </Button>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={regionalSettingsMutation.isPending || !form.formState.isDirty}>
+                  {regionalSettingsMutation.isPending ? 'Guardando...' : 'Guardar Configuración'}
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>

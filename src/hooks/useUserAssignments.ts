@@ -38,7 +38,6 @@ export const useUserAssignments = (userId: string, tenantId: string) => {
 // --- Mutación para actualizar asignaciones ---
 export const useUpdateUserAssignments = () => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
 
   return useMutation<
     { success: boolean; message: string },
@@ -46,15 +45,10 @@ export const useUpdateUserAssignments = () => {
     { userId: string; tenantId: string; assignments: AssignmentFormValue[] }
   >({
     mutationFn: async ({ userId, tenantId, assignments }) => {
-      if (!currentAssignment?.role_name) {
-        throw new Error('No se pudo determinar el rol del usuario actual.');
-      }
-
       const { data, error } = await supabase.rpc('update_user_assignments', {
         p_user_id: userId,
         p_tenant_id: tenantId,
         p_assignments: assignments,
-        p_invoking_user_role: currentAssignment.role_name,
       });
 
       if (error) throw new Error(`Error al actualizar asignaciones: ${error.message}`);

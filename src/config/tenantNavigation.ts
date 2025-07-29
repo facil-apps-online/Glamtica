@@ -39,8 +39,8 @@ export const tenantNavigationConfig = [
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
-        title: "Estilistas",
-        url: "/stylists",
+        title: "Equipo",
+        url: "/team",
         icon: UserCheck,
         roles: ['tenant_super_admin', 'tenant_admin']
       }

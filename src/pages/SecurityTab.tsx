@@ -11,7 +11,6 @@ import { useUpdatePassword } from '@/hooks/useProfileSettings';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 const passwordFormSchema = z.object({
-  currentPassword: z.string().min(1, { message: "La contraseña actual es requerida." }),
   newPassword: z.string().min(8, { message: "La nueva contraseña debe tener al menos 8 caracteres." }),
   confirmPassword: z.string(),
 }).refine(data => data.newPassword === data.confirmPassword, {
@@ -32,8 +31,8 @@ export const SecurityTab = () => {
 
   const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
     resolver: zodResolver(passwordFormSchema),
-    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
-    mode: 'onChange', // Importante para que watch se actualice en tiempo real
+    defaultValues: { newPassword: '', confirmPassword: '' },
+    mode: 'onChange',
   });
 
   const newPassword = passwordForm.watch('newPassword');
@@ -47,13 +46,12 @@ export const SecurityTab = () => {
   };
 
   const onPasswordSubmit = (values: z.infer<typeof passwordFormSchema>) => {
-    updatePasswordMutation.mutate({ currentPassword: values.currentPassword, newPassword: values.newPassword }, {
+    updatePasswordMutation.mutate({ newPassword: values.newPassword }, {
       onSuccess: () => {
         toast({ 
           title: 'Éxito', 
-          description: 'Contraseña actualizada. Serás redirigido al inicio de sesión.',
+          description: 'Tu contraseña ha sido actualizada.',
         });
-        // El logout se ejecuta automáticamente desde el hook, no es necesario llamarlo aquí.
         passwordForm.reset();
       },
       onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -70,17 +68,6 @@ export const SecurityTab = () => {
         <CardContent>
           <Form {...passwordForm}>
             <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-              <FormField
-                control={passwordForm.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contraseña Actual</FormLabel>
-                    <FormControl><Input type="password" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={passwordForm.control}
                 name="newPassword"
@@ -110,9 +97,11 @@ export const SecurityTab = () => {
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={updatePasswordMutation.isPending}>
-                {updatePasswordMutation.isPending ? 'Actualizando...' : 'Actualizar Contraseña'}
-              </Button>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={updatePasswordMutation.isPending}>
+                  {updatePasswordMutation.isPending ? 'Actualizando...' : 'Actualizar Contraseña'}
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>

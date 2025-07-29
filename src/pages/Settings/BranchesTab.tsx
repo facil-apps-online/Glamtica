@@ -138,8 +138,8 @@ export function BranchesTab({ tenantId }: BranchesTabProps) {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="h-6 w-6" />
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Store className="h-5 w-5" />
                 Gestionar Sucursales
               </CardTitle>
               <CardDescription>Crea, activa y administra las sucursales del tenant.</CardDescription>

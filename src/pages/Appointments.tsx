@@ -5,10 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, Camera, ShoppingCart, Package } from "lucide-react";
 import { useAttentions, Attention, AttentionService } from "@/hooks/useAttentions";
 import { useSettings } from "@/hooks/useSettings";
-import { useStylists } from "@/hooks/useStylists";
 import { AttentionDialog } from "@/components/AttentionDialog";
 import { CancelAppointmentDialog } from "@/components/CancelAppointmentDialog";
-import { StylistSelector } from "@/components/StylistSelector";
+import { UserSelector } from "@/components/UserSelector";
 import { AppointmentDateFilter } from "@/components/AppointmentDateFilter";
 import { AppointmentStatusFilter } from "@/components/AppointmentStatusFilter";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
@@ -21,28 +20,26 @@ import { AddServiceProductDialog } from "@/components/AddServiceProductDialog";
 import { useServiceProducts } from "@/hooks/useServiceProducts";
 
 export default function Appointments() {
-  const [selectedStylist, setSelectedStylist] = useState<string>('all');
+  const [selectedUser, setSelectedUser] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(new Date());
   const [selectedService, setSelectedService] = useState<AttentionService | null>(null);
 
   const { data: settings, isLoading: settingsLoading } = useSettings();
 
-  // Call useAttentions and useStylists unconditionally, but enable their queries based on settingsLoading
   const { data: attentions, isLoading: attentionsLoading, error: attentionsError } = useAttentions(
-    selectedStylist,
+    selectedUser,
     statusFilter,
     dateFilter,
-    !settingsLoading // Enable useAttentions only if settings are not loading
+    !settingsLoading
   );
-  const { data: stylists, isLoading: stylistsLoading } = useStylists();
   const { formatPrice } = usePriceFormat();
 
-  if (settingsLoading || attentionsLoading || stylistsLoading) {
+  if (settingsLoading || attentionsLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center text-blue-600">
-          Cargando configuración, atenciones y estilistas...
+          Cargando...
         </div>
       </div>
     );
@@ -60,75 +57,72 @@ export default function Appointments() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-primary">Agenda de Atenciones</h1>
-          <AttentionDialog>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Atención
-            </Button>
-          </AttentionDialog>
-        </div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-primary">Agenda de Atenciones</h1>
+        <AttentionDialog>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Atención
+          </Button>
+        </AttentionDialog>
+      </div>
 
-        {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <AppointmentDateFilter
-            selectedDate={dateFilter}
-            onDateChange={setDateFilter}
-            selectedStylistId={selectedStylist}
-          />
-          <StylistSelector
-            selectedStylistId={selectedStylist}
-            onStylistChange={setSelectedStylist}
-          />
-          <AppointmentStatusFilter
-            selectedStatus={statusFilter}
-            onStatusChange={setStatusFilter}
-          />
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <AppointmentDateFilter
+          selectedDate={dateFilter}
+          onDateChange={setDateFilter}
+          selectedUserId={selectedUser}
+        />
+        <UserSelector
+          selectedUserId={selectedUser}
+          onUserChange={setSelectedUser}
+        />
+        <AppointmentStatusFilter
+          selectedStatus={statusFilter}
+          onStatusChange={setStatusFilter}
+        />
+      </div>
 
-        <div className="space-y-4">
-          {attentions && attentions.length > 0 ? (
-            attentions.map((attention) => (
-              <AttentionCard 
-                key={attention.id} 
-                attention={attention} 
-                formatPrice={formatPrice}
-                onServiceSelect={setSelectedService}
-              />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-8">
-                <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium text-muted-foreground mb-2">
-                  No hay atenciones programadas
-                </p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {selectedStylist !== 'all' || statusFilter !== 'all' || dateFilter
-                    ? 'No se encontraron atenciones con los filtros aplicados'
-                    : 'Comienza creando tu primera atención'}
-                </p>
-                <AttentionDialog>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nueva Atención
-                  </Button>
-                </AttentionDialog>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {selectedService && (
-          <ServiceSessionDialog
-            attentionService={selectedService}
-            open={!!selectedService}
-            onOpenChange={(open) => !open && setSelectedService(null)}
-          />
+      <div className="space-y-4">
+        {attentions && attentions.length > 0 ? (
+          attentions.map((attention) => (
+            <AttentionCard 
+              key={attention.id} 
+              attention={attention} 
+              formatPrice={formatPrice}
+              onServiceSelect={setSelectedService}
+            />
+          ))
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-muted-foreground mb-2">
+                No hay atenciones programadas
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {selectedUser !== 'all' || statusFilter !== 'all' || dateFilter
+                  ? 'No se encontraron atenciones con los filtros aplicados'
+                  : 'Comienza creando tu primera atención'}
+              </p>
+              <AttentionDialog>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nueva Atención
+                </Button>
+              </AttentionDialog>
+            </CardContent>
+          </Card>
         )}
       </div>
+
+      {selectedService && (
+        <ServiceSessionDialog
+          attentionService={selectedService}
+          open={!!selectedService}
+          onOpenChange={(open) => !open && setSelectedService(null)}
+        />
+      )}
     </div>
   );
 }
@@ -158,7 +152,6 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
   };
 
   const getServiceStatusBadge = (status: string, attentionStatus: string) => {
-    // Si la atención está cancelada, todos los servicios se consideran cancelados
     if (attentionStatus === 'Cancelada') {
       return <Badge variant="destructive">Cancelado</Badge>;
     }
@@ -175,12 +168,8 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
     }
   };
 
-  // Solo permitir cobro si la atención está completada
-  const canCharge = attention.status === 'Completada';
-  // Solo permitir cancelar si no está pagada, completada o ya cancelada Y ningún servicio ha iniciado
   const hasStartedServices = attention.attention_services?.some((service: AttentionService) => service.status === 'En Proceso' || service.status === 'Completado');
-  const canCancel = !['Pagada', 'Completada', 'Cancelada'].includes(attention.status) && !hasStartedServices;
-
+  
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-4">
@@ -209,7 +198,6 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Servicios de la Atención */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-medium flex items-center gap-2">
@@ -231,7 +219,6 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
           ))}
         </div>
 
-        {/* Total */}
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="text-right space-y-1 ml-auto">
             <div className="text-sm text-muted-foreground">
@@ -246,7 +233,6 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
           </div>
         </div>
 
-        {/* Notas */}
         {attention.notes && (
           <div className="text-sm">
             <span className="text-muted-foreground">Notas:</span>
@@ -254,9 +240,7 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
           </div>
         )}
 
-        {/* Acciones */}
         <div className="flex gap-2 pt-2 border-t">
-          {/* Agregar servicio adicional - solo si no está cancelada o pagada */}
           {!['Cancelada', 'Pagada'].includes(attention.status) && (
             <AddServiceDialog 
               attentionId={attention.id}
@@ -275,7 +259,6 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
   );
 };
 
-// Componente para la tarjeta de un servicio individual
 interface ServiceCardProps {
   service: AttentionService;
   isFirst: boolean;
@@ -288,12 +271,11 @@ interface ServiceCardProps {
 const ServiceCard = ({ service, isFirst, formatPrice, onServiceSelect, getServiceStatusBadge, attentionStatus }: ServiceCardProps) => {
   const canStartService = attentionStatus === 'En Proceso' && service.status === 'Pendiente';
   const canManageService = attentionStatus === 'En Proceso' && (service.status === 'En Proceso' || service.status === 'Completado');
+  const userName = `${service.users?.first_name || ''} ${service.users?.last_name || ''}`.trim();
 
   return (
     <div className={`relative pl-8 ${!isFirst ? 'pt-4' : ''}`}>
-      {/* Timeline line */}
       <div className="absolute left-4 top-0 bottom-0 w-px bg-border -translate-x-1/2"></div>
-      {/* Timeline dot */}
       <div className="absolute left-4 top-2 w-3 h-3 bg-muted-foreground rounded-full -translate-x-1/2"></div>
 
       <div className="flex justify-between items-start">
@@ -302,7 +284,7 @@ const ServiceCard = ({ service, isFirst, formatPrice, onServiceSelect, getServic
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <User className="w-4 h-4" />
-              {service.stylists.name}
+              {userName}
             </div>
             <div className="flex items-center gap-1">
               <DollarSign className="w-4 h-4" />
@@ -324,26 +306,24 @@ const ServiceCard = ({ service, isFirst, formatPrice, onServiceSelect, getServic
       )}
 
       <div className="space-y-3 mt-3">
-        {/* Renderizar productos del servicio si el servicio ha iniciado */}
         {(service.status === 'En Proceso' || service.status === 'Completado') && (
           <ServiceProductsList
             attentionServiceId={service.id}
             attentionId={service.attention_id}
-            stylistId={service.stylist_id}
-            stylistName={service.stylists.name}
+            userId={service.user_id}
+            userName={userName}
             canManageService={canManageService}
             formatPrice={formatPrice}
           />
         )}
 
-        {/* Botón para vender producto, solo si el servicio está en proceso o completado */}
         {canManageService && (
           <div className="mt-2">
             <AddServiceProductDialog
               attentionId={service.attention_id}
               attentionServiceId={service.id}
-              stylistId={service.stylist_id}
-              stylistName={service.stylists.name}
+              userId={service.user_id}
+              userName={userName}
             >
               <Button size="sm" variant="outline">
                 <ShoppingCart className="w-4 h-4 mr-2" />
@@ -357,23 +337,17 @@ const ServiceCard = ({ service, isFirst, formatPrice, onServiceSelect, getServic
   );
 };
 
-
-// Componente para mostrar productos vendidos en un servicio
 interface ServiceProductsListProps {
   attentionServiceId: string;
   attentionId: string;
-  stylistId: string;
-  stylistName: string;
+  userId: string;
+  userName: string;
   canManageService: boolean;
   formatPrice: (price: number) => string;
 }
 
 const ServiceProductsList = ({ 
   attentionServiceId, 
-  attentionId, 
-  stylistId, 
-  stylistName, 
-  canManageService,
   formatPrice
 }: ServiceProductsListProps) => {
   const { data: serviceProducts, isLoading } = useServiceProducts(attentionServiceId);

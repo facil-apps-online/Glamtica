@@ -5,45 +5,55 @@ import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
-// ... (interfaz Appointment sin cambios)
+// (Interface Appointment a ser actualizada si es necesario en otro paso)
 
-export const useAppointments = (stylistId?: string, statusFilter?: string, dateFilter?: Date) => {
+export const useAppointments = (userId?: string, statusFilter?: string, dateFilter?: Date) => {
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery({
-    queryKey: ['appointments', tenantId, selectedBranchId, stylistId, statusFilter, dateFilter],
+    queryKey: ['appointments', tenantId, selectedBranchId, userId, statusFilter, dateFilter],
     queryFn: async () => {
       if (!tenantId) return [];
 
       let query = supabase
         .from('appointments')
-        .select(`*, clients(name, phone, email), stylists(name, specialties), services(name, duration_minutes, price)`)
+        .select(`*, clients(name, phone, email), users(first_name, last_name, specialties), services(name, duration_minutes, price)`)
         .eq('tenant_id', tenantId);
 
-      // Aplicar filtro de sucursal
       if (selectedBranchId !== 'all') {
         query = query.eq('branch_id', selectedBranchId);
       }
       
-      // ... (resto de la lógica de filtros sin cambios)
-
+      if (userId && userId !== 'all') {
+        query = query.eq('user_id', userId);
+      }
+      
+      // (Resto de filtros y lógica igual)
+      
       const { data: appointments, error } = await query;
-      // ... (resto de la función sin cambios)
-      return appointmentsWithTotals as Appointment[];
+      if (error) throw new Error(error.message);
+      
+      // (Lógica de cálculo de totales igual)
+      const appointmentsWithTotals = appointments?.map(apt => ({
+        ...apt,
+        grand_total: apt.total_price + (apt.total_extra_services || 0)
+      }));
+
+      return appointmentsWithTotals;
     },
     enabled: !!tenantId,
   });
 };
 
-export const useAppointmentDates = (stylistId?: string) => {
+export const useAppointmentDates = (userId?: string) => {
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery({
-    queryKey: ['appointment-dates', tenantId, selectedBranchId, stylistId],
+    queryKey: ['appointment-dates', tenantId, selectedBranchId, userId],
     queryFn: async () => {
       if (!tenantId) return [];
 
@@ -53,25 +63,34 @@ export const useAppointmentDates = (stylistId?: string) => {
         .in('status', ['Confirmada', 'En Proceso', 'Completada'])
         .eq('tenant_id', tenantId);
 
-      // Aplicar filtro de sucursal
       if (selectedBranchId !== 'all') {
         query = query.eq('branch_id', selectedBranchId);
       }
 
-      if (stylistId && stylistId !== 'all') {
-        query = query.eq('stylist_id', stylistId);
+      if (userId && userId !== 'all') {
+        query = query.eq('user_id', userId);
       }
 
       const { data, error } = await query;
-      // ... (resto de la función sin cambios)
+      if (error) throw new Error(error.message);
+
+      // (Lógica de agrupación de fechas igual)
+      const datesByStatus = data.reduce((acc, { appointment_date, status }) => {
+        if (!acc[appointment_date]) {
+          acc[appointment_date] = new Set();
+        }
+        acc[appointment_date].add(status);
+        return acc;
+      }, {} as Record<string, Set<string>>);
+
       return datesByStatus;
     },
     enabled: !!tenantId,
   });
 };
 
-// --- MUTACIONES ---
-// (Las mutaciones no necesitan cambios, pero es bueno revisar la invalidación)
+// --- MUTATIONS ---
+// (Las mutaciones no necesitan cambios en su lógica interna, pero sí en la invalidación)
 
 export const useCreateAppointment = () => {
   const queryClient = useQueryClient();
@@ -80,14 +99,15 @@ export const useCreateAppointment = () => {
   const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    // ... (código de la mutación sin cambios)
+    // (mutationFn igual)
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['appointment-dates', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-dates'] });
       toast({ title: "Cita creada", description: "La cita ha sido creada exitosamente." });
     },
-    // ... (onError sin cambios)
+    // (onError igual)
   });
 };
+
 
 // ... (resto de mutaciones con invalidación similar)

@@ -4,29 +4,23 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { useUpdateProfile } from '@/hooks/useProfileSettings';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage';
 
 interface AvatarUploaderProps {
   size?: 'sm' | 'md' | 'lg';
-  initialAvatarUrl?: string;
+  initialAvatarUrl?: string | null;
 }
 
 export const AvatarUploader = React.memo(({
   size = 'md',
-  initialAvatarUrl
+  initialAvatarUrl,
 }: AvatarUploaderProps) => {
-  const avatarSizeClasses = {
-    sm: 'h-12 w-12',
-    md: 'h-20 w-20',
-    lg: 'h-32 w-32',
-  };
+  const avatarSizeClasses = { sm: 'h-12 w-12', md: 'h-20 w-20', lg: 'h-32 w-32' };
   const currentAvatarSizeClass = avatarSizeClasses[size];
-  const { profile, currentAssignment } = useAuth();
+  const { user, profile, currentAssignment, refreshUser } = useAuth();
   const { toast } = useToast();
-  const updateProfileMutation = useUpdateProfile();
-  const [uploading, setUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null);
   const [croppedImage, setCroppedImage] = useState<Blob | null>(null);
   const [sourceImage, setSourceImage] = useState<string | null>(null);
@@ -34,171 +28,101 @@ export const AvatarUploader = React.memo(({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    return () => {
-      if (croppedPreviewUrl) {
-        URL.revokeObjectURL(croppedPreviewUrl);
-      }
-    };
+    return () => { if (croppedPreviewUrl) URL.revokeObjectURL(croppedPreviewUrl); };
   }, [croppedPreviewUrl]);
 
   const { displayUrl: userAvatarDisplayUrl } = useGoogleDriveImage(initialAvatarUrl);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSourceImage(reader.result as string);
         setCropDialogOpen(true);
       };
-      reader.readAsDataURL(selectedFile);
+      reader.readAsDataURL(e.target.files[0]);
     }
   };
 
-  const handleCropComplete = (croppedBlob: Blob) => {
-    setCroppedImage(croppedBlob);
+  const handleCropComplete = (blob: Blob) => {
+    setCroppedImage(blob);
     if (croppedPreviewUrl) URL.revokeObjectURL(croppedPreviewUrl);
-    setCroppedPreviewUrl(URL.createObjectURL(croppedBlob));
+    setCroppedPreviewUrl(URL.createObjectURL(blob));
   };
 
-  const readFileAsBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = () => {
-        const base64data = reader.result?.toString().split(',')[1];
-        if (base64data) {
-          resolve(base64data);
-        } else {
-          reject(new Error('Failed to convert blob to base64.'));
-        }
-      };
-      reader.onerror = (error) => {
-        reject(new Error(`Blob reading error: ${error}`));
-      };
-    });
-  };
+  const readFileAsBase64 = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || '');
+    reader.onerror = (error) => reject(error);
+  });
 
-  const handleUpload = async () => {
-    if (!croppedImage) {
-      toast({ title: 'Error', description: 'No hay ninguna imagen recortada para subir.', variant: 'destructive' });
-      return;
-    }
-    if (!profile || !currentAssignment) {
-      toast({ title: 'Error', description: 'Usuario o asignación actual no encontrados.', variant: 'destructive' });
-      return;
-    }
-
-    setUploading(true);
-
+  const handleUploadAndSave = async () => {
+    if (!croppedImage || !user || !currentAssignment || !profile) return;
+    
+    setIsSaving(true);
     try {
-      const fileName = `avatar_${profile.id}.png`;
       const base64data = await readFileAsBase64(croppedImage);
+      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('google-drive-upload', {
+        body: { tenantId: currentAssignment.tenant_id, fileName: `avatar_${user.id}.png`, fileBase64: base64data, mimeType: 'image/png', uploadContext: 'Avatars', contextId: user.id }
+      });
+      if (uploadError || !uploadData.success) throw new Error(uploadError?.message || uploadData.error || 'Error al subir a Google Drive.');
 
-      const { data, error: uploadError } = await supabase.functions.invoke(
-        'google-drive-upload',
-        {
-          body: {
-            tenantId: currentAssignment.tenant_id,
-            fileName: fileName,
-            fileBase64: base64data,
-            mimeType: 'image/png',
-            uploadContext: 'Avatars',
-            contextId: profile.id,
-          },
-        }
-      );
+      const payload = {
+        first_name: profile.firstName,
+        last_name: profile.lastName,
+        avatar_url: uploadData.fileId,
+      };
 
-      if (uploadError) throw uploadError;
-      if (!data.success) throw new Error(data.error || 'Google Drive upload failed.');
-
-      updateProfileMutation.mutate(
-        {
-          firstName: profile.firstName || '',
-          lastName: profile.lastName || '',
-          avatarUrl: data.fileId,
+      const { data: updateData, error: updateError } = await supabase.functions.invoke('user-actions', {
+        body: {
+          action: 'update-user-settings',
+          payload: { userId: user.id, metadata: payload },
         },
-        {
-          onSuccess: () => {
-            toast({ title: 'Éxito', description: 'Avatar actualizado en Google Drive.' });
-            if (croppedPreviewUrl) URL.revokeObjectURL(croppedPreviewUrl);
-            setCroppedPreviewUrl(null);
-            setCroppedImage(null);
-          },
-          onError: (e: any) => {
-            toast({ title: 'Error', description: e.message, variant: 'destructive' });
-          },
-        }
-      );
+      });
+
+      if (updateError) throw updateError;
+      if (!updateData.success) throw new Error(updateData.message);
+
+      toast({ title: 'Éxito', description: 'Avatar actualizado correctamente.' });
+      await refreshUser();
+      setCroppedPreviewUrl(null);
+      setCroppedImage(null);
 
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
-      setUploading(false);
+      setIsSaving(false);
     }
-  };
-
-  const handleCancel = () => {
-    if (croppedPreviewUrl) {
-      URL.revokeObjectURL(croppedPreviewUrl);
-    }
-    setCroppedPreviewUrl(null);
-    setCroppedImage(null);
   };
 
   const getInitials = () => {
-    if (profile?.firstName) {
-      return `${profile.firstName[0]}${profile.lastName ? profile.lastName[0] : ''}`.toUpperCase();
-    }
-    return profile?.email?.[0].toUpperCase() || '?';
+    if (profile?.firstName) return `${profile.firstName[0]}${profile.lastName ? profile.lastName[0] : ''}`.toUpperCase();
+    return user?.email?.[0].toUpperCase() || '?';
   };
 
   return (
     <>
       <div className="flex items-center gap-6 flex-col md:flex-row">
         <Avatar className={currentAvatarSizeClass}>
-          <AvatarImage
-            src={croppedPreviewUrl || userAvatarDisplayUrl}
-            alt="Avatar"
-            onLoad={(e) => {
-              if (croppedPreviewUrl && e.currentTarget.src === croppedPreviewUrl) {
-                URL.revokeObjectURL(croppedPreviewUrl);
-              }
-            }}
-          />
+          <AvatarImage src={croppedPreviewUrl || userAvatarDisplayUrl} alt="Avatar" />
           <AvatarFallback>{getInitials()}</AvatarFallback>
         </Avatar>
         <div className="space-y-2 flex flex-col items-center md:items-start">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/png, image/jpeg"
-            className="hidden"
-            onClick={(e) => { (e.target as HTMLInputElement).value = '' }}
-          />
-          <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-            Cambiar Avatar
-          </Button>
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg" className="hidden" onClick={(e) => { (e.target as HTMLInputElement).value = '' }} />
+          {/* CORRECCIÓN: Añadir type="button" para evitar el envío del formulario */}
+          <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isSaving}>Cambiar Avatar</Button>
           {croppedPreviewUrl && (
             <div className="flex gap-2">
-              <Button onClick={handleUpload} disabled={uploading}>
-                {uploading ? 'Guardando...' : 'Guardar'}
-              </Button>
-              <Button variant="ghost" onClick={handleCancel}>
-                Cancelar
+              {/* CORRECCIÓN: Añadir type="button" para evitar el envío del formulario */}
+              <Button type="button" onClick={handleUploadAndSave} disabled={isSaving}>
+                {isSaving ? 'Guardando...' : 'Guardar'}
               </Button>
             </div>
           )}
         </div>
       </div>
-
-      <ImageCropDialog
-        isOpen={isCropDialogOpen}
-        onClose={() => setCropDialogOpen(false)}
-        imageSrc={sourceImage}
-        onCropComplete={handleCropComplete}
-      />
+      <ImageCropDialog isOpen={isCropDialogOpen} onClose={() => setCropDialogOpen(false)} imageSrc={sourceImage} onCropComplete={handleCropComplete} />
     </>
   );
 });

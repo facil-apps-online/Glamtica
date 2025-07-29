@@ -8,7 +8,7 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // This removes the HMR logic to prevent using a stale client.
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: false, // We will manage the session manually.
+    persistSession: true, // Let Supabase handle session persistence.
     detectSessionInUrl: false,
   },
   // Initialize the global property to ensure it exists.
