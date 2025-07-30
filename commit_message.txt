@@ -1,11 +1,18 @@
-feat(superadmin): Implementar CRUD de plataformas
+refactor(superadmin): Corrige navegación y optimiza carga de datos
 
-Se introduce un módulo completo para la gestión de plataformas (aplicaciones) en el portal de superadministración, sentando las bases para la arquitectura multi-plataforma.
+Se realizan múltiples mejoras en el panel de superadministrador para solucionar errores de navegación, optimizar el rendimiento y estandarizar el acceso a datos.
 
-Principales Características:
+- **Corrección de Navegación:**
+  - Se auditaron todos los enlaces del menú (`navigation.ts`) contra las rutas definidas (`routes.tsx`).
+  - Se corrigieron las URLs incorrectas y se añadieron las rutas faltantes para `Integrations`, `SystemAlerts`, `ErrorReports`, `PerformanceMetrics` y `Translations`.
+  - Se creó una página placeholder para "Gestión de Accesos" para completar el enrutamiento.
 
-- **Arquitectura Basada en Edge Function:** Se crea una nueva Edge Function dedicada (`superadmin-actions`) para centralizar toda la lógica de negocio del CRUD, mejorando la seguridad y la monitorización.
-- **Instrumentación de Métricas:** Cada acción dentro de la nueva Edge Function se integra con el sistema de monitorización existente, registrando el tiempo de respuesta y el estado en la tabla `api_request_metrics`.
-- **Interfaz de Usuario Robusta:** Se desarrollan nuevos componentes en React utilizando `shadcn/ui`, `react-hook-form` y `zod` para crear una experiencia de usuario consistente y con validaciones robustas para listar, crear, editar y eliminar plataformas.
-- **Navegación y Rutas:** Se actualiza la configuración de navegación del superadministrador y se añaden las rutas correspondientes para integrar el nuevo módulo en la aplicación.
-- **Documentación:** Se actualizan los archivos `WORK_DOCUMENTS.md` y `glamtica.md` para reflejar los cambios arquitectónicos y la nueva funcionalidad.
+- **Optimización de Rendimiento:**
+  - Se solucionó la carga lenta de la lista de plataformas, causada por una consulta ineficiente.
+  - Se implementó el patrón estándar de acceso a datos:
+    1. Se creó una función RPC (`get_platforms_list`) con búsqueda del lado del servidor.
+    2. Se actualizó la Edge Function para usar esta RPC.
+    3. Se refactorizó el componente de React (`PlatformsList.tsx`) para usar `react-query` con búsqueda y debounce.
+
+- **Documentación:**
+  - Se documentó formalmente el "Estándar de Acceso a Datos para Listas" en `Glamtica.md`, estableciendo el uso de RPCs como la práctica recomendada.

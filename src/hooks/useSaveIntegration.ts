@@ -48,7 +48,7 @@ const saveTenantIntegrationRpc = async ({
 export const useSaveIntegration = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth(); // Obtener el usuario del contexto de autenticación
+  const { currentAssignment } = useAuth(); // Usar currentAssignment para obtener el rol
 
   return useMutation({
     mutationFn: async ({
@@ -62,8 +62,8 @@ export const useSaveIntegration = () => {
       credentials: Record<string, any>;
       environment: 'test' | 'production';
     }) => {
-      if (!user?.role) {
-        throw new Error('No se pudo determinar el rol del usuario.');
+      if (!currentAssignment?.role_name) {
+        throw new Error('No se pudo determinar el rol del usuario desde la asignación actual.');
       }
 
       // 1. Encriptar las credenciales
@@ -76,7 +76,7 @@ export const useSaveIntegration = () => {
         encrypted_credentials: encryptedData,
         nonce,
         environment,
-        userRole: user.role,
+        userRole: currentAssignment.role_name,
       });
     },
     onSuccess: (_, { provider, tenantId }) => {

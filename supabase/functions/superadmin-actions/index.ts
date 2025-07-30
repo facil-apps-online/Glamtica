@@ -48,6 +48,43 @@ Deno.serve(async (req) => {
           break;
         }
 
+        case 'create_platform': {
+          const { data, error } = await supabaseAdmin
+            .from('platforms')
+            .insert(payload)
+            .select()
+            .single();
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'update_platform': {
+          const { id, data: platformData } = payload;
+          if (!id || !platformData) throw new Error('id and data are required for update.');
+          const { data, error } = await supabaseAdmin
+            .from('platforms')
+            .update(platformData)
+            .eq('id', id)
+            .select()
+            .single();
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'delete_platform': {
+          const { id } = payload;
+          if (!id) throw new Error('id is required for delete.');
+          const { error } = await supabaseAdmin
+            .from('platforms')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+          responseData = { success: true };
+          break;
+        }
+
         case 'update_platform_settings': {
           const { platformId, settings } = payload;
           if (!platformId || !settings) throw new Error('platformId and settings are required.');
@@ -94,6 +131,181 @@ Deno.serve(async (req) => {
             .delete()
             .eq('platform_id', platformId)
             .eq('country_id', countryId);
+          if (error) throw error;
+          responseData = { success: true };
+          break;
+        }
+
+        // --- System Catalogs: Currencies Actions ---
+        case 'get_currencies': {
+          const { searchTerm } = payload || {};
+          const { data, error } = await supabaseAdmin.rpc('get_currencies_list', {
+            p_search_term: searchTerm
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'create_currency': {
+          const { data, error } = await supabaseAdmin.rpc('create_currency', {
+            p_payload: payload
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'update_currency': {
+          const { id, ...updateData } = payload;
+          if (!id) throw new Error('Currency ID is required for update.');
+          const { data, error } = await supabaseAdmin.rpc('update_currency', {
+            p_id: id,
+            p_payload: updateData
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'delete_currency': {
+          const { id } = payload;
+          if (!id) throw new Error('Currency ID is required for delete.');
+          const { data, error } = await supabaseAdmin.rpc('delete_currency', { p_id: id });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        // --- System Catalogs: Countries Actions ---
+        case 'get_countries': {
+          const { searchTerm } = payload || {};
+          const { data, error } = await supabaseAdmin.rpc('get_countries_list', {
+            p_search_term: searchTerm
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'create_country': {
+          const { data, error } = await supabaseAdmin.rpc('create_country', {
+            p_payload: payload
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'update_country': {
+          const { id, ...updateData } = payload;
+          if (!id) throw new Error('Country ID is required for update.');
+          const { data, error } = await supabaseAdmin.rpc('update_country', {
+            p_id: id,
+            p_payload: updateData
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'delete_country': {
+          const { id } = payload;
+          if (!id) throw new Error('Country ID is required for delete.');
+          const { data, error } = await supabaseAdmin.rpc('delete_country', { p_id: id });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        // --- System Catalogs: Languages (Localizations) Actions ---
+        case 'get_languages': {
+          const { searchTerm } = payload || {};
+          const { data, error } = await supabaseAdmin.rpc('get_languages_list', {
+            p_search_term: searchTerm
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'create_language': {
+          const { data, error } = await supabaseAdmin.rpc('create_language', {
+            p_payload: payload
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'update_language': {
+          const { id, ...updateData } = payload;
+          if (!id) throw new Error('Language ID is required for update.');
+          const { data, error } = await supabaseAdmin.rpc('update_language', {
+            p_id: id,
+            p_payload: updateData
+          });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'delete_language': {
+          const { id } = payload;
+          if (!id) throw new Error('Language ID is required for delete.');
+          const { data, error } = await supabaseAdmin.rpc('delete_language', { p_id: id });
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        // --- Email Template Actions ---
+        case 'get_platform_email_templates': {
+          const { platformId } = payload;
+          if (!platformId) throw new Error('platformId is required.');
+          const { data, error } = await supabaseAdmin
+            .from('email_templates')
+            .select('*')
+            .eq('platform_id', platformId);
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'create_platform_email_template': {
+          const { templateData, ownerTenantId } = payload;
+          if (!templateData || !ownerTenantId) throw new Error('templateData and ownerTenantId are required.');
+          const { data, error } = await supabaseAdmin
+            .from('email_templates')
+            .insert({ ...templateData, tenant_id: ownerTenantId })
+            .select()
+            .single();
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'update_platform_email_template': {
+          const { templateId, templateData } = payload;
+          if (!templateId || !templateData) throw new Error('templateId and templateData are required.');
+          const { data, error } = await supabaseAdmin
+            .from('email_templates')
+            .update(templateData)
+            .eq('id', templateId)
+            .select()
+            .single();
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'delete_platform_email_template': {
+          const { templateId } = payload;
+          if (!templateId) throw new Error('templateId is required.');
+          const { error } = await supabaseAdmin
+            .from('email_templates')
+            .delete()
+            .eq('id', templateId);
           if (error) throw error;
           responseData = { success: true };
           break;
@@ -408,6 +620,79 @@ Deno.serve(async (req) => {
           if (error) throw error;
           responseData = data;
           break;
+        }
+
+        // --- Platform Level Access Actions ---
+        case 'get_platform_level_assignments': {
+          const { data, error } = await supabaseAdmin.rpc('get_platform_level_assignments');
+          if (error) throw error;
+          responseData = data;
+          break;
+        }
+
+        case 'assign_platform_role': {
+          const { userId, role, assignments } = payload;
+          if (!userId || !role || !assignments) throw new Error('userId, role, and assignments are required.');
+
+          if (role === 'investor') {
+            // Para inversores, esperamos un solo assignment con platform_id y investment_share
+            const { platform_id, investment_share } = assignments[0];
+            const { error } = await supabaseAdmin.from('investor_platform_shares').upsert({
+              user_id: userId,
+              platform_id: platform_id,
+              investment_share: investment_share / 100, // Convertir de % a decimal
+            });
+            if (error) throw error;
+          }
+
+          // Para app_super_admin, actualizamos su app_metadata
+          const { data: user, error: fetchError } = await supabaseAdmin.auth.admin.getUserById(userId);
+          if (fetchError) throw fetchError;
+
+          const existingAssignments = user.user.app_metadata.assignments || [];
+          const newAssignments = assignments.map((a: any) => ({ ...a, role }));
+          
+          // Filtrar para no duplicar
+          const finalAssignments = existingAssignments.filter((ea: any) => 
+            !newAssignments.some((na: any) => na.platform_id === ea.platform_id && na.role === ea.role)
+          );
+          finalAssignments.push(...newAssignments);
+
+          const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            app_metadata: { ...user.user.app_metadata, assignments: finalAssignments },
+          });
+          if (updateError) throw updateError;
+          
+          responseData = { success: true, user: updateData.user };
+          break;
+        }
+
+        case 'remove_platform_assignment': {
+            const { userId, role, platformId } = payload;
+            if (!userId || !role || !platformId) throw new Error('userId, role, and platformId are required.');
+
+            if (role === 'investor') {
+                const { error } = await supabaseAdmin.from('investor_platform_shares')
+                    .delete()
+                    .match({ user_id: userId, platform_id: platformId });
+                if (error) throw error;
+            }
+
+            const { data: user, error: fetchError } = await supabaseAdmin.auth.admin.getUserById(userId);
+            if (fetchError) throw fetchError;
+
+            const existingAssignments = user.user.app_metadata.assignments || [];
+            const finalAssignments = existingAssignments.filter((ea: any) => 
+                !(ea.platform_id === platformId && ea.role === role)
+            );
+
+            const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+                app_metadata: { ...user.user.app_metadata, assignments: finalAssignments },
+            });
+            if (updateError) throw updateError;
+
+            responseData = { success: true, user: updateData.user };
+            break;
         }
 
         default:

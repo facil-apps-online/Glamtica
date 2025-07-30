@@ -10,13 +10,13 @@ import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import BranchesPage from "@/pages/Settings/Branches";
+import EmailTemplatesPage from "@/pages/Settings/EmailTemplatesPage";
+import EmailSettingsPage from "@/pages/Settings/EmailSettingsPage";
 import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
-import SuperadminRoutes from '@/pages/Superadmin/routes';
 import ProfileSettings from "@/pages/ProfileSettings";
-import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
 import TranslationAdmin from "@/components/TranslationAdmin";
 import AppInitializer from "@/components/AppInitializer";
@@ -24,7 +24,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthPage from "@/pages/Auth";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
-import SetupSuperadmin from "@/pages/Superadmin/pages/SetupSuperadmin";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import GoogleCallbackPage from "@/pages/integrations/google/Callback";
 
@@ -38,15 +37,12 @@ function App() {
           <AppInitializer>
             <Toaster position="bottom-right" />
             <Routes>
-              <Route path="/setup-superadmin" element={<SetupSuperadmin />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/register-tenant" element={<RegisterTenant />} />
               <Route path="/update-password" element={<UpdatePasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
 
               <Route element={<ProtectedRoute />}>
-                <Route path="/superadmin/*" element={<SuperadminRoutes />} />
-
                 <Route path="/" element={<Layout><Index /></Layout>}>
                   <Route index element={<Index />} />
                   <Route path="profile-settings" element={<ProfileSettings />} />
@@ -59,8 +55,9 @@ function App() {
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="settings/branches" element={<BranchesPage />} />
+                  <Route path="settings/email-templates" element={<EmailTemplatesPage />} />
+                  <Route path="settings/email-settings" element={<EmailSettingsPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />
-                  <Route path="tenant-admin/settings" element={<TenantSettings />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Route>
