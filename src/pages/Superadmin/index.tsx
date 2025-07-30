@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useFinancialStats } from '@/hooks/useFinancialStats';
 import { usePlatforms } from './hooks/usePlatforms';
 import { StatsCard } from '@/components/StatsCard';
@@ -9,9 +10,10 @@ import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 
 export default function SuperadminDashboard() {
-  const [platformId, setPlatformId] = useState<string | null>(null);
-  
-  const { data: stats, isLoading, isError, error } = useFinancialStats(platformId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const platformId = searchParams.get('platformId');
+
+  const { data: stats, isLoading, isError, error, isSuccess } = useFinancialStats(platformId);
   const { data: platforms, isLoading: isLoadingPlatforms } = usePlatforms();
   const { formatPrice } = usePriceFormat();
 
@@ -23,9 +25,9 @@ export default function SuperadminDashboard() {
 
   const handlePlatformChange = (option: { value: string; label: string } | null) => {
     if (option && option.value !== 'all') {
-      setPlatformId(option.value);
+      setSearchParams({ platformId: option.value });
     } else {
-      setPlatformId(null);
+      setSearchParams({});
     }
   };
   
@@ -82,7 +84,7 @@ export default function SuperadminDashboard() {
           </motion.div>
         )}
 
-        {!isLoading && !isError && stats && (
+        {isSuccess && stats && (
           <motion.div
             key={platformId || 'all'}
             initial={{ opacity: 0, y: 10 }}

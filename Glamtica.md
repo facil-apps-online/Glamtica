@@ -458,3 +458,72 @@ Para soportar la futura funcionalidad de un dashboard para el rol `investor`, se
         2.  Llama a la función principal `get_platform_financial_stats` para obtener las métricas totales de la plataforma.
         3.  Multiplica las métricas financieras (MRR, ARR) por el `investment_share` del inversor para calcular su participación en los ingresos.
     *   Esta función está lista para ser consumida por un futuro hook y componente de frontend para el dashboard del inversor.
+
+## 9. Estándar de Acceso a Datos para Listas
+
+**Justificación Estratégica:** Durante el desarrollo, se detectó una diferencia de rendimiento significativa entre la carga de la lista de "Tenants" y la de "Plataformas", incluso con muy pocos datos. La investigación reveló que la causa no era el volumen de datos, sino el **mecanismo de acceso** desde las Edge Functions.
+
+Se ha determinado que las llamadas a funciones RPC de la base de datos (`supabase.rpc(...)`) son inherentemente más rápidas y eficientes que las consultas directas a tablas (`supabase.from(...).select(...)`). Esto se debe a que la RPC es una operación optimizada y precompilada dentro de la base de datos, mientras que la consulta directa debe pasar por la capa de la API de PostgREST, que introduce una sobrecarga de procesamiento.
+
+Por lo tanto, para garantizar el máximo rendimiento y una experiencia de usuario fluida en toda la aplicación, se establece el siguiente patrón de diseño como el estándar obligatorio para la obtención de cualquier lista de datos.
+
+### 9.1. Principio Fundamental
+
+Toda lista de datos que se muestre en la interfaz (ej. tenants, plataformas, clientes, productos, citas, etc.) **DEBE** ser cargada a través de una función RPC dedicada en la base de datos, la cual debe soportar, como mínimo, la búsqueda del lado del servidor.
+
+### 9.2. Implementación en 3 Capas
+
+1.  **Capa de Base de Datos (PostgreSQL):**
+    *   Se debe crear una función RPC (ej: `get_platforms_list`) que acepte un parámetro `p_search_term TEXT`.
+    *   La función debe seleccionar únicamente las columnas estrictamente necesarias para la vista de lista.
+    *   Debe incluir una cláusula `WHERE` para filtrar los resultados usando el `p_search_term`.
+    *   **Ejemplo:**
+        ```sql
+        CREATE OR REPLACE FUNCTION get_platforms_list(p_search_term TEXT DEFAULT NULL)
+        RETURNS TABLE (id uuid, name text, description text, base_url text)
+        LANGUAGE plpgsql AS $$
+        BEGIN
+            RETURN QUERY SELECT p.id, p.name, p.description, p.base_url
+            FROM public.platforms p
+            WHERE (p_search_term IS NULL OR p.name ILIKE '%' || p_search_term || '%')
+            ORDER BY p.created_at DESC;
+        END;
+        $$;
+        ```
+
+2.  **Capa de Backend (Edge Function):**
+    *   La Edge Function (ej: `superadmin-actions`) debe actuar como un simple "pasamanos".
+    *   Debe recibir la acción y el `payload` (que contiene el `searchTerm`).
+    *   Su única responsabilidad es llamar a la función RPC correspondiente, pasándole el `searchTerm`.
+    *   **Ejemplo:**
+        ```typescript
+        // case 'get_platforms':
+        const { searchTerm } = payload || {};
+        const { data, error } = await supabaseAdmin.rpc('get_platforms_list', {
+          p_search_term: searchTerm
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+        ```
+
+3.  **Capa de Frontend (React):**
+    *   Se debe crear un hook personalizado (ej: `usePlatforms`) que utilice `react-query`.
+    *   El hook debe aceptar el `searchTerm` como parámetro y pasarlo en el `payload` de la llamada a la Edge Function. La `queryKey` de `react-query` debe incluir el `searchTerm` para gestionar el caché correctamente.
+    *   El componente de la UI (ej: `PlatformsList.tsx`) debe contener un `Input` para la búsqueda.
+    *   Se debe utilizar el hook `useDebounce` para evitar llamadas a la API en cada pulsación de tecla, enviando la petición solo cuando el usuario ha dejado de escribir.
+    *   **Ejemplo:**
+        ```typescript
+        // PlatformsList.tsx
+        const [searchTerm, setSearchTerm] = useState('');
+        const debouncedSearchTerm = useDebounce(searchTerm, 300);
+        const { data: platforms, isLoading } = usePlatforms(debouncedSearchTerm);
+
+        // usePlatforms.ts
+        export const usePlatforms = (searchTerm?: string) => {
+          return useQuery({
+            queryKey: ['platforms', searchTerm],
+            queryFn: () => fetchPlatforms(searchTerm),
+          });
+        };
+        ```

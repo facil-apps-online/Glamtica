@@ -15,7 +15,7 @@ export const superadminNavigationConfig = [
     items: [
       {
         title: "Dashboard",
-        url: "/superadmin/dashboard",
+        url: "/superadmin",
         icon: BarChart3,
         roles: ['super_admin']
       },

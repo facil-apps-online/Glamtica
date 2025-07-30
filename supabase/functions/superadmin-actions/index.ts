@@ -26,7 +26,10 @@ Deno.serve(async (req) => {
       switch (action) {
         // --- Platform Actions ---
         case 'get_platforms': {
-          const { data, error } = await supabaseAdmin.from('platforms').select('*').order('created_at', { ascending: false });
+          const { searchTerm } = payload || {};
+          const { data, error } = await supabaseAdmin.rpc('get_platforms_list', {
+            p_search_term: searchTerm
+          });
           if (error) throw error;
           responseData = data;
           break;
