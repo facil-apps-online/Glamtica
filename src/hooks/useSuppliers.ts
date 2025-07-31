@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Supplier {
   id: string;
@@ -30,17 +31,23 @@ interface UpdateSupplierData extends Partial<CreateSupplierData> {
 }
 
 export const useSuppliers = () => {
-  return useQuery({
-    queryKey: ['suppliers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('name');
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
-      if (error) throw error;
+  return useQuery({
+    queryKey: ['suppliers', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'get_suppliers',
+          payload: {}, // No se necesita payload para obtener todos
+        },
+      });
+      if (error) throw new Error(error.message);
       return data as Supplier[];
     },
+    enabled: !!tenantId,
   });
 };
 

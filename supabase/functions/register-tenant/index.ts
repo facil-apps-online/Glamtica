@@ -1,8 +1,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, User } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Definición de tipos para los datos del formulario que esperamos recibir
 interface FormData {
+  platform_id: string;
   name: string;
   country_id: string;
   default_language_code: string;
@@ -29,7 +30,6 @@ interface FormData {
 }
 
 const RECAPTCHA_SECRET_KEY = Deno.env.get('RECAPTCHA_SECRET_KEY');
-const GLAMTICA_PLATFORM_ID = Deno.env.get('GLAMTICA_PLATFORM_ID'); // <-- Get Platform ID from env
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,19 +41,22 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  let newUser: User | null = null;
+
   try {
-    const body: FormData = await req.json();
-    const { recaptcha_token, ...formData } = body;
+    const { recaptcha_token, platform_id, admin_email, admin_password, ...tenant_creation_data }: FormData = await req.json();
 
-    // --- Server-side validation ---
-    if (!RECAPTCHA_SECRET_KEY) {
-      throw new Error('El secreto de reCAPTCHA no está configurado en el servidor.');
-    }
-    if (!GLAMTICA_PLATFORM_ID) {
-      throw new Error('El ID de la plataforma por defecto no está configurado en el servidor.');
-    }
+    // --- Validación del lado del servidor ---
+    if (!RECAPTCHA_SECRET_KEY) throw new Error('El secreto de reCAPTCHA no está configurado.');
+    if (!platform_id) throw new Error('El ID de la plataforma es requerido.');
+    if (!admin_email || !admin_password) throw new Error('El email y la contraseña son requeridos.');
 
-    // --- reCAPTCHA verification ---
+    // --- Verificación de reCAPTCHA ---
     const recaptchaUrl = 'https://www.google.com/recaptcha/api/siteverify';
     const response = await fetch(recaptchaUrl, {
       method: 'POST',
@@ -61,57 +64,63 @@ serve(async (req) => {
       body: `secret=${RECAPTCHA_SECRET_KEY}&response=${recaptcha_token}`,
     });
     const recaptchaData = await response.json();
+    if (!recaptchaData.success) throw new Error('La verificación de reCAPTCHA ha fallado.');
 
-    if (!recaptchaData.success) {
-      return new Response(JSON.stringify({ error: 'La verificación de reCAPTCHA ha fallado.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // --- Orquestación de Registro ---
+
+    // Paso 1: Crear el usuario en Supabase Auth con email sintético
+    const synthetic_email = `${platform_id}_${admin_email}`;
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+      email: synthetic_email,
+      password: admin_password,
+      options: {
+        data: {
+          platform_id: platform_id,
+          real_email: admin_email,
+          role: 'tenant_super_admin',
+          // Guardamos los datos como respaldo, aunque ahora los pasamos explícitamente
+          tenant_creation_data: tenant_creation_data
+        }
+      }
+    });
+
+    if (authError) {
+      if (authError.message.includes('User already registered')) {
+        throw new Error(`El email ${admin_email} ya ha sido registrado para esta plataforma.`);
+      }
+      throw new Error(`Error al crear el usuario: ${authError.message}`);
     }
+    if (!authData.user) {
+      throw new Error('La creación del usuario no devolvió un objeto de usuario.');
+    }
+    newUser = authData.user;
 
-    // Use the SERVICE_ROLE_KEY for this operation to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // --- Call the updated RPC function ---
-    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('create_tenant_with_admin', {
-      p_platform_id: GLAMTICA_PLATFORM_ID, // <-- Pass the platform ID
-      p_name: formData.name,
-      p_country_id: formData.country_id,
-      p_default_language_code: formData.default_language_code,
-      p_default_currency_id: formData.default_currency_id,
-      p_default_timezone: formData.default_timezone,
-      p_contact_phone: formData.contact_phone,
-      p_whatsapp_phone: formData.whatsapp_phone,
-      p_commercial_email: formData.commercial_email,
-      p_legal_name: formData.legal_name,
-      p_tax_id: formData.tax_id,
-      p_billing_address: formData.billing_address,
-      p_einvoicing_email: formData.einvoicing_email,
-      p_physical_address_line1: formData.physical_address_line1,
-      p_physical_address_line2: formData.physical_address_line2,
-      p_physical_city: formData.physical_city,
-      p_physical_state: formData.physical_state,
-      p_physical_postal_code: formData.physical_postal_code,
-      p_website: formData.website,
-      p_latitude: formData.latitude,
-      p_longitude: formData.longitude,
-      p_admin_email: formData.admin_email,
-      // The RPC no longer takes the password directly
+    // Paso 2: Llamar a la RPC con los datos explícitos para evitar race conditions
+    const { data: tenantId, error: rpcError } = await supabaseAdmin.rpc('setup_tenant_for_new_user', {
+      p_user_id: newUser.id,
+      p_platform_id: platform_id,
+      p_tenant_data: tenant_creation_data
     });
 
     if (rpcError) {
-      throw new Error(rpcError.message);
+      throw new Error(`Error al configurar el tenant: ${rpcError.message}`);
     }
 
-    return new Response(JSON.stringify({ success: true, data: rpcData }), {
+    return new Response(JSON.stringify({ 
+        success: true, 
+        message: '¡Registro completado! Se ha enviado un correo de confirmación.',
+        user_id: newUser.id,
+        tenant_id: tenantId
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
+    if (newUser && newUser.id) {
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+    }
+
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

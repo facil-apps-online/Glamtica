@@ -46,10 +46,11 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false); // Nuevo estado de carga
   const [resetLink, setResetLink] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login, supabaseClient } = useAuth(); // Obtener supabaseClient del contexto
   const createPasswordResetTokenMutation = useCreatePasswordResetToken();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -62,11 +63,10 @@ const AuthPage: React.FC = () => {
         description: "Bienvenido de nuevo.",
       });
 
-      // Redirección basada en el rol devuelto
       if (role === 'super_admin') {
         navigate('/superadmin');
       } else {
-        navigate('/'); // Redirección por defecto para otros roles
+        navigate('/');
       }
 
     } catch (error: any) {
@@ -90,11 +90,10 @@ const AuthPage: React.FC = () => {
       return;
     }
     
-    console.log('Enviando email para recuperación:', email); // <-- CONSOLE LOG AÑADIDO
+    console.log('Enviando email para recuperación:', email);
 
     try {
       const result = await createPasswordResetTokenMutation.mutateAsync(email);
-      // Construimos el enlace manualmente en el cliente
       const fullLink = `${window.location.origin}/update-password?token=${result.token}`;
       setResetLink(fullLink);
     } catch (error: any) {
@@ -103,6 +102,49 @@ const AuthPage: React.FC = () => {
         description: error.message,
         variant: 'destructive',
       });
+    }
+  };
+
+  // Nueva función para confirmar el email
+  const handleConfirmEmail = async () => {
+    if (!email) {
+      toast({
+        title: "Email Requerido",
+        description: "Por favor, introduce tu email para enviar el enlace de confirmación.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setConfirmLoading(true);
+    try {
+      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      if (!platformId) {
+        throw new Error("Platform ID no está configurado en el cliente.");
+      }
+
+      const { data, error } = await supabaseClient.functions.invoke('user-actions', {
+        body: {
+          action: 'confirm-user-email',
+          payload: { email, platform_id: platformId },
+        },
+      });
+
+      if (error) throw new Error(error.message || "Error en la comunicación con el servidor.");
+      if (!data.success) throw new Error(data.message || "Error desconocido al confirmar el email.");
+
+      toast({
+        title: "Email de confirmación enviado",
+        description: "Por favor, revisa tu bandeja de entrada para confirmar tu cuenta.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error al confirmar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -175,6 +217,16 @@ const AuthPage: React.FC = () => {
                     disabled={loading}
                   >
                     {loading ? "Cargando..." : "Iniciar Sesión"}
+                  </Button>
+                  {/* Nuevo botón para confirmar email */}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full mt-2" 
+                    onClick={handleConfirmEmail}
+                    disabled={confirmLoading}
+                  >
+                    {confirmLoading ? "Enviando..." : "Confirmar Email"}
                   </Button>
                 </form>
               </CardContent>

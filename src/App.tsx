@@ -42,6 +42,9 @@ function App() {
               <Route path="/update-password" element={<UpdatePasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
 
+              {/* Redirección para cualquier ruta de superadmin a la página principal */}
+              <Route path="/superadmin/*" element={<Navigate to="/" replace />} />
+
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<Layout><Index /></Layout>}>
                   <Route index element={<Index />} />

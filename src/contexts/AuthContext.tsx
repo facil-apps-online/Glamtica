@@ -38,6 +38,7 @@ interface AuthContextType {
   switchAssignment: (assignmentId: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   loading: boolean;
+  supabaseClient: any; // Añadido: Exponer el cliente de Supabase
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,10 +103,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   }, [supabaseClient, processSession]);
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    return user?.app_metadata?.assignments?.[0]?.role || null;
+    const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+    if (!platformId) {
+      throw new Error("Platform ID no está configurado en el cliente.");
+    }
+
+    const { data, error } = await supabaseClient.functions.invoke('user-actions', {
+      body: {
+        action: 'login-tenant',
+        payload: { email, password, platform_id: platformId },
+      },
+    });
+
+    if (error) throw new Error(error.message || "Error en la comunicación con el servidor.");
+    if (!data.success) throw new Error(data.message || "Error desconocido durante el inicio de sesión.");
+
+    await refreshUser();
+    
+    return data.user?.app_metadata?.assignments?.[0]?.role || null;
   };
 
   const logout = async () => {
@@ -132,7 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     if (error) throw error;
     if (!data.success) throw new Error(data.message || "Error al cambiar de asignación.");
 
-    // Forzar el refresco para que el AuthContext se reconstruya con el nuevo orden
     await refreshUser();
   };
 
@@ -148,7 +162,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     switchAssignment,
     refreshUser,
     loading,
-  }), [session, user, profile, assignments, currentAssignment, loading, refreshUser]);
+    supabaseClient, // Añadido: Exponer el cliente de Supabase
+  }), [session, user, profile, assignments, currentAssignment, loading, refreshUser, supabaseClient]);
 
   return (
     <AuthContext.Provider value={contextValue}>

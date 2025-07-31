@@ -213,7 +213,12 @@ export default function RegisterTenant() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('register-tenant', { body: values });
+      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      if (!platformId) throw new Error("Platform ID no está configurado.");
+
+      const payload = { ...values, platform_id: platformId };
+
+      const { data, error } = await supabase.functions.invoke('register-tenant', { body: payload });
       if (error) throw new Error(error.message);
       if (data.error) throw new Error(data.error);
       if (data.success === false) throw new Error(data.message);

@@ -65,89 +65,17 @@ export const usePurchases = () => {
 export const useCreatePurchase = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: settings } = useSettings();
 
   return useMutation({
-    mutationFn: async (purchaseData: {
-      supplier_id: string;
-      supplier_name: string;
-      purchase_date: string;
-      invoice_number?: string;
-      notes?: string;
-      items: Array<{
-        product_id: string;
-        quantity: number;
-        unit_cost: number;
-      }>;
-    }) => {
-      const total_amount = purchaseData.items.reduce(
-        (sum, item) => sum + (item.quantity * item.unit_cost), 
-        0
-      );
-
-      // Crear la compra
-      const { data: purchase, error: purchaseError } = await supabase
-        .from('purchases')
-        .insert([{
-          supplier_id: purchaseData.supplier_id,
-          supplier_name: purchaseData.supplier_name,
-          purchase_date: purchaseData.purchase_date,
-          invoice_number: purchaseData.invoice_number,
-          notes: purchaseData.notes,
-          total_amount,
-        }])
-        .select()
-        .single();
-
-      if (purchaseError) throw purchaseError;
-
-      // Crear los items de la compra con total_cost calculado
-      const items = purchaseData.items.map(item => ({
-        purchase_id: purchase.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_cost: item.unit_cost,
-        total_cost: item.quantity * item.unit_cost,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('purchase_items')
-        .insert(items);
-
-      if (itemsError) throw itemsError;
-
-      // Actualizar costos de productos según método configurado
-      const costingMethod = settings?.find(s => s.key === 'costing_method')?.value || 'average';
-      
-      for (const item of purchaseData.items) {
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('cost_price, stock_quantity')
-          .eq('id', item.product_id)
-          .single();
-
-        if (productError) continue;
-
-        let newCostPrice = item.unit_cost;
-        
-        if (costingMethod === 'average' && product.cost_price > 0) {
-          // Método promedio: (costo_anterior + costo_nuevo) / 2
-          newCostPrice = (product.cost_price + item.unit_cost) / 2;
-        }
-        
-        // Actualizar producto con nuevo costo y stock
-        await supabase
-          .from('products')
-          .update({
-            cost_price: newCostPrice,
-            last_purchase_cost: item.unit_cost,
-            average_cost: newCostPrice,
-            stock_quantity: (product.stock_quantity || 0) + item.quantity,
-          })
-          .eq('id', item.product_id);
-      }
-
-      return purchase;
+    mutationFn: async (purchaseData: any) => {
+      const { data, error } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'create_purchase',
+          payload: purchaseData,
+        },
+      });
+      if (error) throw new Error(error.message);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
