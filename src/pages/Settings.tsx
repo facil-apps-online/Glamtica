@@ -1,12 +1,12 @@
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { GeneralSettingsTab } from "./settings/GeneralSettingsTab";
-import { BranchesTab } from "./settings/BranchesTab";
-import { UsersTab } from "./settings/UsersTab";
-import { TributarioTab } from "./settings/TributarioTab";
-import { InventorySettingsTab } from "./settings/InventorySettingsTab";
-import { SubscriptionTab } from "./settings/SubscriptionTab";
+import { GeneralSettingsTab } from "../components/GeneralSettingsTab";
+import { BranchesTab } from "../components/BranchesTab";
+import { UsersTab } from "../components/UsersTab";
+import { TributarioTab } from "../components/TributarioTab";
+import { InventorySettingsTab } from "../components/InventorySettingsTab";
+import { SubscriptionTab } from "../components/SubscriptionTab";
 import { Building, Users, Store, CreditCard, FileText, Box } from 'lucide-react';
 
 export default function Settings() {
