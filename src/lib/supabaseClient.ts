@@ -25,7 +25,7 @@ if (!supabase.global.headers) {
   supabase.global.headers = {};
 }
 
-console.log('[supabaseClient.ts] Supabase client initialized. supabase.global (after check):', supabase.global);
+
 
 
 // The following utility functions remain unchanged.

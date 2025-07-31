@@ -122,7 +122,7 @@ export function SubscriptionTab() {
   const isLoading = isAuthLoading || arePlansLoading;
 
   if (isLoading) {
-    console.log('[SubscriptionTab] Showing loading skeleton.');
+    
     // Skeleton loading state...
     return (
       <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -53,7 +53,7 @@ export default function Settings() {
 
         {isSuperAdmin && (
           <TabsContent value="branches">
-            <BranchesTab />
+            <BranchesTab tenantId={currentAssignment?.tenant_id} />
           </TabsContent>
         )}
 

@@ -137,7 +137,7 @@ export function GeneralSettingsTab() {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    updateTenantMutation.mutate({ tenantId: tenantId!, values }, {
+    updateTenantMutation.mutate({ id: tenantId, ...values }, {
       onSuccess: () => toast({ title: 'Información Actualizada', description: 'La información de tu negocio ha sido actualizada.' }),
       onError: (error) => toast({ title: 'Error', description: `Error al actualizar: ${error.message}`, variant: 'destructive' }),
     });

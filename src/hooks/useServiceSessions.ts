@@ -22,7 +22,7 @@ export const checkAndUpdateAttentionStatus = async (attentionId: string) => {
       .update({ status: 'Completada' })
       .eq('id', attentionId);
     
-    console.log(`Atención ${attentionId} actualizada a "Completada" - todos los servicios completados`);
+    
   }
 };
 

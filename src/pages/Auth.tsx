@@ -97,7 +97,7 @@ const AuthPage: React.FC = () => {
       return;
     }
     
-    console.log('Enviando email para recuperación:', email);
+    
 
     try {
       const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;

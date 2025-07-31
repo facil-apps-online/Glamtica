@@ -42,6 +42,9 @@ export function AddressAutocompleteInput({ onPlaceSelected, defaultValue, countr
       const place = autocomplete.getPlace();
       if (place && place.geometry) {
         onPlaceSelected(place);
+        if (inputRef.current) {
+          inputRef.current.value = place.formatted_address || '';
+        }
       }
     };
 
@@ -61,7 +64,7 @@ export function AddressAutocompleteInput({ onPlaceSelected, defaultValue, countr
       ref={inputRef}
       type="text"
       placeholder={countryRestriction ? "Buscar dirección en el país seleccionado..." : "Selecciona un país para buscar..."}
-      defaultValue={defaultValue}
+      
       disabled={!countryRestriction}
     />
   );

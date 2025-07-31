@@ -10,6 +10,8 @@ import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import BranchesPage from "@/pages/Settings/Branches";
+import NewBranchPage from "@/pages/Settings/NewBranchPage";
+import EditBranchPage from "@/pages/Settings/EditBranchPage";
 import EmailTemplatesPage from "@/pages/Settings/EmailTemplatesPage";
 import EmailSettingsPage from "@/pages/Settings/EmailSettingsPage";
 import NotFound from "@/pages/NotFound";
@@ -57,7 +59,8 @@ function App() {
                   <Route path="team" element={<Team />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
-                  <Route path="settings/branches" element={<BranchesPage />} />
+                  <Route path="settings/branches/new" element={<NewBranchPage />} />
+                  <Route path="settings/branches/:branchId/edit" element={<EditBranchPage />} />
                   <Route path="settings/email-templates" element={<EmailTemplatesPage />} />
                   <Route path="settings/email-settings" element={<EmailSettingsPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />

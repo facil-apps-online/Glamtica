@@ -33,7 +33,7 @@ const fetchSubscriptionStatus = async (tenantId: string): Promise<SubscriptionIn
   }
 
   const result = data[0] as SubscriptionInfo;
-  console.log("[Hook] Successfully processed data, returning:", result);
+  
   return result;
 };
 

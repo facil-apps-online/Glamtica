@@ -15,6 +15,17 @@ export interface Branch {
   is_main_branch: boolean;
   status: 'active' | 'pending_activation' | 'archived';
   activated_at: string | null;
+  contact_phone?: string | null;
+  whatsapp_phone?: string | null;
+  commercial_email?: string | null;
+  website?: string | null;
+  physical_address_line1?: string | null;
+  physical_address_line2?: string | null;
+  physical_city?: string | null;
+  physical_state?: string | null;
+  physical_postal_code?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // GET branches by calling the RPC function
@@ -26,9 +37,23 @@ export const useBranches = (tenantIdParam?: string) => {
     queryKey: ['branches', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const { data, error } = await supabase.rpc('get_tenant_branches', { p_tenant_id: tenantId });
-      if (error) throw new Error(error.message);
-      return data as Branch[];
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'get_branches',
+          payload: {},
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to fetch branches');
+      }
+      return json as Branch[];
     },
     enabled: !!tenantId,
   });
@@ -41,11 +66,41 @@ export const useCreateBranch = (tenantIdParam?: string) => {
   const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
-    mutationFn: async (vars: { p_name: string; p_address?: string }) => {
+    mutationFn: async (vars: {
+      p_name: string;
+      p_address?: string | null;
+      p_contact_phone?: string | null;
+      p_whatsapp_phone?: string | null;
+      p_commercial_email?: string | null;
+      p_website?: string | null;
+      p_physical_address_line1?: string | null;
+      p_physical_address_line2?: string | null;
+      p_physical_city?: string | null;
+      p_physical_state?: string | null;
+      p_physical_postal_code?: string | null;
+      p_latitude?: number | null;
+      p_longitude?: number | null;
+    }) => {
       if (!tenantId) throw new Error("Tenant ID not available");
-      const { data, error } = await supabase.rpc('create_branch', { p_tenant_id: tenantId, ...vars });
-      if (error) throw new Error(error.message);
-      return data;
+      if (!session) throw new Error("Session not available");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'create_branch',
+          payload: vars,
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to create branch');
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', tenantId] });
@@ -60,11 +115,42 @@ export const useUpdateBranch = (tenantIdParam?: string) => {
   const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
 
   return useMutation({
-    mutationFn: async (vars: { p_branch_id: string; p_name: string; p_address: string }) => {
+    mutationFn: async (vars: {
+      p_branch_id: string;
+      p_name: string;
+      p_address?: string | null;
+      p_contact_phone?: string | null;
+      p_whatsapp_phone?: string | null;
+      p_commercial_email?: string | null;
+      p_website?: string | null;
+      p_physical_address_line1?: string | null;
+      p_physical_address_line2?: string | null;
+      p_physical_city?: string | null;
+      p_physical_state?: string | null;
+      p_physical_postal_code?: string | null;
+      p_latitude?: number | null;
+      p_longitude?: number | null;
+    }) => {
       if (!tenantId) throw new Error("Tenant ID not available");
-      const { data, error } = await supabase.rpc('update_branch', { p_tenant_id: tenantId, ...vars });
-      if (error) throw new Error(error.message);
-      return data;
+      if (!session) throw new Error("Session not available");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'update_branch',
+          payload: vars,
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to update branch');
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', tenantId] });

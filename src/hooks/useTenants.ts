@@ -28,8 +28,8 @@ export interface Tenant {
   physical_city?: string | null;
   physical_state?: string | null;
   physical_postal_code?: string | null;
-  latitude?: string | null;
-  longitude?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   countries?: { name: string; iso_code: string } | null;
 }
 
@@ -65,12 +65,19 @@ export const useTenantById = (tenantId: string) => {
 
 // UPDATE the current user's tenant data
 const updateTenant = async ({ id, ...values }: Partial<Tenant> & { id: string }): Promise<Tenant> => {
-  const { data, error } = await supabase
-    .from('tenants')
-    .update(values)
-    .eq('id', id)
-    .select()
-    .single();
+  const response = await fetch('/functions/v1/tenant-actions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+    },
+    body: JSON.stringify({
+      action: 'update_tenant',
+      payload: { id, values },
+    }),
+  });
+
+  const { data, error } = await response.json();
 
   if (error) {
     throw new Error(error.message);

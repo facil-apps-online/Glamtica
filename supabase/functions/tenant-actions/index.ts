@@ -118,6 +118,122 @@ serve(async (req) => {
         break;
       }
 
+      case 'get_tenant_by_id': {
+        const { tenantId: queryTenantId } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('tenants')
+          .select(`
+            *,
+            countries (
+              name,
+              iso_code
+            )
+          `)
+          .eq('id', queryTenantId)
+          .single();
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_tenant': {
+        const { id, values } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('tenants')
+          .update(values)
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_branch': {
+        const {
+          p_name,
+          p_address,
+          p_contact_phone,
+          p_whatsapp_phone,
+          p_commercial_email,
+          p_website,
+          p_physical_address_line1,
+          p_physical_address_line2,
+          p_physical_city,
+          p_physical_state,
+          p_physical_postal_code,
+          p_latitude,
+          p_longitude,
+        } = payload;
+        const { data, error } = await supabaseAdmin.rpc('create_branch', {
+          p_tenant_id: tenantId,
+          p_name,
+          p_address,
+          p_contact_phone,
+          p_whatsapp_phone,
+          p_commercial_email,
+          p_website,
+          p_physical_address_line1,
+          p_physical_address_line2,
+          p_physical_city,
+          p_physical_state,
+          p_physical_postal_code,
+          p_latitude,
+          p_longitude,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_branches': {
+        const { data, error } = await supabaseAdmin.rpc('get_tenant_branches', { p_tenant_id: tenantId });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_branch': {
+        const {
+          p_branch_id,
+          p_name,
+          p_address,
+          p_contact_phone,
+          p_whatsapp_phone,
+          p_commercial_email,
+          p_website,
+          p_physical_address_line1,
+          p_physical_address_line2,
+          p_physical_city,
+          p_physical_state,
+          p_physical_postal_code,
+          p_latitude,
+          p_longitude,
+        } = payload;
+        const { data, error } = await supabaseAdmin.rpc('update_branch', {
+          p_tenant_id: tenantId,
+          p_branch_id,
+          p_name,
+          p_address,
+          p_contact_phone,
+          p_whatsapp_phone,
+          p_commercial_email,
+          p_website,
+          p_physical_address_line1,
+          p_physical_address_line2,
+          p_physical_city,
+          p_physical_state,
+          p_physical_postal_code,
+          p_latitude,
+          p_longitude,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -127,6 +243,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    console.error("Error in tenant-actions Edge Function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

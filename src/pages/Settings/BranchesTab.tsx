@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBranches } from '@/hooks/useBranches';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Power, Store } from 'lucide-react';
@@ -25,10 +26,11 @@ interface BranchesTabProps {
 }
 
 export function BranchesTab({ tenantId }: BranchesTabProps) {
-  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
   const { data: branches, isLoading, error } = useBranches(tenantId);
+  
   const queryClient = useQueryClient();
   const screenSize = useScreenSize();
 
@@ -97,6 +99,8 @@ export function BranchesTab({ tenantId }: BranchesTabProps) {
               </TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Dirección</TableHead>
+              <TableHead>Contacto</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -115,8 +119,16 @@ export function BranchesTab({ tenantId }: BranchesTabProps) {
                       />
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{branch.name} {branch.is_main_branch && <Badge variant="secondary" className="ml-2">Principal</Badge>}</TableCell>
+                  <TableCell className="font-medium">{branch.name}</TableCell>
                   <TableCell className="text-slate-600">{branch.address}</TableCell>
+                  <TableCell className="text-slate-600">{branch.contact_phone || branch.whatsapp_phone}</TableCell>
+                  <TableCell>
+                    {branch.is_main_branch ? (
+                      <Badge variant="secondary">Principal</Badge>
+                    ) : (
+                      <Badge variant="outline">Sucursal</Badge>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge className={config.className}>{config.label}</Badge>
                   </TableCell>
@@ -151,7 +163,7 @@ export function BranchesTab({ tenantId }: BranchesTabProps) {
                   Activar ({selectedBranchIds.length})
                 </Button>
               )}
-              <Button onClick={() => setCreateDialogOpen(true)}>
+              <Button onClick={() => navigate('/settings/branches/new')}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Añadir Sucursal
               </Button>
@@ -162,13 +174,6 @@ export function BranchesTab({ tenantId }: BranchesTabProps) {
           {renderContent()}
         </CardContent>
       </Card>
-
-      <CreateBranchDialog
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={handleSuccess}
-        tenantId={tenantId}
-      />
 
       <ActivateBranchesBatchDialog
         isOpen={isBatchActivateDialogOpen}
