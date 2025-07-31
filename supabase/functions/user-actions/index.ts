@@ -66,11 +66,71 @@ Deno.serve(async (req) => {
           throw new Error(`Error de autenticación: ${error.message}`);
         }
 
-        if (!data.session) {
-            throw new Error('Inicio de sesión fallido, no se recibió una sesión.');
+        if (!data.session || !data.user) {
+            throw new Error('Inicio de sesión fallido, no se recibió una sesión o usuario.');
         }
 
-        responseData = { success: true, ...data };
+        // --- LÓGICA PARA OBTENER Y ACTUALIZAR ASIGNACIONES DESDE app_metadata ---
+        console.log('Usuario autenticado. Hidratando asignaciones desde app_metadata...');
+        const authenticatedUser = data.user;
+        const rawAssignments = authenticatedUser.app_metadata.assignments || [];
+
+        const hydratedAssignments = [];
+        for (const assignment of rawAssignments) {
+            // Fetch tenant name
+            const { data: tenantData, error: tenantError } = await supabaseAdmin
+                .from('tenants')
+                .select('name')
+                .eq('id', assignment.tenant_id)
+                .single();
+            const tenantName = tenantData?.name || null;
+            if (tenantError) console.warn(`Error fetching tenant name for ID ${assignment.tenant_id}:`, tenantError.message);
+
+            // Fetch role name and display_name
+            const { data: roleData, error: roleError } = await supabaseAdmin
+                .from('roles')
+                .select('name, display_name')
+                .eq('id', assignment.role_id)
+                .single();
+            const roleName = roleData?.name || null;
+            const roleDisplayName = roleData?.display_name || null;
+            if (roleError) console.warn(`Error fetching role name for ID ${assignment.role_id}:`, roleError.message);
+
+            // Fetch branch name (if branch_id exists)
+            let branchName = null;
+            if (assignment.branch_id) {
+                const { data: branchData, error: branchError } = await supabaseAdmin
+                    .from('branches')
+                    .select('name')
+                    .eq('id', assignment.branch_id)
+                    .single();
+                branchName = branchData?.name || null;
+                if (branchError) console.warn(`Error fetching branch name for ID ${assignment.branch_id}:`, branchError.message);
+            }
+
+            hydratedAssignments.push({
+                ...assignment,
+                tenant_name: tenantName,
+                role_name: roleName,
+                role_display_name: roleDisplayName,
+                branch_name: branchName,
+            });
+        }
+
+        console.log('Asignaciones hidratadas:', hydratedAssignments);
+
+        // Actualizar el app_metadata del usuario con las asignaciones hidratadas
+        const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          authenticatedUser.id,
+          { app_metadata: { ...authenticatedUser.app_metadata, assignments: hydratedAssignments } })
+
+        if (updateError) {
+          console.error('Error al actualizar app_metadata con asignaciones hidratadas:', updateError.message);
+          throw new Error(`Error al actualizar metadatos del usuario: ${updateError.message}`);
+        }
+
+        // Devolver la sesión y el usuario actualizados
+        responseData = { success: true, session: data.session, user: updatedUserResponse.user };
         break;
       }
 
@@ -177,10 +237,12 @@ Deno.serve(async (req) => {
       
       case 'generate-recovery-token': {
         console.log('Iniciando acción: generate-recovery-token');
-        const { email } = payload;
-        if (!email) throw new Error('El email es obligatorio.');
+        const { email, platform_id } = payload;
+        if (!email || !platform_id) throw new Error('El email y el platform_id son obligatorios.');
 
-        const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email });
+        const synthetic_email = `${platform_id}_${email}`;
+
+        const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
         if (findError) throw new Error(`Error de Supabase al buscar usuario: ${findError.message}`);
         if (!users || users.length === 0) throw new Error('No se encontró un usuario con ese correo electrónico.');
         

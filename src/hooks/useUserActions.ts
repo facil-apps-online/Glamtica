@@ -16,12 +16,17 @@ const invokeUserAction = async (action: string, payload?: any) => {
 
 // --- CREATE Password Reset Token ---
 // This mutation will call the 'generate-recovery-token' action in the 'user-actions' Edge Function.
-const createPasswordResetToken = async (email: string): Promise<any> => {
-  return invokeUserAction('generate-recovery-token', { email });
+interface CreatePasswordResetTokenPayload {
+  email: string;
+  platform_id: string;
+}
+
+const createPasswordResetToken = async (payload: CreatePasswordResetTokenPayload): Promise<any> => {
+  return invokeUserAction('generate-recovery-token', payload);
 };
 
 export const useCreatePasswordResetToken = () => {
-  return useMutation<any, Error, string>({ // The mutation function takes an email (string) as input
+  return useMutation<any, Error, CreatePasswordResetTokenPayload>({
     mutationFn: createPasswordResetToken,
   });
 };

@@ -14,8 +14,6 @@ const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
   const { data: settings } = useSettings();
   const { loading: authLoading } = useAuth(); // Obtener el estado de carga de la autenticación
   const navigate = useNavigate();
-  const location = useLocation();
-
   useEffect(() => {
     if (settings) {
       const timezoneSetting = settings.find(s => s.key === 'timezone');
@@ -24,33 +22,6 @@ const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
       }
     }
   }, [settings]);
-
-  useEffect(() => {
-    const checkSuperadmin = async () => {
-      try {
-        const { data, error } = await supabase.rpc('check_superadmin_exists');
-
-        if (error) {
-          console.error('Error al verificar superadministrador:', error);
-          return;
-        }
-
-        if (data === false) {
-          if (location.pathname !== '/setup-superadmin') {
-            navigate('/setup-superadmin');
-          }
-        } else {
-          if (location.pathname === '/setup-superadmin') {
-            navigate('/auth');
-          }
-        }
-      } catch (err) {
-        console.error('Excepción al verificar superadministrador:', err);
-      }
-    };
-
-    checkSuperadmin();
-  }, [navigate, location.pathname]);
 
   // Si la autenticación está en proceso, mostrar el loader
   if (authLoading) {

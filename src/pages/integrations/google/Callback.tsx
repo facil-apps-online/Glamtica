@@ -17,20 +17,7 @@ const GoogleCallbackPage = () => {
             }
         };
 
-        if (authLoading) {
-            setMessage('Verificando sesión de superadministrador...');
-            return;
-        }
-
         const processAuth = async () => {
-            if (currentAssignment?.role_name !== 'super_admin') {
-                const authError = 'Acceso denegado. Debes ser un superadministrador.';
-                setError(authError);
-                setMessage('Error de autenticación.');
-                postMessageAndClose(false, authError);
-                return;
-            }
-
       setMessage('Procesando autenticación de Google...');
       const params = new URLSearchParams(location.search);
       const code = params.get('code');

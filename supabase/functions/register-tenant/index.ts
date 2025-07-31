@@ -56,6 +56,18 @@ serve(async (req) => {
     if (!platform_id) throw new Error('El ID de la plataforma es requerido.');
     if (!admin_email || !admin_password) throw new Error('El email y la contraseña son requeridos.');
 
+    // Obtener el ID del rol 'tenant_super_admin'
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('roles')
+      .select('id')
+      .eq('name', 'tenant_super_admin')
+      .single();
+
+    if (roleError || !roleData) {
+      throw new Error(`Error al obtener el ID del rol tenant_super_admin: ${roleError?.message || 'No encontrado'}`);
+    }
+    const tenantSuperAdminRoleId = roleData.id;
+
     // --- Verificación de reCAPTCHA ---
     const recaptchaUrl = 'https://www.google.com/recaptcha/api/siteverify';
     const response = await fetch(recaptchaUrl, {
@@ -76,10 +88,9 @@ serve(async (req) => {
       options: {
         data: {
           platform_id: platform_id,
+        },
+        user_metadata: {
           real_email: admin_email,
-          role: 'tenant_super_admin',
-          // Guardamos los datos como respaldo, aunque ahora los pasamos explícitamente
-          tenant_creation_data: tenant_creation_data
         }
       }
     });
@@ -104,6 +115,24 @@ serve(async (req) => {
 
     if (rpcError) {
       throw new Error(`Error al configurar el tenant: ${rpcError.message}`);
+    }
+
+    // Paso 3: Actualizar el app_metadata del usuario con la asignación completa
+    const newAssignment = {
+      assignment_id: crypto.randomUUID(), // Generar un ID único para la asignación
+      tenant_id: tenantId, // El ID del tenant recién creado
+      role_id: tenantSuperAdminRoleId, // El ID del rol tenant_super_admin
+      status: 'active', // Estado inicial de la asignación
+      // branch_id se omite para tenant_super_admin
+    };
+
+    const { data: updatedUserResponse, error: updateMetadataError } = await supabaseAdmin.auth.admin.updateUserById(
+      newUser.id,
+      { app_metadata: { assignments: [newAssignment] } } // Sobrescribir con la nueva asignación
+    );
+
+    if (updateMetadataError) {
+      throw new Error(`Error al actualizar el app_metadata del usuario: ${updateMetadataError.message}`);
     }
 
     return new Response(JSON.stringify({ 

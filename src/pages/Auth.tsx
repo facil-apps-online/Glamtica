@@ -50,24 +50,31 @@ const AuthPage: React.FC = () => {
   const [resetLink, setResetLink] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login, supabaseClient } = useAuth(); // Obtener supabaseClient del contexto
+  const { login, supabaseClient, currentAssignment } = useAuth(); // Obtener supabaseClient y currentAssignment del contexto
   const createPasswordResetTokenMutation = useCreatePasswordResetToken();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const role = await login(email, password);
+      await login(email, password);
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo.",
       });
 
-      if (role === 'super_admin') {
-        navigate('/superadmin');
-      } else {
-        navigate('/');
+      // Determinar la redirección basada en el rol del usuario
+      let redirectTo = '/'; // Redirección por defecto
+
+      if (currentAssignment) {
+        if (currentAssignment.role_name === 'super_admin') {
+          redirectTo = '/superadmin/dashboard';
+        } else if (currentAssignment.role_name === 'tenant_super_admin' || currentAssignment.role_name === 'tenant_admin' || currentAssignment.role_name === 'tenant_user') {
+          redirectTo = '/dashboard'; // Asumiendo que /dashboard es el dashboard principal del tenant
+        }
+        // Puedes añadir más condiciones para otros roles si es necesario
       }
+      navigate(redirectTo);
 
     } catch (error: any) {
       toast({
@@ -93,7 +100,11 @@ const AuthPage: React.FC = () => {
     console.log('Enviando email para recuperación:', email);
 
     try {
-      const result = await createPasswordResetTokenMutation.mutateAsync(email);
+      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      if (!platformId) {
+        throw new Error("Platform ID no está configurado en el cliente.");
+      }
+      const result = await createPasswordResetTokenMutation.mutateAsync({ email, platform_id: platformId });
       const fullLink = `${window.location.origin}/update-password?token=${result.token}`;
       setResetLink(fullLink);
     } catch (error: any) {

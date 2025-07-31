@@ -53,11 +53,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const navigate = useNavigate();
 
   const processSession = useCallback((sessionData: Session | null) => {
+    console.log("Entering processSession with sessionData:", sessionData);
     setSession(sessionData);
     setUser(sessionData?.user ?? null);
 
     if (sessionData?.user) {
       const { app_metadata, user_metadata, id, email } = sessionData.user;
+      console.log("User app_metadata:", app_metadata);
+      console.log("User app_metadata:", app_metadata);
       const userProfile: UserProfile = {
         id: id,
         email: email || '',
@@ -77,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
           tenant_id: a.tenant_id,
           tenant_name: a.tenant_name,
           role_id: a.role_id,
-          role_name: a.role,
+          role_name: a.role_name,
           branch_id: a.branch_id || null,
           branch_name: a.branch_name || null,
           status: a.status || 'inactive',
@@ -108,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       throw new Error("Platform ID no está configurado en el cliente.");
     }
 
+    console.log("Attempting login for email:", email);
     const { data, error } = await supabaseClient.functions.invoke('user-actions', {
       body: {
         action: 'login-tenant',
@@ -115,10 +119,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       },
     });
 
-    if (error) throw new Error(error.message || "Error en la comunicación con el servidor.");
-    if (!data.success) throw new Error(data.message || "Error desconocido durante el inicio de sesión.");
+    if (error) {
+      console.error("Error invoking user-actions function:", error);
+      throw new Error(error.message || "Error en la comunicación con el servidor.");
+    }
+    if (!data.success) {
+      console.error("Login failed, data.success is false:", data);
+      throw new Error(data.message || "Error desconocido durante el inicio de sesión.");
+    }
 
-    await refreshUser();
+    // Asumiendo que la función Edge devuelve un objeto 'session' en un inicio de sesión exitoso
+    if (data.session) {
+      console.log("Función Edge devolvió datos de sesión. Estableciendo sesión...");
+      await supabaseClient.auth.setSession(data.session);
+      console.log("Sesión establecida. Refrescando usuario...");
+      await refreshUser(); // Refrescar para asegurar que todo el contexto se actualice
+    } else {
+      console.warn("La función Edge no devolvió datos de sesión. Intentando refrescar usuario de todos modos.");
+      await refreshUser();
+    }
+    
+    console.log("Usuario refrescado. Proceso de inicio de sesión completado.");
     
     return data.user?.app_metadata?.assignments?.[0]?.role || null;
   };

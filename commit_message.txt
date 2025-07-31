@@ -1,18 +1,12 @@
-refactor(superadmin): Corrige navegación y optimiza carga de datos
+feat: Refactorización completa de autenticación y registro multi-plataforma
 
-Se realizan múltiples mejoras en el panel de superadministrador para solucionar errores de navegación, optimizar el rendimiento y estandarizar el acceso a datos.
+Esta actualización introduce una refactorización integral del sistema de autenticación y registro para soportar un modelo multi-plataforma con aislamiento de usuarios por plataforma.
 
-- **Corrección de Navegación:**
-  - Se auditaron todos los enlaces del menú (`navigation.ts`) contra las rutas definidas (`routes.tsx`).
-  - Se corrigieron las URLs incorrectas y se añadieron las rutas faltantes para `Integrations`, `SystemAlerts`, `ErrorReports`, `PerformanceMetrics` y `Translations`.
-  - Se creó una página placeholder para "Gestión de Accesos" para completar el enrutamiento.
-
-- **Optimización de Rendimiento:**
-  - Se solucionó la carga lenta de la lista de plataformas, causada por una consulta ineficiente.
-  - Se implementó el patrón estándar de acceso a datos:
-    1. Se creó una función RPC (`get_platforms_list`) con búsqueda del lado del servidor.
-    2. Se actualizó la Edge Function para usar esta RPC.
-    3. Se refactorizó el componente de React (`PlatformsList.tsx`) para usar `react-query` con búsqueda y debounce.
-
-- **Documentación:**
-  - Se documentó formalmente el "Estándar de Acceso a Datos para Listas" en `Glamtica.md`, estableciendo el uso de RPCs como la práctica recomendada.
+Cambios principales:
+- **Autenticación Multi-plataforma:** Implementación de emails sintéticos (`platform_id_email`) para el registro y login, asegurando la unicidad de usuarios por plataforma.
+- **Flujo de Registro Robusto:** La Edge Function `register-tenant` ahora orquesta la creación de usuarios y tenants de forma atómica, con rollback en caso de fallo.
+- **Consolidación de Lógica de BD:** Eliminación de múltiples funciones RPC obsoletas y creación de una única función canónica (`setup_tenant_for_new_user`) para la configuración de tenants.
+- **Manejo de Suscripciones y Sucursales:** La función de setup de tenant ahora asigna correctamente el plan de prueba por defecto y la sucursal principal al usuario administrador.
+- **Confirmación de Email en Frontend:** Añadido un botón en la página de login para permitir la confirmación manual de emails de usuario.
+- **Correcciones de Migraciones:** Solucionados errores de sintaxis y nombres de columnas en migraciones existentes.
+- **Separación de Portales:** Aunque no se implementa directamente en este commit, los cambios de autenticación sientan las bases para la separación lógica de los portales de superadministración y de tenant, permitiendo flujos de usuario distintos.

@@ -41,11 +41,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
 
   const handleProfileClick = () => {
     setIsPopoverOpen(false);
-    if (currentAssignment?.role_name === 'super_admin') {
-      navigate("/superadmin/profile-settings");
-    } else {
-      navigate("/profile-settings");
-    }
+    navigate("/profile-settings");
   };
 
   return (

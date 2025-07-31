@@ -25,20 +25,6 @@ const ProtectedRoute: React.FC = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Lógica de redirección basada en roles del 'currentAssignment'
-  const userRole = currentAssignment.role_name;
-  const isSuperAdminPath = location.pathname.startsWith('/superadmin');
-
-  if (userRole === 'super_admin' && !isSuperAdminPath) {
-    // Si es super_admin pero está fuera de las rutas de superadmin, redirigir a su dashboard.
-    return <Navigate to="/superadmin/dashboard" replace />;
-  }
-  
-  if (userRole !== 'super_admin' && isSuperAdminPath) {
-    // Si no es super_admin pero intenta acceder a una ruta de superadmin, redirigir al dashboard del tenant.
-    return <Navigate to="/" replace />;
-  }
-
   // Si todo es correcto, renderizar la página solicitada.
   return <Outlet />;
 };
