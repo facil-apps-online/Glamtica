@@ -80,31 +80,24 @@ serve(async (req) => {
 
     // --- Orquestación de Registro ---
 
-    // Paso 1: Crear el usuario en Supabase Auth con email sintético
-    const synthetic_email = `${platform_id}_${admin_email}`;
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
-      email: synthetic_email,
-      password: admin_password,
-      options: {
-        data: {
-          platform_id: platform_id,
-        },
-        user_metadata: {
-          real_email: admin_email,
+    // Paso 1: Invocar a user-actions para crear el usuario de forma centralizada
+    const { data: userCreationResponse, error: userCreationError } = await supabaseAdmin.functions.invoke('user-actions', {
+      body: {
+        action: 'create_auth_user',
+        payload: {
+          email: admin_email,
+          password: admin_password,
+          platformId: platform_id,
         }
       }
     });
 
-    if (authError) {
-      if (authError.message.includes('User already registered')) {
-        throw new Error(`El email ${admin_email} ya ha sido registrado para esta plataforma.`);
-      }
-      throw new Error(`Error al crear el usuario: ${authError.message}`);
+    if (userCreationError || !userCreationResponse.success) {
+      // Si la creación falla, lanzamos un error para que el bloque catch lo maneje
+      throw new Error(`Error al crear el usuario: ${userCreationError?.message || userCreationResponse.message}`);
     }
-    if (!authData.user) {
-      throw new Error('La creación del usuario no devolvió un objeto de usuario.');
-    }
-    newUser = authData.user;
+
+    newUser = userCreationResponse.user;
 
     // Paso 2: Llamar a la RPC con los datos explícitos para evitar race conditions
     const { data: tenantId, error: rpcError } = await supabaseAdmin.rpc('setup_tenant_for_new_user', {

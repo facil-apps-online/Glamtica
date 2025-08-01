@@ -48,6 +48,7 @@ const passwordSchema = z.string()
 
 const formSchema = z.object({
   name: z.string().min(2, "El nombre comercial es requerido."),
+  formatted_address: z.string().optional(),
   country_id: z.string().min(1, "El país es requerido."),
   default_language_code: z.string().min(1, "El idioma es requerido."),
   default_currency_id: z.string().min(1, "La moneda es requerida."),
@@ -203,6 +204,9 @@ export default function RegisterTenant() {
       form.setValue('latitude', place.geometry.location.lat());
       form.setValue('longitude', place.geometry.location.lng());
     }
+    if (place.formatted_address) {
+      form.setValue('formatted_address', place.formatted_address);
+    }
     const countryIso = place.address_components?.find(c => c.types.includes('country'))?.short_name;
     if (countryIso && publicData?.countries) {
       const selectedCountry = publicData.countries.find(c => c.iso_code === countryIso);
@@ -279,7 +283,7 @@ export default function RegisterTenant() {
                   
                   <div className="p-4 border rounded-lg">
                     <h3 className="text-lg font-semibold mb-4">Información Principal</h3>
-                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                   </div>
 
                   <div className="p-4 border rounded-lg">
@@ -297,12 +301,12 @@ export default function RegisterTenant() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <FormItem><FormLabel>Buscar Dirección</FormLabel><FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} countryRestriction={countryRestriction} /></FormControl><FormMessage /></FormItem>
-                        <FormField control={form.control} name="physical_address_line1" render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="physical_address_line2" render={({ field }) => (<FormItem><FormLabel>Dirección (Línea 2, Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="physical_city" render={({ field }) => (<FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="physical_state" render={({ field }) => (<FormItem><FormLabel>Estado/Provincia</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="physical_postal_code" render={({ field }) => (<FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="website" render={({ field }) => (<FormItem><FormLabel>Sitio Web (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="physical_address_line1" render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="physical_address_line2" render={({ field }) => (<FormItem><FormLabel>Dirección (Línea 2, Opcional)</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="physical_city" render={({ field }) => (<FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="physical_state" render={({ field }) => (<FormItem><FormLabel>Estado/Provincia</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="physical_postal_code" render={({ field }) => (<FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="website" render={({ field }) => (<FormItem><FormLabel>Sitio Web (Opcional)</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                       </div>
                       {watchedLat !== null && watchedLng !== null && (<div className="w-full h-full min-h-[300px] rounded-lg overflow-hidden"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>)}
                     </div>
@@ -313,10 +317,10 @@ export default function RegisterTenant() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="legal_name" render={({ field }) => (<FormItem><FormLabel>Razón Social</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="tax_id" render={({ field }) => (<FormItem><FormLabel>ID Fiscal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="einvoicing_email" render={({ field }) => (<FormItem><FormLabel>Email Fact. Electrónica</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input type="email" {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="legal_name" render={({ field }) => (<FormItem><FormLabel>Razón Social</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="tax_id" render={({ field }) => (<FormItem><FormLabel>ID Fiscal</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="einvoicing_email" render={({ field }) => (<FormItem><FormLabel>Email Fact. Electrónica</FormLabel><FormControl><Input type="email" {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                     <div className="flex items-center space-x-2 mt-4">
                       <Checkbox id="use-physical-address" checked={usePhysicalAsBilling} onCheckedChange={(checked) => setUsePhysicalAsBilling(Boolean(checked))} />
@@ -326,7 +330,7 @@ export default function RegisterTenant() {
                     </div>
                     {!usePhysicalAsBilling && (
                       <div className="mt-4">
-                        <FormField control={form.control} name="billing_address" render={({ field }) => (<FormItem><FormLabel>Dirección de Facturación</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="billing_address" render={({ field }) => (<FormItem><FormLabel>Dirección de Facturación</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                       </div>
                     )}
                   </div>
@@ -335,12 +339,12 @@ export default function RegisterTenant() {
                     <h3 className="text-lg font-semibold mb-4">Crea tu Cuenta de Administrador</h3>
                     <p className="text-sm text-muted-foreground mb-4">Estos serán tus datos para iniciar sesión en la plataforma.</p>
                     <div className="mb-6">
-                        <FormField control={form.control} name="admin_email" render={({ field }) => (<FormItem><FormLabel>Email de Administrador</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="admin_email" render={({ field }) => (<FormItem><FormLabel>Email de Administrador</FormLabel><FormControl><Input type="email" {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <FormField control={form.control} name="admin_password" render={({ field }) => (<FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="admin_confirm_password" render={({ field }) => (<FormItem><FormLabel>Confirmar Contraseña</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="admin_password" render={({ field }) => (<FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" {...field} autoComplete="new-password" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="admin_confirm_password" render={({ field }) => (<FormItem><FormLabel>Confirmar Contraseña</FormLabel><FormControl><Input type="password" {...field} autoComplete="new-password" /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <div className="space-y-2 pt-2 text-sm">
                             <p className="font-semibold mb-2">La contraseña debe contener:</p>

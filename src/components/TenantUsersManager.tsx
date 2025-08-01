@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTenantUsers, TenantUserAssignment } from '@/hooks/useTenantUsers';
 import { useCreatePasswordResetToken } from '@/hooks/useUserActions';
-import { useCreateUser, CreateUserFormValues } from '@/hooks/useCreateUser';
+import { useInviteOrAssignUser, InviteOrAssignUserFormValues } from '@/hooks/useInviteOrAssignUser';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -52,7 +52,7 @@ interface GroupedUser {
 
 export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId }) => {
   const { data: assignments, isLoading: isLoadingUsers, isError } = useTenantUsers(tenantId);
-  const createUserMutation = useCreateUser();
+  const inviteOrAssignUserMutation = useInviteOrAssignUser();
   const createPasswordResetTokenMutation = useCreatePasswordResetToken();
   
   const { toast } = useToast();
@@ -73,7 +73,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       if (!user) {
         user = {
           user_id: assignment.user_id,
-          email: assignment.email,
+          email: (assignment.raw_user_meta_data as any)?.real_email || assignment.email,
           first_name: assignment.first_name,
           last_name: assignment.last_name,
           assignments: [],
@@ -93,13 +93,21 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
     setIsAssignmentManagerOpen(true);
   };
 
-  const handleCreateUser = (values: CreateUserFormValues) => {
-    createUserMutation.mutate({ values, tenantId }, {
+  const handleCreateUser = (values: InviteOrAssignUserFormValues) => {
+    if (!currentAssignment?.platform_id) {
+      toast({ title: 'Error', description: 'No se pudo obtener el ID de la plataforma actual.', variant: 'destructive' });
+      return;
+    }
+    inviteOrAssignUserMutation.mutate({
+      ...values,
+      tenantId: tenantId,
+      platformId: currentAssignment.platform_id,
+    }, {
       onSuccess: (data) => {
         toast({ title: 'Éxito', description: data.message });
         setIsAddUserDialogOpen(false);
       },
-      onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+      onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
     });
   };
 
@@ -108,10 +116,10 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       const result = await createPasswordResetTokenMutation.mutateAsync({ email });
       const fullLink = `${window.location.origin}/update-password#access_token=${result.token}&type=recovery`;
       setResetLink(fullLink);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Ha ocurrido un error desconocido.',
         variant: 'destructive',
       });
     }
@@ -222,7 +230,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
         open={isAddUserDialogOpen} 
         onOpenChange={setIsAddUserDialogOpen} 
         onSubmit={handleCreateUser} 
-        isSubmitting={createUserMutation.isPending} 
+        isSubmitting={inviteOrAssignUserMutation.isPending} 
       />
       {selectedUser && (
         <AssignmentManagerDialog

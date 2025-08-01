@@ -66,6 +66,7 @@ export function AddressAutocompleteInput({ onPlaceSelected, defaultValue, countr
       placeholder={countryRestriction ? "Buscar dirección en el país seleccionado..." : "Selecciona un país para buscar..."}
       
       disabled={!countryRestriction}
+      autoComplete="nope" // Intentando un valor no estándar para deshabilitar el autocompletado del navegador
     />
   );
 }

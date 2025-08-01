@@ -1,12 +1,6 @@
-feat: Refactorización completa de autenticación y registro multi-plataforma
+fix: Corregir capitalización de rutas de importación en Settings.tsx
 
-Esta actualización introduce una refactorización integral del sistema de autenticación y registro para soportar un modelo multi-plataforma con aislamiento de usuarios por plataforma.
+Se han actualizado las rutas de importación en `src/pages/Settings.tsx` para los componentes de configuración.
+El cambio consiste en corregir la capitalización del directorio de importación de `settings` a `Settings` (con 'S' mayúscula).
 
-Cambios principales:
-- **Autenticación Multi-plataforma:** Implementación de emails sintéticos (`platform_id_email`) para el registro y login, asegurando la unicidad de usuarios por plataforma.
-- **Flujo de Registro Robusto:** La Edge Function `register-tenant` ahora orquesta la creación de usuarios y tenants de forma atómica, con rollback en caso de fallo.
-- **Consolidación de Lógica de BD:** Eliminación de múltiples funciones RPC obsoletas y creación de una única función canónica (`setup_tenant_for_new_user`) para la configuración de tenants.
-- **Manejo de Suscripciones y Sucursales:** La función de setup de tenant ahora asigna correctamente el plan de prueba por defecto y la sucursal principal al usuario administrador.
-- **Confirmación de Email en Frontend:** Añadido un botón en la página de login para permitir la confirmación manual de emails de usuario.
-- **Correcciones de Migraciones:** Solucionados errores de sintaxis y nombres de columnas en migraciones existentes.
-- **Separación de Portales:** Aunque no se implementa directamente en este commit, los cambios de autenticación sientan las bases para la separación lógica de los portales de superadministración y de tenant, permitiendo flujos de usuario distintos.
+Esto resuelve el error de compilación "Could not resolve" en entornos de producción que son sensibles a mayúsculas y minúsculas en las rutas de archivo, como Linux.

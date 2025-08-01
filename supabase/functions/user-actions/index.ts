@@ -283,6 +283,131 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'check_user_exists_in_auth': {
+        console.log('Iniciando acción: check_user_exists_in_auth');
+        const { email, platformId } = payload;
+
+        if (!email || !platformId) {
+          throw new Error('El email y el platformId son obligatorios para verificar la existencia del usuario.');
+        }
+
+        const synthetic_email = `${platformId}_${email}`;
+
+        const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
+        if (findError) {
+          throw new Error(`Error al buscar usuario en auth.users: ${findError.message}`);
+        }
+        
+        responseData = { success: true, exists: users && users.length > 0 };
+        break;
+      }
+
+      case 'invite_or_assign_user_to_tenant': {
+        console.log('Iniciando acción: invite_or_assign_user_to_tenant');
+        const { email, password, tenantId, roleId, branchId, platformId, firstName, lastName } = payload;
+
+        if (!email || !tenantId || !roleId || !branchId || !platformId) {
+          throw new Error('Los campos email, tenantId, roleId, branchId y platformId son obligatorios.');
+        }
+
+        const synthetic_email = `${platformId}_${email}`;
+        let userToAssign;
+
+        // 1. Buscar o crear el usuario en auth.users
+        if (password) {
+          // Escenario: Nuevo usuario, se proporciona contraseña. Invocar a la acción centralizada.
+          const { data: userCreationResponse, error: userCreationError } = await supabaseAdmin.functions.invoke('user-actions', {
+            body: {
+              action: 'create_auth_user',
+              payload: {
+                email: email,
+                password: password,
+                platformId: platformId,
+              }
+            }
+          });
+
+          if (userCreationError || !userCreationResponse.success) {
+            throw new Error(`Error al invocar la creación de usuario: ${userCreationError?.message || userCreationResponse.message}`);
+          }
+          userToAssign = userCreationResponse.user;
+
+        } else {
+          // Escenario: Usuario existente, no se proporciona contraseña
+          const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
+          if (findError || !users || users.length === 0) {
+            throw new Error(`No se encontró un usuario con el email ${email} para esta plataforma.`);
+          }
+          userToAssign = users[0];
+        }
+
+        if (!userToAssign) {
+          throw new Error('No se pudo obtener el usuario para asignar.');
+        }
+
+        // 2. Gestionar asignaciones en app_metadata
+        const currentAssignments = userToAssign.app_metadata.assignments || [];
+
+        // Verificar si el usuario ya tiene una asignación para este tenant
+        const existingAssignment = currentAssignments.find(
+          (assignment: any) => assignment.tenant_id === tenantId
+        );
+
+        if (existingAssignment) {
+          throw new Error('Este usuario ya es miembro de este negocio.');
+        }
+
+        // Crear nueva asignación
+        const newAssignment = {
+          assignment_id: crypto.randomUUID(),
+          tenant_id: tenantId,
+          role_id: roleId,
+          branch_id: branchId,
+          status: 'active', // Estado inicial de la asignación
+        };
+
+        const updatedAssignments = [...currentAssignments, newAssignment];
+
+        const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          userToAssign.id,
+          { app_metadata: { ...userToAssign.app_metadata, assignments: updatedAssignments } }
+        );
+
+        if (updateError) {
+          throw new Error(`Error al actualizar las asignaciones del usuario: ${updateError.message}`);
+        }
+
+        responseData = { success: true, message: 'Usuario asignado correctamente.', user: updatedUser.user };
+        break;
+      }
+
+      case 'create_auth_user': {
+        console.log('Iniciando acción pura: create_auth_user');
+        const { email, password, platformId } = payload;
+
+        if (!email || !password || !platformId) {
+          throw new Error('El email, la contraseña y el platformId son obligatorios.');
+        }
+
+        const synthetic_email = `${platformId}_${email}`;
+
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: synthetic_email,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            email: email, // Guardamos únicamente el email real.
+          },
+        });
+
+        if (authError) {
+          throw new Error(`Error al crear el usuario: ${authError.message}`);
+        }
+
+        responseData = { success: true, message: 'Usuario de Auth creado exitosamente.', user: authData.user };
+        break;
+      }
+
       default:
         console.error('Acción no válida:', action);
         throw new Error(`La acción '${action}' no es válida.`);

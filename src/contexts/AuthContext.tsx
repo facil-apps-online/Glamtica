@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom';
 // --- INTERFACES ---
 interface UserProfile {
   id: string;
-  email: string;
+  email: string; // Correo sintético, usado como ID
+  realEmail?: string; // Correo real para visualización
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
@@ -19,6 +20,7 @@ export interface UserAssignment {
   assignment_id: string;
   tenant_id: string;
   tenant_name: string;
+  platform_id: string; // Added platform_id
   role_id: string;
   role_name: string;
   branch_id: string | null;
@@ -64,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       const userProfile: UserProfile = {
         id: id,
         email: email || '',
+        realEmail: user_metadata.email, // <-- Añadido
         firstName: user_metadata.first_name,
         lastName: user_metadata.last_name,
         avatarUrl: user_metadata.avatar_url,
@@ -75,10 +78,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       setProfile(userProfile);
 
       if (app_metadata.assignments && Array.isArray(app_metadata.assignments) && app_metadata.assignments.length > 0) {
+        const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+        if (!platformId) {
+          console.error("VITE_GLAMTICA_PLATFORM_ID no está definido en las variables de entorno.");
+          // Decide how to handle this critical error: throw, return, or set a default
+          // For now, we'll proceed with an empty platform_id, but this should be addressed.
+        }
+
         const allAssignments: UserAssignment[] = app_metadata.assignments.map((a: any) => ({
           assignment_id: a.assignment_id,
           tenant_id: a.tenant_id,
           tenant_name: a.tenant_name,
+          platform_id: platformId || '', // Assign platformId from environment variable
           role_id: a.role_id,
           role_name: a.role_name,
           branch_id: a.branch_id || null,

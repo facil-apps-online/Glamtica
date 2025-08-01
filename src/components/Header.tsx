@@ -25,7 +25,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { displayUrl } = useGoogleDriveImage(profile?.avatarUrl);
 
-  const displayName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : profile?.email;
+  const displayName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : profile?.realEmail || profile?.email;
 
   const getInitials = () => {
     if (profile?.firstName) {
