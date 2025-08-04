@@ -73,47 +73,39 @@ Deno.serve(async (req) => {
         // --- LÓGICA PARA OBTENER Y ACTUALIZAR ASIGNACIONES DESDE app_metadata ---
         console.log('Usuario autenticado. Hidratando asignaciones desde app_metadata...');
         const authenticatedUser = data.user;
-        const rawAssignments = authenticatedUser.app_metadata.assignments || [];
+        const currentAppMetadata = authenticatedUser.app_metadata || {};
+        const rawAssignments = currentAppMetadata.assignments || [];
+
+        // FIX: Ensure every assignment has a unique ID
+        const assignmentsWithIds = rawAssignments.map(a => ({
+          ...a,
+          assignment_id: a.assignment_id || crypto.randomUUID(),
+        }));
+
+        // Fetch all roles, tenants, and branches once in parallel
+        const [{ data: allRoles, error: rolesError }, { data: allTenants, error: tenantsError }, { data: allBranches, error: branchesError }] = await Promise.all([
+            supabaseAdmin.from('roles').select('id, name, display_name'),
+            supabaseAdmin.from('tenants').select('id, name'),
+            supabaseAdmin.from('branches').select('id, name'),
+        ]);
+
+        if (rolesError) console.warn(`Error fetching all roles:`, rolesError.message);
+        if (tenantsError) console.warn(`Error fetching all tenants:`, tenantsError.message);
+        if (branchesError) console.warn(`Error fetching all branches:`, branchesError.message);
 
         const hydratedAssignments = [];
-        for (const assignment of rawAssignments) {
-            // Fetch tenant name
-            const { data: tenantData, error: tenantError } = await supabaseAdmin
-                .from('tenants')
-                .select('name')
-                .eq('id', assignment.tenant_id)
-                .single();
-            const tenantName = tenantData?.name || null;
-            if (tenantError) console.warn(`Error fetching tenant name for ID ${assignment.tenant_id}:`, tenantError.message);
-
-            // Fetch role name and display_name
-            const { data: roleData, error: roleError } = await supabaseAdmin
-                .from('roles')
-                .select('name, display_name')
-                .eq('id', assignment.role_id)
-                .single();
-            const roleName = roleData?.name || null;
-            const roleDisplayName = roleData?.display_name || null;
-            if (roleError) console.warn(`Error fetching role name for ID ${assignment.role_id}:`, roleError.message);
-
-            // Fetch branch name (if branch_id exists)
-            let branchName = null;
-            if (assignment.branch_id) {
-                const { data: branchData, error: branchError } = await supabaseAdmin
-                    .from('branches')
-                    .select('name')
-                    .eq('id', assignment.branch_id)
-                    .single();
-                branchName = branchData?.name || null;
-                if (branchError) console.warn(`Error fetching branch name for ID ${assignment.branch_id}:`, branchError.message);
-            }
+        for (const assignment of assignmentsWithIds) {
+            // Use pre-fetched data to hydrate assignment details
+            const tenant = allTenants?.find(t => t.id === assignment.tenant_id);
+            const role = allRoles?.find(r => r.id === assignment.role_id);
+            const branch = allBranches?.find(b => b.id === assignment.branch_id);
 
             hydratedAssignments.push({
                 ...assignment,
-                tenant_name: tenantName,
-                role_name: roleName,
-                role_display_name: roleDisplayName,
-                branch_name: branchName,
+                tenant_name: tenant?.name || null,
+                role_name: role?.name || null,
+                role_display_name: role?.display_name || null,
+                branch_name: branch?.name || null,
             });
         }
 
@@ -131,6 +123,92 @@ Deno.serve(async (req) => {
 
         // Devolver la sesión y el usuario actualizados
         responseData = { success: true, session: data.session, user: updatedUserResponse.user };
+        break;
+      }
+
+      case 'repair-user-assignments': {
+        console.log('Iniciando acción: repair-user-assignments');
+        const { userId } = payload;
+        if (!userId) {
+          throw new Error('El userId es obligatorio para reparar las asignaciones.');
+        }
+
+        // 1. Obtener todos los datos maestros necesarios en paralelo
+        const [
+          { data: roles, error: rolesError },
+          { data: tenants, error: tenantsError },
+          { data: branches, error: branchesError }
+        ] = await Promise.all([
+          supabaseAdmin.from('roles').select('id, name'),
+          supabaseAdmin.from('tenants').select('id, name'),
+          supabaseAdmin.from('branches').select('id, name, tenant_id')
+        ]);
+
+        if (rolesError || tenantsError || branchesError) {
+          console.error({ rolesError, tenantsError, branchesError });
+          throw new Error('No se pudieron obtener los datos maestros para la reparación.');
+        }
+
+        // 2. Encontrar los IDs específicos que necesitamos
+        const tenantSuperAdminRole = roles.find(r => r.name === 'tenant_super_admin');
+        const tenantAdminRole = roles.find(r => r.name === 'tenant_admin');
+        const tenantUserRole = roles.find(r => r.name === 'tenant_user');
+        
+        // Asumimos que el tenant a reparar es el que contiene la sucursal "Sucursal Principal"
+        const principalBranch = branches.find(b => b.name === 'Sucursal Principal');
+        if (!principalBranch) throw new Error('No se encontró la "Sucursal Principal" para determinar el tenant.');
+        
+        const targetTenant = tenants.find(t => t.id === principalBranch.tenant_id);
+        if (!targetTenant) throw new Error('No se pudo encontrar el tenant asociado a la "Sucursal Principal".');
+
+        const medellinBranch = branches.find(b => b.name === 'Medellín' && b.tenant_id === targetTenant.id);
+        if (!medellinBranch) throw new Error('No se encontró la sucursal "Medellín".');
+
+        if (!tenantSuperAdminRole || !tenantAdminRole || !tenantUserRole) {
+          throw new Error('Uno o más roles requeridos no se encontraron en la base de datos.');
+        }
+
+        // 3. Construir el array de asignaciones corregido
+        const correctAssignments = [
+          {
+            assignment_id: crypto.randomUUID(),
+            tenant_id: targetTenant.id,
+            role_id: tenantSuperAdminRole.id,
+            branch_id: null,
+            status: 'active',
+          },
+          {
+            assignment_id: crypto.randomUUID(),
+            tenant_id: targetTenant.id,
+            role_id: tenantAdminRole.id,
+            branch_id: principalBranch.id,
+            status: 'active',
+          },
+          {
+            assignment_id: crypto.randomUUID(),
+            tenant_id: targetTenant.id,
+            role_id: tenantUserRole.id,
+            branch_id: medellinBranch.id,
+            status: 'active',
+          }
+        ];
+
+        console.log('Asignaciones corregidas construidas:', correctAssignments);
+
+        // 4. Obtener el usuario y reemplazar sus asignaciones
+        const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (getUserError) throw new Error(`Error al obtener el usuario: ${getUserError.message}`);
+
+        const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { app_metadata: { ...currentUser.app_metadata, assignments: correctAssignments } }
+        );
+
+        if (updateError) {
+          throw new Error(`Error al actualizar los metadatos del usuario: ${updateError.message}`);
+        }
+
+        responseData = { success: true, message: 'Asignaciones de usuario reparadas exitosamente.', user: updatedUserResponse.user };
         break;
       }
 
@@ -173,6 +251,7 @@ Deno.serve(async (req) => {
         if (getUserError) throw new Error(`Error al obtener usuario: ${getUserError.message}`);
 
         const assignments = user.app_metadata.assignments || [];
+        console.log('[Edge Function] Asignaciones actuales antes de reordenar:', assignments);
         const targetAssignmentIndex = assignments.findIndex(a => a.assignment_id === newAssignmentId);
 
         if (targetAssignmentIndex === -1) {
@@ -182,13 +261,18 @@ Deno.serve(async (req) => {
         const newAssignmentsOrder = [...assignments];
         const [targetAssignment] = newAssignmentsOrder.splice(targetAssignmentIndex, 1);
         newAssignmentsOrder.unshift(targetAssignment);
+        console.log('[Edge Function] Nueva orden de asignaciones:', newAssignmentsOrder);
+
+        const updatedAppMetadata = { ...user.app_metadata, assignments: newAssignmentsOrder };
+        console.log('[Edge Function] app_metadata a enviar a updateUserById:', updatedAppMetadata);
 
         const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
           userId,
-          { app_metadata: { ...user.app_metadata, assignments: newAssignmentsOrder } }
+          { app_metadata: updatedAppMetadata }
         );
 
         if (updateError) throw new Error(`Error al actualizar app_metadata: ${updateError.message}`);
+        console.log('[Edge Function] app_metadata del usuario actualizado después de updateUserById:', updatedUser.user.app_metadata);
 
         responseData = { success: true, message: 'Asignación cambiada exitosamente.', user: updatedUser.user };
         break;
@@ -204,16 +288,108 @@ Deno.serve(async (req) => {
         const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (getUserError) throw new Error(`Error de Supabase al obtener usuario: ${getUserError.message}`);
 
-        const mergedMetadata = { ...currentUser.user_metadata, ...metadata };
+        // Obtener el app_metadata actual
+        const currentAppMetadata = currentUser.app_metadata || {};
+        const currentTenantId = payload.tenantId; // Obtener el tenantId del payload
+
+        // Obtener el ID del rol 'tenant_super_admin'
+        const { data: roleData, error: roleError } = await supabaseAdmin
+          .from('roles')
+          .select('id')
+          .eq('name', 'tenant_super_admin')
+          .single();
+
+        if (roleError || !roleData) {
+          throw new Error(`Error al obtener el ID del rol tenant_super_admin: ${roleError?.message || 'No encontrado'}`);
+        }
+        const tenantSuperAdminRoleId = roleData.id;
+
+        // Separar las asignaciones: las de otros tenants y la de tenant_super_admin del tenant actual
+        const otherTenantAssignments = [];
+        let currentTenantSuperAdminAssignment = null;
+
+        for (const assignment of (currentAppMetadata.assignments || [])) {
+          if (assignment.tenant_id !== currentTenantId) {
+            otherTenantAssignments.push(assignment);
+          } else if (assignment.role_id === tenantSuperAdminRoleId && assignment.branch_id === null) {
+            currentTenantSuperAdminAssignment = assignment;
+          }
+        }
+
+        // Crear el nuevo app_metadata con las asignaciones actualizadas
+        const newAppMetadata = {
+          ...currentAppMetadata,
+          assignments: [
+            ...otherTenantAssignments,
+            ...(currentTenantSuperAdminAssignment ? [currentTenantSuperAdminAssignment] : []),
+            ...(metadata.assignments || []),
+          ],
+        };
         
-        const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
           userId,
-          { user_metadata: mergedMetadata }
+          { app_metadata: newAppMetadata } // Actualizar app_metadata
         );
 
         if (updateError) throw new Error(`Error de Supabase al actualizar metadatos: ${updateError.message}`);
+
+        // --- Hidratar las asignaciones con nombres de roles, sucursales y tenants ---
+        const hydratedAssignments = [];
+        const rawAssignments = newAppMetadata.assignments || [];
+
+        // Obtener todos los roles, sucursales y tenants de una vez
+        const [{ data: allRoles, error: rolesError }, { data: allBranches, error: branchesError }, { data: allTenants, error: tenantsError }] = await Promise.all([
+          supabaseAdmin.from('roles').select('id, name, display_name'),
+          supabaseAdmin.from('branches').select('id, name'),
+          supabaseAdmin.from('tenants').select('id, name'),
+        ]);
+
+        if (rolesError) console.warn(`Error fetching all roles:`, rolesError.message);
+        if (branchesError) console.warn(`Error fetching all branches:`, branchesError.message);
+        if (tenantsError) console.warn(`Error fetching all tenants:`, tenantsError.message);
+
+        for (const assignment of rawAssignments) {
+          const tenantData = allTenants?.find(t => t.id === assignment.tenant_id);
+          const roleData = allRoles?.find(r => r.id === assignment.role_id);
+          const branchData = allBranches?.find(b => b.id === assignment.branch_id);
+
+          hydratedAssignments.push({
+            ...assignment,
+            tenant_name: tenantData?.name || null,
+            role_name: roleData?.name || null,
+            role_display_name: roleData?.display_name || null,
+            branch_name: branchData?.name || null,
+          });
+        }
+
+        // Actualizar el usuario devuelto con las asignaciones hidratadas
+        const finalUser = {
+          ...updatedUserResponse.user,
+          app_metadata: {
+            ...updatedUserResponse.user.app_metadata,
+            assignments: hydratedAssignments,
+          },
+        };
         
-        responseData = { success: true, message: 'Configuración de usuario actualizada.', user: updatedUser.user };
+        responseData = { success: true, message: 'Configuración de usuario actualizada.', user: finalUser };
+        break;
+      }
+
+      case 'get-user-metadata': {
+        console.log('Iniciando acción: get-user-metadata');
+        const { userId } = payload;
+        if (!userId) {
+          throw new Error('User ID is required.');
+        }
+
+        const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+        if (userError) {
+          console.error('Error fetching user by ID:', userError.message);
+          throw new Error(userError.message);
+        }
+
+        responseData = { success: true, metadata: user?.user_metadata };
         break;
       }
 
@@ -251,8 +427,7 @@ Deno.serve(async (req) => {
 
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
           user.id,
-          { user_metadata: { ...user.user_metadata, recovery_token: token, recovery_sent_at: new Date().toISOString() } }
-        );
+          { user_metadata: { ...user.user_metadata, recovery_token: token, recovery_sent_at: new Date().toISOString() } })
 
         if (updateError) throw new Error(`Error de Supabase al actualizar usuario: ${updateError.message}`);
         
