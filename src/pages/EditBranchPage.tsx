@@ -43,7 +43,7 @@ export default function EditBranchPage() {
       </div>
       <BranchForm
         branchToEdit={branchToEdit}
-        onSuccess={() => navigate('/settings?tab=branches')}
+        onSuccess={() => navigate('/branches')}
         tenantId={tenantId}
         countryRestriction={countryRestriction}
       />

@@ -9,16 +9,16 @@ import Services from "@/pages/Services";
 import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
-import BranchesPage from "@/pages/Settings/Branches";
-import NewBranchPage from "@/pages/Settings/NewBranchPage";
-import EditBranchPage from "@/pages/Settings/EditBranchPage";
-import EmailTemplatesPage from "@/pages/Settings/EmailTemplatesPage";
-import EmailSettingsPage from "@/pages/Settings/EmailSettingsPage";
+import BranchesPage from "@/pages/BranchesPage";
 import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
+
+
+
 import ProfileSettings from "@/pages/ProfileSettings";
+import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
 import TranslationAdmin from "@/components/TranslationAdmin";
 import AppInitializer from "@/components/AppInitializer";
@@ -44,10 +44,8 @@ function App() {
               <Route path="/update-password" element={<UpdatePasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
 
-              {/* Redirección para cualquier ruta de superadmin a la página principal */}
-              <Route path="/superadmin/*" element={<Navigate to="/" replace />} />
-
               <Route element={<ProtectedRoute />}>
+                
                 <Route path="/" element={<Layout><Index /></Layout>}>
                   <Route index element={<Index />} />
                   <Route path="profile-settings" element={<ProfileSettings />} />
@@ -59,10 +57,7 @@ function App() {
                   <Route path="team" element={<Team />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
-                  <Route path="settings/branches/new" element={<NewBranchPage />} />
-                  <Route path="settings/branches/:branchId/edit" element={<EditBranchPage />} />
-                  <Route path="settings/email-templates" element={<EmailTemplatesPage />} />
-                  <Route path="settings/email-settings" element={<EmailSettingsPage />} />
+                  <Route path="branches" element={<BranchesPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>

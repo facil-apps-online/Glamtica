@@ -20,7 +20,11 @@ export function TenantAdminGeneralView() {
   if (!tenantId) {
     return <div className="p-4 mt-4">ID de Tenant no encontrado.</div>;
   }
+  
+  return <TenantAdminGeneralViewContent tenantId={tenantId} />;
+}
 
+const TenantAdminGeneralViewContent = ({ tenantId }: { tenantId: string }) => {
   const { data: tenant, isLoading, isError, error } = useTenantById(tenantId);
 
   if (isLoading) {
@@ -102,4 +106,4 @@ export function TenantAdminGeneralView() {
       </div>
     </div>
   );
-}
+};

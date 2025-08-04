@@ -8,7 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useUserAssignments, useUpdateUserAssignments, AssignmentFormValue } from '@/hooks/useUserAssignments';
+import { useUserAssignments, AssignmentFormValue } from '@/hooks/useUserAssignments';
+import { useMutation } from '@tanstack/react-query';
+import { invokeUserAction } from '@/hooks/useUserActions';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRoles } from '@/hooks/useRoles';
 import { useBranches } from '@/hooks/useBranches';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,7 +58,28 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   const { data: initialAssignments, isLoading: isLoadingAssignments, isError: isAssignmentsError } = useUserAssignments(userId, tenantId);
   const { data: roles, isLoading: isLoadingRoles } = useRoles();
   const { data: branches, isLoading: isLoadingBranches } = useBranches(tenantId);
-  const updateAssignmentsMutation = useUpdateUserAssignments();
+  const { refreshUser } = useAuth();
+  const updateAssignmentsMutation = useMutation<any, Error, { userId: string; tenantId: string; assignments: AssignmentFormValue[] }>({
+    mutationFn: async ({ userId, tenantId, assignments }) => {
+      const payload = {
+        assignments: assignments.map(a => ({
+          branch_id: a.branch_id,
+          role_id: a.role_id,
+          status: a.status,
+        })),
+        tenant_id: tenantId, // Corregido: tenantId en el nivel superior
+      };
+      return invokeUserAction('update-user-settings', { userId, metadata: payload });
+    },
+    onSuccess: async () => {
+      toast({ title: 'Éxito', description: 'Asignaciones actualizadas correctamente.' });
+      onOpenChange(false);
+      await refreshUser(); // Refresh user session to reflect changes
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
   const { toast } = useToast();
   const screenSize = useScreenSize(); // <-- HOOK EN USO
 
@@ -94,20 +118,8 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   };
 
   const handleSaveChanges = () => {
-    const assignmentsToSave = editableAssignments.filter(a => a.role_id && a.branch_id);
-    
-    updateAssignmentsMutation.mutate(
-      { userId, tenantId, assignments: assignmentsToSave },
-      {
-        onSuccess: (data) => {
-          toast({ title: 'Éxito', description: data.message });
-          onOpenChange(false);
-        },
-        onError: (error) => {
-          toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        },
-      }
-    );
+    const assignmentsToSave = editableAssignments;
+    updateAssignmentsMutation.mutate({ userId, tenantId, assignments: assignmentsToSave });
   };
 
   const isLoading = isLoadingAssignments || isLoadingRoles || isLoadingBranches;

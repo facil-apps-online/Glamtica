@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { GeneralSettingsTab } from "./Settings/GeneralSettingsTab";
-import { BranchesTab } from "./Settings/BranchesTab";
+
 import { UsersTab } from "./Settings/UsersTab";
 import { TributarioTab } from "./Settings/TributarioTab";
 import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
@@ -40,7 +40,7 @@ export default function Settings() {
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full flex-nowrap overflow-x-auto justify-start">
           {renderTrigger("general", <Building className="h-4 w-4" />, "General")}
-          {isSuperAdmin && renderTrigger("branches", <Store className="h-4 w-4" />, "Sucursales")}
+          
           {(isSuperAdmin || isAdmin) && renderTrigger("users", <Users className="h-4 w-4" />, "Usuarios")}
           {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
           {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
@@ -51,11 +51,7 @@ export default function Settings() {
           <GeneralSettingsTab />
         </TabsContent>
 
-        {isSuperAdmin && (
-          <TabsContent value="branches">
-            <BranchesTab tenantId={currentAssignment?.tenant_id} />
-          </TabsContent>
-        )}
+        
 
         {(isSuperAdmin || isAdmin) && (
           <TabsContent value="users">

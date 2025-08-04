@@ -12,10 +12,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Building2, Scissors } from "lucide-react";
+import { Building2, Scissors, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranches } from "@/hooks/useBranches";
 import { Skeleton } from "./ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 
 // --- TIPOS (sin cambios) ---
 interface NavItem {
@@ -76,11 +78,45 @@ const BranchFooter: React.FC = () => {
 // --- COMPONENTE PRINCIPAL (Corregido y Unificado) ---
 export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", subtitle = "Panel", ...props }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
-  const { currentAssignment } = useAuth();
+  const { user, logout, currentAssignment } = useAuth();
   const userRole = currentAssignment?.role_name;
+  const { toast } = useToast();
+  const [isRepairing, setIsRepairing] = React.useState(false);
 
   const handleLinkClick = () => {
     setOpenMobile(false);
+  };
+
+  const handleRepairAssignments = async () => {
+    if (!user) {
+      toast({ title: 'Error', description: 'No se pudo encontrar el usuario para la reparación.', variant: 'destructive' });
+      return;
+    }
+
+    setIsRepairing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('user-actions', {
+        body: { action: 'repair-user-assignments', payload: { userId: user.id } },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
+
+      toast({
+        title: 'Reparación Exitosa',
+        description: 'Tus asignaciones han sido corregidas. Por favor, inicia sesión de nuevo.',
+      });
+
+      // Forzar logout para que el usuario inicie sesión con los datos nuevos
+      setTimeout(() => {
+        logout();
+      }, 2000);
+
+    } catch (e: any) {
+      toast({ title: 'Error en la Reparación', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsRepairing(false);
+    }
   };
 
   return (
@@ -126,6 +162,8 @@ export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", 
             </SidebarGroup>
           );
         })}
+
+        
       </SidebarContent>
 
       { (userRole === 'tenant_admin' || userRole === 'tenant_user') && <BranchFooter />}

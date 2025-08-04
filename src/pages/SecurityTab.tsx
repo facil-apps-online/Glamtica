@@ -48,8 +48,8 @@ export const SecurityTab = () => {
   const onPasswordSubmit = (values: z.infer<typeof passwordFormSchema>) => {
     updatePasswordMutation.mutate({ newPassword: values.newPassword }, {
       onSuccess: () => {
-        toast({ 
-          title: 'Éxito', 
+        toast({
+          title: 'Éxito',
           description: 'Tu contraseña ha sido actualizada.',
         });
         passwordForm.reset();

@@ -14,6 +14,8 @@ import { ChevronsUpDown, Building, Check } from 'lucide-react';
 export const ContextSwitcher: React.FC = () => {
   const { assignments, currentAssignment, switchAssignment, profile } = useAuth();
 
+  
+
   if (!profile || assignments.length <= 1) {
     return null; // No mostrar si no hay múltiples asignaciones
   }
@@ -42,19 +44,21 @@ export const ContextSwitcher: React.FC = () => {
           const isSelected = assignment.assignment_id === currentAssignment?.assignment_id;
 
           return (
-            <DropdownMenuItem
-              key={assignment.assignment_id}
-              onSelect={() => !isSelected && switchAssignment(assignment.assignment_id)}
-              disabled={isSelected}
-            >
-              <Check className={`mr-2 h-4 w-4 ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
-              <div className="flex flex-col">
-                <span>{contextName}</span>
-                <span className="text-xs text-muted-foreground capitalize">
-                  {assignment.role_name.replace(/_/g, ' ')}
-                </span>
-              </div>
-            </DropdownMenuItem>
+            <React.Fragment key={assignment.assignment_id}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  switchAssignment(assignment.assignment_id);
+                }}
+              >
+                <Check className={`mr-2 h-4 w-4 ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+                <div className="flex flex-col">
+                  <span>{contextName}</span>
+                  <span className="text-xs text-muted-foreground capitalize">
+                    {assignment.role_name.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </React.Fragment>
           );
         })}
       </DropdownMenuContent>

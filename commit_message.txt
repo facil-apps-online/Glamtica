@@ -1,6 +1,4 @@
-fix: Corregir capitalización de rutas de importación en Settings.tsx
+feat: Optimización de login y redirección
 
-Se han actualizado las rutas de importación en `src/pages/Settings.tsx` para los componentes de configuración.
-El cambio consiste en corregir la capitalización del directorio de importación de `settings` a `Settings` (con 'S' mayúscula).
-
-Esto resuelve el error de compilación "Could not resolve" en entornos de producción que son sensibles a mayúsculas y minúsculas en las rutas de archivo, como Linux.
+- Se cambió la redirección post-autenticación de /dashboard a /.
+- Se optimizó la función Edge 'login-tenant' para reducir la latencia en la hidratación de asignaciones, realizando consultas paralelas en lugar de secuenciales.

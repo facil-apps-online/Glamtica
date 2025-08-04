@@ -42,18 +42,9 @@ const formSchema = z.object({
   longitude: z.number().min(-180).max(180).nullable(),
 });
 
-export function GeneralSettingsTab() {
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
-  const userRole = currentAssignment?.role_name;
-  const isSuperAdmin = userRole === 'tenant_super_admin';
-
-  if (!isSuperAdmin) {
-    return <TenantAdminGeneralView />;
-  }
-
+const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
   const { toast } = useToast();
-  const { data: tenant, isLoading: isLoadingTenant } = useTenantById(tenantId!);
+  const { data: tenant, isLoading: isLoadingTenant } = useTenantById(tenantId);
   const updateTenantMutation = useUpdateTenant();
   const { data: timezones } = useTimezones();
   const { data: localizations } = useLocalizations();
@@ -105,7 +96,7 @@ export function GeneralSettingsTab() {
       });
       setIsInitialLoad(false);
     }
-  }, [tenant, form.reset]);
+  }, [tenant, form]);
 
   useEffect(() => {
     if (!isInitialLoad && watchedCountryId && countries && localizations) {
@@ -117,7 +108,7 @@ export function GeneralSettingsTab() {
         if (country.timezone) form.setValue('default_timezone', country.timezone, { shouldDirty: true });
       }
     }
-  }, [watchedCountryId, countries, localizations, form.setValue, isInitialLoad]);
+  }, [watchedCountryId, countries, localizations, form, isInitialLoad]);
 
   const handlePlaceSelected = (place: google.maps.places.PlaceResult) => {
     const get = (type: string) => place.address_components?.find(c => c.types.includes(type))?.long_name || '';
@@ -241,4 +232,21 @@ export function GeneralSettingsTab() {
       </CardContent>
     </Card>
   );
+};
+
+export function GeneralSettingsTab() {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const userRole = currentAssignment?.role_name;
+  const isSuperAdmin = userRole === 'tenant_super_admin';
+
+  if (!tenantId) {
+    return <div>Cargando...</div>;
+  }
+
+  if (isSuperAdmin) {
+    return <SuperAdminGeneralSettingsView tenantId={tenantId} />;
+  }
+
+  return <TenantAdminGeneralView />;
 }

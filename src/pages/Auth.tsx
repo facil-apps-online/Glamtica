@@ -62,20 +62,6 @@ const AuthPage: React.FC = () => {
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo.",
       });
-
-      // Determinar la redirección basada en el rol del usuario
-      let redirectTo = '/'; // Redirección por defecto
-
-      if (currentAssignment) {
-        if (currentAssignment.role_name === 'super_admin') {
-          redirectTo = '/superadmin/dashboard';
-        } else if (currentAssignment.role_name === 'tenant_super_admin' || currentAssignment.role_name === 'tenant_admin' || currentAssignment.role_name === 'tenant_user') {
-          redirectTo = '/dashboard'; // Asumiendo que /dashboard es el dashboard principal del tenant
-        }
-        // Puedes añadir más condiciones para otros roles si es necesario
-      }
-      navigate(redirectTo);
-
     } catch (error: any) {
       toast({
         title: "Error de inicio de sesión",

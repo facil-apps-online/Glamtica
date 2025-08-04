@@ -1,10 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { UserAssignment } from '@/contexts/AuthContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { invokeUserAction } from '@/hooks/useUserActions'; // Importar invokeUserAction
 
 export type DetailedUserAssignment = Omit<UserAssignment, 'tenant_name'> & {
   role_display_name: string;
+  branch_name: string;
 };
 
 // --- Tipos para el formulario ---
@@ -17,13 +18,34 @@ export interface AssignmentFormValue {
 const fetchUserAssignments = async (userId: string, tenantId: string): Promise<DetailedUserAssignment[]> => {
   if (!userId || !tenantId) return [];
 
-  const { data, error } = await supabase.rpc('get_user_assignments', {
-    p_user_id: userId,
-    p_tenant_id: tenantId,
-  });
+  // 1. Obtener la metadata del usuario a través de la Edge Function
+  const { metadata, success, message } = await invokeUserAction('get-user-metadata', { userId });
 
-  if (error) throw new Error(`Error fetching user assignments: ${error.message}`);
-  return data as DetailedUserAssignment[];
+  if (!success) {
+    throw new Error(`Error fetching user metadata: ${message}`);
+  }
+
+  const tenantAssignments = (metadata?.tenant_assignments || []).filter(a => a.tenant_id === tenantId);
+
+  // 2. Obtener roles y sucursales para los nombres a mostrar
+  const [{ data: roles, error: rolesError }, { data: branches, error: branchesError }] = await Promise.all([
+    supabase.from('roles').select('id, display_name'),
+    supabase.from('branches').select('id, name').eq('tenant_id', tenantId),
+  ]);
+
+  if (rolesError) throw new Error(`Error fetching roles: ${rolesError.message}`);
+  if (branchesError) throw new Error(`Error fetching branches: ${branchesError.message}`);
+
+  // 3. Mapear las asignaciones con los nombres a mostrar
+  const detailedAssignments: DetailedUserAssignment[] = tenantAssignments.map((assignment: any) => ({
+    branch_id: assignment.branch_id,
+    role_id: assignment.role_id,
+    status: assignment.status,
+    role_display_name: roles?.find(r => r.id === assignment.role_id)?.display_name || 'N/A',
+    branch_name: branches?.find(b => b.id === assignment.branch_id)?.name || 'N/A',
+  }));
+
+  return detailedAssignments;
 };
 
 export const useUserAssignments = (userId: string, tenantId: string) => {
@@ -35,36 +57,4 @@ export const useUserAssignments = (userId: string, tenantId: string) => {
   });
 };
 
-// --- Mutación para actualizar asignaciones ---
-export const useUpdateUserAssignments = () => {
-  const queryClient = useQueryClient();
 
-  return useMutation<
-    { success: boolean; message: string },
-    Error,
-    { userId: string; tenantId: string; assignments: AssignmentFormValue[] }
-  >({
-    mutationFn: async ({ userId, tenantId, assignments }) => {
-      const { data, error } = await supabase.rpc('update_user_assignments', {
-        p_user_id: userId,
-        p_tenant_id: tenantId,
-        p_assignments: assignments,
-      });
-
-      if (error) throw new Error(`Error al actualizar asignaciones: ${error.message}`);
-      if (!data.success) throw new Error(data.message || 'Ocurrió un error en el servidor.');
-      
-      return data;
-    },
-    onSuccess: (_, variables) => {
-      // Invalidar la query para refrescar los datos en la UI
-      queryClient.invalidateQueries({ 
-        queryKey: ['userAssignments', variables.userId, variables.tenantId] 
-      });
-      // Opcional: invalidar también la lista general de usuarios del tenant si es necesario
-      queryClient.invalidateQueries({
-        queryKey: ['tenantUsers', variables.tenantId]
-      });
-    },
-  });
-};

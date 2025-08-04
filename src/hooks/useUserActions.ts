@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 
 // Helper function to invoke the user-actions Edge Function
-const invokeUserAction = async (action: string, payload?: any) => {
+export const invokeUserAction = async (action: string, payload?: any) => {
   const { data, error } = await supabase.functions.invoke('user-actions', {
     body: { action, payload },
   });

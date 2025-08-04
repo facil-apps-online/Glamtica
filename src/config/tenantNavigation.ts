@@ -7,7 +7,8 @@ import {
   UserCheck,
   Users,
   Warehouse,
-  TrendingUp
+  TrendingUp,
+  Store
 } from 'lucide-react';
 
 export const tenantNavigationConfig = [
@@ -82,6 +83,12 @@ export const tenantNavigationConfig = [
         url: "/settings",
         icon: Settings,
         roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
+        title: "Sucursales",
+        url: "/branches",
+        icon: Store,
+        roles: ['tenant_super_admin']
       }
     ]
   }

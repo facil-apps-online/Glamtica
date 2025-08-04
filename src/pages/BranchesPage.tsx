@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useBranches } from '@/hooks/useBranches';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Power, Store } from 'lucide-react';
-import { CreateBranchDialog } from './CreateBranchDialog';
-import { BranchCard } from './BranchCard';
+import { CreateBranchDialog } from '@/components/CreateBranchDialog';
+import { BranchCard } from '@/pages/Settings/BranchCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BranchActions } from './BranchActions';
+import { BranchActions } from '@/pages/Settings/BranchActions';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ActivateBranchesBatchDialog } from './ActivateBranchesBatchDialog';
+import { ActivateBranchesBatchDialog } from '@/pages/Settings/ActivateBranchesBatchDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusConfig = {
   active: { label: 'Activa', className: 'bg-green-100 text-green-800' },
@@ -21,11 +22,10 @@ const statusConfig = {
   archived: { label: 'Archivada', className: 'bg-slate-100 text-slate-800' },
 };
 
-interface BranchesTabProps {
-  tenantId?: string;
-}
+export default function BranchesPage() {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
-export function BranchesTab({ tenantId }: BranchesTabProps) {
   const navigate = useNavigate();
   const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
@@ -163,7 +163,7 @@ export function BranchesTab({ tenantId }: BranchesTabProps) {
                   Activar ({selectedBranchIds.length})
                 </Button>
               )}
-              <Button onClick={() => navigate('/settings/branches/new')}>
+              <Button onClick={() => navigate('/branches/new')}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Añadir Sucursal
               </Button>
