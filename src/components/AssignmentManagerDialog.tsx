@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useUserAssignments, AssignmentFormValue } from '@/hooks/useUserAssignments';
+import { AssignmentFormValue } from '@/hooks/useUserAssignments';
 import { useMutation } from '@tanstack/react-query';
 import { invokeUserAction } from '@/hooks/useUserActions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,12 +22,15 @@ import { Trash2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useScreenSize } from '@/hooks/useScreenSize'; // <-- IMPORTADO
 
+import { TenantUserAssignment } from '@/hooks/useTenantUsers';
+
 interface AssignmentManagerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
   tenantId: string;
   userName: string;
+  initialUserAssignments: TenantUserAssignment[];
 }
 
 const LoadingSkeleton = () => (
@@ -54,22 +57,14 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   userId,
   tenantId,
   userName,
+  initialUserAssignments,
 }) => {
-  const { data: initialAssignments, isLoading: isLoadingAssignments, isError: isAssignmentsError } = useUserAssignments(userId, tenantId);
   const { data: roles, isLoading: isLoadingRoles } = useRoles();
   const { data: branches, isLoading: isLoadingBranches } = useBranches(tenantId);
   const { refreshUser } = useAuth();
   const updateAssignmentsMutation = useMutation<any, Error, { userId: string; tenantId: string; assignments: AssignmentFormValue[] }>({
     mutationFn: async ({ userId, tenantId, assignments }) => {
-      const payload = {
-        assignments: assignments.map(a => ({
-          branch_id: a.branch_id,
-          role_id: a.role_id,
-          status: a.status,
-        })),
-        tenant_id: tenantId, // Corregido: tenantId en el nivel superior
-      };
-      return invokeUserAction('update-user-settings', { userId, metadata: payload });
+      return invokeUserAction('update-assignments', { userId, tenantId, assignments });
     },
     onSuccess: async () => {
       toast({ title: 'Éxito', description: 'Asignaciones actualizadas correctamente.' });
@@ -86,15 +81,16 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   const [editableAssignments, setEditableAssignments] = useState<AssignmentFormValue[]>([]);
 
   useEffect(() => {
-    if (initialAssignments) {
-      const formattedAssignments = initialAssignments.map(a => ({
+    if (initialUserAssignments) {
+      const formattedAssignments = initialUserAssignments.map(a => ({
+        tenant_id: tenantId,
         branch_id: a.branch_id,
         role_id: a.role_id,
         status: a.status === 'pending_configuration' ? 'inactive' : a.status,
       }));
       setEditableAssignments(formattedAssignments);
     }
-  }, [initialAssignments]);
+  }, [initialUserAssignments]);
 
   const handleAssignmentChange = (index: number, field: 'role_id' | 'branch_id' | 'status', value: string | boolean) => {
     const newAssignments = [...editableAssignments];
@@ -109,7 +105,7 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   };
 
   const handleAddAssignment = () => {
-    setEditableAssignments([...editableAssignments, { role_id: null, branch_id: null, status: 'active' }]);
+    setEditableAssignments([...editableAssignments, { tenant_id: tenantId, role_id: null, branch_id: null, status: 'active' }]);
   };
 
   const handleRemoveAssignment = (index: number) => {
@@ -122,8 +118,8 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
     updateAssignmentsMutation.mutate({ userId, tenantId, assignments: assignmentsToSave });
   };
 
-  const isLoading = isLoadingAssignments || isLoadingRoles || isLoadingBranches;
-  const isError = isAssignmentsError;
+  const isLoading = isLoadingRoles || isLoadingBranches;
+  const isError = false; // No hay error de carga de asignaciones iniciales, ya vienen como prop
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton />;

@@ -234,6 +234,18 @@ serve(async (req) => {
         break;
       }
 
+      case 'get_users_for_tenant': {
+        if (!tenantId) throw new Error('Tenant ID not found in JWT.');
+
+        const { data, error } = await supabaseClient.rpc('get_tenant_users', {
+          target_tenant_id: tenantId
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }

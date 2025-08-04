@@ -17,8 +17,8 @@ export interface TenantUserAssignment {
 }
 
 // Helper function to invoke the superadmin-actions Edge Function
-const invokeSuperadminAction = async (action: string, payload?: any) => {
-  const { data, error } = await supabase.functions.invoke('superadmin-actions', {
+const invokeTenantAction = async (action: string, payload?: any) => {
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
     body: { action, payload },
   });
   if (error) throw new Error(error.message);
@@ -28,17 +28,15 @@ const invokeSuperadminAction = async (action: string, payload?: any) => {
   return data;
 };
 
-// --- GET Users and their Assignments for a Tenant (Superadmin View) ---
-const fetchTenantUsers = async (tenantId: string): Promise<TenantUserAssignment[]> => {
-  if (!tenantId) return [];
-  return invokeSuperadminAction('get_tenant_users', { tenantId });
+// --- GET Users and their Assignments for the current Tenant ---
+const fetchTenantUsers = async (): Promise<TenantUserAssignment[]> => {
+  return invokeTenantAction('get_users_for_tenant');
 };
 
-export const useTenantUsers = (tenantId: string) => {
+export const useTenantUsers = () => {
   return useQuery<TenantUserAssignment[], Error>({
-    queryKey: ['tenantUsers', tenantId],
-    queryFn: () => fetchTenantUsers(tenantId),
-    enabled: !!tenantId,
+    queryKey: ['tenantUsers'],
+    queryFn: () => fetchTenantUsers(),
   });
 };
 
@@ -60,8 +58,8 @@ export const useUpdateUserStatus = () => {
     const queryClient = useQueryClient();
     return useMutation<any, Error, { userId: string, isActive: boolean, tenantId: string }>({
         mutationFn: ({ userId, isActive }) => updateUserStatus(userId, isActive),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['tenantUsers', variables.tenantId] });
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tenantUsers'] });
         }
     });
 }

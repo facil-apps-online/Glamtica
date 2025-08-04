@@ -10,6 +10,7 @@ export type DetailedUserAssignment = Omit<UserAssignment, 'tenant_name'> & {
 
 // --- Tipos para el formulario ---
 export interface AssignmentFormValue {
+  tenant_id: string;
   branch_id: string | null;
   role_id: string | null;
   status: 'active' | 'inactive';
@@ -25,7 +26,7 @@ const fetchUserAssignments = async (userId: string, tenantId: string): Promise<D
     throw new Error(`Error fetching user metadata: ${message}`);
   }
 
-  const tenantAssignments = (metadata?.tenant_assignments || []).filter(a => a.tenant_id === tenantId);
+  const tenantAssignments = (metadata?.assignments || []).filter(a => a.tenant_id === tenantId);
 
   // 2. Obtener roles y sucursales para los nombres a mostrar
   const [{ data: roles, error: rolesError }, { data: branches, error: branchesError }] = await Promise.all([
@@ -56,5 +57,3 @@ export const useUserAssignments = (userId: string, tenantId: string) => {
     staleTime: 5 * 60 * 1000,
   });
 };
-
-

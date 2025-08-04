@@ -1,4 +1,3 @@
-feat: Optimización de login y redirección
+refactor: Actualización general del proyecto
 
-- Se cambió la redirección post-autenticación de /dashboard a /.
-- Se optimizó la función Edge 'login-tenant' para reducir la latencia en la hidratación de asignaciones, realizando consultas paralelas en lugar de secuenciales.
+Este commit incluye todos los cambios pendientes en el proyecto, incluyendo refactorizaciones, nuevas características y correcciones.

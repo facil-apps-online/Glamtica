@@ -239,6 +239,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
           userId={selectedUser.user_id}
           tenantId={tenantId}
           userName={`${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() || selectedUser.email}
+          initialUserAssignments={selectedUser.assignments}
         />
       )}
       <AlertDialog open={!!resetLink} onOpenChange={() => setResetLink(null)}>

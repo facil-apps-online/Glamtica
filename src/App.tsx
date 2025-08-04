@@ -10,6 +10,8 @@ import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import BranchesPage from "@/pages/BranchesPage";
+import EditBranchPage from "@/pages/EditBranchPage";
+import BranchSettingsPage from "@/pages/BranchSettingsPage";
 import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
@@ -58,6 +60,8 @@ function App() {
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="branches" element={<BranchesPage />} />
+                  <Route path="branches/:branchId/edit" element={<EditBranchPage />} />
+                  <Route path="branches/:branchId/settings" element={<BranchSettingsPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
