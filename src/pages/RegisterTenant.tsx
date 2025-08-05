@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,6 +26,7 @@ import { MapDisplay } from '@/components/MapDisplay';
 import { PhoneInput } from '@/components/PhoneInput';
 import Logo from '@/assets/images/glamtica.app.png';
 import { CheckCircle, XCircle } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -46,36 +47,45 @@ const passwordSchema = z.string()
   .regex(/[0-9]/, "Debe contener al menos un número")
   .regex(/[!@#$%^&*]/, "Debe contener al menos un carácter especial (!@#$%^&*)");
 
-const formSchema = z.object({
-  name: z.string().min(2, "El nombre comercial es requerido."),
-  formatted_address: z.string().optional(),
-  country_id: z.string().min(1, "El país es requerido."),
-  default_language_code: z.string().min(1, "El idioma es requerido."),
-  default_currency_id: z.string().min(1, "La moneda es requerida."),
-  default_timezone: z.string().min(1, "La zona horaria es requerida."),
-  contact_phone: z.string().min(1, "El teléfono de contacto es requerido."),
-  whatsapp_phone: z.string().min(1, "El WhatsApp es requerido."),
-  commercial_email: z.string().email("Debe ser un email válido."),
-  legal_name: z.string().min(1, "La razón social es requerida."),
-  tax_id: z.string().min(1, "El ID fiscal es requerido."),
-  billing_address: z.string().min(1, "La dirección de facturación es requerida."),
-  einvoicing_email: z.string().email("El email para facturación electrónica es requerido."),
-  physical_address_line1: z.string().min(1, "La dirección es requerida."),
-  physical_address_line2: z.string().optional(),
-  physical_city: z.string().min(1, "La ciudad es requerida."),
-  physical_state: z.string().min(1, "El estado/provincia es requerido."),
-  physical_postal_code: z.string().min(1, "El código postal es requerido."),
-  website: z.string().optional(),
-  latitude: z.number().min(-90).max(90).nullable().refine(val => val !== null, { message: "La ubicación en el mapa es requerida." }),
-  longitude: z.number().min(-180).max(180).nullable().refine(val => val !== null, { message: "La ubicación en el mapa es requerida." }),
-  admin_email: z.string().email("El email del administrador es requerido."),
-  admin_password: passwordSchema,
-  admin_confirm_password: passwordSchema,
-  recaptcha_token: z.string().min(1, "Por favor, completa el CAPTCHA."),
-}).refine(data => data.admin_password === data.admin_confirm_password, {
-  message: "Las contraseñas no coinciden",
-  path: ["admin_confirm_password"],
-});
+const createFormSchema = (userExists: boolean) => {
+  const baseSchema = z.object({
+    name: z.string().min(2, "El nombre comercial es requerido."),
+    formatted_address: z.string().optional(),
+    country_id: z.string().min(1, "El país es requerido."),
+    default_language_code: z.string().min(1, "El idioma es requerido."),
+    default_currency_id: z.string().min(1, "La moneda es requerida."),
+    default_timezone: z.string().min(1, "La zona horaria es requerida."),
+    contact_phone: z.string().min(1, "El teléfono de contacto es requerido."),
+    whatsapp_phone: z.string().min(1, "El WhatsApp es requerido."),
+    commercial_email: z.string().email("Debe ser un email válido."),
+    legal_name: z.string().min(1, "La razón social es requerida."),
+    tax_id: z.string().min(1, "El ID fiscal es requerido."),
+    billing_address: z.string().min(1, "La dirección de facturación es requerida."),
+    einvoicing_email: z.string().email("El email para facturación electrónica es requerido."),
+    physical_address_line1: z.string().min(1, "La dirección es requerida."),
+    physical_address_line2: z.string().optional(),
+    physical_city: z.string().min(1, "La ciudad es requerida."),
+    physical_state: z.string().min(1, "El estado/provincia es requerido."),
+    physical_postal_code: z.string().min(1, "El código postal es requerido."),
+    website: z.string().optional(),
+    latitude: z.number().min(-90).max(90).nullable().refine(val => val !== null, { message: "La ubicación en el mapa es requerida." }),
+    longitude: z.number().min(-180).max(180).nullable().refine(val => val !== null, { message: "La ubicación en el mapa es requerida." }),
+    admin_email: z.string().email("El email del administrador es requerido."),
+    recaptcha_token: z.string().min(1, "Por favor, completa el CAPTCHA."),
+  });
+
+  if (userExists) {
+    return baseSchema;
+  } else {
+    return baseSchema.extend({
+      admin_password: passwordSchema,
+      admin_confirm_password: passwordSchema,
+    }).refine(data => data.admin_password === data.admin_confirm_password, {
+      message: "Las contraseñas no coinciden",
+      path: ["admin_confirm_password"],
+    });
+  }
+};
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
@@ -92,6 +102,10 @@ export default function RegisterTenant() {
   const { data: publicData, isLoading, isError } = usePublicRegistrationData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usePhysicalAsBilling, setUsePhysicalAsBilling] = useState(true);
+  const [userExists, setUserExists] = useState(false);
+  const [isCheckingUser, setIsCheckingUser] = useState(false);
+
+  const formSchema = useMemo(() => createFormSchema(userExists), [userExists]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -131,6 +145,7 @@ export default function RegisterTenant() {
   const physicalCity = form.watch('physical_city');
   const physicalState = form.watch('physical_state');
   const physicalPostalCode = form.watch('physical_postal_code');
+  const adminEmail = form.watch('admin_email');
   const adminPassword = form.watch('admin_password');
 
   const passwordChecks = {
@@ -140,6 +155,43 @@ export default function RegisterTenant() {
     number: /[0-9]/.test(adminPassword),
     specialChar: /[!@#$%^&*]/.test(adminPassword),
   };
+
+  const checkUserExists = useCallback(async (email: string) => {
+    if (!email || !z.string().email().safeParse(email).success) {
+      setUserExists(false);
+      return;
+    }
+    setIsCheckingUser(true);
+    try {
+      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      if (!platformId) throw new Error("Platform ID no está configurado.");
+
+      const { data, error } = await supabase.functions.invoke('user-actions', {
+        body: {
+          action: 'check_user_exists_in_auth',
+          payload: { email, platformId },
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data.success) throw new Error(data.message);
+      setUserExists(data.exists);
+      if (data.exists) {
+        form.clearErrors('admin_password');
+        form.clearErrors('admin_confirm_password');
+      }
+    } catch (error) {
+      console.error("Error checking user existence:", error);
+    } finally {
+      setIsCheckingUser(false);
+    }
+  }, [form]);
+
+  const debouncedCheckUser = useDebounce(checkUserExists, 500);
+
+  useEffect(() => {
+    debouncedCheckUser(adminEmail);
+  }, [adminEmail, debouncedCheckUser]);
 
   useEffect(() => {
     if (usePhysicalAsBilling) {
@@ -220,7 +272,33 @@ export default function RegisterTenant() {
       const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
       if (!platformId) throw new Error("Platform ID no está configurado.");
 
-      const payload = { ...values, platform_id: platformId };
+      // Construir el payload explícitamente para que coincida con la Edge Function
+      const payload = {
+        platform_id: platformId,
+        name: values.name,
+        country_id: values.country_id,
+        default_language_code: values.default_language_code,
+        default_currency_id: values.default_currency_id,
+        default_timezone: values.default_timezone,
+        contact_phone: values.contact_phone,
+        whatsapp_phone: values.whatsapp_phone,
+        commercial_email: values.commercial_email,
+        legal_name: values.legal_name,
+        tax_id: values.tax_id,
+        billing_address: values.billing_address,
+        einvoicing_email: values.einvoicing_email,
+        physical_address_line1: values.physical_address_line1,
+        physical_address_line2: values.physical_address_line2,
+        physical_city: values.physical_city,
+        physical_state: values.physical_state,
+        physical_postal_code: values.physical_postal_code,
+        website: values.website,
+        latitude: values.latitude,
+        longitude: values.longitude,
+        admin_email: values.admin_email,
+        admin_password: userExists ? undefined : values.admin_password, // Solo enviar si es nuevo usuario
+        recaptcha_token: values.recaptcha_token,
+      };
 
       const { data, error } = await supabase.functions.invoke('register-tenant', { body: payload });
       if (error) throw new Error(error.message);
@@ -277,7 +355,12 @@ export default function RegisterTenant() {
               <Card className="border-none shadow-none lg:border lg:shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-2xl">Completa tu Registro</CardTitle>
-                  <CardDescription>Un último paso para configurar tu negocio y empezar a crecer.</CardDescription>
+                  <CardDescription>
+                    {isCheckingUser ? 'Verificando email...' : userExists
+                      ? 'Este email ya está registrado. Se vinculará la cuenta existente a este nuevo negocio.'
+                      : 'Crea una nueva cuenta de administrador para tu negocio.'
+                    }
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
                   
@@ -341,20 +424,22 @@ export default function RegisterTenant() {
                     <div className="mb-6">
                         <FormField control={form.control} name="admin_email" render={({ field }) => (<FormItem><FormLabel>Email de Administrador</FormLabel><FormControl><Input type="email" {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <FormField control={form.control} name="admin_password" render={({ field }) => (<FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" {...field} autoComplete="new-password" /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="admin_confirm_password" render={({ field }) => (<FormItem><FormLabel>Confirmar Contraseña</FormLabel><FormControl><Input type="password" {...field} autoComplete="new-password" /></FormControl><FormMessage /></FormItem>)} />
-                        </div>
-                        <div className="space-y-2 pt-2 text-sm">
-                            <p className="font-semibold mb-2">La contraseña debe contener:</p>
-                            <PasswordRequirement isValid={passwordChecks.length} text="Al menos 8 caracteres" />
-                            <PasswordRequirement isValid={passwordChecks.uppercase} text="Al menos una letra mayúscula" />
-                            <PasswordRequirement isValid={passwordChecks.lowercase} text="Al menos una letra minúscula" />
-                            <PasswordRequirement isValid={passwordChecks.number} text="Al menos un número" />
-                            <PasswordRequirement isValid={passwordChecks.specialChar} text="Al menos un carácter especial (!@#$%^&*)" />
-                        </div>
-                    </div>
+                    {!userExists && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                              <FormField control={form.control} name="admin_password" render={({ field }) => (<FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" {...field} autoComplete="new-password" /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="admin_confirm_password" render={({ field }) => (<FormItem><FormLabel>Confirmar Contraseña</FormLabel><FormControl><Input type="password" {...field} autoComplete="new-password" /></FormControl><FormMessage /></FormItem>)} />
+                          </div>
+                          <div className="space-y-2 pt-2 text-sm">
+                              <p className="font-semibold mb-2">La contraseña debe contener:</p>
+                              <PasswordRequirement isValid={passwordChecks.length} text="Al menos 8 caracteres" />
+                              <PasswordRequirement isValid={passwordChecks.uppercase} text="Al menos una letra mayúscula" />
+                              <PasswordRequirement isValid={passwordChecks.lowercase} text="Al menos una letra minúscula" />
+                              <PasswordRequirement isValid={passwordChecks.number} text="Al menos un número" />
+                              <PasswordRequirement isValid={passwordChecks.specialChar} text="Al menos un carácter especial (!@#$%^&*)" />
+                          </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-center justify-center space-y-4 pt-4">
@@ -367,8 +452,8 @@ export default function RegisterTenant() {
                   </div>
 
                   <div className="text-center pt-4">
-                    <Button type="submit" size="lg" disabled={isSubmitting}>
-                      {isSubmitting ? 'Registrando...' : 'Finalizar Registro y Crear Cuenta'}
+                    <Button type="submit" size="lg" disabled={isSubmitting || isCheckingUser}>
+                      {isSubmitting ? 'Registrando...' : (userExists ? 'Vincular Cuenta Existente' : 'Finalizar Registro y Crear Cuenta')}
                     </Button>
                   </div>
                 </CardContent>

@@ -3,6 +3,7 @@ import { useTenantUsers, TenantUserAssignment } from '@/hooks/useTenantUsers';
 import { useCreatePasswordResetToken } from '@/hooks/useUserActions';
 import { useInviteOrAssignUser, InviteOrAssignUserFormValues } from '@/hooks/useInviteOrAssignUser';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -22,10 +23,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, MoreHorizontal, Users } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Users, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useScreenSize } from '@/hooks/useScreenSize';
+import { useAuth } from '@/contexts/AuthContext';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { AssignmentManagerDialog } from '@/components/AssignmentManagerDialog';
 import {
@@ -45,8 +47,8 @@ interface TenantUsersManagerProps {
 interface GroupedUser {
   user_id: string;
   email: string;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   assignments: TenantUserAssignment[];
 }
 
@@ -57,11 +59,13 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
   
   const { toast } = useToast();
   const screenSize = useScreenSize();
+  const { currentAssignment } = useAuth();
   
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAssignmentManagerOpen, setIsAssignmentManagerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<GroupedUser | null>(null);
   const [resetLink, setResetLink] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const groupedUsers = useMemo(() => {
     if (!assignments) return [];
@@ -73,7 +77,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       if (!user) {
         user = {
           user_id: assignment.user_id,
-          email: (assignment.raw_user_meta_data as any)?.real_email || assignment.email,
+          email: (assignment as any).raw_user_meta_data?.real_email || assignment.email,
           first_name: assignment.first_name,
           last_name: assignment.last_name,
           assignments: [],
@@ -83,10 +87,19 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       user.assignments.push(assignment);
     });
 
-    return Array.from(userMap.values()).sort((a, b) => 
+    const allUsers = Array.from(userMap.values());
+
+    const filteredUsers = searchTerm
+      ? allUsers.filter(user => {
+          const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
+          return fullName.includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
+        })
+      : allUsers;
+
+    return filteredUsers.sort((a, b) => 
       (a.first_name || a.email).localeCompare(b.first_name || b.email)
     );
-  }, [assignments]);
+  }, [assignments, searchTerm]);
 
   const handleOpenAssignmentManager = (user: GroupedUser) => {
     setSelectedUser(user);
@@ -98,11 +111,14 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       toast({ title: 'Error', description: 'No se pudo obtener el ID de la plataforma actual.', variant: 'destructive' });
       return;
     }
-    inviteOrAssignUserMutation.mutate({
+
+    const payload = {
       ...values,
       tenantId: tenantId,
       platformId: currentAssignment.platform_id,
-    }, {
+    };
+
+    inviteOrAssignUserMutation.mutate(payload, {
       onSuccess: (data) => {
         toast({ title: 'Éxito', description: data.message });
         setIsAddUserDialogOpen(false);
@@ -113,7 +129,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
 
   const handleResetPassword = async (email: string) => {
     try {
-      const result = await createPasswordResetTokenMutation.mutateAsync({ email });
+      const result = await createPasswordResetTokenMutation.mutateAsync({ email, platform_id: currentAssignment?.platform_id });
       const fullLink = `${window.location.origin}/update-password#access_token=${result.token}&type=recovery`;
       setResetLink(fullLink);
     } catch (error: unknown) {
@@ -133,8 +149,10 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       {groupedUsers.map(user => (
         <AccordionItem value={user.user_id} key={user.user_id}>
           <AccordionTrigger className="hover:bg-gray-50 px-4 py-4 text-left hover:no-underline">
-            <div className="font-medium">{`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Usuario sin nombre'}</div>
-            <div className="text-sm text-muted-foreground">{user.email}</div>
+            <div className="flex flex-col items-start">
+              <div className="font-medium">{`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Usuario sin nombre'}</div>
+              <div className="text-sm text-muted-foreground">{user.email}</div>
+            </div>
           </AccordionTrigger>
           <AccordionContent>
             <div className="px-4 pt-2 pb-4 border-t">
@@ -206,7 +224,9 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
       ))}
     </Accordion>
   ) : (
-    <p className="text-center text-muted-foreground py-4">No hay usuarios vinculados a este tenant.</p>
+    <p className="text-center text-muted-foreground py-4">
+      {searchTerm ? `No se encontraron usuarios para "${searchTerm}".` : 'No hay usuarios vinculados a este tenant.'}
+    </p>
   );
 
   return (
@@ -219,9 +239,18 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
                 <Users className="h-5 w-5" />
                 Gestión de Usuarios
               </CardTitle>
-              <CardDescription>Invita usuarios a tu negocio. Una vez vinculados, podrás configurar sus asignaciones de roles y sucursales.</CardDescription>
+              <CardDescription>Invita usuarios a tu negocio, busca existentes y configura sus asignaciones.</CardDescription>
             </div>
             <Button onClick={() => setIsAddUserDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Invitar Usuario</Button>
+          </div>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por nombre o email..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>{userContent}</CardContent>

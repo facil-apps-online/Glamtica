@@ -41,6 +41,8 @@ Deno.serve(async (req) => {
 
     let responseData: any;
 
+    console.log(`[user-actions] Antes del switch - Acción: ${action}, Payload:`, payload);
+
     switch (action) {
       case 'login-tenant': {
         console.log('Iniciando acción: login-tenant');
@@ -405,27 +407,48 @@ Deno.serve(async (req) => {
         console.log('Iniciando acción: check_user_exists_in_auth');
         const { email, platformId } = payload;
 
+        console.log(`[check_user_exists_in_auth] Payload recibido - Email: ${email}, PlatformId: ${platformId}`);
+
         if (!email || !platformId) {
           throw new Error('El email y el platformId son obligatorios para verificar la existencia del usuario.');
         }
 
         const synthetic_email = `${platformId}_${email}`;
 
-        const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
-        if (findError) {
-          throw new Error(`Error al buscar usuario en auth.users: ${findError.message}`);
+        console.log(`[check_user_exists_in_auth] Buscando existencia de usuario con email sintético: ${synthetic_email} usando RPC check_user_exists_in_auth_rpc`);
+        const { data: exists, error: rpcError } = await supabaseAdmin.rpc('check_user_exists_in_auth_rpc', { p_email: synthetic_email });
+        
+        if (rpcError) {
+          console.error(`[check_user_exists_in_auth] Error al llamar a la RPC check_user_exists_in_auth_rpc: ${rpcError.message}`);
+          throw new Error(`Error al verificar la existencia del usuario: ${rpcError.message}`);
         }
         
-        responseData = { success: true, exists: users && users.length > 0 };
+        console.log(`[check_user_exists_in_auth] Resultado de la RPC (exists):`, exists);
+        
+        responseData = { success: true, exists: exists };
         break;
       }
 
       case 'invite_or_assign_user_to_tenant': {
-        console.log('Iniciando acción: invite_or_assign_user_to_tenant');
+        console.log('[DEBUG] Iniciando acción: invite_or_assign_user_to_tenant');
+        console.log('[DEBUG] Payload completo recibido:', JSON.stringify(payload, null, 2));
+
         const { email, password, tenantId, roleId, branchId, platformId, firstName, lastName } = payload;
 
-        if (!email || !tenantId || !roleId || !branchId || !platformId) {
-          throw new Error('Los campos email, tenantId, roleId, branchId y platformId son obligatorios.');
+        console.log(`[DEBUG] Variables extraídas:
+          - email: ${email}
+          - password: ${password ? 'Presente' : 'No presente'}
+          - tenantId: ${tenantId}
+          - roleId: ${roleId}
+          - branchId: ${branchId}
+          - platformId: ${platformId}
+          - firstName: ${firstName}
+          - lastName: ${lastName}
+        `);
+
+        // La validación de branchId se maneja en la lógica, aquí solo los campos esenciales.
+        if (!email || !tenantId || !roleId || !platformId) {
+          throw new Error('Los campos email, tenantId, roleId y platformId son obligatorios.');
         }
 
         const synthetic_email = `${platformId}_${email}`;
@@ -433,23 +456,31 @@ Deno.serve(async (req) => {
 
         // 1. Buscar o crear el usuario en auth.users
         if (password) {
-          // Escenario: Nuevo usuario, se proporciona contraseña. Invocar a la acción centralizada.
-          const { data: userCreationResponse, error: userCreationError } = await supabaseAdmin.functions.invoke('user-actions', {
-            body: {
-              action: 'create_auth_user',
-              payload: {
-                email: email,
-                password: password,
-                platformId: platformId,
-              }
+          // Escenario: Nuevo usuario, se proporciona contraseña. Crear directamente.
+          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: synthetic_email,
+            password: password,
+            email_confirm: true, // Lo confirmamos de inmediato
+            user_metadata: {
+              // Guardamos datos importantes para la UI
+              real_email: email,
+              first_name: firstName,
+              last_name: lastName,
+            },
+            app_metadata: {
+              // Inicializamos las asignaciones con la primera
+              assignments: [] 
             }
           });
 
-          if (userCreationError || !userCreationResponse.success) {
-            throw new Error(`Error al invocar la creación de usuario: ${userCreationError?.message || userCreationResponse.message}`);
+          if (authError) {
+            throw new Error(`Error al crear el usuario: ${authError.message}`);
           }
-          userToAssign = userCreationResponse.user;
-
+          if (!authData.user) {
+            throw new Error('No se pudo obtener el objeto de usuario después de la creación.');
+          }
+          userToAssign = authData.user;
+          console.log(`[invite_or_assign_user_to_tenant] Usuario creado directamente:`, userToAssign);
         } else {
           // Escenario: Usuario existente, no se proporciona contraseña
           const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
@@ -457,6 +488,7 @@ Deno.serve(async (req) => {
             throw new Error(`No se encontró un usuario con el email ${email} para esta plataforma.`);
           }
           userToAssign = users[0];
+          console.log(`[invite_or_assign_user_to_tenant] userToAssign después de búsqueda:`, userToAssign);
         }
 
         if (!userToAssign) {
@@ -464,7 +496,8 @@ Deno.serve(async (req) => {
         }
 
         // 2. Gestionar asignaciones en app_metadata
-        const currentAssignments = userToAssign.app_metadata.assignments || [];
+        const appMetadata = userToAssign.app_metadata || {};
+        const currentAssignments = appMetadata.assignments || [];
 
         // Verificar si el usuario ya tiene una asignación para este tenant
         const existingAssignment = currentAssignments.find(
@@ -480,7 +513,7 @@ Deno.serve(async (req) => {
           assignment_id: crypto.randomUUID(),
           tenant_id: tenantId,
           role_id: roleId,
-          branch_id: branchId,
+          branch_id: branchId || null, // Asegurarse de que sea null si no se proporciona
           status: 'active', // Estado inicial de la asignación
         };
 
@@ -488,7 +521,7 @@ Deno.serve(async (req) => {
 
         const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
           userToAssign.id,
-          { app_metadata: { ...userToAssign.app_metadata, assignments: updatedAssignments } }
+          { app_metadata: { ...appMetadata, assignments: updatedAssignments } }
         );
 
         if (updateError) {
@@ -556,8 +589,15 @@ Deno.serve(async (req) => {
           },
         });
 
+        console.log(`[create_auth_user] authData:`, authData);
+        console.log(`[create_auth_user] authError:`, authError);
+
         if (authError) {
           throw new Error(`Error al crear el usuario: ${authError.message}`);
+        }
+
+        if (!authData.user) {
+          throw new Error('No se pudo obtener el objeto de usuario después de la creación.');
         }
 
         responseData = { success: true, message: 'Usuario de Auth creado exitosamente.', user: authData.user };

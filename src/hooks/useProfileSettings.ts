@@ -1,11 +1,12 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Hook para actualizar el perfil (nombre, apellido, avatar)
 // Usado por PersonalInfoTab y AvatarUploader, pero como mutaciones separadas.
 export const useUpdateProfile = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, currentAssignment } = useAuth();
+  const queryClient = useQueryClient();
 
   return useMutation<any, Error, { first_name: string; last_name: string; avatar_url?: string | null }>({
     mutationFn: async (profileData) => {
@@ -23,7 +24,13 @@ export const useUpdateProfile = () => {
       return data.user;
     },
     onSuccess: async () => {
+      // 1. Refrescar los datos del usuario actual (para su propia UI)
       await refreshUser();
+      
+      // 2. Invalidar la lista de usuarios del tenant (para la vista del admin)
+      if (currentAssignment?.tenant_id) {
+        queryClient.invalidateQueries({ queryKey: ['tenantUsers', currentAssignment.tenant_id] });
+      }
     },
   });
 };

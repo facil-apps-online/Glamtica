@@ -1,75 +1,45 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient'; // Asumo una importación directa del cliente Supabase
-import { useAuth } from '@/contexts/AuthContext';
-import { UserAssignment } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 
-// La estructura de los valores que vienen del formulario
-export interface InviteUserFormValues {
+export interface InviteOrAssignUserFormValues {
   email: string;
-  firstName?: string;
-  lastName?: string;
-  password?: string; // Opcional, solo para usuarios nuevos
+  password?: string;
   roleId: string;
-  branchId: string;
+  branchId?: string;
+  platformId: string;
 }
 
-interface InviteUserVariables {
-  values: InviteUserFormValues;
+interface InviteOrAssignUserPayload extends InviteOrAssignUserFormValues {
   tenantId: string;
 }
 
-const inviteOrAssignUser = async (
-  invokingUser: any, // El objeto 'profile' del AuthContext
-  currentAssignment: UserAssignment | null, // El objeto 'currentAssignment' del AuthContext
-  variables: InviteUserVariables
-) => {
-  const { values, tenantId } = variables;
-
-  if (!invokingUser || !currentAssignment || !currentAssignment.platform_id) {
-    throw new Error('No se pudo obtener la información del usuario autenticado o el ID de la plataforma.');
-  }
-
-  const platformId = currentAssignment.platform_id;
-
-  const response = await fetch('/api/user-actions', { // Asumiendo /api/user-actions es el endpoint para la Edge Function
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${invokingUser.token}`, // Pasar el token JWT del usuario
-    },
-    body: JSON.stringify({
+const inviteOrAssignUser = async (payload: InviteOrAssignUserPayload) => {
+  const { data, error } = await supabase.functions.invoke('user-actions', {
+    body: {
       action: 'invite_or_assign_user_to_tenant',
-      payload: {
-        email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        password: values.password,
-        tenantId: tenantId,
-        roleId: values.roleId,
-        branchId: values.branchId,
-        platformId: platformId,
-      },
-    }),
+      payload: payload,
+    },
   });
 
-  const data = await response.json();
+  if (error) {
+    throw new Error(`Error al invocar la función: ${error.message}`);
+  }
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Error al invitar o asignar usuario.');
+  // La Edge Function ahora devuelve un objeto con `success` y `message`
+  if (!data.success) {
+    throw new Error(data.message || 'Ocurrió un error en el servidor.');
   }
 
   return data;
 };
 
 export const useInviteOrAssignUser = () => {
-  const { profile, currentAssignment } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (variables: InviteUserVariables) =>
-      inviteOrAssignUser(profile, currentAssignment, variables),
+  return useMutation<any, Error, InviteOrAssignUserPayload>({
+    mutationFn: inviteOrAssignUser,
     onSuccess: (_, variables) => {
-      // Invalidar la query de usuarios para refrescar la lista
+      // Invalida la query de usuarios del tenant para forzar la recarga de datos.
       queryClient.invalidateQueries({ queryKey: ['tenantUsers', variables.tenantId] });
     },
   });

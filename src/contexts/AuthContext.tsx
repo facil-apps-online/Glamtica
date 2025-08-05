@@ -141,16 +141,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
             
             setCurrentAssignment(selectedAssignment);
 
+            // NUEVA LÓGICA: Si no se encontró ninguna asignación activa, cerrar sesión.
+            if (!selectedAssignment) {
+              console.warn('Usuario autenticado sin asignaciones activas. Cerrando sesión.');
+              await supabaseClient.auth.signOut();
+              navigate('/auth'); // Redirigir a la página de login
+              return; // Salir de la función processSession
+            }
+
           } catch (error) {
             console.error("Error during assignment hydration:", error);
             setAssignments([]);
             setCurrentAssignment(null);
+            // En caso de error en la hidratación, también podríamos considerar cerrar sesión
+            // para evitar un estado inconsistente.
+            await supabaseClient.auth.signOut();
+            navigate('/auth');
+            return;
           }
         } else {
+          // Si no hay asignaciones en app_metadata, también cerrar sesión.
+          console.warn('Usuario autenticado sin asignaciones en app_metadata. Cerrando sesión.');
           setAssignments([]);
           setCurrentAssignment(null);
+          await supabaseClient.auth.signOut();
+          navigate('/auth');
+          return;
         }
       } else {
+        // Si no hay sessionData.user, asegurar que todo esté limpio.
         setProfile(null);
         setAssignments([]);
         setCurrentAssignment(null);
@@ -158,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     } finally {
       setLoading(false);
     }
-  }, [supabaseClient]);
+  }, [supabaseClient, navigate]);
 
   useEffect(() => {
     setLoading(true);
@@ -239,7 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       if (!data.success) throw new Error(data.message || "Error al cambiar de asignación en el backend.");
 
       // 3. Refrescar la sesión de Supabase en segundo plano para mantener la consistencia.
-      await supabaseClient.auth.refreshSession();
+      await refreshUser();
 
     } catch (error) {
       console.error("Fallo al notificar al backend o refrescar la sesión después del cambio de contexto:", error);

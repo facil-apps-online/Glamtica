@@ -1,3 +1,7 @@
-refactor: Actualización general del proyecto
+feat: Implementación y corrección de gestión de asignaciones de usuario
 
-Este commit incluye todos los cambios pendientes en el proyecto, incluyendo refactorizaciones, nuevas características y correcciones.
+- Se movió la obtención de usuarios de `superadmin-actions` a `tenant-actions` para usuarios de tenant.
+- Se implementó la acción `update-assignments` en `user-actions` para actualizar asignaciones de usuario de forma segura, preservando asignaciones de otros tenants.
+- Se corrigió el `AssignmentManagerDialog` para pasar correctamente las asignaciones iniciales y el `tenantId` en el payload.
+- Se ajustó `repair-user-assignments` para aceptar `targetTenantId` y realizar una reparación específica por tenant.
+- Se eliminó el botón de reparación temporal del sidebar.

@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -28,29 +28,41 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/useDebounce';
-import { LinkUserFormValues } from '@/hooks/useLinkUserToTenant';
+import { InviteOrAssignUserFormValues } from '@/hooks/useInviteOrAssignUser';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoles } from '@/hooks/useRoles';
 import { useBranches } from '@/hooks/useBranches';
 
-// Esquema de validación base (con rol y sucursal)
-const baseSchema = z.object({
-  email: z.string().email({ message: 'Por favor, introduce un email válido.' }),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  roleId: z.string().uuid({ message: 'Por favor, selecciona un rol válido.' }),
-  branchId: z.string().uuid({ message: 'Por favor, selecciona una sucursal válida.' }),
-});
+type AddUserFormValues = z.infer<ReturnType<typeof createValidationSchema>>;
 
-// Esquema para cuando el usuario es nuevo (requiere contraseña)
-const newUserSchema = baseSchema.extend({
-  password: z.string().min(8, { message: 'La contraseña debe tener al menos 8 caracteres.' }),
-});
+const createValidationSchema = (userExists: boolean, roles: any[] = []) =>
+  z.object({
+    email: z.string().email({ message: 'Por favor, introduce un email válido.' }),
+    password: z.string().optional(),
+    roleId: z.string().min(1, { message: 'Por favor, selecciona un rol.' }),
+    branchId: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (!userExists && (!data.password || data.password.length < 8)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La contraseña debe tener al menos 8 caracteres.',
+        path: ['password'],
+      });
+    }
+    const selectedRole = roles.find((r) => r.id === data.roleId);
+    if (selectedRole && selectedRole.name !== 'tenant_super_admin' && !data.branchId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Por favor, selecciona una sucursal.',
+        path: ['branchId'],
+      });
+    }
+  });
 
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: LinkUserFormValues) => void;
+  onSubmit: (values: InviteOrAssignUserFormValues) => void;
   isSubmitting: boolean;
 }
 
@@ -63,23 +75,39 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   const [userExists, setUserExists] = useState(false);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
 
-  const form = useForm<z.infer<typeof newUserSchema>>({
-    resolver: zodResolver(userExists ? baseSchema : newUserSchema),
+  const { currentAssignment, supabaseClient } = useAuth();
+  const { data: roles, isLoading: isLoadingRoles } = useRoles(currentAssignment?.platform_id);
+  const { data: branches, isLoading: isLoadingBranches } = useBranches(currentAssignment?.tenant_id);
+
+  const tenantSuperAdminRole = useMemo(
+    () => roles?.find((role) => role.name === 'tenant_super_admin'),
+    [roles]
+  );
+
+  const form = useForm<AddUserFormValues>({
+    resolver: zodResolver(createValidationSchema(userExists, roles)),
     defaultValues: { email: '', password: '', roleId: '', branchId: '' },
   });
-  
-  // Resetear el estado cuando el diálogo se cierra
+
+  const watchedRoleId = useWatch({ control: form.control, name: 'roleId' });
+  const isSuperAdminSelected = useMemo(
+    () => !!(watchedRoleId && tenantSuperAdminRole && watchedRoleId === tenantSuperAdminRole.id),
+    [watchedRoleId, tenantSuperAdminRole]
+  );
+
+  useEffect(() => {
+    if (isSuperAdminSelected) {
+      form.setValue('branchId', '');
+      form.clearErrors('branchId');
+    }
+  }, [isSuperAdminSelected, form]);
+
   useEffect(() => {
     if (!open) {
       form.reset();
       setUserExists(false);
     }
   }, [open, form]);
-
-  const { currentAssignment, supabaseClient } = useAuth();
-
-  const { data: roles, isLoading: isLoadingRoles } = useRoles(currentAssignment?.platform_id);
-  const { data: branches, isLoading: isLoadingBranches } = useBranches(currentAssignment?.platform_id);
 
   const checkUserExists = useCallback(async (email: string) => {
     if (!email || !z.string().email().safeParse(email).success) {
@@ -91,23 +119,14 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
       if (!currentAssignment || !currentAssignment.platform_id) {
         throw new Error('No se pudo obtener el ID de la plataforma del usuario actual.');
       }
-
       const { data, error } = await supabaseClient.functions.invoke('user-actions', {
         body: {
           action: 'check_user_exists_in_auth',
-          payload: {
-            email: email,
-            platformId: currentAssignment.platform_id,
-          },
+          payload: { email, platformId: currentAssignment.platform_id },
         },
       });
-
-      if (error) {
-        throw new Error(error.message || 'Error al verificar la existencia del usuario.');
-      }
-      if (!data.success) {
-        throw new Error(data.message || 'Error al verificar la existencia del usuario.');
-      }
+      if (error) throw new Error(error.message);
+      if (!data.success) throw new Error(data.message);
       setUserExists(data.exists);
       if (data.exists) {
         form.clearErrors('password');
@@ -117,7 +136,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     } finally {
       setIsCheckingUser(false);
     }
-  }, [form, currentAssignment]);
+  }, [form, currentAssignment, supabaseClient]);
 
   const debouncedCheckUser = useDebounce(checkUserExists, 500);
 
@@ -126,11 +145,20 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     form.setValue('email', email);
     debouncedCheckUser(email);
   };
-  
-  const handleFormSubmit = (values: z.infer<typeof newUserSchema>) => {
-    const submissionValues: LinkUserFormValues = { ...values };
+
+  const handleFormSubmit = (values: AddUserFormValues) => {
+    const submissionValues: InviteOrAssignUserFormValues = { ...values };
     if (userExists) {
       delete submissionValues.password;
+    }
+    if (isSuperAdminSelected) {
+      delete submissionValues.branchId;
+    }
+    if (currentAssignment?.platform_id) {
+      submissionValues.platformId = currentAssignment.platform_id;
+    } else {
+      console.error("Error: currentAssignment.platform_id no está disponible.");
+      return;
     }
     onSubmit(submissionValues);
   };
@@ -141,7 +169,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Invitar Usuario al Negocio</DialogTitle>
           <DialogDescription>
-            {userExists 
+            {isCheckingUser ? 'Verificando...' : userExists
               ? "Este usuario ya existe en la plataforma. Se le vinculará a tu negocio."
               : "Completa los datos para crear un nuevo usuario y vincularlo a tu negocio."
             }
@@ -162,7 +190,6 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 </FormItem>
               )}
             />
-            
             {!userExists && (
               <FormField
                 control={form.control}
@@ -170,9 +197,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contraseña</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
-                    </FormControl>
+                    <FormControl><Input type="password" placeholder="********" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -184,17 +209,13 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Rol</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingRoles}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingRoles}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un rol" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {roles?.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.display_name}
-                        </SelectItem>
+                        <SelectItem key={role.id} value={role.id}>{role.display_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -208,17 +229,19 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Sucursal</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingBranches}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isSuperAdminSelected || isLoadingBranches}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una sucursal" />
+                        <SelectValue placeholder={isSuperAdminSelected ? "No aplica para este rol" : "Selecciona una sucursal"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {branches?.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </SelectItem>
+                        <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

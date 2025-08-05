@@ -45,7 +45,7 @@ export const useBranches = (tenantIdParam?: string) => {
         },
         body: JSON.stringify({
           action: 'get_branches',
-          payload: {},
+          payload: { tenantId: tenantId },
         }),
       });
 

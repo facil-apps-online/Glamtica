@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, User } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Definición de tipos para los datos del formulario que esperamos recibir
+// Definición de tipos para los datos del formulario
 interface FormData {
   platform_id: string;
   name: string;
@@ -25,7 +25,7 @@ interface FormData {
   latitude: number;
   longitude: number;
   admin_email: string;
-  admin_password: string;
+  admin_password?: string; // La contraseña es opcional ahora
   recaptcha_token: string;
 }
 
@@ -46,7 +46,8 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
-  let newUser: User | null = null;
+  let createdUserId: string | null = null;
+  let isNewUser = false;
 
   try {
     const { recaptcha_token, platform_id, admin_email, admin_password, ...tenant_creation_data }: FormData = await req.json();
@@ -54,19 +55,7 @@ serve(async (req) => {
     // --- Validación del lado del servidor ---
     if (!RECAPTCHA_SECRET_KEY) throw new Error('El secreto de reCAPTCHA no está configurado.');
     if (!platform_id) throw new Error('El ID de la plataforma es requerido.');
-    if (!admin_email || !admin_password) throw new Error('El email y la contraseña son requeridos.');
-
-    // Obtener el ID del rol 'tenant_super_admin'
-    const { data: roleData, error: roleError } = await supabaseAdmin
-      .from('roles')
-      .select('id')
-      .eq('name', 'tenant_super_admin')
-      .single();
-
-    if (roleError || !roleData) {
-      throw new Error(`Error al obtener el ID del rol tenant_super_admin: ${roleError?.message || 'No encontrado'}`);
-    }
-    const tenantSuperAdminRoleId = roleData.id;
+    if (!admin_email) throw new Error('El email del administrador es requerido.');
 
     // --- Verificación de reCAPTCHA ---
     const recaptchaUrl = 'https://www.google.com/recaptcha/api/siteverify';
@@ -78,73 +67,125 @@ serve(async (req) => {
     const recaptchaData = await response.json();
     if (!recaptchaData.success) throw new Error('La verificación de reCAPTCHA ha fallado.');
 
-    // --- Orquestación de Registro ---
+    // --- Lógica Unificada de Usuario y Tenant ---
+    console.log(`Iniciando registro para el email: ${admin_email}`);
 
-    // Paso 1: Invocar a user-actions para crear el usuario de forma centralizada
-    const { data: userCreationResponse, error: userCreationError } = await supabaseAdmin.functions.invoke('user-actions', {
-      body: {
-        action: 'create_auth_user',
-        payload: {
-          email: admin_email,
-          password: admin_password,
-          platformId: platform_id,
-        }
-      }
-    });
+    const synthetic_email = `${platform_id}_${admin_email}`;
+    let targetUser: User;
+    let existingAssignments: any[] = [];
 
-    if (userCreationError || !userCreationResponse.success) {
-      // Si la creación falla, lanzamos un error para que el bloque catch lo maneje
-      throw new Error(`Error al crear el usuario: ${userCreationError?.message || userCreationResponse.message}`);
+    // 1. Buscar si el usuario ya existe
+    const { data: { users: existingUsers }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
+    if (findError) throw new Error(`Error al buscar usuario: ${findError.message}`);
+
+    if (existingUsers && existingUsers.length > 0) {
+      // --- CASO: USUARIO EXISTENTE ---
+      console.log(`Usuario encontrado con email sintético ${synthetic_email}. Vinculando a nuevo tenant.`);
+      targetUser = existingUsers[0];
+      existingAssignments = targetUser.app_metadata?.assignments || [];
+      isNewUser = false;
+    } else {
+      // --- CASO: USUARIO NUEVO ---
+      console.log(`Usuario no encontrado. Creando nuevo usuario con email sintético ${synthetic_email}.`);
+      if (!admin_password) throw new Error('La contraseña es obligatoria para registrar un nuevo usuario.');
+
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: synthetic_email,
+        password: admin_password,
+        email_confirm: true, // Confirmamos el email automáticamente
+        user_metadata: { real_email: admin_email },
+        app_metadata: { assignments: [] }, // Inicializar con array vacío
+      });
+
+      if (authError) throw new Error(`Error al crear el usuario: ${authError.message}`);
+      if (!authData.user) throw new Error('No se pudo obtener el objeto de usuario después de la creación.');
+      
+      targetUser = authData.user;
+      createdUserId = targetUser.id; // Guardar ID para posible rollback
+      isNewUser = true;
     }
 
-    newUser = userCreationResponse.user;
-
-    // Paso 2: Llamar a la RPC con los datos explícitos para evitar race conditions
-    const { data: tenantId, error: rpcError } = await supabaseAdmin.rpc('setup_tenant_for_new_user', {
-      p_user_id: newUser.id,
-      p_platform_id: platform_id,
-      p_tenant_data: tenant_creation_data
-    });
-
-    if (rpcError) {
-      throw new Error(`Error al configurar el tenant: ${rpcError.message}`);
-    }
-
-    // Paso 3: Actualizar el app_metadata del usuario con la asignación completa
-    const newAssignment = {
-      assignment_id: crypto.randomUUID(), // Generar un ID único para la asignación
-      tenant_id: tenantId, // El ID del tenant recién creado
-      role_id: tenantSuperAdminRoleId, // El ID del rol tenant_super_admin
-      status: 'active', // Estado inicial de la asignación
-      // branch_id se omite para tenant_super_admin
+    // 2. Crear el Tenant
+    console.log('Creando la nueva entidad de tenant...');
+    const tenantPayload = {
+      name: tenant_creation_data.name,
+      country_id: tenant_creation_data.country_id,
+      default_language_code: tenant_creation_data.default_language_code,
+      default_currency_id: tenant_creation_data.default_currency_id,
+      default_timezone: tenant_creation_data.default_timezone,
+      contact_phone: tenant_creation_data.contact_phone,
+      whatsapp_phone: tenant_creation_data.whatsapp_phone,
+      commercial_email: tenant_creation_data.commercial_email,
+      legal_name: tenant_creation_data.legal_name,
+      tax_id: tenant_creation_data.tax_id,
+      billing_address: tenant_creation_data.billing_address,
+      einvoicing_email: tenant_creation_data.einvoicing_email,
+      physical_address_line1: tenant_creation_data.physical_address_line1,
+      physical_address_line2: tenant_creation_data.physical_address_line2,
+      physical_city: tenant_creation_data.physical_city,
+      physical_state: tenant_creation_data.physical_state,
+      physical_postal_code: tenant_creation_data.physical_postal_code,
+      website: tenant_creation_data.website,
+      latitude: tenant_creation_data.latitude,
+      longitude: tenant_creation_data.longitude,
+      platform_id: platform_id,
     };
 
-    const { data: updatedUserResponse, error: updateMetadataError } = await supabaseAdmin.auth.admin.updateUserById(
-      newUser.id,
-      { app_metadata: { assignments: [newAssignment] } } // Sobrescribir con la nueva asignación
+    const { data: newTenant, error: tenantError } = await supabaseAdmin
+      .from('tenants')
+      .insert(tenantPayload)
+      .select()
+      .single();
+
+    if (tenantError) throw new Error(`Error al crear el tenant: ${tenantError.message}`);
+    console.log(`Tenant creado con ID: ${newTenant.id}`);
+
+    // 3. Preparar y añadir la nueva asignación
+    const { data: roleData, error: roleError } = await supabaseAdmin.from('roles').select('id').eq('name', 'tenant_super_admin').single();
+    if (roleError || !roleData) throw new Error('No se pudo encontrar el rol de tenant_super_admin.');
+
+    const newAssignment = {
+      assignment_id: crypto.randomUUID(),
+      tenant_id: newTenant.id,
+      role_id: roleData.id,
+      status: 'active',
+      branch_id: null,
+    };
+
+    const finalAssignments = [...existingAssignments, newAssignment];
+
+    // 4. Actualizar el app_metadata del usuario
+    console.log('Actualizando app_metadata del usuario con la nueva asignación...');
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      targetUser.id,
+      { app_metadata: { assignments: finalAssignments } }
     );
 
-    if (updateMetadataError) {
-      throw new Error(`Error al actualizar el app_metadata del usuario: ${updateMetadataError.message}`);
-    }
+    if (updateError) throw new Error(`Error al actualizar las asignaciones del usuario: ${updateError.message}`);
 
+    console.log('¡Proceso completado exitosamente!');
     return new Response(JSON.stringify({ 
         success: true, 
-        message: '¡Registro completado! Se ha enviado un correo de confirmación.',
-        user_id: newUser.id,
-        tenant_id: tenantId
+        message: '¡Registro completado exitosamente!',
+        user_id: targetUser.id,
+        tenant_id: newTenant.id
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    if (newUser && newUser.id) {
-      await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+    console.error('--- ERROR EN register-tenant ---');
+    console.error('Error:', error.message);
+
+    // Si se creó un usuario nuevo en este proceso fallido, lo eliminamos para mantener la consistencia.
+    if (isNewUser && createdUserId) {
+      console.log(`Realizando rollback: eliminando usuario huérfano con ID ${createdUserId}`);
+      await supabaseAdmin.auth.admin.deleteUser(createdUserId);
     }
 
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+    return new Response(JSON.stringify({ success: false, message: error.message }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

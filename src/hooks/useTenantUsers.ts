@@ -29,14 +29,18 @@ const invokeTenantAction = async (action: string, payload?: any) => {
 };
 
 // --- GET Users and their Assignments for the current Tenant ---
-const fetchTenantUsers = async (): Promise<TenantUserAssignment[]> => {
-  return invokeTenantAction('get_users_for_tenant');
+const fetchTenantUsers = async (tenantId: string): Promise<TenantUserAssignment[]> => {
+  // The RPC function now expects a tenant_id to be passed in the payload
+  const response = await invokeTenantAction('get_users_for_tenant', { tenantId });
+  return response; // The raw response is the array of users.
 };
 
-export const useTenantUsers = () => {
+export const useTenantUsers = (tenantId: string) => {
   return useQuery<TenantUserAssignment[], Error>({
-    queryKey: ['tenantUsers'],
-    queryFn: () => fetchTenantUsers(),
+    // The queryKey now includes the tenantId to ensure uniqueness
+    queryKey: ['tenantUsers', tenantId],
+    queryFn: () => fetchTenantUsers(tenantId),
+    // enabled: !!tenantId, // This ensures the query doesn't run if tenantId is not yet available
   });
 };
 

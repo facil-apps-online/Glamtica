@@ -189,7 +189,18 @@ serve(async (req) => {
       }
 
       case 'get_branches': {
-        const { data, error } = await supabaseAdmin.rpc('get_tenant_branches', { p_tenant_id: tenantId });
+        const requestedTenantId = payload.tenantId;
+        if (!requestedTenantId) throw new Error('Tenant ID is required for get_branches.');
+
+        // Verificar que el usuario autenticado tiene acceso al tenant solicitado
+        const userAssignments = decodedToken.app_metadata?.assignments || [];
+        const hasAccess = userAssignments.some( (assignment: any) => assignment.tenant_id === requestedTenantId);
+
+        if (!hasAccess) {
+          throw new Error('Acceso denegado: El usuario no tiene asignaciones para el tenant solicitado.');
+        }
+
+        const { data, error } = await supabaseAdmin.rpc('get_tenant_branches', { p_tenant_id: requestedTenantId });
         if (error) throw error;
         responseData = data;
         break;
@@ -235,10 +246,19 @@ serve(async (req) => {
       }
 
       case 'get_users_for_tenant': {
-        if (!tenantId) throw new Error('Tenant ID not found in JWT.');
+        const requestedTenantId = payload.tenantId;
+        if (!requestedTenantId) throw new Error('Tenant ID is required for get_users_for_tenant.');
+
+        // Verificar que el usuario autenticado tiene acceso al tenant solicitado
+        const userAssignments = decodedToken.app_metadata?.assignments || [];
+        const hasAccess = userAssignments.some( (assignment: any) => assignment.tenant_id === requestedTenantId);
+
+        if (!hasAccess) {
+          throw new Error('Acceso denegado: El usuario no tiene asignaciones para el tenant solicitado.');
+        }
 
         const { data, error } = await supabaseClient.rpc('get_tenant_users', {
-          target_tenant_id: tenantId
+          target_tenant_id: requestedTenantId
         });
 
         if (error) throw error;

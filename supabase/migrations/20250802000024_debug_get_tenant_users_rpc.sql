@@ -1,7 +1,5 @@
--- Migration to fix the source of the user email in the get_tenant_users RPC.
--- This version changes the email source to prioritize the real email stored in raw_user_meta_data.
--- It uses COALESCE to fall back to the synthetic email if the real one is not present,
--- ensuring backward compatibility with older user records.
+-- Migration to debug the get_tenant_users RPC function.
+-- Adds RAISE NOTICE statements to log the target_tenant_id and assignment tenant_id.
 
 DROP FUNCTION IF EXISTS get_tenant_users(uuid);
 
@@ -20,17 +18,19 @@ RETURNS TABLE (
   branch_id uuid,
   branch_name text,
   status text,
-  raw_user_meta_data jsonb -- Se añade para poder usarlo en la selección
+  raw_user_meta_data jsonb
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  RAISE NOTICE 'get_tenant_users: target_tenant_id = %', target_tenant_id;
+
   RETURN QUERY
   SELECT
     (user_assignment->>'assignment_id')::uuid,
     u.id as user_id,
-    COALESCE(u.raw_user_meta_data->>'email', u.email)::text as email, -- CORRECTED SOURCE
+    COALESCE(u.raw_user_meta_data->>'email', u.email)::text as email,
     u.raw_user_meta_data->>'first_name' as first_name,
     u.raw_user_meta_data->>'last_name' as last_name,
     (user_assignment->>'role_id')::uuid,
@@ -49,5 +49,7 @@ BEGIN
     public.branches b ON (user_assignment->>'branch_id')::uuid = b.id
   WHERE
     (user_assignment->>'tenant_id')::uuid = target_tenant_id;
+
+  RAISE NOTICE 'get_tenant_users: Query executed. Check logs for results.';
 END;
 $$;
