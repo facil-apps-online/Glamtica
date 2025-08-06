@@ -4,140 +4,168 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
-export interface Product {
+// --- INTERFACES ---
+
+// Interfaz para el producto maestro (catálogo general)
+export interface MasterProduct {
   id: string;
   name: string;
   description?: string;
-  price: number;
   cost_price?: number;
   last_purchase_cost?: number;
   average_cost?: number;
-  stock_quantity?: number;
-  min_stock?: number;
-  max_stock?: number;
   is_active?: boolean;
   category?: string;
   brand_id?: string;
   barcode?: string;
   sku?: string;
+  tenant_id: string;
   created_at: string;
   updated_at: string;
 }
 
-// --- QUERIES REFACTORIZADAS ---
+// Interfaz para el producto específico de una sucursal
+export interface BranchProduct extends MasterProduct {
+  branch_product_id: string;
+  branch_id: string;
+  selling_price: number;
+  stock_quantity: number;
+  min_stock?: number;
+  max_stock?: number;
+  is_branch_active: boolean;
+}
 
-export const useProducts = () => {
-  const { currentAssignment } = useAuth();
+// --- HELPERS ---
+
+const callTenantAction = async (action: string, payload: any) => {
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+    body: { action, payload },
+  });
+  if (error) throw error;
+  return data;
+};
+
+// --- HOOKS ---
+
+// Hook para obtener los productos disponibles en la sucursal seleccionada
+export const useBranchProducts = (branchIdParam?: string) => {
   const { selectedBranchId } = useBranchFilterStore();
-  const tenantId = currentAssignment?.tenant_id;
+  const branchIdToUse = branchIdParam || selectedBranchId;
 
   return useQuery({
-    queryKey: ['products', tenantId, selectedBranchId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-      let query = supabase.from('products').select('*').eq('tenant_id', tenantId);
-      if (selectedBranchId !== 'all') {
-        query = query.eq('branch_id', selectedBranchId);
-      }
-      const { data, error } = await query.order('name');
-      if (error) throw error;
-      return data as Product[];
-    },
-    enabled: !!tenantId,
+    queryKey: ['branch_products', branchIdToUse],
+    queryFn: () => callTenantAction('get_branch_products', { branchId: branchIdToUse }),
+    enabled: !!branchIdToUse && branchIdToUse !== 'all',
   });
 };
 
-export const useActiveProducts = () => {
-  const { currentAssignment } = useAuth();
-  const { selectedBranchId } = useBranchFilterStore();
-  const tenantId = currentAssignment?.tenant_id;
-
+// Hook para obtener todos los productos maestros (el catálogo general)
+export const useMasterProducts = () => {
   return useQuery({
-    queryKey: ['products', 'active', tenantId, selectedBranchId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-      let query = supabase.from('products').select('*').eq('tenant_id', tenantId).eq('is_active', true);
-      if (selectedBranchId !== 'all') {
-        query = query.eq('branch_id', selectedBranchId);
-      }
-      const { data, error } = await query.order('name');
-      if (error) throw error;
-      return data as Product[];
-    },
-    enabled: !!tenantId,
+    queryKey: ['master_products'],
+    queryFn: () => callTenantAction('get_master_products', {}),
   });
 };
 
-// --- MUTACIONES RESTAURADAS ---
+// Hook para obtener los precios de un producto maestro en todas sus sucursales
+export const useProductBranchPrices = (productId: string) => {
+  return useQuery({
+    queryKey: ['product_branch_prices', productId],
+    queryFn: () => callTenantAction('get_product_branch_prices', { productId }),
+    enabled: !!productId,
+  });
+};
 
-export const useCreateProduct = () => {
+// --- MUTATIONS ---
+
+// Crear un nuevo producto en el catálogo maestro
+export const useCreateMasterProduct = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase.from('products').insert([productData]).select().single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (productData: Omit<MasterProduct, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => 
+      callTenantAction('create_master_product', { productData }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products', tenantId] });
-      toast({ title: "Producto creado", description: "El producto ha sido creado exitosamente." });
+      queryClient.invalidateQueries({ queryKey: ['master_products'] });
+      toast({ title: "Producto Maestro Creado", description: "El producto ha sido añadido al catálogo general." });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: "No se pudo crear el producto.", variant: "destructive" });
-      console.error('Error creating product:', error);
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 };
 
-export const useUpdateProduct = () => {
+// Actualizar un producto del catálogo maestro
+export const useUpdateMasterProduct = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Product> }) => {
-      const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<MasterProduct> }) =>
+      callTenantAction('update_master_product', { id, updates }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products', tenantId] });
-      toast({ title: "Producto actualizado", description: "El producto ha sido actualizado exitosamente." });
+      queryClient.invalidateQueries({ queryKey: ['master_products'] });
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
+      toast({ title: "Producto Maestro Actualizado", description: "La información del producto ha sido actualizada." });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: "No se pudo actualizar el producto.", variant: "destructive" });
-      console.error('Error updating product:', error);
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 };
 
-export const useToggleProductStatus = () => {
+// Asignar un producto a una o varias sucursales
+export const useAssignProductToBranch = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { data, error } = await supabase.from('products').update({ is_active }).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
+    mutationFn: (payload: { product_id: string; branch_ids: string[]; defaults: { selling_price: number; stock_quantity: number; is_active?: boolean } }) =>
+      callTenantAction('assign_product_to_branch', payload),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
+      queryClient.invalidateQueries({ queryKey: ['product_branch_prices', variables.product_id] });
+      toast({ title: "Asignación Exitosa", description: "El producto ha sido asignado a la(s) sucursal(es)." });
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['products', tenantId] });
-      toast({
-        title: data.is_active ? "Producto activado" : "Producto desactivado",
-        description: `El producto ha sido ${data.is_active ? 'activado' : 'desactivado'} exitosamente.`,
-      });
+    onError: (error: Error) => {
+      toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: "No se pudo cambiar el estado del producto.", variant: "destructive" });
-      console.error('Error toggling product status:', error);
+  });
+};
+
+// Actualizar un producto en una sucursal específica
+export const useUpdateBranchProduct = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Omit<BranchProduct, 'id'>> }) =>
+      callTenantAction('update_branch_product', { id, updates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
+      toast({ title: "Producto Actualizado", description: "El precio, stock o estado ha sido actualizado para esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Desvincular un producto de una sucursal
+export const useRemoveProductFromBranch = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (branch_product_id: string) =>
+      callTenantAction('remove_product_from_branch', { branch_product_id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
+      toast({ title: "Producto Desvinculado", description: "El producto ha sido removido de esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 };

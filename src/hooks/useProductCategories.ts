@@ -1,24 +1,21 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
-export interface Brand {
+export interface ProductCategory {
   id: string;
   name: string;
   description?: string;
-  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export const useBrands = () => {
+export const useProductCategories = () => {
   const { session, currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useQuery<Brand[], Error>({
-    queryKey: ['brands', tenantId],
+  return useQuery<ProductCategory[], Error>({
+    queryKey: ['productCategories', tenantId],
     queryFn: async () => {
       if (!tenantId || !session) return [];
 
@@ -29,63 +26,29 @@ export const useBrands = () => {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          action: 'get_brands',
+          action: 'get_product_categories',
           payload: { tenantId: tenantId },
         }),
       });
 
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || 'Failed to fetch brands');
+        throw new Error(json.error || 'Failed to fetch product categories');
       }
-      return json as Brand[];
+      return json as ProductCategory[];
     },
     enabled: !!tenantId && !!session,
   });
 };
 
-export const useActiveBrands = () => {
-  const { session, currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
-
-  return useQuery<Brand[], Error>({
-    queryKey: ['brands', 'active', tenantId],
-    queryFn: async () => {
-      if (!tenantId || !session) return [];
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          action: 'get_brands',
-          payload: { tenantId: tenantId, isActive: true },
-        }),
-      });
-
-      const json = await response.json();
-      if (!response.ok) {
-        throw new Error(json.error || 'Failed to fetch active brands');
-      }
-      return json as Brand[];
-    },
-    enabled: !!tenantId && !!session,
-  });
-};
-
-export const useCreateBrand = () => {
+export const useCreateProductCategory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { session, currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async (brandData: {
-      name: string;
-      description?: string;
-    }) => {
+    mutationFn: async (categoryData: Omit<ProductCategory, 'id' | 'created_at' | 'updated_at'>) => {
       if (!tenantId || !session) throw new Error("Tenant ID or session not available");
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
@@ -95,43 +58,36 @@ export const useCreateBrand = () => {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          action: 'create_brand',
-          payload: { tenantId: tenantId, ...brandData },
+          action: 'create_product_category',
+          payload: { tenantId: tenantId, ...categoryData },
         }),
       });
 
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || 'Failed to create brand');
+        throw new Error(json.error || 'Failed to create product category');
       }
-      return json as Brand;
+      return json as ProductCategory;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['brands', tenantId] });
-      toast({
-        title: "Marca creada",
-        description: "La marca ha sido creada exitosamente.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
+      toast({ title: "Categoría creada", description: "La categoría ha sido creada exitosamente." });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la marca. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-      console.error('Error creating brand:', error);
+      toast({ title: "Error", description: "No se pudo crear la categoría.", variant: "destructive" });
+      console.error('Error creating product category:', error);
     },
   });
 };
 
-export const useUpdateBrand = () => {
+export const useUpdateProductCategory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { session, currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Brand> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<ProductCategory> }) => {
       if (!tenantId || !session) throw new Error("Tenant ID or session not available");
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
@@ -141,36 +97,29 @@ export const useUpdateBrand = () => {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          action: 'update_brand',
+          action: 'update_product_category',
           payload: { tenantId: tenantId, id: id, ...updates },
         }),
       });
 
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || 'Failed to update brand');
+        throw new Error(json.error || 'Failed to update product category');
       }
-      return json as Brand;
+      return json as ProductCategory;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['brands', tenantId] });
-      toast({
-        title: "Marca actualizada",
-        description: "La marca ha sido actualizada exitosamente.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
+      toast({ title: "Categoría actualizada", description: "La categoría ha sido actualizada exitosamente." });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la marca. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-      console.error('Error updating brand:', error);
+      toast({ title: "Error", description: "No se pudo actualizar la categoría.", variant: "destructive" });
+      console.error('Error updating product category:', error);
     },
   });
 };
 
-export const useDeleteBrand = () => {
+export const useDeleteProductCategory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { session, currentAssignment } = useAuth();
@@ -187,29 +136,29 @@ export const useDeleteBrand = () => {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          action: 'delete_brand',
+          action: 'delete_product_category',
           payload: { tenantId: tenantId, id: id },
         }),
       });
 
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || 'Failed to delete brand');
+        throw new Error(json.error || 'Failed to delete product category');
       }
       return json;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['brands', tenantId] });
-      toast({ title: "Marca eliminada", description: "La marca ha sido eliminada exitosamente." });
+      queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
+      toast({ title: "Categoría eliminada", description: "La categoría ha sido eliminada exitosamente." });
     },
     onError: (error) => {
-      toast({ title: "Error", description: "No se pudo eliminar la marca.", variant: "destructive" });
-      console.error('Error deleting brand:', error);
+      toast({ title: "Error", description: "No se pudo eliminar la categoría.", variant: "destructive" });
+      console.error('Error deleting product category:', error);
     },
   });
 };
 
-export const useToggleBrandStatus = () => {
+export const useToggleProductCategoryStatus = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { session, currentAssignment } = useAuth();
@@ -226,27 +175,27 @@ export const useToggleBrandStatus = () => {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          action: 'toggle_brand_status',
+          action: 'toggle_product_category_status',
           payload: { tenantId: tenantId, id: id, is_active: is_active },
         }),
       });
 
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || 'Failed to toggle brand status');
+        throw new Error(json.error || 'Failed to toggle product category status');
       }
       return json;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['brands', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
       toast({
-        title: data.is_active ? "Marca activada" : "Marca desactivada",
-        description: `La marca ha sido ${data.is_active ? 'activada' : 'desactivada'} exitosamente.`,
+        title: data.is_active ? "Categoría activada" : "Categoría desactivada",
+        description: `La categoría ha sido ${data.is_active ? 'activada' : 'desactivada'} exitosamente.`,
       });
     },
     onError: (error) => {
-      toast({ title: "Error", description: "No se pudo cambiar el estado de la marca.", variant: "destructive" });
-      console.error('Error toggling brand status:', error);
+      toast({ title: "Error", description: "No se pudo cambiar el estado de la categoría.", variant: "destructive" });
+      console.error('Error toggling product category status:', error);
     },
   });
 };

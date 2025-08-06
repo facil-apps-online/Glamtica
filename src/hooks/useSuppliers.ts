@@ -1,11 +1,11 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
+// La interfaz base del proveedor
 interface Supplier {
   id: string;
+  tenant_id: string;
   identification_type: string;
   identification_number: string;
   name: string;
@@ -17,153 +17,116 @@ interface Supplier {
   updated_at: string;
 }
 
-interface CreateSupplierData {
-  identification_type: string;
-  identification_number: string;
-  name: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-}
+// Tipos para la creación y actualización, omitiendo los campos que gestiona el backend
+type CreateSupplierData = Omit<Supplier, 'id' | 'tenant_id' | 'is_active' | 'created_at' | 'updated_at'>;
+type UpdateSupplierData = Partial<Omit<Supplier, 'id' | 'tenant_id' | 'created_at' | 'updated_at'> & { id: string }>;
 
-interface UpdateSupplierData extends Partial<CreateSupplierData> {
-  is_active?: boolean;
-}
+// Hook genérico para invocar acciones de la Edge Function
+const useTenantAction = <T, P>(action: string) => {
+  const { session } = useAuth();
 
+  return async (payload: P): Promise<T> => {
+    if (!session) throw new Error("No hay sesión activa.");
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action, payload }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || `Error en la acción: ${action}`);
+    }
+    return result;
+  };
+};
+
+// Hook para obtener TODOS los proveedores del tenant
 export const useSuppliers = () => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+  const invokeGetSuppliers = useTenantAction<Supplier[], {}>('get_suppliers');
 
   return useQuery({
     queryKey: ['suppliers', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-      const { data, error } = await supabase.functions.invoke('tenant-actions', {
-        body: {
-          action: 'get_suppliers',
-          payload: {}, // No se necesita payload para obtener todos
-        },
-      });
-      if (error) throw new Error(error.message);
-      return data as Supplier[];
-    },
+    queryFn: () => invokeGetSuppliers({}),
     enabled: !!tenantId,
   });
 };
 
+// Hook para obtener solo los proveedores ACTIVOS
 export const useActiveSuppliers = () => {
-  return useQuery({
-    queryKey: ['suppliers', 'active'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) throw error;
-      return data as Supplier[];
-    },
-  });
+  const { data: suppliers, ...rest } = useSuppliers();
+  const activeSuppliers = suppliers?.filter(s => s.is_active);
+  return { data: activeSuppliers, ...rest };
 };
 
+// Hook para CREAR un proveedor
 export const useCreateSupplier = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeCreateSupplier = useTenantAction<Supplier, CreateSupplierData>('create_supplier');
 
   return useMutation({
-    mutationFn: async (supplierData: CreateSupplierData) => {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .insert(supplierData)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: invokeCreateSupplier,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', currentAssignment?.tenant_id] });
       toast({
         title: "Proveedor creado",
-        description: "El proveedor se ha creado correctamente.",
+        description: "El proveedor se ha registrado exitosamente.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo crear el proveedor.",
-        variant: "destructive",
-      });
-      console.error('Error creating supplier:', error);
+      toast({ title: "Error al crear", description: error.message, variant: "destructive" });
     },
   });
 };
 
+// Hook para ACTUALIZAR un proveedor
 export const useUpdateSupplier = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeUpdateSupplier = useTenantAction<Supplier, UpdateSupplierData>('update_supplier');
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: UpdateSupplierData }) => {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: invokeUpdateSupplier,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', currentAssignment?.tenant_id] });
       toast({
         title: "Proveedor actualizado",
         description: "Los cambios se han guardado correctamente.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el proveedor.",
-        variant: "destructive",
-      });
-      console.error('Error updating supplier:', error);
+      toast({ title: "Error al actualizar", description: error.message, variant: "destructive" });
     },
   });
 };
 
+// Hook para ACTIVAR/DESACTIVAR un proveedor
 export const useToggleSupplierStatus = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeToggle = useTenantAction<Supplier, { id: string; is_active: boolean }>('toggle_supplier_status');
 
   return useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .update({ is_active })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: invokeToggle,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', currentAssignment?.tenant_id] });
       toast({
         title: `Proveedor ${data.is_active ? 'activado' : 'desactivado'}`,
-        description: "El estado del proveedor se ha actualizado correctamente.",
+        description: "El estado del proveedor se ha actualizado.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo cambiar el estado del proveedor.",
-        variant: "destructive",
-      });
-      console.error('Error toggling supplier status:', error);
+      toast({ title: "Error en el cambio de estado", description: error.message, variant: "destructive" });
     },
   });
 };

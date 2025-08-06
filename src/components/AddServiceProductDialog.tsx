@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useActiveProducts } from "@/hooks/useProducts";
+import { useBranchProducts } from "@/hooks/useProducts";
 import { useAddServiceProduct, useUserProductCommission } from "@/hooks/useServiceProducts";
 import { ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,8 @@ export const AddServiceProductDialog = ({
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(0);
 
-  const { data: availableProducts } = useActiveProducts();
+  const { data: productsInBranch } = useBranchProducts();
+  const availableProducts = productsInBranch?.filter(p => p.is_branch_active);
   const { data: commissionRate } = useUserProductCommission(userId, productId);
   const addProductMutation = useAddServiceProduct();
   const { toast } = useToast();

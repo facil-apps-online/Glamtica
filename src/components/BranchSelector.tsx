@@ -6,7 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from './ui/skeleton';
 
 export const BranchSelector: React.FC = () => {
-  const { currentAssignment } = useAuth();
+  const { currentAssignment, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return <Skeleton className="h-10 w-48" />;
+  }
   const { data: branches, isLoading } = useBranches(currentAssignment?.tenant_id || '');
   const { selectedBranchId, setBranchId } = useBranchFilterStore();
 

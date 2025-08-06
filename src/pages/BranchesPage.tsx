@@ -23,8 +23,25 @@ const statusConfig = {
 };
 
 export default function BranchesPage() {
-  const { currentAssignment } = useAuth();
+  const { currentAssignment, loading: authLoading } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+
+  // Si la autenticación está cargando, muestra un esqueleto o un mensaje de carga
+  if (authLoading) {
+    return (
+      <div className="mt-4">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/2" />
+            <Skeleton className="h-4 w-3/4 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const navigate = useNavigate();
   const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false);

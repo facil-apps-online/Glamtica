@@ -1,44 +1,44 @@
-# Plan de Mejoras para la Gestión de Usuarios del Tenant
+# Plan de Desarrollo: Gestión de Productos por Sucursal
 
-Este documento detalla el plan de acción para mejorar la funcionalidad de gestión de usuarios dentro de un tenant.
-
----
-
-## Fase 1: Verificación y Corrección del Origen de Datos (Completada)
-
-**Objetivo:** Asegurar que la lista de usuarios se obtiene exclusivamente a través de la Edge Function `tenant-actions`.
-
-- [x] **1.1: Analizar `useTenantUsers.ts`**: Revisar el hook para confirmar que llama a la Edge Function `tenant-actions` con la acción `get_users_for_tenant`.
-- [x] **1.2: Analizar `tenant-actions`**: Inspeccionar la Edge Function para asegurar que maneja correctamente la acción `get_users_for_tenant`.
-- [x] **1.3: Corregir si es necesario**: No se necesitaron correcciones.
+**Objetivo:** Implementar la capacidad de asociar productos a sucursales específicas, permitiendo precios y control de stock independientes por cada una.
 
 ---
 
-## Fase 2: Lógica de Roles y Sucursales en el Formulario (Completada)
+### Fase 1: Modelo de Datos y Migración de Base de Datos
 
-**Objetivo:** Mejorar la UX del formulario de invitación, haciendo que la selección de sucursal sea condicional al rol.
-
-- [x] **2.1: Analizar `AddUserDialog.tsx`**: Estudiar el componente para entender el manejo del formulario.
-- [x] **2.2: Implementar Lógica Condicional**: Modificar el formulario para que el campo "Sucursal" se deshabilite si el rol seleccionado es `tenant_super_admin`.
-- [x] **2.3: Enviar `null` para Sucursal**: Asegurar que el valor de la sucursal se envíe como `null` para el rol de superadministrador.
-
----
-
-## Fase 3: Validación de Duplicados en el Backend (Completada)
-
-**Objetivo:** Impedir que un usuario sea asignado dos veces al mismo negocio.
-
-- [x] **3.1: Revisar `user-actions` Edge Function**: Se ha revisado y refactorizado la acción `invite_or_assign_user_to_tenant`.
-- [x] **3.2: Añadir Verificación de Existencia**: La lógica de verificación ya existía y se ha mantenido.
-- [x] **3.3: Devolver Error Claro**: El backend ya devuelve un error claro si la asignación existe.
+*   **Estado:** ✅ Completada
+*   **Tarea:** Diseñar la nueva estructura de la base de datos.
+*   **Requerimiento:** A la espera de las definiciones de las tablas `products`, `branches`, y `suppliers`.
+*   **Entregable:** Script de migración SQL para Supabase.
 
 ---
 
-## Fase 4: Implementación de Búsqueda de Usuarios (Completada)
+### Fase 2: Lógica de Negocio (Hooks de React)
 
-**Objetivo:** Facilitar la administración añadiendo una funcionalidad de búsqueda en la lista de usuarios.
+*   **Estado:** 🟡 En Progreso
+*   **Tarea:** Adaptar el código de la aplicación para leer y gestionar productos por sucursal.
+*   **Entregable:** Hooks de React modificados y/o nuevos.
 
-- [x] **4.1: Analizar `TenantUsersManager.tsx`**: Se ha añadido un `Input` de búsqueda en el `CardHeader`.
-- [x] **4.2: Añadir Estado de Búsqueda**: Se ha introducido el estado `searchTerm` para controlar el valor del input.
-- [x] **4.3: Añadir Input de Búsqueda**: El componente `Input` se ha añadido a la UI con un ícono de búsqueda.
-- [x] **4.4: Filtrar Resultados**: El `useMemo` que calcula `groupedUsers` ahora filtra los resultados en tiempo real.
+---
+
+### Fase 3: Interfaz de Usuario (Componentes de React)
+
+*   **Estado:** ⚪ Pendiente
+*   **Tarea:** Actualizar y crear los componentes visuales para la gestión de productos por sucursal.
+*   **Entregable:** Componentes de React nuevos y/o modificados.
+
+---
+
+### Fase 4: Pruebas y Verificación
+
+*   **Estado:** ⚪ Pendiente
+*   **Tarea:** Soporte durante la fase de pruebas del usuario.
+*   **Requerimiento:** Verificación y feedback por parte del usuario.
+
+---
+
+### Fase 5: Documentación
+
+*   **Estado:** ⚪ Pendiente
+*   **Tarea:** Documentar la nueva funcionalidad.
+*   **Entregable:** Actualizaciones en `WORK_DOCUMENTS.md` y `SUPERADMIN.md`.

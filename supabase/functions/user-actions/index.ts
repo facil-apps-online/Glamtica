@@ -2,6 +2,7 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -72,59 +73,34 @@ Deno.serve(async (req) => {
             throw new Error('Inicio de sesión fallido, no se recibió una sesión o usuario.');
         }
 
-        // --- LÓGICA PARA OBTENER Y ACTUALIZAR ASIGNACIONES DESDE app_metadata ---
-        console.log('Usuario autenticado. Hidratando asignaciones desde app_metadata...');
+        // --- LÓGICA OPTIMIZADA PARA OBTENER ASIGNACIONES HIDRATADAS ---
+        console.log('Usuario autenticado. Obteniendo asignaciones hidratadas desde la base de datos...');
         const authenticatedUser = data.user;
-        const currentAppMetadata = authenticatedUser.app_metadata || {};
-        const rawAssignments = currentAppMetadata.assignments || [];
 
-        // FIX: Ensure every assignment has a unique ID
-        const assignmentsWithIds = rawAssignments.map(a => ({
-          ...a,
-          assignment_id: a.assignment_id || crypto.randomUUID(),
-        }));
+        // Llamar a la nueva función RPC para obtener las asignaciones ya hidratadas
+        const { data: hydratedAssignments, error: rpcError } = await supabaseAdmin.rpc(
+          'get_hydrated_user_assignments',
+          { p_user_id: authenticatedUser.id }
+        );
 
-        // Fetch all roles, tenants, and branches once in parallel
-        const [{ data: allRoles, error: rolesError }, { data: allTenants, error: tenantsError }, { data: allBranches, error: branchesError }] = await Promise.all([
-            supabaseAdmin.from('roles').select('id, name, display_name'),
-            supabaseAdmin.from('tenants').select('id, name'),
-            supabaseAdmin.from('branches').select('id, name'),
-        ]);
-
-        if (rolesError) console.warn(`Error fetching all roles:`, rolesError.message);
-        if (tenantsError) console.warn(`Error fetching all tenants:`, tenantsError.message);
-        if (branchesError) console.warn(`Error fetching all branches:`, branchesError.message);
-
-        const hydratedAssignments = [];
-        for (const assignment of assignmentsWithIds) {
-            // Use pre-fetched data to hydrate assignment details
-            const tenant = allTenants?.find(t => t.id === assignment.tenant_id);
-            const role = allRoles?.find(r => r.id === assignment.role_id);
-            const branch = allBranches?.find(b => b.id === assignment.branch_id);
-
-            hydratedAssignments.push({
-                ...assignment,
-                tenant_name: tenant?.name || null,
-                role_name: role?.name || null,
-                role_display_name: role?.display_name || null,
-                branch_name: branch?.name || null,
-            });
+        if (rpcError) {
+          console.error('Error al llamar a get_hydrated_user_assignments:', rpcError.message);
+          throw new Error(`Error al obtener las asignaciones del usuario: ${rpcError.message}`);
         }
 
-        console.log('Asignaciones hidratadas:', hydratedAssignments);
+        console.log('Asignaciones hidratadas recibidas:', hydratedAssignments);
 
-        // Actualizar el app_metadata del usuario con las asignaciones hidratadas
-        const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          authenticatedUser.id,
-          { app_metadata: { ...authenticatedUser.app_metadata, assignments: hydratedAssignments } })
+        // Crear un nuevo objeto de usuario con las asignaciones hidratadas, sin modificar el original
+        const userWithHydratedAssignments = {
+          ...authenticatedUser,
+          app_metadata: {
+            ...authenticatedUser.app_metadata,
+            assignments: hydratedAssignments || [],
+          },
+        };
 
-        if (updateError) {
-          console.error('Error al actualizar app_metadata con asignaciones hidratadas:', updateError.message);
-          throw new Error(`Error al actualizar metadatos del usuario: ${updateError.message}`);
-        }
-
-        // Devolver la sesión y el usuario actualizados
-        responseData = { success: true, session: data.session, user: updatedUserResponse.user };
+        // Devolver la sesión y el objeto de usuario con las asignaciones ya hidratadas
+        responseData = { success: true, session: data.session, user: userWithHydratedAssignments };
         break;
       }
 

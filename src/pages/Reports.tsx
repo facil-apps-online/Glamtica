@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, DollarSign, Users, Calendar, Download, Filter } from "lucide-react";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useSchedulableUsers } from "@/hooks/useSchedulableUsers";
-import { useProducts } from "@/hooks/useProducts";
+
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 
 export default function Reports() {
@@ -15,7 +15,7 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState("");
   const { data: appointments } = useAppointments();
   const { data: users } = useSchedulableUsers();
-  const { data: products } = useProducts();
+  
   const { formatPrice } = usePriceFormat();
 
   const totalRevenue = appointments?.reduce((sum, apt) => sum + (apt.grand_total || apt.total_amount), 0) || 0;

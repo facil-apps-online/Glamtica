@@ -17,9 +17,9 @@ const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
 
   useEffect(() => {
     if (settings) {
-      const timezoneSetting = settings.find(s => s.key === 'timezone');
-      if (timezoneSetting && timezoneSetting.value) {
-        setAppTimeZone(timezoneSetting.value);
+      const timezoneSetting = settings.timezone;
+      if (timezoneSetting) {
+        setAppTimeZone(timezoneSetting);
       }
     }
   }, [settings]);

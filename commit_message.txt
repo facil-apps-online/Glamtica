@@ -1,7 +1,24 @@
-feat: Implementación y corrección de gestión de asignaciones de usuario
+feat: Mejoras en la gestión de productos y sucursales
 
-- Se movió la obtención de usuarios de `superadmin-actions` a `tenant-actions` para usuarios de tenant.
-- Se implementó la acción `update-assignments` en `user-actions` para actualizar asignaciones de usuario de forma segura, preservando asignaciones de otros tenants.
-- Se corrigió el `AssignmentManagerDialog` para pasar correctamente las asignaciones iniciales y el `tenantId` en el payload.
-- Se ajustó `repair-user-assignments` para aceptar `targetTenantId` y realizar una reparación específica por tenant.
-- Se eliminó el botón de reparación temporal del sidebar.
+Implementa las siguientes mejoras:
+- **Gestión de Productos por Sucursal:**
+  - Nueva pestaña 'Productos' en la configuración de sucursal (`/branches/:branchId/settings`).
+  - Permite añadir productos a una sucursal desde el catálogo general (`AddProductsToBranchDialog`).
+  - Permite la edición masiva de precios de productos en una sucursal (`BulkEditBranchPricesDialog`).
+- **Gestión de Precios de Producto Maestro:**
+  - Nuevo diálogo 'Gestionar Precios' en el catálogo general (`ManageProductPricesDialog`).
+  - Permite definir precios de un producto en todas las sucursales a las que está asignado.
+- **Refactorización de la Base de Datos:**
+  - Unificación de la función `get_tenant_branches` para aceptar solo `p_tenant_id`.
+  - Corrección de tipos de datos en la función `get_tenant_branches` (`language_code`, `latitude`, `longitude`).
+- **Mejoras de Usabilidad:**
+  - Filtrado de sucursales ya asignadas en el diálogo de asignación de productos.
+  - Eliminación de la vista de pestañas en la página de productos maestros.
+  - Ajuste del padding en la página de productos para aprovechar el ancho completo.
+- **Corrección de Errores:**
+  - Solucionado el error `useState is not defined` en varios componentes.
+  - Solucionado el error `Dialog is not defined` en `AssignProductToBranchesDialog.tsx`.
+  - Solucionado el problema de refresco de datos tras la asignación de productos.
+  - Restauración de la Edge Function `tenant-actions` a su estado completo.
+
+Este commit consolida todas las funcionalidades y correcciones realizadas durante la sesión.

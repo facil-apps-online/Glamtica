@@ -1,180 +1,143 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SupplierProduct {
   id: string;
+  tenant_id: string;
   supplier_id: string;
   product_id: string;
   supplier_price: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  products?: {
-    id: string;
+  products: { // Joined product data
     name: string;
+    description: string;
     price: number;
+    cost_price: number;
+    stock_quantity: number;
+    min_stock: number;
+    is_active: boolean;
   };
-  suppliers?: {
-    id: string;
+  suppliers: { // Joined supplier data
     name: string;
+    identification_number: string;
   };
 }
 
-interface CreateSupplierProductData {
+interface AddSupplierProductData {
   supplier_id: string;
   product_id: string;
   supplier_price: number;
+  branch_id: string; // Assuming branch_id is required for supplier_products table
 }
 
-export const useSupplierProducts = (supplierId?: string) => {
+interface UpdateSupplierProductData {
+  id: string;
+  supplier_price?: number;
+  is_active?: boolean;
+}
+
+// Hook genérico para invocar acciones de la Edge Function
+const useTenantAction = <T, P>(action: string) => {
+  const { session } = useAuth();
+
+  return async (payload: P): Promise<T> => {
+    if (!session) throw new Error("No hay sesión activa.");
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action, payload }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || `Error en la acción: ${action}`);
+    }
+    return result;
+  };
+};
+
+// Hook para obtener productos de un proveedor específico
+export const useProductsBySupplier = (supplierId?: string) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const invokeGetSupplierProducts = useTenantAction<SupplierProduct[], { supplierId?: string }>('get_supplier_products');
+
   return useQuery({
-    queryKey: ['supplier-products', supplierId],
-    queryFn: async () => {
-      let query = supabase
-        .from('supplier_products')
-        .select(`
-          *,
-          products (id, name, price),
-          suppliers (id, name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (supplierId) {
-        query = query.eq('supplier_id', supplierId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data as SupplierProduct[];
-    },
-    enabled: !supplierId || !!supplierId,
+    queryKey: ['supplierProducts', tenantId, supplierId],
+    queryFn: () => invokeGetSupplierProducts({ supplierId }),
+    enabled: !!tenantId && !!supplierId, // Only enable if supplierId is provided
   });
 };
 
-export const useProductsBySupplier = (supplierId: string) => {
-  return useQuery({
-    queryKey: ['supplier-products', supplierId, 'active'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('supplier_products')
-        .select(`
-          *,
-          products (id, name, price, stock_quantity)
-        `)
-        .eq('supplier_id', supplierId)
-        .eq('is_active', true)
-        .order('products(name)');
-
-      if (error) throw error;
-      return data as SupplierProduct[];
-    },
-    enabled: !!supplierId,
-  });
-};
-
-export const useCreateSupplierProduct = () => {
+// Hook para añadir un producto a un proveedor
+export const useAddSupplierProduct = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeAddSupplierProduct = useTenantAction<SupplierProduct, AddSupplierProductData>('add_supplier_product');
 
   return useMutation({
-    mutationFn: async (data: CreateSupplierProductData) => {
-      const { data: result, error } = await supabase
-        .from('supplier_products')
-        .insert(data)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: invokeAddSupplierProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplier-products'] });
+      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id] });
       toast({
-        title: "Producto agregado al proveedor",
-        description: "El producto se ha vinculado correctamente.",
+        title: "Producto de proveedor añadido",
+        description: "El producto se ha vinculado al proveedor exitosamente.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo agregar el producto al proveedor.",
-        variant: "destructive",
-      });
-      console.error('Error creating supplier product:', error);
+      toast({ title: "Error al añadir producto de proveedor", description: error.message, variant: "destructive" });
     },
   });
 };
 
+// Hook para actualizar un producto de proveedor
 export const useUpdateSupplierProduct = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeUpdateSupplierProduct = useTenantAction<SupplierProduct, UpdateSupplierProductData>('update_supplier_product');
 
   return useMutation({
-    mutationFn: async ({ 
-      id, 
-      updates 
-    }: { 
-      id: string; 
-      updates: Partial<CreateSupplierProductData & { is_active: boolean }> 
-    }) => {
-      const { data, error } = await supabase
-        .from('supplier_products')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: invokeUpdateSupplierProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplier-products'] });
+      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id] });
       toast({
-        title: "Producto actualizado",
+        title: "Producto de proveedor actualizado",
         description: "Los cambios se han guardado correctamente.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el producto del proveedor.",
-        variant: "destructive",
-      });
-      console.error('Error updating supplier product:', error);
+      toast({ title: "Error al actualizar producto de proveedor", description: error.message, variant: "destructive" });
     },
   });
 };
 
-export const useDeleteSupplierProduct = () => {
+// Hook para activar/desactivar un producto de proveedor
+export const useToggleSupplierProductStatus = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeToggleSupplierProductStatus = useTenantAction<SupplierProduct, { id: string; is_active: boolean }>('toggle_supplier_product_status');
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('supplier_products')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplier-products'] });
+    mutationFn: invokeToggleSupplierProductStatus,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id] });
       toast({
-        title: "Producto eliminado",
-        description: "El producto se ha eliminado del proveedor.",
+        title: `Producto de proveedor ${data.is_active ? 'activado' : 'desactivado'}`,
+        description: "El estado del producto de proveedor se ha actualizado.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el producto del proveedor.",
-        variant: "destructive",
-      });
-      console.error('Error deleting supplier product:', error);
+      toast({ title: "Error en el cambio de estado del producto de proveedor", description: error.message, variant: "destructive" });
     },
   });
 };

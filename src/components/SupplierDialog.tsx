@@ -1,13 +1,18 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, Trash2, Check, X } from "lucide-react";
 import { useCreateSupplier, useUpdateSupplier } from "@/hooks/useSuppliers";
+import { useMasterProducts } from "@/hooks/useProducts";
+import { useProductsBySupplier, useAddSupplierProduct, useUpdateSupplierProduct, useToggleSupplierProductStatus } from "@/hooks/useSupplierProducts";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePriceFormat } from "@/hooks/usePriceFormat";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 interface Supplier {
   id?: string;
@@ -41,8 +46,27 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
   const [phone, setPhone] = useState(supplier?.phone || "");
   const [email, setEmail] = useState(supplier?.email || "");
 
+  // State for new supplier product
+  const [newProductId, setNewProductId] = useState("");
+  const [newSupplierPrice, setNewSupplierPrice] = useState<number | string>(0);
+
   const createMutation = useCreateSupplier();
   const updateMutation = useUpdateSupplier();
+  const { data: allProducts } = useMasterProducts(); // All products in the system
+  const { data: supplierProducts, isLoading: isLoadingSupplierProducts, refetch: refetchSupplierProducts } = useProductsBySupplier(supplier?.id);
+  const addSupplierProductMutation = useAddSupplierProduct();
+  const updateSupplierProductMutation = useUpdateSupplierProduct();
+  const toggleSupplierProductStatusMutation = useToggleSupplierProductStatus();
+  const { currentAssignment } = useAuth();
+  const { formatPrice } = usePriceFormat();
+
+  const branchId = currentAssignment?.branch_id; // Get branch_id from current assignment
+
+  useEffect(() => {
+    if (open && supplier?.id) {
+      refetchSupplierProducts();
+    }
+  }, [open, supplier?.id, refetchSupplierProducts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,8 +108,40 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
       setAddress("");
       setPhone("");
       setEmail("");
+      setNewProductId("");
+      setNewSupplierPrice(0);
     }
   };
+
+  const handleAddSupplierProduct = async () => {
+    if (!supplier?.id || !newProductId || newSupplierPrice === 0 || !branchId) {
+      // Add branchId to validation
+      console.error("Missing data for adding supplier product", { supplierId: supplier?.id, newProductId, newSupplierPrice, branchId });
+      return;
+    }
+
+    await addSupplierProductMutation.mutateAsync({
+      supplier_id: supplier.id,
+      product_id: newProductId,
+      supplier_price: Number(newSupplierPrice),
+      branch_id: branchId, // Pass branch_id
+    });
+
+    setNewProductId("");
+    setNewSupplierPrice(0);
+  };
+
+  const handleUpdateSupplierProductPrice = async (supplierProductId: string, price: number) => {
+    await updateSupplierProductMutation.mutateAsync({ id: supplierProductId, supplier_price: price });
+  };
+
+  const handleToggleSupplierProductStatus = async (supplierProductId: string, isActive: boolean) => {
+    await toggleSupplierProductStatusMutation.mutateAsync({ id: supplierProductId, is_active: isActive });
+  };
+
+  const availableProducts = allProducts?.filter(p => 
+    !supplierProducts?.some(sp => sp.product_id === p.id)
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -97,7 +153,7 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary">
             {supplier ? "Editar Proveedor" : "Nuevo Proveedor"}
@@ -174,6 +230,76 @@ export const SupplierDialog = ({ supplier, trigger }: SupplierDialogProps) => {
               />
             </div>
           </div>
+
+          {supplier && (
+            <div className="space-y-4 border-t pt-4 mt-4">
+              <h3 className="text-lg font-semibold">Productos del Proveedor</h3>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="product">Producto</Label>
+                  <Select value={newProductId} onValueChange={setNewProductId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar producto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProducts?.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-32">
+                  <Label htmlFor="price">Precio ({formatPrice(0).replace(/\d|\.|,/g, '')})</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={newSupplierPrice}
+                    onChange={(e) => setNewSupplierPrice(parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <Button type="button" onClick={handleAddSupplierProduct} className="mt-auto">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {isLoadingSupplierProducts ? (
+                <div>Cargando productos asociados...</div>
+              ) : supplierProducts && supplierProducts.length > 0 ? (
+                <div className="space-y-2">
+                  {supplierProducts.map((sp) => (
+                    <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
+                      <div className="flex-1">
+                        <p className="font-medium">{sp.products.name}</p>
+                        <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={sp.supplier_price}
+                          onChange={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)}
+                          className="w-24 text-right"
+                        />
+                        <Badge variant={sp.is_active ? 'success' : 'destructive'}>
+                          {sp.is_active ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                        <Switch
+                          checked={sp.is_active}
+                          onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)}
+                          aria-label={`Activar o desactivar ${sp.products.name}`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button

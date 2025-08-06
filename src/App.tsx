@@ -16,6 +16,8 @@ import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
+import { SuppliersPage } from "@/pages/SuppliersPage";
+import BranchProductsPage from "@/pages/Inventory/BranchProductsPage";
 
 
 
@@ -48,13 +50,18 @@ function App() {
 
               <Route element={<ProtectedRoute />}>
                 
-                <Route path="/" element={<Layout><Index /></Layout>}>
-                  <Route index element={<Index />} />
+                {/* RUTA PADRE CON LAYOUT */}
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<Index />} /> {/* RUTA INDEX PARA LA PÁGINA DE INICIO */}
                   <Route path="profile-settings" element={<ProfileSettings />} />
                   <Route path="appointments" element={<Appointments />} />
                   <Route path="clients" element={<Clients />} />
                   <Route path="products" element={<Products />} />
-                  <Route path="inventory" element={<Inventory />} />
+                  <Route path="inventory">
+                    <Route index element={<Inventory />} />
+                    <Route path="suppliers" element={<SuppliersPage />} />
+                    <Route path="branch-products" element={<BranchProductsPage />} />
+                  </Route>
                   <Route path="services" element={<Services />} />
                   <Route path="team" element={<Team />} />
                   <Route path="reports" element={<Reports />} />

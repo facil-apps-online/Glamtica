@@ -11,8 +11,10 @@ import { useCreatePurchase } from "@/hooks/usePurchases";
 import { useActiveSuppliers } from "@/hooks/useSuppliers";
 import { useProductsBySupplier } from "@/hooks/useSupplierProducts";
 import { useSettings } from "@/hooks/useSettings";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { SupplierDialog } from "@/components/SupplierDialog";
+
 
 interface PurchaseItem {
   product_id: string;
@@ -37,16 +39,17 @@ export const PurchaseDialog = ({ trigger }: PurchaseDialogProps) => {
   const createMutation = useCreatePurchase();
   const { data: suppliers } = useActiveSuppliers();
   const { data: supplierProducts } = useProductsBySupplier(supplierId);
-  const { data: settings } = useSettings();
+  const { data: tenantSettings } = useSettings();
+  const { user } = useAuth();
   const { formatPrice } = usePriceFormat();
 
-  // Obtener símbolo de moneda de configuración
-  const currencySymbol = settings?.find(s => s.key === 'currency')?.value || 'EUR';
+  // Lógica de configuración en cascada: Usuario > Tenant > Por Defecto
+  const currencySymbol = user?.user_metadata?.currency || tenantSettings?.currency || 'EUR';
   const displaySymbol = currencySymbol === 'EUR' ? '€' : 
                        currencySymbol === 'USD' ? '$' : 
                        currencySymbol === 'GBP' ? '£' : currencySymbol;
 
-  const costingMethod = settings?.find(s => s.key === 'costing_method')?.value || 'average';
+  const costingMethod = user?.user_metadata?.costing_method || tenantSettings?.costing_method || 'average';
   const costingMethodLabel = costingMethod === 'average' ? 'Promedio' : 'Última Compra';
 
   const selectedSupplier = suppliers?.find(s => s.id === supplierId);

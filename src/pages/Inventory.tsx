@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,16 +14,23 @@ import {
   Search,
   Filter
 } from "lucide-react";
-import { useProducts } from "@/hooks/useProducts";
+import { useBranchProducts } from "@/hooks/useProducts";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useBranches } from "@/hooks/useBranches";
 import { usePurchases } from "@/hooks/usePurchases";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { PurchaseDialog } from "@/components/PurchaseDialog";
 import { SupplierDialog } from "@/components/SupplierDialog";
+
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 
 export default function Inventory() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: products } = useProducts();
+  const { selectedBranchId, setSelectedBranchId } = useBranchFilterStore();
+  const { data: branches, isLoading: isLoadingBranches } = useBranches();
+  const { data: products, isLoading: isLoadingProducts } = useBranchProducts();
   const { data: purchases } = usePurchases();
   const { data: suppliers } = useSuppliers();
   const { formatPrice } = usePriceFormat();
@@ -31,19 +39,19 @@ export default function Inventory() {
   const lowStockProducts = products?.filter(product => {
     const stock = product.stock_quantity || 0;
     const minStock = product.min_stock || 0;
-    return stock <= minStock && product.is_active;
+    return stock <= minStock && product.is_branch_active;
   });
 
   // Productos sin stock
   const outOfStockProducts = products?.filter(product => {
     const stock = product.stock_quantity || 0;
-    return stock === 0 && product.is_active;
+    return stock === 0 && product.is_branch_active;
   });
 
   // Valor total del inventario
   const totalInventoryValue = products?.reduce((total, product) => {
     const stock = product.stock_quantity || 0;
-    const cost = product.cost_price || product.price;
+    const cost = product.cost_price || product.selling_price;
     return total + (stock * cost);
   }, 0) || 0;
 
@@ -58,11 +66,32 @@ export default function Inventory() {
             Gestión de Inventario
           </h1>
           <p className="text-slate-600 mt-2">
-            Control completo de productos, stock y proveedores
+            Control completo de productos, stock y proveedores por sucursal
           </p>
         </div>
-        <div className="flex gap-2">
-          <SupplierDialog />
+        <div className="flex gap-4 items-center">
+           <div className="w-64">
+            <Select onValueChange={setSelectedBranchId} value={selectedBranchId || ''}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona una sucursal..." />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingBranches ? (
+                  <SelectItem value="loading" disabled>Cargando sucursales...</SelectItem>
+                ) : (
+                  branches?.map(branch => (
+                    <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={() => navigate('/inventory/suppliers')}>
+            Proveedores
+          </Button>
+          <Button onClick={() => navigate('/inventory/branch-products')}>
+            Productos por Sucursal
+          </Button>
           <PurchaseDialog />
         </div>
       </div>
@@ -89,7 +118,7 @@ export default function Inventory() {
               <div>
                 <p className="text-sm font-medium text-slate-600">Productos Activos</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {products?.filter(p => p.is_active).length || 0}
+                  {products?.filter(p => p.is_branch_active).length || 0}
                 </p>
               </div>
               <Package className="w-8 h-8 text-blue-600" />
@@ -189,7 +218,7 @@ export default function Inventory() {
                         <div>
                           <p className="font-medium">{product.name}</p>
                           <p className="text-sm text-slate-600">
-                            Precio: {formatPrice(product.price)}
+                            Precio: {formatPrice(product.selling_price)}
                           </p>
                         </div>
                         <Badge variant="destructive">

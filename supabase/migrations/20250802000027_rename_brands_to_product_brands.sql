@@ -1,0 +1,1 @@
+ALTER TABLE public.brands RENAME TO product_brands;

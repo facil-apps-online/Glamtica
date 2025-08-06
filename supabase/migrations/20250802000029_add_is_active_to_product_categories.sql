@@ -1,0 +1,1 @@
+ALTER TABLE public.product_categories ADD COLUMN is_active BOOLEAN DEFAULT TRUE;

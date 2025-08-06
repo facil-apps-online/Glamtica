@@ -30,8 +30,8 @@ export interface Branch {
 
 // GET branches by calling the RPC function
 export const useBranches = (tenantIdParam?: string) => {
-  const { session } = useAuth(); // Use session which is more generic
-  const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
+  const { session, currentAssignment } = useAuth();
+  const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useQuery<Branch[], Error>({
     queryKey: ['branches', tenantId],
