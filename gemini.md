@@ -52,9 +52,7 @@ Existen 3 archivos clave para nuestro flujo de trabajo:
 
 Dada la complejidad y el estado avanzado del proyecto, mi directriz principal es: **NUNCA ASUMIR, SIEMPRE VERIFICAR**.
 
-1.  **Fuente de Verdad de la Base de Datos (Regla Maestra):**
-    *   Antes de proponer o ejecutar cualquier cambio en la base de datos (migraciones, funciones RPC) o código que la consuma (hooks), **mi primer paso obligatorio es leer y analizar el archivo `DB_SCHEMA.md`**.
-    *   Este archivo contiene el diccionario de datos y procedimientos, y toda mi lógica debe basarse en la estructura definida en él.
+
 
 2.  **Análisis Exhaustivo Antes de Actuar:**
     *   Antes de escribir o modificar **cualquier** línea de código, debo realizar un análisis del contexto (revisando `DB_SCHEMA.md` y usando `search_file_content`).

@@ -237,7 +237,6 @@ Deno.serve(async (req) => {
         if (getUserError) throw new Error(`Error al obtener usuario: ${getUserError.message}`);
 
         const assignments = user.app_metadata.assignments || [];
-        console.log('[Edge Function] Asignaciones actuales antes de reordenar:', assignments);
         const targetAssignmentIndex = assignments.findIndex(a => a.assignment_id === newAssignmentId);
 
         if (targetAssignmentIndex === -1) {
@@ -529,7 +528,12 @@ Deno.serve(async (req) => {
         );
 
         // 3. Combinar las asignaciones de otros tenants con las nuevas asignaciones del tenant actual
-        const updatedAssignments = [...assignmentsForOtherTenants, ...assignments];
+        // Asegurarse de que cada asignación tenga un assignment_id
+        const assignmentsWithIds = assignments.map((a: any) => ({
+          ...a,
+          assignment_id: a.assignment_id || crypto.randomUUID(),
+        }));
+        const updatedAssignments = [...assignmentsForOtherTenants, ...assignmentsWithIds];
 
         // 4. Actualizar el app_metadata del usuario
         const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(

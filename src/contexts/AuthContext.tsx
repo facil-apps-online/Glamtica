@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 // --- INTERFACES ---
 interface UserProfile {
@@ -54,6 +55,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const [currentAssignment, setCurrentAssignment] = useState<UserAssignment | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const previousAssignmentRef = useRef<UserAssignment | null>(null);
 
   const processSession = useCallback(async (sessionData: Session | null) => {
     try {
@@ -239,6 +242,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       return;
     }
 
+    // Guardar el currentAssignment actual antes de intentar el cambio
+    previousAssignmentRef.current = currentAssignment;
+
     // 1. Actualizar el estado local inmediatamente para una respuesta de UI rápida.
     setCurrentAssignment(newAssignment);
     
@@ -259,10 +265,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
 
       // 3. Refrescar la sesión de Supabase en segundo plano para mantener la consistencia.
       await refreshUser();
+      toast({
+        title: "Contexto cambiado",
+        description: `Ahora estás en el contexto de ${newAssignment.tenant_name}${newAssignment.branch_name ? ' (' + newAssignment.branch_name + ')' : ''}.`,
+        variant: "default",
+      });
 
     } catch (error) {
       console.error("Fallo al notificar al backend o refrescar la sesión después del cambio de contexto:", error);
-      // Opcional: podrías tener una lógica para revertir el cambio en la UI si el backend falla.
+      // Revertir el currentAssignment si el backend falla
+      setCurrentAssignment(previousAssignmentRef.current);
+      localStorage.setItem('lastSelectedAssignmentId', previousAssignmentRef.current?.assignment_id || '');
+
+      toast({
+        title: "Error al cambiar de contexto",
+        description: error.message || "Ocurrió un error inesperado al cambiar de contexto.",
+        variant: "destructive",
+      });
     }
   };
 
