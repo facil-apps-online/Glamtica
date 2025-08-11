@@ -3,192 +3,139 @@ import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { MasterService, BranchService } from "@/types/services";
 
-export interface Service {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  duration_minutes: number;
-  is_active: boolean;
-  category_id?: string;
-  created_at: string;
-  updated_at: string;
-  service_categories?: {
-    id: string;
-    name: string;
-    description?: string;
-    is_active: boolean;
-  };
-}
+// --- HELPERS ---
 
-// --- QUERIES REFACTORIZADAS ---
+const callTenantAction = async (action: string, payload: any) => {
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+    body: { action, payload },
+  });
+  if (error) throw error;
+  return data;
+};
 
-export const useServices = () => {
-  const { currentAssignment } = useAuth();
+// --- HOOKS ---
+
+// Hook para obtener los servicios disponibles en la sucursal seleccionada
+export const useBranchServices = (branchIdParam?: string) => {
   const { selectedBranchId } = useBranchFilterStore();
-  const tenantId = currentAssignment?.tenant_id;
+  const branchIdToUse = branchIdParam || selectedBranchId;
 
-  return useQuery({
-    queryKey: ['services', tenantId, selectedBranchId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-
-      let servicesQuery = supabase
-        .from('services')
-        .select('*')
-        .eq('tenant_id', tenantId);
-
-      if (selectedBranchId !== 'all') {
-        servicesQuery = servicesQuery.eq('branch_id', selectedBranchId);
-      }
-
-      const { data: servicesData, error: servicesError } = await servicesQuery.order('name');
-      if (servicesError) throw servicesError;
-
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('service_categories')
-        .select('*')
-        .eq('tenant_id', tenantId);
-
-      if (categoriesError) console.warn('Error fetching categories:', categoriesError);
-
-      const servicesWithCategories = servicesData.map(service => {
-        const category = categoriesData?.find(cat => cat.id === service.category_id);
-        return { ...service, service_categories: category || undefined };
-      });
-
-      return servicesWithCategories as Service[];
-    },
-    enabled: !!tenantId,
+  return useQuery<BranchService[], Error>({
+    queryKey: ['branch_services', branchIdToUse],
+    queryFn: () => callTenantAction('get_branch_services', { branchId: branchIdToUse }),
+    enabled: !!branchIdToUse && branchIdToUse !== 'all',
   });
 };
 
-export const useActiveServices = () => {
-  const { currentAssignment } = useAuth();
-  const { selectedBranchId } = useBranchFilterStore();
-  const tenantId = currentAssignment?.tenant_id;
-
-  return useQuery({
-    queryKey: ['services', 'active', tenantId, selectedBranchId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-
-      let servicesQuery = supabase
-        .from('services')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
-
-      if (selectedBranchId !== 'all') {
-        servicesQuery = servicesQuery.eq('branch_id', selectedBranchId);
-      }
-
-      const { data: servicesData, error: servicesError } = await servicesQuery.order('name');
-      if (servicesError) throw servicesError;
-
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('service_categories')
-        .select('*')
-        .eq('tenant_id', tenantId);
-
-      if (categoriesError) console.warn('Error fetching categories:', categoriesError);
-
-      const servicesWithCategories = servicesData.map(service => {
-        const category = categoriesData?.find(cat => cat.id === service.category_id);
-        return { ...service, service_categories: category || undefined };
-      });
-
-      return servicesWithCategories as Service[];
-    },
-    enabled: !!tenantId,
+// Hook para obtener todos los servicios maestros (el catálogo general)
+export const useMasterServices = () => {
+  return useQuery<MasterService[], Error>({
+    queryKey: ['master_services'],
+    queryFn: () => callTenantAction('get_master_services', {}),
   });
 };
 
-// --- MUTACIONES RESTAURADAS ---
+// Hook para obtener los precios de un servicio maestro en todas sus sucursales
+export const useServiceBranchPrices = (serviceId: string) => {
+  return useQuery<BranchService[], Error>({
+    queryKey: ['service_branch_prices', serviceId],
+    queryFn: () => callTenantAction('get_service_branch_prices', { serviceId }),
+    enabled: !!serviceId,
+  });
+};
 
-export const useCreateService = () => {
+// --- MUTATIONS ---
+
+// Crear un nuevo servicio en el catálogo maestro
+export const useCreateMasterService = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation({
-    mutationFn: async (serviceData: Omit<Service, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from('services')
-        .insert([serviceData])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+  return useMutation<MasterService, Error, Omit<MasterService, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>({
+    mutationFn: (serviceData) => 
+      callTenantAction('create_master_service', { serviceData }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services', tenantId] });
-      toast({ title: "Servicio creado", description: "El servicio ha sido creado exitosamente." });
+      queryClient.invalidateQueries({ queryKey: ['master_services'] });
+      toast({ title: "Servicio Maestro Creado", description: "El servicio ha sido añadido al catálogo general." });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: "No se pudo crear el servicio.", variant: "destructive" });
-      console.error('Error creating service:', error);
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 };
 
-export const useUpdateService = () => {
+// Actualizar un servicio del catálogo maestro
+export const useUpdateMasterService = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Service> }) => {
-      const { data, error } = await supabase
-        .from('services')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+  return useMutation<MasterService, Error, { id: string; updates: Partial<MasterService> }>({
+    mutationFn: ({ id, updates }) =>
+      callTenantAction('update_master_service', { id, updates }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services', tenantId] });
-      toast({ title: "Servicio actualizado", description: "El servicio ha sido actualizado exitosamente." });
+      queryClient.invalidateQueries({ queryKey: ['master_services'] });
+      queryClient.invalidateQueries({ queryKey: ['branch_services'] });
+      toast({ title: "Servicio Maestro Actualizado", description: "La información del servicio ha sido actualizada." });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: "No se pudo actualizar el servicio.", variant: "destructive" });
-      console.error('Error updating service:', error);
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 };
 
-export const useToggleServiceStatus = () => {
+// Asignar un servicio a una o varias sucursales
+export const useAssignServiceToBranch = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { data, error } = await supabase
-        .from('services')
-        .update({ is_active })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+  return useMutation<any, Error, { service_id: string; branch_ids: string[]; defaults: { selling_price: number; duration_minutes?: number; is_active?: boolean } }>({
+    mutationFn: (payload) =>
+      callTenantAction('assign_service_to_branch', payload),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['branch_services'] });
+      queryClient.invalidateQueries({ queryKey: ['service_branch_prices', variables.service_id] });
+      toast({ title: "Asignación Exitosa", description: "El servicio ha sido asignado a la(s) sucursal(es)." });
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['services', tenantId] });
-      toast({
-        title: data.is_active ? "Servicio activado" : "Servicio desactivado",
-        description: `El servicio ha sido ${data.is_active ? 'activado' : 'desactivado'} exitosamente.`,
-      });
+    onError: (error: Error) => {
+      toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: "No se pudo cambiar el estado del servicio.", variant: "destructive" });
-      console.error('Error toggling service status:', error);
+  });
+};
+
+// Actualizar un servicio en una sucursal específica
+export const useUpdateBranchService = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<BranchService, Error, { id: string; updates: Partial<Omit<BranchService, 'id'>> }>({
+    mutationFn: ({ id, updates }) =>
+      callTenantAction('update_branch_service', { id, updates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branch_services'] });
+      toast({ title: "Servicio Actualizado", description: "El precio, duración o estado ha sido actualizado para esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Desvincular un servicio de una sucursal
+export const useRemoveServiceFromBranch = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, string>({
+    mutationFn: (branch_service_id) =>
+      callTenantAction('remove_service_from_branch', { branch_service_id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branch_services'] });
+      toast({ title: "Servicio Desvinculado", description: "El servicio ha sido removido de esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 };

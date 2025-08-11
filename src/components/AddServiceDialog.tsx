@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useActiveServices } from "@/hooks/useServices";
+import { useBranchServices } from "@/hooks/useServices"; // Cambiado de useActiveServices
 import { useAvailableUsers } from "@/hooks/useAvailableUsers";
 import { useAddAttentionService } from "@/hooks/useAttentionServices";
 
@@ -24,7 +24,7 @@ export const AddServiceDialog = ({ children, attentionId, attentionDate, attenti
   const [notes, setNotes] = useState("");
   const [duration, setDuration] = useState(0);
 
-  const { data: availableServices } = useActiveServices();
+  const { data: branchServices } = useBranchServices(); // Cambiado de availableServices
   const { data: availableUsers } = useAvailableUsers(serviceId, attentionDate, attentionTime, duration);
   const addServiceMutation = useAddAttentionService();
 
@@ -61,9 +61,9 @@ export const AddServiceDialog = ({ children, attentionId, attentionDate, attenti
     setServiceId(value);
     setUserId("");
     
-    const service = availableServices?.find(s => s.id === value);
+    const service = branchServices?.find(s => s.id === value); // Cambiado de availableServices
     if (service) {
-      setServicePrice(service.price);
+      setServicePrice(service.selling_price); // Cambiado de service.price
       setDuration(service.duration_minutes);
     }
   };
@@ -84,7 +84,7 @@ export const AddServiceDialog = ({ children, attentionId, attentionDate, attenti
             <Select value={serviceId} onValueChange={handleServiceChange} required>
               <SelectTrigger><SelectValue placeholder="Selecciona un servicio" /></SelectTrigger>
               <SelectContent>
-                {availableServices?.map((service) => (
+                {branchServices?.map((service) => ( // Cambiado de availableServices
                   <SelectItem key={service.id} value={service.id}>
                     {service.name}
                   </SelectItem>

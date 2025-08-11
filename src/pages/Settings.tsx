@@ -7,7 +7,8 @@ import { UsersTab } from "./Settings/UsersTab";
 import { TributarioTab } from "./Settings/TributarioTab";
 import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
 import { SubscriptionTab } from "./Settings/SubscriptionTab";
-import { Building, Users, Store, CreditCard, FileText, Box } from 'lucide-react';
+import { ClientsTab } from "./Settings/ClientsTab";
+import { Building, Users, Store, CreditCard, FileText, Box, Users2 } from 'lucide-react';
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -42,6 +43,7 @@ export default function Settings() {
           {renderTrigger("general", <Building className="h-4 w-4" />, "General")}
           
           {(isSuperAdmin || isAdmin) && renderTrigger("users", <Users className="h-4 w-4" />, "Usuarios")}
+          {(isSuperAdmin || isAdmin) && renderTrigger("clients", <Users2 className="h-4 w-4" />, "Clientes")}
           {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
           {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
           {isSuperAdmin && renderTrigger("subscription", <CreditCard className="h-4 w-4" />, "Suscripción")}
@@ -56,6 +58,12 @@ export default function Settings() {
         {(isSuperAdmin || isAdmin) && (
           <TabsContent value="users">
             <UsersTab />
+          </TabsContent>
+        )}
+
+        {(isSuperAdmin || isAdmin) && (
+          <TabsContent value="clients">
+            <ClientsTab />
           </TabsContent>
         )}
 

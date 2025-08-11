@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useClients } from "@/hooks/useClients";
-import { useActiveServices } from "@/hooks/useServices";
+import { useBranchServices } from "@/hooks/useServices"; // Cambiado de useActiveServices
 import { useAvailableUsers } from "@/hooks/useAvailableUsers";
 import { useCreateAttention } from "@/hooks/useAttentions";
 import { Plus, Trash2 } from "lucide-react";
@@ -35,7 +35,7 @@ export const AttentionDialog = ({ children }: AttentionDialogProps) => {
   ]);
 
   const { data: clients } = useClients();
-  const { data: availableServices } = useActiveServices();
+  const { data: branchServices } = useBranchServices(); // Cambiado de availableServices
   const createAttentionMutation = useCreateAttention();
 
   const addService = () => {
@@ -53,9 +53,9 @@ export const AttentionDialog = ({ children }: AttentionDialogProps) => {
     const currentService = { ...updatedServices[index], [field]: value };
 
     if (field === 'service_id') {
-      const service = availableServices?.find(s => s.id === value);
+      const service = branchServices?.find(s => s.id === value); // Cambiado de availableServices
       if (service) {
-        currentService.service_price = service.price;
+        currentService.service_price = service.selling_price; // Cambiado de service.price
         currentService.duration = service.duration_minutes;
       }
       currentService.user_id = "";
@@ -139,7 +139,7 @@ export const AttentionDialog = ({ children }: AttentionDialogProps) => {
                 onUpdate={updateService}
                 onRemove={removeService}
                 canRemove={services.length > 1}
-                availableServices={availableServices || []}
+                availableServices={branchServices || []} // Cambiado de availableServices
               />
             ))}
           </div>
@@ -194,6 +194,10 @@ const ServiceFormCard = ({ service, index, attentionDate, attentionTime, onUpdat
         <div className="space-y-2">
           <Label>Precio</Label>
           <Input type="number" value={service.service_price} onChange={(e) => onUpdate(index, 'service_price', parseFloat(e.target.value) || 0)} required />
+        </div>
+        <div className="space-y-2">
+          <Label>Duración (minutos)</Label>
+          <Input type="number" value={service.duration} onChange={(e) => onUpdate(index, 'duration', parseInt(e.target.value) || 0)} required />
         </div>
         <div className="space-y-2">
           <Label>Notas</Label>

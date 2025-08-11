@@ -13,6 +13,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUserTenantInfo } from '@/hooks/useUserTenantInfo';
 import i18n from 'i18next';
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 
 interface Translation {
   id: string;
@@ -55,10 +56,8 @@ const TranslationAdmin: React.FC = () => {
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar esta traducción?')) {
-      await deleteTranslation.mutateAsync(id);
-      i18n.reloadResources(); // Recargar traducciones en i18next
-    }
+    await deleteTranslation.mutateAsync(id);
+    i18n.reloadResources(); // Recargar traducciones en i18next
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -138,9 +137,15 @@ const TranslationAdmin: React.FC = () => {
                 <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEditClick(translation)}>
                   Editar
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(translation.id)}>
-                  Eliminar
-                </Button>
+                <ConfirmationDialog
+                  onConfirm={() => handleDeleteClick(translation.id)}
+                  title="Confirmar Eliminación"
+                  description="¿Estás seguro de que quieres eliminar esta traducción?"
+                >
+                  <Button variant="destructive" size="sm">
+                    Eliminar
+                  </Button>
+                </ConfirmationDialog>
               </TableCell>
             </TableRow>
           ))}

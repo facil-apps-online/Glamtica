@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BranchForm } from '@/components/BranchForm';
 import BranchProductsTabContent from '@/components/BranchProductsTabContent';
+import BranchServicesTabContent from '@/components/BranchServicesTabContent';
 
 export default function BranchSettingsPage() {
   const { branchId } = useParams<{ branchId: string }>();
@@ -47,12 +48,16 @@ export default function BranchSettingsPage() {
             <TabsList>
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="products">Productos</TabsTrigger>
+              <TabsTrigger value="services">Servicios</TabsTrigger>
             </TabsList>
             <TabsContent value="general">
               {tenantId && <BranchForm branchToEdit={branchToEdit} onSuccess={handleSuccess} tenantId={tenantId} />}
             </TabsContent>
             <TabsContent value="products">
               {branchId && <BranchProductsTabContent branchId={branchId} />}
+            </TabsContent>
+            <TabsContent value="services">
+              {branchId && <BranchServicesTabContent branchId={branchId} />}
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -19,7 +19,11 @@ import {
   Edit, 
   Store, 
   Share2, 
-  DollarSign 
+  DollarSign, 
+  Tag, 
+  ListFilter, 
+  Plus, 
+  Percent 
 } from "lucide-react";
 import { useMasterProducts, useUpdateMasterProduct, MasterProduct } from "@/hooks/useProducts";
 import { useBrands } from "@/hooks/useBrands";
@@ -31,6 +35,7 @@ import { ProductCategoryManagementDialog } from "@/components/ProductCategoryMan
 import { BrandManagementDialog } from "@/components/BrandManagementDialog";
 import AssignProductToBranchesDialog from "@/components/AssignProductToBranchesDialog";
 import ManageProductPricesDialog from "@/components/ManageProductPricesDialog";
+import { ProductCommissionsDialog } from "@/components/ProductCommissionsDialog";
 
 const ProductCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,6 +88,16 @@ const ProductCatalog = () => {
     setIsManagePricesDialogOpen(false);
   };
 
+  const handleOpenProductCommissionsDialog = (product: MasterProduct) => {
+    setSelectedProductForCommissions(product);
+    setIsProductCommissionsDialogOpen(true);
+  };
+
+  const handleProductCommissionsSuccess = () => {
+    setSelectedProductForCommissions(null);
+    setIsProductCommissionsDialogOpen(false);
+  };
+
   if (isLoading) {
     return <div className="text-center p-8">Cargando catálogo...</div>;
   }
@@ -91,26 +106,21 @@ const ProductCatalog = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Catálogo General de Productos</h2>
+          <h2 className="text-2xl font-bold">Catálogo de Productos</h2>
           <p className="text-muted-foreground">Crea y edita los productos base de tu negocio.</p>
         </div>
         <div className="flex items-center gap-2">
-          <ProductCategoryManagementDialog />
-          <BrandManagementDialog />
-          <MasterProductDialog />
+          <ProductCategoryManagementDialog trigger={<Button size="sm"><ListFilter className="w-4 h-4 mr-2" />Categorías</Button>} />
+          <BrandManagementDialog trigger={<Button size="sm"><Tag className="w-4 h-4 mr-2" />Marcas</Button>} />
+          <MasterProductDialog trigger={<Button size="sm"><Plus className="w-4 h-4 mr-2" />Nuevo Producto</Button>} />
         </div>
       </div>
 
       {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5" />
-            Filtros del Catálogo
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card className="mt-4">
+        
+        <CardContent className="py-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
              <Input
                 placeholder="Buscar por nombre, descripción o SKU..."
                 value={searchTerm}
@@ -153,12 +163,12 @@ const ProductCatalog = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Producto</TableHead>
-                <TableHead>Marca</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Costo</TableHead>
-                <TableHead>Estado General</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead colSpan={2}>Producto</TableHead>
+                <TableHead className="w-px">Marca</TableHead>
+                <TableHead className="w-px">Categoría</TableHead>
+                <TableHead className="w-px">Costo</TableHead>
+                <TableHead className="w-px">Activo</TableHead>
+                <TableHead className="w-px">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -167,7 +177,7 @@ const ProductCatalog = () => {
                 
                 return (
                   <TableRow key={product.id}>
-                    <TableCell>
+                    <TableCell colSpan={2}>
                       <div className="font-medium">{product.name}</div>
                       {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}
                     </TableCell>
@@ -190,6 +200,9 @@ const ProductCatalog = () => {
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleOpenManagePricesDialog(product)}>
                           <DollarSign className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleOpenProductCommissionsDialog(product)}>
+                          <Percent className="w-4 h-4" />
                         </Button>
                         
                       </div>

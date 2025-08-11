@@ -21,7 +21,10 @@ export const usePriceFormat = () => {
 
   const formatPrice = useMemo(() => {
     if (isAuthLoading || isLoadingSettings || isLoadingCurrencies) {
-      return (price: number) => `${price.toFixed(2)}...`;
+      return (price: number | undefined | null) => {
+        const numericPrice = typeof price === 'number' ? price : 0;
+        return `${numericPrice.toFixed(2)}...`;
+      };
     }
 
     return (price: number): string => {

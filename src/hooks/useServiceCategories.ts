@@ -1,86 +1,80 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface ServiceCategory {
   id: string;
   name: string;
   description?: string;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export const useServiceCategories = () => {
-  return useQuery({
-    queryKey: ['service-categories'],
+  const { session, currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useQuery<ServiceCategory[], Error>({
+    queryKey: ['serviceCategories', tenantId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_categories')
-        .select('*')
-        .order('name');
+      if (!tenantId || !session) return [];
 
-      if (error) {
-        throw error;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'get_service_categories',
+          payload: { tenantId: tenantId },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to fetch service categories');
       }
-
-      return data as ServiceCategory[];
+      return json as ServiceCategory[];
     },
-  });
-};
-
-export const useActiveServiceCategories = () => {
-  return useQuery({
-    queryKey: ['service-categories', 'active'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) {
-        throw error;
-      }
-
-      return data as ServiceCategory[];
-    },
+    enabled: !!tenantId && !!session,
   });
 };
 
 export const useCreateServiceCategory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { session, currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async (categoryData: {
-      name: string;
-      description?: string;
-      is_active?: boolean;
-    }) => {
-      const { data, error } = await supabase
-        .from('service_categories')
-        .insert([categoryData])
-        .select()
-        .single();
+    mutationFn: async (categoryData: Omit<ServiceCategory, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!tenantId || !session) throw new Error("Tenant ID or session not available");
 
-      if (error) throw error;
-      return data;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'create_service_category',
+          payload: { tenantId: tenantId, ...categoryData },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to create service category');
+      }
+      return json as ServiceCategory;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-categories'] });
-      toast({
-        title: "Categoría creada",
-        description: "La categoría ha sido creada exitosamente.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['serviceCategories', tenantId] });
+      toast({ title: "Categoría creada", description: "La categoría ha sido creada exitosamente." });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la categoría. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "No se pudo crear la categoría.", variant: "destructive" });
       console.error('Error creating service category:', error);
     },
   });
@@ -89,39 +83,77 @@ export const useCreateServiceCategory = () => {
 export const useUpdateServiceCategory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { session, currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
-    mutationFn: async ({ 
-      id, 
-      updates 
-    }: { 
-      id: string; 
-      updates: Partial<ServiceCategory> 
-    }) => {
-      const { data, error } = await supabase
-        .from('service_categories')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<ServiceCategory> }) => {
+      if (!tenantId || !session) throw new Error("Tenant ID or session not available");
 
-      if (error) throw error;
-      return data;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'update_service_category',
+          payload: { tenantId: tenantId, id: id, ...updates },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to update service category');
+      }
+      return json as ServiceCategory;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-categories'] });
-      toast({
-        title: "Categoría actualizada",
-        description: "La categoría ha sido actualizada exitosamente.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['serviceCategories', tenantId] });
+      toast({ title: "Categoría actualizada", description: "La categoría ha sido actualizada exitosamente." });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la categoría. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "No se pudo actualizar la categoría.", variant: "destructive" });
       console.error('Error updating service category:', error);
+    },
+  });
+};
+
+export const useDeleteServiceCategory = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { session, currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId || !session) throw new Error("Tenant ID or session not available");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'delete_service_category',
+          payload: { tenantId: tenantId, id: id },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to delete service category');
+      }
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['serviceCategories', tenantId] });
+      toast({ title: "Categoría eliminada", description: "La categoría ha sido eliminada exitosamente." });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: "No se pudo eliminar la categoría.", variant: "destructive" });
+      console.error('Error deleting service category:', error);
     },
   });
 };
@@ -129,32 +161,40 @@ export const useUpdateServiceCategory = () => {
 export const useToggleServiceCategoryStatus = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { session, currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { data, error } = await supabase
-        .from('service_categories')
-        .update({ is_active })
-        .eq('id', id)
-        .select()
-        .single();
+      if (!tenantId || !session) throw new Error("Tenant ID or session not available");
 
-      if (error) throw error;
-      return data;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'toggle_service_category_status',
+          payload: { tenantId: tenantId, id: id, is_active: is_active },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to toggle service category status');
+      }
+      return json;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['service-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['serviceCategories', tenantId] });
       toast({
         title: data.is_active ? "Categoría activada" : "Categoría desactivada",
         description: `La categoría ha sido ${data.is_active ? 'activada' : 'desactivada'} exitosamente.`,
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo cambiar el estado de la categoría. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "No se pudo cambiar el estado de la categoría.", variant: "destructive" });
       console.error('Error toggling service category status:', error);
     },
   });

@@ -1,24 +1,11 @@
-feat: Mejoras en la gestión de productos y sucursales
+fix: Mejoras en el cambio de contexto y manejo de errores
 
-Implementa las siguientes mejoras:
-- **Gestión de Productos por Sucursal:**
-  - Nueva pestaña 'Productos' en la configuración de sucursal (`/branches/:branchId/settings`).
-  - Permite añadir productos a una sucursal desde el catálogo general (`AddProductsToBranchDialog`).
-  - Permite la edición masiva de precios de productos en una sucursal (`BulkEditBranchPricesDialog`).
-- **Gestión de Precios de Producto Maestro:**
-  - Nuevo diálogo 'Gestionar Precios' en el catálogo general (`ManageProductPricesDialog`).
-  - Permite definir precios de un producto en todas las sucursales a las que está asignado.
-- **Refactorización de la Base de Datos:**
-  - Unificación de la función `get_tenant_branches` para aceptar solo `p_tenant_id`.
-  - Corrección de tipos de datos en la función `get_tenant_branches` (`language_code`, `latitude`, `longitude`).
-- **Mejoras de Usabilidad:**
-  - Filtrado de sucursales ya asignadas en el diálogo de asignación de productos.
-  - Eliminación de la vista de pestañas en la página de productos maestros.
-  - Ajuste del padding en la página de productos para aprovechar el ancho completo.
-- **Corrección de Errores:**
-  - Solucionado el error `useState is not defined` en varios componentes.
-  - Solucionado el error `Dialog is not defined` en `AssignProductToBranchesDialog.tsx`.
-  - Solucionado el problema de refresco de datos tras la asignación de productos.
-  - Restauración de la Edge Function `tenant-actions` a su estado completo.
+Este commit aborda varias mejoras y correcciones relacionadas con el cambio de contexto de usuario y el manejo de errores:
 
-Este commit consolida todas las funcionalidades y correcciones realizadas durante la sesión.
+- **ContextSwitcher:** Se corrigió el warning de `key` en `ContextSwitcher.tsx` para asegurar una renderización correcta de los elementos de la lista.
+- **AuthContext:**
+  - Se implementó un manejo de errores más robusto en la función `switchAssignment`, incluyendo notificaciones `toast` para el usuario y reversión del estado local en caso de fallo en el backend.
+  - Se eliminaron `console.log` de depuración.
+- **user-actions (Edge Function):**
+  - Se modificó la acción `update-assignments` para asegurar que todas las asignaciones persistan con un `assignment_id` válido en el `app_metadata` del usuario, generando un UUID si es necesario. Esto resuelve el problema de `newAssignmentId: undefined` al cambiar de contexto.
+- **Toast UI:** Se ajustó la variante `default` del componente `toast` en `src/components/ui/toast.tsx` para tener un fondo blanco, mejorando la visibilidad de los mensajes de éxito.

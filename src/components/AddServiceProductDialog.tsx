@@ -8,6 +8,7 @@ import { useBranchProducts } from "@/hooks/useProducts";
 import { useAddServiceProduct, useUserProductCommission } from "@/hooks/useServiceProducts";
 import { ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 
 interface AddServiceProductDialogProps {
   children: React.ReactNode;
@@ -56,10 +57,7 @@ export const AddServiceProductDialog = ({
       return;
     }
 
-    if (commissionRate === undefined) {
-      const confirmSale = window.confirm(`El usuario ${userName} no tiene comisión configurada para este producto. ¿Desea continuar con 0% de comisión?`);
-      if (!confirmSale) return;
-    }
+    
 
     try {
       await addProductMutation.mutateAsync({
@@ -144,9 +142,36 @@ export const AddServiceProductDialog = ({
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={addProductMutation.isPending || !productId}>
-              Agregar Producto
-            </Button>
+            {commissionRate === undefined ? (
+              <ConfirmationDialog
+                onConfirm={async () => {
+                  await addProductMutation.mutateAsync({
+                    attention_id: attentionId,
+                    attention_service_id: attentionServiceId,
+                    product_id: productId,
+                    user_id: userId,
+                    quantity: quantity,
+                    unit_price: unitPrice,
+                    commission_rate: 0,
+                  });
+                  setOpen(false);
+                  resetForm();
+                  toast({ title: "Producto agregado", description: `${selectedProduct?.name} agregado al servicio.` });
+                }}
+                title="Confirmar Venta sin Comisión"
+                description={`El usuario ${userName} no tiene comisión configurada para este producto. ¿Desea continuar con 0% de comisión?`}
+                confirmText="Sí, continuar"
+                cancelText="No, cancelar"
+              >
+                <Button type="submit" disabled={addProductMutation.isPending || !productId}>
+                  Agregar Producto
+                </Button>
+              </ConfirmationDialog>
+            ) : (
+              <Button type="submit" disabled={addProductMutation.isPending || !productId}>
+                Agregar Producto
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

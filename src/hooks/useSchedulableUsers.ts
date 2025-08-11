@@ -1,6 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { invokeTenantAction, TenantUserAssignment } from '@/hooks/useTenantUsers';
+
+interface SchedulableUser {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  is_active: boolean;
+  avatar_url?: string;
+  branch_name?: string | null;
+}
 
 export const useSchedulableUsers = () => {
   const { currentAssignment } = useAuth();
@@ -8,29 +18,48 @@ export const useSchedulableUsers = () => {
   const branchId = currentAssignment?.branch_id;
   const userRole = currentAssignment?.role_name;
 
-  return useQuery({
+  return useQuery<SchedulableUser[], Error>({
     queryKey: ['schedulable-users', tenantId, branchId, userRole],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      let query = supabase
-        .from('users')
-        .select('*')
-        .eq('is_schedulable', true);
+      const allAssignments: TenantUserAssignment[] = await invokeTenantAction('get_users_for_tenant', { tenantId });
 
-      // Non-superadmins should only see users from their own tenant and branch
-      if (userRole !== 'super_admin') {
-        query = query.eq('tenant_id', tenantId).eq('branch_id', branchId);
+      const schedulableUsersMap = new Map<string, SchedulableUser>();
+
+      allAssignments.forEach(assignment => {
+        if (assignment.status === 'active') {
+          if (!schedulableUsersMap.has(assignment.user_id)) {
+            schedulableUsersMap.set(assignment.user_id, {
+              id: assignment.user_id,
+              first_name: assignment.first_name,
+              last_name: assignment.last_name,
+              email: assignment.email,
+              is_active: true,
+              avatar_url: assignment.avatar_url || null,
+              branch_name: assignment.branch_name || null,
+            });
+          }
+          const existingUser = schedulableUsersMap.get(assignment.user_id);
+          if (existingUser && !existingUser.is_active) {
+            existingUser.is_active = true;
+          }
+        }
+      });
+
+      let filteredUsers = Array.from(schedulableUsersMap.values());
+
+      if (branchId) {
+        filteredUsers = filteredUsers.filter(user =>
+          allAssignments.some(assignment =>
+            assignment.user_id === user.id &&
+            assignment.branch_id === branchId &&
+            assignment.status === 'active'
+          )
+        );
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching schedulable users:', error);
-        throw new Error(error.message);
-      }
-      
-      return data;
+      return filteredUsers;
     },
     enabled: !!tenantId,
   });

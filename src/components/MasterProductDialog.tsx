@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,10 @@ import { useCreateMasterProduct, useUpdateMasterProduct, MasterProduct } from "@
 import { useBrands } from "@/hooks/useBrands";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
+import { MultiSelect } from "@/components/ui/MultiSelect";
+import { useTaxTypes } from "@/hooks/useTaxTypes";
+import { useProductTaxTypes, useAddProductTaxType, useRemoveProductTaxType } from "@/hooks/useProductTaxTypes";
+import { useToast } from "@/hooks/use-toast";
 
 interface MasterProductDialogProps {
   product?: MasterProduct;
@@ -18,6 +22,7 @@ interface MasterProductDialogProps {
 }
 
 export const MasterProductDialog = ({ product, trigger }: MasterProductDialogProps) => {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -26,12 +31,17 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
   const [brandId, setBrandId] = useState("");
   const [barcode, setBarcode] = useState("");
   const [sku, setSku] = useState("");
+  const [selectedTaxTypeIds, setSelectedTaxTypeIds] = useState<string[]>([]);
 
   const { mutate: createProduct, isPending: isCreating } = useCreateMasterProduct();
   const { mutate: updateProduct, isPending: isUpdating } = useUpdateMasterProduct();
   const { data: brands } = useBrands();
   const { data: productCategories } = useProductCategories();
   const { formatPrice } = usePriceFormat();
+  const { data: taxTypes } = useTaxTypes();
+  const { data: productTaxTypes, refetch: refetchProductTaxTypes } = useProductTaxTypes(product?.id || '');
+  const { mutate: addProductTaxType } = useAddProductTaxType();
+  const { mutate: removeProductTaxType } = useRemoveProductTaxType();
 
   useEffect(() => {
     if (product) {
@@ -42,14 +52,20 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
       setBrandId(product.brand_id || "");
       setBarcode(product.barcode || "");
       setSku(product.sku || "");
+      if (productTaxTypes) {
+        setSelectedTaxTypeIds(productTaxTypes.map(pt => pt.tax_type_id));
+      }
     } else {
       resetForm();
     }
-  }, [product]);
+  }, [product, productTaxTypes]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
+    if (!name) {
+      toast({ title: "Error", description: "El nombre del producto es requerido.", variant: "destructive" });
+      return;
+    }
 
     const productData = {
       name,
@@ -61,16 +77,65 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
       sku: sku || undefined,
     };
 
+    let productId: string | undefined;
+
     if (product) {
-      updateProduct({ id: product.id, updates: productData }, { onSuccess: handleSuccess });
+      updateProduct({ id: product.id, updates: productData }, {
+        onSuccess: (updatedProduct) => {
+          productId = updatedProduct.id;
+          handleTaxTypeUpdates(productId);
+          handleSuccess();
+        },
+        onError: (error) => {
+          toast({ title: "Error", description: `Error al actualizar producto: ${error.message}`, variant: "destructive" });
+        }
+      });
     } else {
-      createProduct(productData, { onSuccess: handleSuccess });
+      createProduct(productData, {
+        onSuccess: (newProduct) => {
+          productId = newProduct.id;
+          handleTaxTypeUpdates(productId);
+          handleSuccess();
+        },
+        onError: (error) => {
+          toast({ title: "Error", description: `Error al crear producto: ${error.message}`, variant: "destructive" });
+        }
+      });
     }
+  };
+
+  const handleTaxTypeUpdates = (currentProductId: string) => {
+    if (!currentProductId) return;
+
+    const currentTaxTypeIds = productTaxTypes?.map(pt => pt.tax_type_id) || [];
+
+    const taxTypesToAdd = selectedTaxTypeIds.filter(id => !currentTaxTypeIds.includes(id));
+    taxTypesToAdd.forEach(taxTypeId => {
+      addProductTaxType({ product_id: currentProductId, tax_type_id: taxTypeId }, {
+        onError: (error) => {
+          toast({ title: "Error", description: `Error al añadir tipo de impuesto: ${error.message}`, variant: "destructive" });
+        }
+      });
+    });
+
+    const taxTypesToRemove = currentTaxTypeIds.filter(id => !selectedTaxTypeIds.includes(id));
+    taxTypesToRemove.forEach(taxTypeId => {
+      const productTaxType = productTaxTypes?.find(pt => pt.tax_type_id === taxTypeId);
+      if (productTaxType) {
+        removeProductTaxType({ id: productTaxType.id }, {
+          onError: (error) => {
+            toast({ title: "Error", description: `Error al eliminar tipo de impuesto: ${error.message}`, variant: "destructive" });
+          }
+        });
+      }
+    });
+    refetchProductTaxTypes();
   };
 
   const handleSuccess = () => {
     setOpen(false);
     resetForm();
+    toast({ title: "Éxito", description: `Producto ${product ? 'actualizado' : 'creado'} correctamente.`, variant: "success" });
   };
 
   const resetForm = () => {
@@ -81,7 +146,12 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
     setBrandId("");
     setBarcode("");
     setSku("");
+    setSelectedTaxTypeIds([]);
   };
+
+  const taxTypeOptions = useMemo(() => {
+    return taxTypes?.map(tt => ({ value: tt.id, label: tt.name })) || [];
+  }, [taxTypes]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -89,13 +159,13 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
         {trigger || (
           <Button>
             <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto Maestro
+            Nuevo Producto
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{product ? "Editar Producto Maestro" : "Nuevo Producto Maestro"}</DialogTitle>
+          <DialogTitle>{product ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -131,6 +201,15 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="taxTypes">Tipos de Impuesto</Label>
+            <MultiSelect
+              options={taxTypeOptions}
+              selected={selectedTaxTypeIds}
+              onSelectedChange={setSelectedTaxTypeIds}
+              placeholder="Seleccionar tipos de impuesto"
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">

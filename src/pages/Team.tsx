@@ -47,46 +47,37 @@ export default function Team() {
               const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
               return (
                 <Card key={user.id} className="bg-card hover:shadow-lg transition-all duration-300">
-                  <CardHeader>
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center">
-                        <User className="w-8 h-8 text-primary" />
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center overflow-hidden">
+                        {user.avatar_url ? (
+                          <img src={user.avatar_url} alt={`${userName}'s avatar`} className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="w-8 h-8 text-primary" />
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-xl text-primary">{userName}</CardTitle>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {user.specialties?.map((specialty) => (
-                            <Badge key={specialty} variant="outline" className="text-xs">
-                              {specialty}
-                            </Badge>
-                          ))}
-                        </div>
+                      <div className="flex-1 min-w-0 min-h-[70px]">
+                        <CardTitle className="text-xl text-primary whitespace-nowrap overflow-hidden text-ellipsis">{user.first_name || ''}</CardTitle>
+                        {user.last_name && (
+                          <p className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">{user.last_name}</p>
+                        )}
+                        {user.branch_name && (
+                          <p className="text-sm text-muted-foreground">{user.branch_name}</p>
+                        )}
                       </div>
-                      <Badge variant={user.is_active ? "default" : "secondary"}>
-                        {user.is_active ? 'Activo' : 'Inactivo'}
-                      </Badge>
                     </div>
+                    <Badge variant={user.is_active ? "default" : "secondary"}>
+                      {user.is_active ? 'Activo' : 'Inactivo'}
+                    </Badge>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 gap-3">
-                      {user.phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">{user.phone}</span>
-                        </div>
-                      )}
                       {user.email && (
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm">{user.email}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-green-600" />
-                        <span className="text-sm">
-                          Comisión Base: <span className="font-semibold">{user.default_commission_rate}%</span>
-                        </span>
-                      </div>
                     </div>
 
                     <div className="space-y-2 pt-4 border-t">

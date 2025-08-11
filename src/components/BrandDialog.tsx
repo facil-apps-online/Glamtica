@@ -61,8 +61,7 @@ export const BrandDialog = ({ brand, trigger }: BrandDialogProps) => {
       <DialogTrigger asChild>
         {trigger || (
           <Button size="sm" variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Marca
+            <Plus className="w-4 h-4" />
           </Button>
         )}
       </DialogTrigger>

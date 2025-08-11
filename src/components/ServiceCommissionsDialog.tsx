@@ -26,14 +26,12 @@ export const ServiceCommissionsDialog = ({ serviceId, serviceName, trigger }: Se
   const branchId = currentAssignment?.branch_id;
 
   const { data: commissions } = useServiceCommissions(serviceId, branchId);
-  const { data: users } = useSchedulableUsers();
+  
   const createMutation = useCreateServiceCommission();
   const updateMutation = useUpdateServiceCommission();
   const deleteMutation = useDeleteServiceCommission();
 
-  const availableUsers = users?.filter(user => 
-    !commissions?.some(commission => commission.user_id === user.id)
-  );
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,36 +109,7 @@ export const ServiceCommissionsDialog = ({ serviceId, serviceName, trigger }: Se
             )}
           </div>
 
-          {availableUsers && availableUsers.length > 0 && (
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Agregar Usuario</h4>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="user">Usuario</Label>
-                    <Select value={userId} onValueChange={setUserId}>
-                      <SelectTrigger><SelectValue placeholder="Selecciona usuario" /></SelectTrigger>
-                      <SelectContent>
-                        {availableUsers.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {`${user.first_name || ''} ${user.last_name || ''}`.trim()}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="commission">Comisión (%)</Label>
-                    <Input id="commission" type="number" value={commissionRate} onChange={(e) => setCommissionRate(parseFloat(e.target.value) || 0)} required />
-                  </div>
-                </div>
-                <Button type="submit" disabled={createMutation.isPending || !userId} className="w-full">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Agregar Usuario
-                </Button>
-              </form>
-            </div>
-          )}
+          
         </div>
       </DialogContent>
     </Dialog>

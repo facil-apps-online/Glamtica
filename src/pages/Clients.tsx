@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, User, Phone, Mail, Edit, Trash2 } from "lucide-react";
@@ -16,19 +15,46 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function Clients() {
   const { data: clients, isLoading } = useClients();
   const { t } = useTranslation();
   const deleteMutation = useDeleteClient();
+  const { selectedBranchId } = useBranchFilterStore();
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
   };
 
+  const isAllBranchesSelected = selectedBranchId === 'all';
+
   if (isLoading) {
     return <div className="p-8">Cargando clientes...</div>;
   }
+
+  const AddClientButton = () => (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="inline-block">
+            <ClientDialog initialBranchId={selectedBranchId}>
+              <Button disabled={isAllBranchesSelected}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Cliente
+              </Button>
+            </ClientDialog>
+          </div>
+        </TooltipTrigger>
+        {isAllBranchesSelected && (
+          <TooltipContent>
+            <p>Por favor, selecciona una sucursal para agregar un nuevo cliente.</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
 
   return (
     <div className="space-y-8">
@@ -41,12 +67,7 @@ export default function Clients() {
             Gestiona la información de tus clientes
           </p>
         </div>
-        <ClientDialog>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Cliente
-          </Button>
-        </ClientDialog>
+        <AddClientButton />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -75,7 +96,11 @@ export default function Clients() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <ClientDialog client={client} isEdit>
+                <ClientDialog 
+                  client={client} 
+                  isEdit 
+                  initialBranchId={client.client_branches?.[0]?.branches?.id || selectedBranchId}
+                >
                   <Button variant="outline" size="sm" className="flex-1">
                     <Edit className="w-4 h-4 mr-1" />
                     Editar
@@ -118,12 +143,7 @@ export default function Clients() {
           <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-slate-900 mb-2">No hay clientes</h3>
           <p className="text-slate-600 mb-4">Comienza agregando tu primer cliente</p>
-          <ClientDialog>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Cliente
-            </Button>
-          </ClientDialog>
+          <AddClientButton />
         </div>
       )}
     </div>

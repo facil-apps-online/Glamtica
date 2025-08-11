@@ -14,10 +14,11 @@ export interface TenantUserAssignment {
   branch_id: string | null;
   branch_name: string | null;
   status: string;
+  avatar_url: string | null;
 }
 
 // Helper function to invoke the superadmin-actions Edge Function
-const invokeTenantAction = async (action: string, payload?: any) => {
+export const invokeTenantAction = async (action: string, payload?: any) => {
   const { data, error } = await supabase.functions.invoke('tenant-actions', {
     body: { action, payload },
   });

@@ -46,7 +46,6 @@ const AddProductsToBranchDialog: React.FC<AddProductsToBranchDialogProps> = ({
   const [selectedProducts, setSelectedProducts] = useState<{
     product_id: string;
     selling_price: number;
-    stock_quantity: number;
   }>({});
 
   const availableProducts = useMemo(() => {
@@ -83,12 +82,7 @@ const AddProductsToBranchDialog: React.FC<AddProductsToBranchDialogProps> = ({
     }));
   };
 
-  const handleStockChange = (productId: string, value: string) => {
-    setSelectedProducts(prev => ({
-      ...prev,
-      [productId]: { ...prev[productId], stock_quantity: parseInt(value) || 0 },
-    }));
-  };
+  
 
   const handleSubmit = () => {
     if (Object.keys(selectedProducts).length === 0) {
@@ -154,13 +148,13 @@ const AddProductsToBranchDialog: React.FC<AddProductsToBranchDialogProps> = ({
                   <TableHead>Producto</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead className="w-[150px]">Precio de Venta</TableHead>
-                  <TableHead className="w-[100px]">Stock Inicial</TableHead>
+                  
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       No se encontraron productos disponibles o todos ya están asignados.
                     </TableCell>
                   </TableRow>
@@ -185,16 +179,7 @@ const AddProductsToBranchDialog: React.FC<AddProductsToBranchDialogProps> = ({
                           step="0.01"
                         />
                       </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={selectedProducts[product.id]?.stock_quantity || ''}
-                          onChange={(e) => handleStockChange(product.id, e.target.value)}
-                          disabled={!selectedProducts[product.id]}
-                          min="0"
-                          step="1"
-                        />
-                      </TableCell>
+                      
                     </TableRow>
                   ))
                 )}

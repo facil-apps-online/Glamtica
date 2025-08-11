@@ -1,55 +1,74 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { fetchTenantAction } from "@/lib/fetchTenantAction";
 
-interface Client {
+// Interfaces
+interface Branch {
+  id: string;
+  name: string;
+}
+
+interface ClientBranch {
+  branches: Branch | null;
+}
+
+export interface Client {
   id: string;
   name: string;
   phone: string;
   email?: string;
+  document_type?: string;
+  document_number?: string;
+  parent_client_id?: string;
   created_at: string;
   updated_at: string;
+  client_branches: ClientBranch[];
+  branches?: Branch[]; // For useClientDetails
 }
 
+// Hook to get clients, filtered by branch
 export const useClients = () => {
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useQuery({
-    // El queryKey ahora incluye el tenant y la sucursal para que se actualice automáticamente
+  return useQuery<Client[], Error>({
     queryKey: ['clients', tenantId, selectedBranchId],
     queryFn: async () => {
       if (!tenantId) return [];
-
-      let query = supabase
-        .from('clients')
-        .select('*')
-        .eq('tenant_id', tenantId);
-
-      // Si hay una sucursal seleccionada (y no es 'todas'), añadir el filtro
-      if (selectedBranchId !== 'all') {
-        query = query.eq('branch_id', selectedBranchId);
-      }
-
-      const { data, error } = await query.order('name');
-
-      if (error) {
-        throw error;
-      }
-
-      return data as Client[];
+      return fetchTenantAction('get_clients_by_branch', { branchId: selectedBranchId });
     },
-    // La consulta solo se ejecuta si hay un tenantId
     enabled: !!tenantId,
   });
 };
 
-// --- MUTACIONES (Crear, Actualizar, Eliminar) ---
-// Estas no necesitan grandes cambios, pero es buena práctica asegurar que
-// invaliden la query correcta.
+// Hook to get details for a single client
+export const useClientDetails = (clientId: string) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useQuery<Client, Error>({
+    queryKey: ['client', tenantId, clientId],
+    queryFn: () => fetchTenantAction('get_client_details', { clientId }),
+    enabled: !!tenantId && !!clientId,
+  });
+};
+
+// Hook to get sub-clients for a given client
+export const useSubClients = (clientId: string) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useQuery<Client[], Error>({
+    queryKey: ['subClients', tenantId, clientId],
+    queryFn: () => fetchTenantAction('get_sub_clients', { clientId }),
+    enabled: !!tenantId && !!clientId,
+  });
+};
+
+// --- MUTATIONS ---
 
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
@@ -57,20 +76,13 @@ export const useCreateClient = () => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation({
-    mutationFn: async (clientData: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert([clientData])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+  return useMutation<Client, Error, { clientData: Omit<Client, 'id' | 'created_at' | 'updated_at' | 'client_branches'>; branchIds: string[] }>({
+    mutationFn: async ({ clientData, branchIds }) => {
+      return fetchTenantAction('create_client', { clientData, branchIds });
     },
     onSuccess: () => {
-      // Invalidar todas las queries de clientes para este tenant
       queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['subClients', tenantId] });
       toast({
         title: "Cliente creado",
         description: "El cliente ha sido agregado exitosamente.",
@@ -79,10 +91,9 @@ export const useCreateClient = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "No se pudo crear el cliente. Inténtalo de nuevo.",
+        description: `No se pudo crear el cliente: ${error.message}`,
         variant: "destructive",
       });
-      console.error('Error creating client:', error);
     },
   });
 };
@@ -93,26 +104,14 @@ export const useUpdateClient = () => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation({
-    mutationFn: async ({ 
-      id, 
-      updates 
-    }: { 
-      id: string; 
-      updates: Partial<Client> 
-    }) => {
-      const { data, error } = await supabase
-        .from('clients')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+  return useMutation<Client, Error, { clientId: string; updates: Partial<Client> }>({
+    mutationFn: async ({ clientId, updates }) => {
+      return fetchTenantAction('update_client', { clientId, updates });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, data.id] });
+      queryClient.invalidateQueries({ queryKey: ['subClients', tenantId, data.parent_client_id] });
       toast({
         title: "Cliente actualizado",
         description: "Los datos del cliente han sido actualizados.",
@@ -121,10 +120,9 @@ export const useUpdateClient = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el cliente.",
+        description: `No se pudo actualizar el cliente: ${error.message}`,
         variant: "destructive",
       });
-      console.error('Error updating client:', error);
     },
   });
 };
@@ -135,17 +133,13 @@ export const useDeleteClient = () => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+  return useMutation<void, Error, string>({
+    mutationFn: async (clientId: string) => {
+      await fetchTenantAction('delete_client', { clientId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['subClients', tenantId] });
       toast({
         title: "Cliente eliminado",
         description: "El cliente ha sido eliminado del sistema.",
@@ -154,10 +148,67 @@ export const useDeleteClient = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar el cliente.",
+        description: `No se pudo eliminar el cliente: ${error.message}`,
         variant: "destructive",
       });
-      console.error('Error deleting client:', error);
+    },
+  });
+};
+
+// Hook to assign a client to a branch
+export const useAssignClientToBranch = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useMutation<void, Error, { clientId: string; branchId: string }>({
+    mutationFn: async ({ clientId, branchId }) => {
+      await fetchTenantAction('assign_client_to_branch', { clientId, branchId });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, variables.clientId] });
+      toast({
+        title: "Asignación exitosa",
+        description: "El cliente ha sido asignado a la sucursal.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `No se pudo asignar el cliente: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Hook to unassign a client from a branch
+export const useUnassignClientFromBranch = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useMutation<void, Error, { clientId: string; branchId: string }>({
+    mutationFn: async ({ clientId, branchId }) => {
+      await fetchTenantAction('unassign_client_from_branch', { clientId, branchId });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, variables.clientId] });
+      toast({
+        title: "Desasignación exitosa",
+        description: "Se ha quitado el cliente de la sucursal.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `No se pudo desasignar el cliente: ${error.message}`,
+        variant: "destructive",
+      });
     },
   });
 };

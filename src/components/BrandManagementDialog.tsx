@@ -12,7 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
+import { Plus, Edit, Trash2, Tag } from "lucide-react";
 import { useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand, useToggleBrandStatus, Brand } from "@/hooks/useBrands";
 import { BrandDialog } from "./BrandDialog";
 
@@ -35,12 +36,10 @@ export function BrandManagementDialog() {
   };
 
   const handleDeleteBrand = async (brandId: string) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar esta marca? Esta acción no se puede deshacer.")) {
-      try {
-        await deleteBrandMutation.mutateAsync(brandId);
-      } catch (error) {
-        console.error('Error deleting brand:', error);
-      }
+    try {
+      await deleteBrandMutation.mutateAsync(brandId);
+    } catch (error) {
+      console.error('Error deleting brand:', error);
     }
   };
 
@@ -52,8 +51,8 @@ export function BrandManagementDialog() {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Edit className="w-4 h-4 mr-2" />
-          Gestionar Marcas
+          <Tag className="w-4 h-4 mr-2" />
+          Marcas
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
@@ -108,13 +107,18 @@ export function BrandManagementDialog() {
                               </Button>
                             }
                           />
-                          <Button
-                            variant="destructive" size="sm"
-                            onClick={() => handleDeleteBrand(brand.id)}
-                            disabled={deleteBrandMutation.isPending}
+                          <ConfirmationDialog
+                            onConfirm={() => handleDeleteBrand(brand.id)}
+                            title="Confirmar Eliminación"
+                            description="¿Estás seguro de que quieres eliminar esta marca? Esta acción no se puede deshacer."
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                            <Button
+                              variant="destructive" size="sm"
+                              disabled={deleteBrandMutation.isPending}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </ConfirmationDialog>
                         </div>
                       </TableCell>
                     </TableRow>

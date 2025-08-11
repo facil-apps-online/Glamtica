@@ -88,7 +88,7 @@ export const useCreateMasterProduct = () => {
       callTenantAction('create_master_product', { productData }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_products'] });
-      toast({ title: "Producto Maestro Creado", description: "El producto ha sido añadido al catálogo general." });
+      toast({ title: "Producto Creado", description: "El producto ha sido añadido al catálogo general." });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -107,7 +107,7 @@ export const useUpdateMasterProduct = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_products'] });
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Producto Maestro Actualizado", description: "La información del producto ha sido actualizada." });
+      toast({ title: "Producto Actualizado", description: "La información del producto ha sido actualizada." });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

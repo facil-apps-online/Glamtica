@@ -12,7 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ListFilter } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { useProductCategories, useCreateProductCategory, useUpdateProductCategory, useDeleteProductCategory, useToggleProductCategoryStatus, ProductCategory } from "@/hooks/useProductCategories";
 import { ProductCategoryDialog } from "./ProductCategoryDialog";
 
@@ -35,12 +36,10 @@ export function ProductCategoryManagementDialog() {
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar esta categoría? Esta acción no se puede deshacer.")) {
-      try {
-        await deleteCategoryMutation.mutateAsync(categoryId);
-      } catch (error) {
-        console.error('Error deleting category:', error);
-      }
+    try {
+      await deleteCategoryMutation.mutateAsync(categoryId);
+    } catch (error) {
+      console.error('Error deleting category:', error);
     }
   };
 
@@ -52,8 +51,8 @@ export function ProductCategoryManagementDialog() {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Edit className="w-4 h-4 mr-2" />
-          Gestionar Categorías
+          <ListFilter className="w-4 h-4 mr-2" />
+          Categorías
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
@@ -108,13 +107,18 @@ export function ProductCategoryManagementDialog() {
                               </Button>
                             }
                           />
-                          <Button
-                            variant="destructive" size="sm"
-                            onClick={() => handleDeleteCategory(category.id)}
-                            disabled={deleteCategoryMutation.isPending}
+                          <ConfirmationDialog
+                            onConfirm={() => handleDeleteCategory(category.id)}
+                            title="Confirmar Eliminación"
+                            description="¿Estás seguro de que quieres eliminar esta categoría? Esta acción no se puede deshacer."
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                            <Button
+                              variant="destructive" size="sm"
+                              disabled={deleteCategoryMutation.isPending}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </ConfirmationDialog>
                         </div>
                       </TableCell>
                     </TableRow>
