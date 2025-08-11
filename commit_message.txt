@@ -1,11 +1,43 @@
-fix: Mejoras en el cambio de contexto y manejo de errores
+feat: Implementación completa del módulo de clientes y mejoras generales
 
-Este commit aborda varias mejoras y correcciones relacionadas con el cambio de contexto de usuario y el manejo de errores:
+Este commit introduce la funcionalidad completa para la gestión de clientes, incluyendo:
+- **Refactorización de Base de Datos:**
+  - Eliminación de `branch_id` directo en `clients`.
+  - Adición de `document_type`, `document_number` y `parent_client_id` a la tabla `clients`.
+  - Creación de la tabla `client_branches` para relación muchos-a-muchos entre clientes y sucursales.
+  - Implementación de nuevas políticas RLS para `clients` y `client_branches` para asegurar el acceso basado en sucursal y tenant.
+  - Corrección y mejora de la función `audit_trigger_function` para compatibilidad con la nueva estructura de `clients`.
+- **Lógica de Negocio (Edge Function `tenant-actions`):**
+  - Centralización de todas las operaciones CRUD de clientes (`get`, `create`, `update`, `delete`).
+  - Implementación de acciones para gestionar la asignación de clientes a sucursales (`assign_client_to_branch`, `unassign_client_from_branch`).
+  - Adición de lógica para obtener sub-clientes (`get_sub_clients`) y detalles de cliente (`get_client_details`).
+- **Interfaz de Usuario (Frontend):**
+  - **`ClientDialog.tsx`:**
+    - Añadidos campos `Tipo de Documento` y `Número de Documento`.
+    - Implementada la pestaña "Familiares" para listar y añadir sub-clientes.
+    - Lógica de creación y edición de clientes actualizada para usar la nueva estructura de datos.
+  - **`Clients.tsx`:**
+    - Deshabilitado el botón "Nuevo Cliente" cuando el filtro "Todas las sucursales" está activo, con un tooltip explicativo.
+    - Ajustada la lógica para pasar el `initialBranchId` correcto al diálogo de cliente.
+  - **`useClients.ts`:**
+    - Refactorizado para usar la Edge Function `tenant-actions` para todas las operaciones de cliente.
+    - Actualizadas las interfaces de `Client` para reflejar la nueva estructura de datos.
 
-- **ContextSwitcher:** Se corrigió el warning de `key` en `ContextSwitcher.tsx` para asegurar una renderización correcta de los elementos de la lista.
-- **AuthContext:**
-  - Se implementó un manejo de errores más robusto en la función `switchAssignment`, incluyendo notificaciones `toast` para el usuario y reversión del estado local en caso de fallo en el backend.
-  - Se eliminaron `console.log` de depuración.
-- **user-actions (Edge Function):**
-  - Se modificó la acción `update-assignments` para asegurar que todas las asignaciones persistan con un `assignment_id` válido en el `app_metadata` del usuario, generando un UUID si es necesario. Esto resuelve el problema de `newAssignmentId: undefined` al cambiar de contexto.
-- **Toast UI:** Se ajustó la variante `default` del componente `toast` en `src/components/ui/toast.tsx` para tener un fondo blanco, mejorando la visibilidad de los mensajes de éxito.
+Además, este commit incluye otras mejoras y correcciones generales en el proyecto:
+- **Gestión de Productos y Servicios:**
+  - Mejoras en los diálogos de asignación y gestión de precios de productos y servicios.
+  - Refactorización de hooks relacionados con productos y servicios para usar `tenant-actions`.
+- **Componentes UI:**
+  - Actualizaciones en `AddProductsToBranchDialog.tsx`, `AddServiceDialog.tsx`, `AddServiceProductDialog.tsx`, `AttentionDialog.tsx`, `BranchForm.tsx`, `BrandDialog.tsx`, `BrandManagementDialog.tsx`, `MasterProductDialog.tsx`, `ProductCategoryManagementDialog.tsx`, `ServiceCategoryDialog.tsx`, `ServiceCommissionsDialog.tsx`, `TranslationAdmin.tsx`.
+  - Eliminación de `ServiceDialog.tsx` (posiblemente reemplazado por `MasterServiceDialog.tsx`).
+  - Adición de nuevos componentes como `ConfirmationDialog.tsx`, `MultiSelect.tsx`, `TaxTypesManagement.tsx`.
+- **Hooks:**
+  - Actualizaciones en `usePriceFormat.ts`, `useProducts.ts`, `useSchedulableUsers.ts`, `useServiceCategories.ts`, `useServices.ts`, `useTenantUsers.ts`.
+  - Nuevos hooks para `useClientConsentRecords.ts`, `useClientDocumentInstances.ts`, `useClientDocumentTemplates.ts`, `useProductTaxTypes.ts`, `useServiceTaxTypes.ts`, `useTaxTypes.ts`, `useTenantClientSettings.ts`, `useTenantInvoicingSettings.ts`.
+- **Migraciones:**
+  - Nuevas migraciones para tipos de impuestos, servicios por sucursal, documentos de cliente, etc.
+  - Ajustes en `timestamps.md`.
+- **Configuración:**
+  - Actualizaciones en `package.json` y `package-lock.json` para nuevas dependencias (ej. `uuid`, `react-signature-canvas`).
+
+Este commit consolida un conjunto significativo de funcionalidades y correcciones, mejorando la robustez y capacidad del sistema.

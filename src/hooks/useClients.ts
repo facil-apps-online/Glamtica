@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBranchFilterStore } from "@/stores/branchFilterStore";
 import { fetchTenantAction } from "@/lib/fetchTenantAction";
 
 // Interfaces
@@ -28,17 +27,17 @@ export interface Client {
   branches?: Branch[]; // For useClientDetails
 }
 
-// Hook to get clients, filtered by branch
+// Hook to get all clients for the tenant
 export const useClients = () => {
   const { currentAssignment } = useAuth();
-  const { selectedBranchId } = useBranchFilterStore();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery<Client[], Error>({
-    queryKey: ['clients', tenantId, selectedBranchId],
+    queryKey: ['clients', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      return fetchTenantAction('get_clients_by_branch', { branchId: selectedBranchId });
+      // Always fetch all clients
+      return fetchTenantAction('get_clients_by_branch', { branchId: 'all' });
     },
     enabled: !!tenantId,
   });
