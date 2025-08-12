@@ -36,6 +36,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   assignments: UserAssignment[];
   currentAssignment: UserAssignment | null;
+  tenantBranches: any[]; // Añadido: Exponer las sucursales del tenant
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -53,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [assignments, setAssignments] = useState<UserAssignment[]>([]);
   const [currentAssignment, setCurrentAssignment] = useState<UserAssignment | null>(null);
+  const [tenantBranches, setTenantBranches] = useState<any[]>([]); // Añadido
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -98,6 +100,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
             if (rolesError) console.error("Error fetching roles:", rolesError.message);
             if (branchesError) console.error("Error fetching branches:", branchesError.message);
             if (tenantsError) console.error("Error fetching tenants:", tenantsError.message);
+
+            setTenantBranches(branches || []); // Añadido
 
             const allAssignments: UserAssignment[] = app_metadata.assignments.map((a: any) => {
               const tenant = tenants?.find((t: any) => t.id === a.tenant_id);
@@ -291,6 +295,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     profile,
     assignments,
     currentAssignment,
+    tenantBranches, // Añadido
     isAuthenticated: !!currentAssignment && currentAssignment.status === 'active',
     login,
     logout,
@@ -298,7 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     refreshUser,
     loading,
     supabaseClient,
-  }), [session, user, profile, assignments, currentAssignment, loading, refreshUser, supabaseClient]);
+  }), [session, user, profile, assignments, currentAssignment, tenantBranches, loading, refreshUser, supabaseClient]);
 
   return (
     <AuthContext.Provider value={contextValue}>

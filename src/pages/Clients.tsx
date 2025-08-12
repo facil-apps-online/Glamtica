@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, User, Phone, Mail, Edit, Trash2 } from "lucide-react";
+import { Plus, User, Phone, Mail, Edit, Trash2, Search } from "lucide-react";
 import { ClientDialog } from "@/components/ClientDialog";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import { useTranslation } from "@/hooks/useTranslations";
@@ -17,9 +17,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 export default function Clients() {
-  const { data: clients, isLoading } = useClients();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [confirmedSearchTerm, setConfirmedSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
+
+  const { data: clients, isLoading } = useClients(confirmedSearchTerm, showInactive);
   const { t } = useTranslation();
   const deleteMutation = useDeleteClient();
   const { selectedBranchId } = useBranchFilterStore();
@@ -35,18 +42,14 @@ export default function Clients() {
     }
 
     return [...clients].sort((a, b) => {
-      const aIsAssociated = a.client_branches.some(cb => cb.branches?.id === selectedBranchId);
-      const bIsAssociated = b.client_branches.some(cb => cb.branches?.id === selectedBranchId);
+      const aIsAssociated = a.branches?.some(b => b.id === selectedBranchId);
+      const bIsAssociated = b.branches?.some(b => b.id === selectedBranchId);
 
       if (aIsAssociated && !bIsAssociated) return -1;
       if (!aIsAssociated && bIsAssociated) return 1;
       return a.name.localeCompare(b.name);
     });
   }, [clients, selectedBranchId]);
-
-  if (isLoading) {
-    return <div className="p-8">Cargando clientes...</div>;
-  }
 
   const AddClientButton = () => {
     const initialIds = selectedBranchId === 'all' ? [] : [selectedBranchId];
@@ -74,9 +77,42 @@ export default function Clients() {
         <AddClientButton />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card className="mt-4">
+        <CardContent className="py-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+               <Input
+                  placeholder="Buscar clientes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="md:col-span-3"
+                />
+                <Button onClick={() => setConfirmedSearchTerm(searchTerm)} className="md:col-span-1">
+                  <Search className="w-4 h-4 mr-2" />
+                  Buscar
+                </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+                id="show-inactive-clients"
+              />
+              <label htmlFor="show-inactive-clients" className="text-sm text-muted-foreground">Mostrar inactivos</label>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
         {sortedClients.map((client) => {
-          const isAssociatedWithSelectedBranch = client.client_branches.some(cb => cb.branches?.id === selectedBranchId);
+          const isAssociatedWithSelectedBranch = client.branches?.some(b => b.id === selectedBranchId);
           const cardStyle = selectedBranchId !== 'all' && !isAssociatedWithSelectedBranch
             ? { opacity: 0.6, borderStyle: 'dashed' as const }
             : {};
@@ -92,6 +128,12 @@ export default function Clients() {
                 <CardTitle className="text-xl text-primary">{client.name}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {client.parent_client_id && client.parent_client?.name && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <User className="w-4 h-4" />
+                    <span>Hijo de: {client.parent_client.name}</span>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-slate-500" />

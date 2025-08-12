@@ -34,6 +34,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlusCircle } from "lucide-react";
 import { useBranches } from "@/hooks/useBranches";
 import { MultiSelect } from "@/components/ui/MultiSelect";
+import { FormViewerDialog } from "@/components/FormViewerDialog";
+import { IntakeFormDialog } from "@/components/IntakeFormDialog";
+import { ConsentManagerDialog } from "@/components/ConsentManagerDialog";
 
 const documentTypes = [
   { value: "cc", label: "Cédula de Ciudadanía" },
@@ -80,6 +83,15 @@ export const ClientDialog = ({
   const [dynamicFormData, setDynamicFormData] = useState<{ [key: string]: any }>({});
   const [signatureData, setSignatureData] = useState<string | undefined>(undefined);
   const [imageConsent, setImageConsent] = useState<boolean>(false);
+
+  const [isFormViewerOpen, setIsFormViewerOpen] = useState(false);
+  const [selectedFormSchema, setSelectedFormSchema] = useState<any>({});
+  const [selectedFormData, setSelectedFormData] = useState<any>({});
+  const [selectedFormName, setSelectedFormName] = useState<string | undefined>(undefined);
+  const [selectedFormVersion, setSelectedFormVersion] = useState<number | undefined>(undefined);
+
+  const [isIntakeFormOpen, setIsIntakeFormOpen] = useState(false);
+  const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
 
   const defaultIntakeTemplate = documentTemplates?.find(
     (template) => template.id === tenantSettings?.default_intake_form_id
@@ -152,8 +164,22 @@ export const ClientDialog = ({
 
   const onSubmitGeneral = (data: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
     if (isEdit && client?.id) {
+      // Definir las propiedades permitidas para la tabla 'clients'
+      const allowedClientProps = [
+        'name', 'phone', 'email', 'document_type', 'document_number', 'parent_client_id'
+        // Añadir aquí cualquier otra columna directa de la tabla 'clients'
+      ];
+
+      // Filtrar el objeto 'data' para incluir solo las propiedades permitidas
+      const updatesToSend: Partial<Client> = {};
+      for (const key in data) {
+        if (allowedClientProps.includes(key as keyof Client)) {
+          (updatesToSend as any)[key] = (data as any)[key];
+        }
+      }
+
       updateMutation.mutate(
-        { clientId: client.id, updates: data },
+        { clientId: client.id, updates: updatesToSend },
         {
           onSuccess: () => {
             toast({ title: "Éxito", description: "Cliente actualizado correctamente." });
@@ -386,10 +412,140 @@ export const ClientDialog = ({
           </TabsContent>
 
           <TabsContent value="forms-consents" className="mt-4 space-y-6">
-            {/* ... El contenido de esta pestaña no cambia por ahora ... */}
+            {/* Botón para abrir el Formulario de Admisión */}
+            {defaultIntakeTemplate && (
+              <div className="border p-4 rounded-md space-y-4">
+                <h4 className="text-lg font-semibold">Formulario de Admisión</h4>
+                <p className="text-sm text-slate-600">
+                  Plantilla por defecto: {defaultIntakeTemplate.name} (v{defaultIntakeTemplate.version})
+                </p>
+                <Button onClick={() => setIsIntakeFormOpen(true)}>
+                  Llenar/Editar Formulario de Admisión
+                </Button>
+              </div>
+            )}
+
+            {/* Botón para abrir el Gestor de Consentimientos */}
+            {(tenantSettings?.require_general_signature || tenantSettings?.require_image_consent) && (
+              <div className="border p-4 rounded-md space-y-4">
+                <h4 className="text-lg font-semibold">Consentimientos</h4>
+                <p className="text-sm text-slate-600">
+                  Gestiona la firma general y el consentimiento de imágenes.
+                </p>
+                <Button onClick={() => setIsConsentManagerOpen(true)}>
+                  Gestionar Consentimientos
+                </Button>
+              </div>
+            )}
+
+            {/* Historial de Formularios */}
+            <div className="border p-4 rounded-md space-y-4">
+              <h4 className="text-lg font-semibold">Historial de Formularios</h4>
+              {isLoadingInstances ? (
+                <p>Cargando historial de formularios...</p>
+              ) : clientDocumentInstances && clientDocumentInstances.length > 0 ? (
+                <ul className="space-y-2">
+                  {clientDocumentInstances.map(instance => (
+                    <li key={instance.id} className="p-2 bg-slate-50 rounded-md">
+                      <p className="font-medium">{instance.template?.name} (v{instance.template?.version})</p>
+                      <p className="text-sm text-slate-600">Fecha: {new Date(instance.created_at).toLocaleDateString()}</p>
+                      {/* Aquí podrías añadir un botón para ver los detalles del formulario */}
+                      {/* Por ahora, solo mostramos un resumen o un botón para ver */}
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFormSchema(instance.template?.schema || {});
+                          console.log("Schema passed to FormViewerDialog:", instance.template?.schema);
+                          setSelectedFormData(instance.data);
+                          setSelectedFormName(instance.template?.name);
+                          setSelectedFormVersion(instance.template?.version);
+                          setIsFormViewerOpen(true);
+                        }}
+                      >
+                        Ver Datos
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500">No hay formularios llenados para este cliente.</p>
+              )}
+            </div>
+
+            {/* Historial de Consentimientos */}
+            <div className="border p-4 rounded-md space-y-4">
+              <h4 className="text-lg font-semibold">Historial de Consentimientos</h4>
+              {isLoadingConsents ? (
+                <p>Cargando historial de consentimientos...</p>
+              ) : clientConsentRecords && clientConsentRecords.length > 0 ? (
+                <ul className="space-y-2">
+                  {clientConsentRecords.map(record => (
+                    <li key={record.id} className="p-2 bg-slate-50 rounded-md">
+                      <p className="font-medium">Tipo: {record.consent_type}</p>
+                      <p className="text-sm text-slate-600">Fecha: {new Date(record.created_at).toLocaleDateString()}</p>
+                      {record.signature_data && (
+                        <div className="mt-2">
+                          <p className="text-sm text-slate-600 mb-1">Firma registrada:</p>
+                          <img src={record.signature_data} alt="Firma del cliente" className="w-32 h-auto border border-gray-300" />
+                        </div>
+                      )}
+                      {record.metadata?.consented !== undefined && <p className="text-sm text-slate-600">Consentimiento de imagen: {record.metadata.consented ? 'Sí' : 'No'}</p>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500">No hay registros de consentimiento para este cliente.</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
+      <FormViewerDialog
+        open={isFormViewerOpen}
+        onOpenChange={setIsFormViewerOpen}
+        schema={selectedFormSchema}
+        formData={selectedFormData}
+        formName={selectedFormName}
+        formVersion={selectedFormVersion}
+      />
+
+      {defaultIntakeTemplate && (
+        <IntakeFormDialog
+          open={isIntakeFormOpen}
+          onOpenChange={setIsIntakeFormOpen}
+          template={defaultIntakeTemplate}
+          initialFormData={dynamicFormData}
+          onSave={async (formData) => {
+            if (client?.id && defaultIntakeTemplate) {
+              await saveDocumentInstance({
+                client_id: client.id,
+                template_id: defaultIntakeTemplate.id,
+                data: formData,
+              }, {
+                onSuccess: () => {
+                  toast({ title: "Éxito", description: "Formulario de admisión guardado." });
+                  setIsIntakeFormOpen(false); // Cerrar el modal al guardar
+                },
+                onError: (error: any) => toast({ title: "Error", description: `Error al guardar formulario: ${error.message}`, variant: "destructive" }),
+              });
+            } else {
+              toast({ title: "Error", description: "Cliente o plantilla no identificados para guardar formulario.", variant: "destructive" });
+            }
+          }}
+          isSaving={isSavingInstance}
+        />
+      )}
+
+      <ConsentManagerDialog
+        open={isConsentManagerOpen}
+        onOpenChange={setIsConsentManagerOpen}
+        clientId={client?.id || ''}
+        initialSignatureData={signatureData}
+        initialImageConsent={imageConsent}
+        requireGeneralSignature={tenantSettings?.require_general_signature ?? false}
+        requireImageConsent={tenantSettings?.require_image_consent ?? false}
+      />
     </Dialog>
   );
 };

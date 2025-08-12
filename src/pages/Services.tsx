@@ -11,39 +11,36 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Plus, Scissors, Clock, DollarSign, Edit, Settings, Users, Share2 } from "lucide-react";
+import { Plus, Scissors, Clock, DollarSign, Edit, Settings, Users, Share2, Search } from "lucide-react";
 import { useMasterServices, useUpdateMasterService, MasterService } from "@/hooks/useServices";
 import { useServiceCategories } from "@/hooks/useServiceCategories";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { MasterServiceDialog } from "@/components/MasterServiceDialog";
-import { ServiceCommissionsDialog } from "@/components/ServiceCommissionsDialog";
 import { ServiceCategoryManagementDialog } from "@/components/ServiceCategoryManagementDialog";
 import AssignServicesToBranchDialog from "@/components/AssignServicesToBranchDialog";
 import ManageServicePricesDialog from "@/components/ManageServicePricesDialog";
 import { useState } from "react";
+import { ManageServiceCommissionsDialog } from "@/components/ManageServiceCommissionsDialog"; // NEW IMPORT
 
 export default function Services() {
-  const { data: services, isLoading } = useMasterServices();
-  
-  const { data: categories } = useServiceCategories();
-  const toggleStatusMutation = useUpdateMasterService();
-  const { formatPrice } = usePriceFormat();
   const [searchTerm, setSearchTerm] = useState("");
+  const [confirmedSearchTerm, setConfirmedSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+
+  const { data: categories } = useServiceCategories();
+  const { data: services, isLoading } = useMasterServices(confirmedSearchTerm, showInactive, filterCategory);
+  const { data: allServices, isLoading: isLoadingAllServices } = useMasterServices();
   const [isAssignServiceDialogOpen, setIsAssignServiceDialogOpen] = useState(false);
   const [selectedServiceForAssignment, setSelectedServiceForAssignment] = useState<MasterService | null>(null);
   const [isManagePricesDialogOpen, setIsManagePricesDialogOpen] = useState(false);
   const [selectedServiceForPrices, setSelectedServiceForPrices] = useState<MasterService | null>(null);
 
-  const filteredServices = services?.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          service.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !filterCategory || service.category_id === filterCategory;
-    const matchesStatus = showInactive || service.is_active;
+  // NEW STATE FOR COMMISSIONS DIALOG
+  const [isServiceCommissionsDialogOpen, setIsServiceCommissionsDialogOpen] = useState(false);
+  const [selectedServiceForCommissions, setSelectedServiceForCommissions] = useState<MasterService | null>(null);
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const filteredServices = services;
 
   const handleOpenAssignServiceDialog = (service: MasterService) => {
     setSelectedServiceForAssignment(service);
@@ -63,6 +60,17 @@ export default function Services() {
   const handleManagePricesSuccess = () => {
     setSelectedServiceForPrices(null);
     setIsManagePricesDialogOpen(false);
+  };
+
+  // NEW HANDLERS FOR COMMISSIONS DIALOG
+  const handleOpenServiceCommissionsDialog = (service: MasterService) => {
+    setSelectedServiceForCommissions(service);
+    setIsServiceCommissionsDialogOpen(true);
+  };
+
+  const handleServiceCommissionsSuccess = () => {
+    setSelectedServiceForCommissions(null);
+    setIsServiceCommissionsDialogOpen(false);
   };
 
   if (isLoading) {
@@ -111,8 +119,15 @@ export default function Services() {
                 placeholder="Buscar por nombre o descripción..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="md:col-span-3"
               />
-              <select 
+              <Button onClick={() => setConfirmedSearchTerm(searchTerm)} className="md:col-span-1">
+                <Search className="w-4 h-4 mr-2" />
+                Buscar
+              </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mt-4">
+              <select
                 className="w-full px-3 py-2 border rounded-md"
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
@@ -161,7 +176,7 @@ export default function Services() {
                     <TableCell>
                       <Switch
                         checked={service.is_active || false}
-                        onCheckedChange={() => handleToggleStatus(service.id, service.is_active)}
+                        onCheckedChange={() => toggleStatusMutation.mutate({ id: service.id, updates: { is_active: !service.is_active } })}
                       />
                     </TableCell>
                     <TableCell>
@@ -175,13 +190,10 @@ export default function Services() {
                         <Button variant="outline" size="sm" onClick={() => handleOpenManagePricesDialog(service)}>
                           <DollarSign className="w-4 h-4" />
                         </Button>
-                        <ServiceCommissionsDialog
-                          serviceId={service.id}
-                          serviceName={service.name}
-                          trigger={
-                            <Button variant="outline" size="sm"><Users className="w-4 h-4" /></Button>
-                          }
-                        />
+                        {/* OLD ServiceCommissionsDialog REMOVED */}
+                        <Button variant="outline" size="sm" onClick={() => handleOpenServiceCommissionsDialog(service)}>
+                          <Users className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -190,22 +202,23 @@ export default function Services() {
             </TableBody>
           </Table>
           
+          {filteredServices?.length === 0 && (
+            <div className="text-center py-12">
+              <Scissors className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+              <h3 className="text-lg font-bold text-primary mb-2">No hay servicios</h3>
+              <p className="text-slate-600 mb-4">
+                {filterCategory === "" 
+                  ? "No tienes servicios creados aún o no coinciden con los filtros aplicados." 
+                  : `No hay servicios en la categoría seleccionada que coincidan con los filtros.`
+                }
+              </p>
+              {allServices?.length === 0 && (
+                <MasterServiceDialog trigger={<Button>Crear Nuevo Servicio</Button>} />
+              )}
+            </div>
+          )}
           </CardContent>
       </Card>
-
-      {filteredServices?.length === 0 && (
-        <div className="text-center py-12">
-          <Scissors className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-          <h3 className="text-lg font-semibold text-primary mb-2">No hay servicios</h3>
-          <p className="text-slate-600 mb-4">
-            {filterCategory === "" 
-              ? "No tienes servicios creados aún o no coinciden con los filtros aplicados." 
-              : `No hay servicios en la categoría seleccionada que coincidan con los filtros.`
-            }
-          </p>
-          <MasterServiceDialog />
-        </div>
-      )}
       {selectedServiceForAssignment && (
         <AssignServicesToBranchDialog
           isOpen={isAssignServiceDialogOpen}
@@ -220,6 +233,16 @@ export default function Services() {
           onOpenChange={setIsManagePricesDialogOpen}
           service={selectedServiceForPrices}
           onSuccess={handleManagePricesSuccess}
+        />
+      )}
+      {/* NEW DIALOG INTEGRATION */}
+      {selectedServiceForCommissions && (
+        <ManageServiceCommissionsDialog
+          isOpen={isServiceCommissionsDialogOpen}
+          onOpenChange={setIsServiceCommissionsDialogOpen}
+          serviceId={selectedServiceForCommissions.id}
+          serviceName={selectedServiceForCommissions.name}
+          onSuccess={handleServiceCommissionsSuccess}
         />
       )}
     </div>

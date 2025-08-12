@@ -15,8 +15,8 @@ export interface TenantClientSettings {
 
 // Hook para obtener la configuración a través de la Edge Function
 export const useTenantClientSettings = () => {
-  const { currentTenant } = useAuth();
-  const tenantId = currentTenant?.id;
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   const fetchSettings = async () => {
     if (!tenantId) return null;
@@ -39,8 +39,8 @@ export const useTenantClientSettings = () => {
 // Hook para actualizar la configuración a través de la Edge Function
 export const useUpdateTenantClientSettings = () => {
   const queryClient = useQueryClient();
-  const { currentTenant } = useAuth();
-  const tenantId = currentTenant?.id;
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   const updateSettings = async (settings: Partial<Omit<TenantClientSettings, 'id' | 'created_at' | 'updated_at'>>) => {
     if (!tenantId) throw new Error('Tenant no identificado.');

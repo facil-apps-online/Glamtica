@@ -28,16 +28,16 @@ export interface Client {
 }
 
 // Hook to get all clients for the tenant
-export const useClients = () => {
+export const useClients = (searchTerm: string = '', showInactive: boolean = false) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery<Client[], Error>({
-    queryKey: ['clients', tenantId],
+    queryKey: ['clients', tenantId, searchTerm, showInactive],
     queryFn: async () => {
       if (!tenantId) return [];
-      // Always fetch all clients
-      return fetchTenantAction('get_clients_by_branch', { branchId: 'all' });
+      // Pass searchTerm and showInactive to the edge function
+      return fetchTenantAction('get_clients_by_branch', { branchId: 'all', searchTerm, showInactive });
     },
     enabled: !!tenantId,
   });

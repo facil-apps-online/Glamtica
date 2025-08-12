@@ -7,6 +7,7 @@ import { useSchedulableUsers } from "@/hooks/useSchedulableUsers";
 import { UserScheduleDialog } from "@/components/UserScheduleDialog";
 import { TimeOffRequestDialog } from "@/components/TimeOffRequestDialog";
 import { TimeOffRequestsList } from "@/components/TimeOffRequestsList";
+import { UserCommissionsDialog } from "@/components/UserCommissionsDialog";
 
 export default function Team() {
   const { data: users, isLoading } = useSchedulableUsers();
@@ -103,10 +104,7 @@ export default function Team() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" disabled>
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          Comisiones
-                        </Button>
+                        <UserCommissionsDialog userId={user.id} userName={userName} />
                         <Button variant="outline" size="sm" className="flex-1" disabled>
                           <Edit className="w-4 h-4 mr-1" />
                           Editar Perfil

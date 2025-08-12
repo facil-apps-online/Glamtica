@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,8 +13,8 @@ export interface ClientConsentRecord {
 
 // Hook para obtener los registros de consentimiento de un cliente
 export const useClientConsentRecords = (clientId: string) => {
-  const { currentTenant } = useAuth();
-  const tenantId = currentTenant?.id;
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   const fetchRecords = async () => {
     if (!tenantId || !clientId) return [];
@@ -42,7 +41,7 @@ export const useClientConsentRecords = (clientId: string) => {
 // Hook para guardar un registro de consentimiento de un cliente
 export const useSaveClientConsentRecord = () => {
   const queryClient = useQueryClient();
-  const { currentTenant } = useAuth();
+  const { currentAssignment } = useAuth();
 
   const saveRecord = async (recordData: Pick<ClientConsentRecord, 'client_id' | 'consent_type' | 'signature_data' | 'metadata'>) => {
     const { data, error } = await supabase.functions.invoke('tenant-actions', {
@@ -58,8 +57,8 @@ export const useSaveClientConsentRecord = () => {
 
   return useMutation({ 
     mutationFn: saveRecord,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['clientConsentRecords', currentTenant?.id, data.client_id] });
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clientConsentRecords', currentAssignment?.tenant_id, variables.client_id] });
     }
   });
 };

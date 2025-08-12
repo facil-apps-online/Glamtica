@@ -30,10 +30,10 @@ export const useBranchServices = (branchIdParam?: string) => {
 };
 
 // Hook para obtener todos los servicios maestros (el catálogo general)
-export const useMasterServices = () => {
+export const useMasterServices = (searchTerm?: string, showInactive?: boolean, filterCategory?: string) => {
   return useQuery<MasterService[], Error>({
-    queryKey: ['master_services'],
-    queryFn: () => callTenantAction('get_master_services', {}),
+    queryKey: ['master_services', searchTerm, showInactive, filterCategory],
+    queryFn: () => callTenantAction('get_master_services', { searchTerm, showInactive, categoryId: filterCategory }),
   });
 };
 

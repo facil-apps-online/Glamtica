@@ -13,9 +13,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function ClientsTab() {
   const { toast } = useToast();
-  const { currentTenant } = useAuth();
+  const { currentAssignment, loading: authLoading } = useAuth();
+  console.log("Current Tenant ID in ClientsTab:", currentAssignment?.tenant_id);
   const { data: settings, isLoading: isLoadingSettings, isError: isErrorSettings } = useTenantClientSettings();
   const { data: templates, isLoading: isLoadingTemplates } = useClientDocumentTemplates();
+  console.log("Loaded templates:", templates);
   const { mutate: updateSettings, isLoading: isUpdating } = useUpdateTenantClientSettings();
 
   const [formState, setFormState] = useState<Partial<Omit<TenantClientSettings, 'id' | 'created_at' | 'updated_at'>>>({});
@@ -32,9 +34,10 @@ export function ClientsTab() {
   }, [settings]);
 
   const handleSave = () => {
-    if (!currentTenant?.id) return;
     
-    updateSettings({ ...formState, tenant_id: currentTenant.id }, {
+    if (!currentAssignment?.tenant_id) return;
+    
+    updateSettings({ ...formState, tenant_id: currentAssignment.tenant_id }, {
       onSuccess: () => {
         toast({ title: "Éxito", description: "Configuración guardada correctamente." });
       },
@@ -45,6 +48,22 @@ export function ClientsTab() {
   };
 
   const isLoading = isLoadingSettings || isLoadingTemplates;
+
+  if (authLoading || !currentAssignment?.tenant_id) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Cargando configuración de Clientes...</CardTitle>
+          <CardDescription>
+            Por favor, espera mientras cargamos los datos de tu tenant.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div>Cargando...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>

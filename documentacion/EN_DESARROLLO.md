@@ -1,67 +1,43 @@
-# Refactorización del Módulo de Servicios
+# Proyecto: Gestión Avanzada de Comisiones
 
-## Objetivo Principal
-Replicar la funcionalidad y estructura del módulo de productos para el módulo de servicios, incluyendo la gestión de servicios maestros, servicios por sucursal, categorías, comisiones e impuestos. Se incluirá un nuevo tab de "Servicios" en la configuración de la sucursal, funcionando de manera análoga al tab de "Productos". El comportamiento de los impuestos para servicios será idéntico al de productos.
+Este documento describe el plan de trabajo para implementar la funcionalidad completa de gestión de comisiones.
 
-## Consideraciones Clave
-*   Todas las operaciones CRUD para servicios (maestros, por sucursal, categorías, comisiones, impuestos) se implementarán como `tenant-actions` (edge functions).
-*   Se mantendrá la distinción entre "servicios maestros/por sucursal" y "productos asociados a un servicio" (ej. un champú usado en un corte de pelo).
+---
 
-## Plan Detallado
+### **Fase 1: El Núcleo de Datos - Creación de Hooks Centralizados**
 
-### Fase 1: Preparación y Creación de Entidades Base
+*   **Estado:** `[✓ Completado]`
+*   **Objetivo:** Crear los hooks de datos que nos permitirán consultar y modificar las comisiones de forma centralizada. Esta es la base para que las 3 interfaces (Catálogo, Sucursal y Equipo) funcionen de manera consistente.
+*   **Tareas:**
+        *   `[✓ Completado]` **1.1:** Diseñar y crear `useProductCommissionData(productId)`: Un hook que, para un producto maestro, devuelva todos los usuarios, las sucursales donde está activo y sus comisiones.
+    *   `[✓ Completado]` **1.2:** Diseñar y crear `useServiceCommissionData(serviceId)`: Equivalente al anterior, pero para servicios.
+    *   `[✓ Completado]` **1.3:** Diseñar y crear `useUserCommissionData(userId)`: Un hook que, para un usuario, devuelva todos los productos/servicios que puede realizar/vender y sus comisiones en cada sucursal relevante.
+    *   `[✓ Completado]` **1.4:** Diseñar y crear `useUpdateCommission`: Un hook de mutación para guardar los cambios de comisión.
+    *   `[✓ Completado]` **1.5:** Diseñar y crear `useBranchCommissionData(branchId)`: Un hook que, para una sucursal, devuelva todos los productos/servicios activos y sus comisiones en esa sucursal.
 
-*   **1.1. Definir Interfaces de Servicio:** **COMPLETADO**
-    *   Crear `src/types/services.ts` para definir las interfaces `MasterService` y `BranchService`, siguiendo la estructura de `MasterProduct` y `BranchProduct`.
-    *   Revisar y, si es necesario, ajustar las interfaces `ServiceCategory` y `ServiceCommission` para asegurar consistencia.
-    *   Definir la interfaz `ServiceTaxType` similar a `ProductTaxType`.
+---
 
-*   **1.2. Crear `useServices.ts` (Hook Principal):** **COMPLETADO**
-    *   Desarrollar `src/hooks/useServices.ts` que contendrá la lógica para:
-        *   `useMasterServices`: Obtener todos los servicios maestros.
-        *   `useBranchServices`: Obtener servicios asignados a una sucursal.
-        *   `useServiceBranchPrices`: Obtener precios de un servicio maestro en todas sus sucursales (si aplica, similar a productos).
-        *   `useCreateMasterService`: Crear un servicio maestro.
-        *   `useUpdateMasterService`: Actualizar un servicio maestro.
-        *   `useAssignServiceToBranch`: Asignar un servicio a una sucursal.
-        *   `useUpdateBranchService`: Actualizar un servicio en una sucursal (precio, duración, etc.).
-        *   `useRemoveServiceFromBranch`: Desvincular un servicio de una sucursal.
+### **Fase 2: Implementación UI - Gestión desde Catálogos Maestros**
 
-*   **1.3. Crear `useServiceTaxTypes.ts`:** **COMPLETADO**
-    *   Desarrollar `src/hooks/useServiceTaxTypes.ts` con la lógica CRUD para asociar tipos de impuestos a servicios, similar a `useProductTaxTypes.ts`.
+*   **Estado:** `[✓ Completado]`
+*   **Objetivo:** Conectar la lógica de datos al botón "Gestionar Comisiones" que ya existe en las listas de Productos y Servicios.
+*   **Tareas:**
+    *   `[✓ Completado]` **2.1:** Crear un nuevo diálogo `ManageProductCommissionsDialog` que usará el hook `useProductCommissionData`.
+    *   `[✓ Completado]` **2.2:** Crear un diálogo análogo `ManageServiceCommissionsDialog` para los servicios.
 
-### Fase 2: Desarrollo de Componentes de UI y Lógica de Negocio
+---
 
-*   **2.1. `MasterServiceDialog.tsx`:** **COMPLETADO**
-    *   Crear `src/components/MasterServiceDialog.tsx` para la creación y edición de servicios maestros.
-    *   Integrar la gestión de `ServiceTaxType` dentro de este diálogo, similar a cómo `MasterProductDialog` maneja `ProductTaxType`.
-    *   Utilizar `useCreateMasterService`, `useUpdateMasterService`, `useServiceCategories`, y los nuevos hooks de impuestos.
+### **Fase 3: Implementación UI - Gestión desde Miembro del Equipo**
 
-*   **2.2. `AddServicesToBranchDialog.tsx`:** **COMPLETADO**
-    *   Crear `src/components/AddServicesToBranchDialog.tsx` para añadir servicios maestros a una sucursal, similar a `AddProductsToBranchDialog.tsx`.
-    *   Utilizar `useMasterServices` y `useAssignServiceToBranch`.
+*   **Estado:** `[✓ Completado]`
+*   **Objetivo:** Rediseñar el diálogo de comisiones del perfil de usuario para que se ajuste a la nueva lógica de matriz.
+*   **Tareas:**
+    *   `[✓ Completado]` **3.1:** Modificar `UserCommissionsDialog` para que use el hook `useUserCommissionData` y muestre la nueva interfaz de matriz.
 
-*   **2.3. `ManageServiceInBranchDialog.tsx`:** **COMPLETADO**
-    *   Crear `src/components/ManageServiceInBranchDialog.tsx` para gestionar un servicio específico dentro de una sucursal (precio, duración, etc.), similar a `ManageProductInBranchDialog.tsx`.
-    *   Utilizar `useBranchServices`, `useUpdateBranchService`, `useRemoveServiceFromBranch`.
+---
 
-*   **2.4. `BranchServicesTabContent.tsx` (CRÍTICO - Requisito del usuario):** **COMPLETADO**
-    *   Crear `src/components/BranchServicesTabContent.tsx`.
-    *   Este componente será el tab dentro de la configuración de la sucursal.
-    *   Debe listar los `BranchService`s, permitir añadir nuevos (`AddServicesToBranchDialog`), editar existentes (`ManageServiceInBranchDialog`), y gestionar su estado (activo/inactivo).
-    *   Utilizar `useBranchServices` y `useUpdateBranchService`.
+### **Fase 4: Implementación UI - Gestión desde Configuración de Sucursales**
 
-*   **2.5. `ManageServicePricesDialog.tsx` (Opcional, si aplica):**
-    *   Si los servicios tienen precios complejos por sucursal que requieren una gestión masiva, crear `src/components/ManageServicePricesDialog.tsx` similar a `ManageProductPricesDialog.tsx`.
-
-*   **2.6. Integración en `BranchForm.tsx` (o componente de configuración de sucursal):** **COMPLETADO**
-    *   Modificar el componente que renderiza la configuración de la sucursal (probablemente `BranchForm.tsx` o un componente similar) para añadir un nuevo tab para `BranchServicesTabContent.tsx`.
-
-### Fase 3: Revisión y Ajustes
-
-*   **3.1. Revisar `useServiceProducts.ts` y `AddServiceProductDialog.tsx`:** **COMPLETADO**
-    *   Asegurarse de que estos componentes sigan siendo coherentes con la nueva estructura.
-*   **3.2. Actualizar `DB_SCHEMA.md`:** **COMPLETADO**
-    *   Documentar cualquier cambio en el esquema de la base de datos necesario para soportar las nuevas entidades de servicio y sus relaciones (ej. tablas `master_services`, `branch_services`, `service_tax_types`).
-*   **3.3. Pruebas:**
-    *   Realizar pruebas exhaustivas de la nueva funcionalidad.
+*   **Estado:** `[✓ Completado]`
+*   **Tareas:**
+    *   `[✓ Completado]` **4.1:** Crear un nuevo componente/pestaña en la página de configuración de sucursales para gestionar comisiones.

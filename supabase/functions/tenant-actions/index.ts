@@ -2,6 +2,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { jwtDecode } from "https://esm.sh/jwt-decode@4.0.0";
 
+const callRpc = async (supabaseAdmin: any, rpcName: string, params: any) => {
+  const { data, error } = await supabaseAdmin.rpc(rpcName, params);
+  if (error) throw error;
+  return data;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -19,6 +25,8 @@ serve(async (req) => {
   );
 
   const { action, payload } = await req.json();
+  console.log("Received action:", action);
+  console.log("Received payload:", JSON.stringify(payload, null, 2));
   let responseData: any = null;
   let status = 200;
   const startTime = performance.now();
@@ -47,31 +55,15 @@ serve(async (req) => {
     switch (action) {
       // --- CLIENT ACTIONS ---
       case 'get_clients_by_branch': {
-        const { branchId } = payload;
+        const { branchId, searchTerm, showInactive } = payload;
         if (!branchId) throw new Error('Branch ID is required.');
 
-        let query = supabaseAdmin
-          .from('clients')
-          .select(`
-            *,
-            client_branches(branches(id, name))
-          `)
-          .eq('tenant_id', tenantId);
-
-        if (branchId !== 'all') {
-          const { data: clientIds, error: idsError } = await supabaseAdmin
-            .from('client_branches')
-            .select('client_id')
-            .eq('branch_id', branchId)
-            .eq('tenant_id', tenantId);
-
-          if (idsError) throw idsError;
-          
-          const ids = clientIds.map(d => d.client_id);
-          query = query.in('id', ids);
-        }
-        
-        const { data, error } = await query.order('name');
+        const { data, error } = await supabaseAdmin.rpc('search_clients', {
+          p_tenant_id: tenantId,
+          p_branch_id: branchId,
+          p_search_term: searchTerm,
+          p_show_inactive: showInactive,
+        });
 
         if (error) throw error;
         responseData = data;
@@ -768,22 +760,27 @@ serve(async (req) => {
       }
 
       case 'get_master_services': {
-        const { data, error } = await supabaseAdmin
-          .from('services')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('name');
+        const { searchTerm, showInactive, categoryId } = payload;
+        const { data, error } = await supabaseAdmin.rpc('search_services', {
+          p_tenant_id: tenantId,
+          p_search_term: searchTerm,
+          p_show_inactive: showInactive,
+          p_category_id: categoryId === '' ? null : categoryId,
+        });
         if (error) throw error;
         responseData = data;
         break;
       }
 
       case 'get_master_products': {
-        const { data, error } = await supabaseAdmin
-          .from('products')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('name');
+        const { searchTerm, showInactive, category, brandId } = payload;
+        const { data, error } = await supabaseAdmin.rpc('search_products', {
+          p_tenant_id: tenantId,
+          p_search_term: searchTerm,
+          p_show_inactive: showInactive,
+          p_category_name: category,
+          p_brand_id: brandId === '' ? null : brandId,
+        });
         if (error) throw error;
         responseData = data;
         break;
@@ -1002,6 +999,56 @@ serve(async (req) => {
         break;
       }
 
+      case 'get_service_commissions_by_service_and_branch': {
+        const { serviceId, branchId } = payload;
+        if (!serviceId || !branchId) throw new Error('Service ID and Branch ID are required.');
+        const { data: commissions, error: commissionsError } = await supabaseAdmin
+          .from('service_user_commissions')
+          .select(`*,
+            services(id, name, price)
+          `) // Removed users selection
+          .eq('tenant_id', tenantId)
+          .eq('service_id', serviceId)
+          .eq('branch_id', branchId)
+          .order('created_at', { ascending: false });
+        if (commissionsError) throw commissionsError;
+
+        // Fetch all users for the tenant using the RPC
+        const users = await callRpc(supabaseAdmin, 'get_tenant_users', { target_tenant_id: tenantId });
+        const usersMap = new Map(users.map((user: any) => [user.user_id, user]));
+
+        responseData = commissions.map((commission: any) => ({
+          ...commission,
+          user: usersMap.get(commission.user_id) || null, // Enrich with user data
+        }));
+        break;
+      }
+
+      case 'get_product_commissions_by_product_and_branch': {
+        const { productId, branchId } = payload;
+        if (!productId || !branchId) throw new Error('Product ID and Branch ID are required.');
+        const { data: commissions, error: commissionsError } = await supabaseAdmin
+          .from('product_user_commissions')
+          .select(`*,
+            products(id, name, price)
+          `) // Removed users selection
+          .eq('tenant_id', tenantId)
+          .eq('product_id', productId)
+          .eq('branch_id', branchId)
+          .order('created_at', { ascending: false });
+        if (commissionsError) throw commissionsError;
+
+        // Fetch all users for the tenant using the RPC
+        const users = await callRpc(supabaseAdmin, 'get_tenant_users', { target_tenant_id: tenantId });
+        const usersMap = new Map(users.map((user: any) => [user.user_id, user]));
+
+        responseData = commissions.map((commission: any) => ({
+          ...commission,
+          user: usersMap.get(commission.user_id) || null, // Enrich with user data
+        }));
+        break;
+      }
+
       case 'get_product_branch_prices': {
         const { productId } = payload;
         if (!productId) throw new Error('Product ID is required for get_product_branch_prices.');
@@ -1139,7 +1186,7 @@ serve(async (req) => {
 
         const { data, error } = await supabaseAdmin
           .from('client_document_instances')
-          .select('*, template:template_id(name, description, version)')
+          .select('*, template:template_id(name, description, version, schema)')
           .eq('tenant_id', tenantId)
           .eq('client_id', client_id)
           .order('created_at', { ascending: false });
@@ -1179,6 +1226,328 @@ serve(async (req) => {
         break;
       }
 
+      // --- USER SERVICE COMMISSIONS ---
+      case 'get_user_service_commissions': {
+        const { userId } = payload;
+        if (!userId) throw new Error('User ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('service_user_commissions')
+          .select('*, services(id, name)')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', userId);
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_service_commission': {
+        const { commissionData } = payload;
+        if (!commissionData) throw new Error('Commission data is required.');
+        const { data, error } = await supabaseAdmin
+          .from('service_user_commissions')
+          .insert({ ...commissionData, tenant_id: tenantId })
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_service_commission': {
+        const { id, updates } = payload;
+        if (!id || !updates) throw new Error('Commission ID and updates are required.');
+        const { data, error } = await supabaseAdmin
+          .from('service_user_commissions')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_service_commission': {
+        const { id } = payload;
+        if (!id) throw new Error('Commission ID is required.');
+        const { error } = await supabaseAdmin
+          .from('service_user_commissions')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      // --- USER PRODUCT COMMISSIONS ---
+      case 'get_user_product_commissions': {
+        const { userId, branchId } = payload;
+        if (!userId || !branchId) throw new Error('User ID and Branch ID are required.');
+        const { data, error } = await supabaseAdmin
+          .from('product_user_commissions')
+          .select('*, products(id, name)')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', userId)
+          .eq('branch_id', branchId);
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_product_commission': {
+        const { commissionData } = payload;
+        if (!commissionData) throw new Error('Commission data is required.');
+        const { data, error } = await supabaseAdmin
+          .from('product_user_commissions')
+          .insert({ ...commissionData, tenant_id: tenantId })
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_product_commission': {
+        const { id, updates } = payload;
+        if (!id || !updates) throw new Error('Commission ID and updates are required.');
+        const { data, error } = await supabaseAdmin
+          .from('product_user_commissions')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_product_commission': {
+        const { id } = payload;
+        if (!id) throw new Error('Commission ID is required.');
+        const { error } = await supabaseAdmin
+          .from('product_user_commissions')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+      if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      // --- COMMISSION MATRIX ACTIONS ---
+      case 'get_product_commission_matrix': {
+        const { productId } = payload;
+        if (!productId) throw new Error('Product ID is required.');
+        
+        const { data, error } = await supabaseAdmin.rpc('get_product_commission_matrix', {
+          product_id_param: productId,
+          tenant_id_param: tenantId
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_service_commission_matrix': {
+        const { serviceId } = payload;
+        if (!serviceId) throw new Error('Service ID is required.');
+
+        const { data, error } = await supabaseAdmin.rpc('get_service_commission_matrix', {
+          service_id_param: serviceId,
+          tenant_id_param: tenantId
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_user_product_commission_matrix': {
+        const { userId: targetUserId } = payload;
+        if (!targetUserId) throw new Error('User ID is required.');
+        
+        const { data, error } = await supabaseAdmin.rpc('get_user_product_commission_matrix', {
+          user_id_param: targetUserId,
+          tenant_id_param: tenantId
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_user_service_commission_matrix': {
+        const { userId: targetUserId } = payload;
+        if (!targetUserId) throw new Error('User ID is required.');
+
+        const { data, error } = await supabaseAdmin.rpc('get_user_service_commission_matrix', {
+          user_id_param: targetUserId,
+          tenant_id_param: tenantId
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_commission': {
+        const {
+          item_id,
+          user_id,
+          branch_id,
+          item_type,
+          commission_rate,
+          can_perform
+        } = payload;
+
+        if (!item_id || !user_id || !branch_id || !item_type) {
+          throw new Error('Missing required fields for commission update.');
+        }
+
+        let data, error;
+
+        if (item_type === 'product') {
+          ({ data, error } = await supabaseAdmin
+            .from('product_user_commissions')
+            .upsert(
+              {
+                product_id: item_id,
+                user_id: user_id,
+                branch_id: branch_id,
+                tenant_id: tenantId,
+                commission_rate: commission_rate,
+              },
+              {
+                onConflict: 'product_id, user_id, branch_id, tenant_id',
+              }
+            )
+            .select()
+            .single());
+        } else if (item_type === 'service') {
+          ({ data, error } = await supabaseAdmin
+            .from('service_user_commissions')
+            .upsert(
+              {
+                service_id: item_id,
+                user_id: user_id,
+                branch_id: branch_id,
+                tenant_id: tenantId,
+                commission_rate: commission_rate,
+                can_perform: can_perform ?? false,
+              },
+              {
+                onConflict: 'service_id, user_id, branch_id',
+              }
+            )
+            .select()
+            .single());
+        } else {
+          throw new Error(`Invalid item_type: ${item_type}`);
+        }
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_branch_commission_matrix': {
+        const { branchId } = payload;
+        if (!branchId) throw new Error('Branch ID is required.');
+
+        // Fetch all users for the tenant using the RPC
+        const tenantUsers = await callRpc(supabaseAdmin, 'get_tenant_users', { target_tenant_id: tenantId });
+        const tenantUsersMap = new Map(tenantUsers.map((user: any) => [user.user_id, user]));
+
+        // Filter users assigned to the current branch
+        const branchUsers = tenantUsers.filter((user: any) =>
+          user.branch_id === branchId
+        ).map((user: any) => ({
+          user_id: user.user_id,
+          user_name: user.first_name || user.email || 'Unknown User', // Use first_name from RPC
+        }));
+
+        // Fetch active products in the branch
+        const { data: branchProducts, error: bpError } = await supabaseAdmin
+          .from('branch_products')
+          .select('product_id, products(name)')
+          .eq('tenant_id', tenantId)
+          .eq('branch_id', branchId)
+          .eq('is_active', true);
+        if (bpError) throw bpError;
+
+        const productsWithCommissions = await Promise.all(branchProducts.map(async (bp: any) => {
+          const { data: productCommissions, error: pcError } = await supabaseAdmin
+            .from('product_user_commissions')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .eq('branch_id', branchId)
+            .eq('product_id', bp.product_id);
+          if (pcError) throw pcError;
+
+          const usersWithCommissions = branchUsers.map(user => { // Use branchUsers
+            const commission = productCommissions.find(pc => pc.user_id === user.user_id);
+            return {
+              user_id: user.user_id,
+              user_name: user.user_name,
+              commission_rate: commission?.commission_rate || null,
+              commission_id: commission?.id || null,
+            };
+          });
+
+          return {
+            product_id: bp.product_id,
+            product_name: bp.products?.name || 'Unknown Product',
+            users: usersWithCommissions,
+          };
+        }));
+
+        // Fetch active services in the branch
+        const { data: branchServices, error: bsError } = await supabaseAdmin
+          .from('branch_services')
+          .select('service_id, services(name)')
+          .eq('tenant_id', tenantId)
+          .eq('branch_id', branchId)
+          .eq('is_active', true);
+        if (bsError) throw bsError;
+
+        const servicesWithCommissions = await Promise.all(branchServices.map(async (bs: any) => {
+          const { data: serviceCommissions, error: scError } = await supabaseAdmin
+            .from('service_user_commissions')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .eq('branch_id', branchId)
+            .eq('service_id', bs.service_id);
+          if (scError) throw scError;
+
+          const usersWithCommissions = branchUsers.map(user => { // Use branchUsers
+            const commission = serviceCommissions.find(sc => sc.user_id === user.user_id);
+            return {
+              user_id: user.user_id,
+              user_name: user.user_name,
+              commission_rate: commission?.commission_rate || null,
+              can_perform: commission?.can_perform || false,
+              commission_id: commission?.id || null,
+            };
+          });
+
+          return {
+            service_id: bs.service_id,
+            service_name: bs.services?.name || 'Unknown Service',
+            users: usersWithCommissions,
+          };
+        }));
+
+        responseData = {
+          products: productsWithCommissions,
+          services: servicesWithCommissions,
+        };
+        break;
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -1188,8 +1557,8 @@ serve(async (req) => {
       status: status,
     });
   } catch (error) {
-    status = 400;
-    console.error("Error in tenant-actions Edge Function:", error);
+    status = 500; // Internal Server Error for unhandled exceptions
+    console.error("Error in tenant-actions Edge Function:", JSON.stringify(error, null, 2));
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

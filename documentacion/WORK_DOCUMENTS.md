@@ -903,3 +903,23 @@ Implementar un módulo completo y seguro para que el `super_admin` pueda gestion
 2.  **Error de CORS:** Tras solucionar el primer error, la página de plataformas no podía cargar datos debido a un error de CORS. Se diagnosticó correctamente que la causa raíz no era la configuración de CORS, sino que la nueva Edge Function `superadmin-actions` no había sido desplegada en el entorno de Supabase. El despliegue de la función resolvió el problema.
 
 **Estado:** Completado y verificado.
+---
+### Módulo: Funciones de Matriz de Comisiones (Productos y Servicios)
+
+**Fecha de Finalización:** 11 de agosto de 2025
+
+**Descripción General:**
+Se han corregido y mejorado las funciones RPC `get_product_commission_matrix` y `get_service_commission_matrix` para asegurar la correcta obtención de las comisiones de productos y servicios por usuario y sucursal. Las correcciones abordan problemas de referencia a tablas y columnas inexistentes, y adaptan la lógica para obtener las asignaciones de sucursal directamente de la metadata de los usuarios de Supabase Auth.
+
+**Problemas Resueltos:**
+1.  **`column "master_product_id" does not exist` / `column "master_service_id" does not exist`:** Se corrigió el uso de nombres de columna incorrectos en las tablas `public.branch_products` y `public.branch_services`. Las funciones ahora utilizan `product_id` y `service_id` respectivamente.
+2.  **`relation "public.users" does not exist`:** Se actualizó la referencia a la tabla de usuarios de `public.users` a `auth.users`, que es la tabla de usuarios gestionada por Supabase Auth.
+3.  **`relation "public.user_assignments" does not exist`:** Se eliminó la dependencia de la tabla `public.user_assignments`. Las asignaciones de sucursal de los usuarios ahora se extraen directamente del campo `raw_user_meta_data->'assignments'` en la tabla `auth.users`.
+
+**Componentes Técnicos Modificados:**
+
+-   **Funciones RPC de PostgreSQL:**
+    -   `get_product_commission_matrix`: Actualizada para usar `auth.users` y extraer `branch_id` de `raw_user_meta_data->'assignments'`, y corregir la referencia a `product_id`.
+    -   `get_service_commission_matrix`: Actualizada para usar `auth.users` y extraer `branch_id` de `raw_user_meta_data->'assignments'`, y corregir la referencia a `service_id`.
+
+**Estado:** Completado y verificado (a través de la creación de una nueva migración).

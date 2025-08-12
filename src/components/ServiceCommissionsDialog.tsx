@@ -66,6 +66,14 @@ export const ServiceCommissionsDialog = ({ serviceId, serviceName, trigger }: Se
     }
   };
 
+  const handleToggleCanPerform = async (id: string, canPerform: boolean) => {
+    try {
+      await updateMutation.mutateAsync({ id, updates: { can_perform: canPerform } });
+    } catch (error) {
+      console.error('Error updating can_perform:', error);
+    }
+  };
+
   const resetForm = () => {
     setUserId("");
     setCommissionRate(0);
@@ -90,6 +98,15 @@ export const ServiceCommissionsDialog = ({ serviceId, serviceName, trigger }: Se
                   <div key={commission.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <span className="font-medium">{`${commission.users?.first_name || ''} ${commission.users?.last_name || ''}`.trim()}</span>
                     <div className="flex items-center gap-3">
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id={`can-perform-${commission.id}`} 
+                          checked={commission.can_perform}
+                          onCheckedChange={(checked) => handleToggleCanPerform(commission.id, checked)}
+                          disabled={updateMutation.isPending}
+                        />
+                        <Label htmlFor={`can-perform-${commission.id}`} className="text-xs">Puede Realizar</Label>
+                      </div>
                       <Label className="text-xs">Comisión %:</Label>
                       <Input
                         type="number"

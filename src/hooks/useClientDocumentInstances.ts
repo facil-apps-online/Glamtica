@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,8 +17,8 @@ export interface ClientDocumentInstance {
 
 // Hook para obtener las instancias de documentos de un cliente
 export const useClientDocumentInstances = (clientId: string) => {
-  const { currentTenant } = useAuth();
-  const tenantId = currentTenant?.id;
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
   const fetchInstances = async () => {
     if (!tenantId || !clientId) return [];
@@ -46,7 +45,7 @@ export const useClientDocumentInstances = (clientId: string) => {
 // Hook para guardar una instancia de documento de un cliente
 export const useSaveClientDocumentInstance = () => {
   const queryClient = useQueryClient();
-  const { currentTenant } = useAuth();
+  const { currentAssignment } = useAuth();
 
   const saveInstance = async (instanceData: { client_id: string; template_id: string; data: any }) => {
     const { data, error } = await supabase.functions.invoke('tenant-actions', {
@@ -62,8 +61,8 @@ export const useSaveClientDocumentInstance = () => {
 
   return useMutation({ 
     mutationFn: saveInstance,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['clientDocumentInstances', currentTenant?.id, data.client_id] });
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clientDocumentInstances', currentAssignment?.tenant_id, variables.client_id] });
     }
   });
 };

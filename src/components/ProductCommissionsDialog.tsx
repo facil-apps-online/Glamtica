@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Settings, Plus, Trash2, Edit } from "lucide-react";
 import { useSchedulableUsers } from "@/hooks/useSchedulableUsers";
-import { useProductCommissions, useCreateProductCommission, useUpdateProductCommission, useDeleteProductCommission } from "@/hooks/useProductCommissions";
+import { useProductCommissionsByProduct } from "@/hooks/useProducts";
+import { useCreateProductCommission, useUpdateProductCommission, useDeleteProductCommission } from "@/hooks/useProductCommissions";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProductCommissionsDialogProps {
@@ -26,7 +27,7 @@ export const ProductCommissionsDialog = ({ productId, productName }: ProductComm
   const branchId = currentAssignment?.branch_id;
 
   const { data: users } = useSchedulableUsers();
-  const { data: commissions, isLoading } = useProductCommissions(productId, branchId);
+  const { data: commissions, isLoading } = useProductCommissionsByProduct(productId, branchId);
   const createMutation = useCreateProductCommission();
   const updateMutation = useUpdateProductCommission();
   const deleteMutation = useDeleteProductCommission();
