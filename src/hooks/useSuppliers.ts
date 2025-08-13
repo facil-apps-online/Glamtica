@@ -13,13 +13,14 @@ interface Supplier {
   phone?: string;
   email?: string;
   is_active: boolean;
+  branch_ids?: string[]; // Nuevo campo
   created_at: string;
   updated_at: string;
 }
 
 // Tipos para la creación y actualización, omitiendo los campos que gestiona el backend
-type CreateSupplierData = Omit<Supplier, 'id' | 'tenant_id' | 'is_active' | 'created_at' | 'updated_at'>;
-type UpdateSupplierData = Partial<Omit<Supplier, 'id' | 'tenant_id' | 'created_at' | 'updated_at'> & { id: string }>;
+type CreateSupplierData = Omit<Supplier, 'id' | 'tenant_id' | 'is_active' | 'created_at' | 'updated_at'> & { branch_ids?: string[] };
+type UpdateSupplierData = Partial<Omit<Supplier, 'id' | 'tenant_id' | 'created_at' | 'updated_at'> & { id: string; branch_ids?: string[] }>;
 
 // Hook genérico para invocar acciones de la Edge Function
 const useTenantAction = <T, P>(action: string) => {

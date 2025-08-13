@@ -30,7 +30,6 @@ interface AddSupplierProductData {
   supplier_id: string;
   product_id: string;
   supplier_price: number;
-  branch_id: string; // Assuming branch_id is required for supplier_products table
 }
 
 interface UpdateSupplierProductData {
@@ -85,8 +84,11 @@ export const useAddSupplierProduct = () => {
 
   return useMutation({
     mutationFn: invokeAddSupplierProduct,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id] });
+    onSuccess: (data, variables) => {
+      // Invalidate the specific query for the supplier whose products were updated
+      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id, variables.supplier_id] });
+      // Also invalidate the general master products list to reflect availability
+      queryClient.invalidateQueries({ queryKey: ['master_products'] });
       toast({
         title: "Producto de proveedor añadido",
         description: "El producto se ha vinculado al proveedor exitosamente.",
@@ -107,8 +109,11 @@ export const useUpdateSupplierProduct = () => {
 
   return useMutation({
     mutationFn: invokeUpdateSupplierProduct,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id] });
+    onSuccess: (data) => {
+      // After a successful update, invalidate the query for the specific supplier
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id, data.supplier_id] });
+      }
       toast({
         title: "Producto de proveedor actualizado",
         description: "Los cambios se han guardado correctamente.",
@@ -130,7 +135,10 @@ export const useToggleSupplierProductStatus = () => {
   return useMutation({
     mutationFn: invokeToggleSupplierProductStatus,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id] });
+      // After a successful toggle, invalidate the query for the specific supplier
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: ['supplierProducts', currentAssignment?.tenant_id, data.supplier_id] });
+      }
       toast({
         title: `Producto de proveedor ${data.is_active ? 'activado' : 'desactivado'}`,
         description: "El estado del producto de proveedor se ha actualizado.",

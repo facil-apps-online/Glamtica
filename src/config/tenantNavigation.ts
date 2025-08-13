@@ -61,6 +61,12 @@ export const tenantNavigationConfig = [
         url: "/inventory",
         icon: Warehouse,
         roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
+        title: "Compras",
+        url: "/inventory/purchases",
+        icon: Package, // Replace with a more appropriate icon if available
+        roles: ['tenant_super_admin', 'tenant_admin']
       }
     ]
   },

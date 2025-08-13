@@ -406,6 +406,241 @@ serve(async (req) => {
         break;
       }
 
+      case 'create_supplier': {
+        const { name, identification_type, identification_number, address, phone, email, branch_ids } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('suppliers')
+          .insert([{ 
+            tenant_id: tenantId, 
+            name, 
+            identification_type, 
+            identification_number, 
+            address, 
+            phone, 
+            email,
+            branch_ids, // Añadido
+            is_active: true 
+          }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_supplier': {
+        const { id, ...updates } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('suppliers')
+          .update(updates) // updates ya contiene branch_ids si se envió
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'add_supplier_product': {
+        const { supplier_id, product_id, supplier_price } = payload;
+        if (!supplier_id || !product_id || supplier_price === undefined) {
+          throw new Error('Supplier ID, Product ID, and Supplier Price are required.');
+        }
+        const { data, error } = await supabaseAdmin
+          .from('supplier_products')
+          .insert([{ 
+            tenant_id: tenantId, 
+            supplier_id, 
+            product_id, 
+            supplier_price,
+            is_active: true
+          }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_purchase': {
+        const { branch_id, supplier_id, purchase_date, total_amount, status, notes, items } = payload;
+
+        if (!branch_id || !items || items.length === 0) {
+          throw new Error('Branch ID and at least one item are required.');
+        }
+
+        // Validación de sucursal del proveedor
+        if (supplier_id) {
+          const { data: supplier, error: supplierError } = await supabaseAdmin
+            .from('suppliers')
+            .select('branch_ids')
+            .eq('id', supplier_id)
+            .single();
+
+          if (supplierError) throw new Error('Error al verificar el proveedor.');
+          if (!supplier.branch_ids || !supplier.branch_ids.includes(branch_id)) {
+            throw new Error('La sucursal de la compra no está permitida para este proveedor.');
+          }
+        }
+
+        // 1. Create the purchase record
+        const { data: purchase, error: purchaseError } = await supabaseAdmin
+          .from('purchases')
+          .insert({
+            tenant_id: tenantId,
+            branch_id,
+            supplier_id,
+            purchase_date,
+            total_amount,
+            status,
+            notes,
+          })
+          .select()
+          .single();
+
+        if (purchaseError) throw purchaseError;
+
+        // 2. Create purchase items
+        const purchaseItems = items.map((item: any) => ({
+          purchase_id: purchase.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          cost_price: item.cost_price,
+        }));
+
+        const { error: itemsError } = await supabaseAdmin
+          .from('purchase_items')
+          .insert(purchaseItems);
+
+        if (itemsError) {
+          // Rollback purchase creation
+          await supabaseAdmin.from('purchases').delete().eq('id', purchase.id);
+          throw itemsError;
+        }
+
+        // 3. Update stock and cost price for each product in the branch
+        for (const item of items) {
+          const { data: branchProduct, error: fetchError } = await supabaseAdmin
+            .from('branch_products')
+            .select('id, stock_quantity, cost_price')
+            .eq('branch_id', branch_id)
+            .eq('product_id', item.product_id)
+            .single();
+
+          if (fetchError) {
+            console.warn(`Product ${item.product_id} not found in branch ${branch_id}. Skipping stock update.`);
+            continue;
+          }
+
+          // For now, we'll use a simple last-cost update.
+          // In the future, we can use a setting from tenant_settings.
+          const newStock = (branchProduct.stock_quantity || 0) + item.quantity;
+          const newCost = item.cost_price;
+
+          const { error: updateError } = await supabaseAdmin
+            .from('branch_products')
+            .update({
+              stock_quantity: newStock,
+              cost_price: newCost,
+            })
+            .eq('id', branchProduct.id);
+
+          if (updateError) {
+            console.error(`Failed to update stock for product ${item.product_id} in branch ${branch_id}`, updateError);
+            // Decide on error handling: continue or rollback? For now, continue.
+          }
+        }
+
+        responseData = purchase;
+        break;
+      }
+
+      case 'complete_purchase': {
+        const { purchase_id } = payload;
+        if (!purchase_id) {
+          throw new Error('Purchase ID is required to complete a purchase.');
+        }
+
+        // 1. Fetch the purchase and its items
+        const { data: purchase, error: fetchPurchaseError } = await supabaseAdmin
+          .from('purchases')
+          .select('*, items:purchase_items(*)')
+          .eq('id', purchase_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (fetchPurchaseError) throw fetchPurchaseError;
+        if (purchase.status === 'completed') {
+          throw new Error('La compra ya ha sido completada.');
+        }
+
+        // 2. Update stock and cost price for each product in the branch
+        for (const item of purchase.items) {
+          const { data: branchProduct, error: fetchBranchProductError } = await supabaseAdmin
+            .from('branch_products')
+            .select('id, stock_quantity, cost_price')
+            .eq('branch_id', purchase.branch_id)
+            .eq('product_id', item.product_id)
+            .single();
+
+          if (fetchBranchProductError) {
+            console.warn(`Product ${item.product_id} not found in branch ${purchase.branch_id}. Skipping stock update for completed purchase.`);
+            continue;
+          }
+
+          const newStock = (branchProduct.stock_quantity || 0) + item.quantity;
+          const newCost = item.cost_price; // Use the cost from the purchase item
+
+          const { error: updateError } = await supabaseAdmin
+            .from('branch_products')
+            .update({
+              stock_quantity: newStock,
+              cost_price: newCost,
+            })
+            .eq('id', branchProduct.id);
+
+          if (updateError) {
+            console.error(`Failed to update stock for product ${item.product_id} in branch ${purchase.branch_id} during completion.`, updateError);
+          }
+        }
+
+        // 3. Update the purchase status to 'completed'
+        const { data: updatedPurchase, error: updatePurchaseError } = await supabaseAdmin
+          .from('purchases')
+          .update({ status: 'completed' })
+          .eq('id', purchase_id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+
+        if (updatePurchaseError) throw updatePurchaseError;
+
+        responseData = updatedPurchase;
+        break;
+      }
+
+      case 'get_purchases': {
+        const { tenantId: requestedTenantId } = payload;
+        if (!requestedTenantId) {
+          throw new Error('Tenant ID is required for get_purchases.');
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('purchases')
+          .select(`
+            *,
+            supplier:supplier_id (name),
+            branch:branch_id (name)
+          `)
+          .eq('tenant_id', requestedTenantId)
+          .order('purchase_date', { ascending: false });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       case 'get_tax_types': {
         const { data, error } = await supabaseAdmin
           .from('tax_types')
@@ -688,7 +923,11 @@ serve(async (req) => {
         const { supplierId } = payload;
         let query = supabaseAdmin
           .from('supplier_products')
-          .select('*, products(name, description, price, cost_price, stock_quantity, min_stock, is_active), suppliers(name, identification_number)');
+          .select(`
+            *,
+            products:product_id (*),
+            suppliers:supplier_id (*)
+          `);
         query = query.eq('tenant_id', tenantId);
         if (supplierId) {
           query = query.eq('supplier_id', supplierId);
@@ -763,9 +1002,9 @@ serve(async (req) => {
         const { searchTerm, showInactive, categoryId } = payload;
         const { data, error } = await supabaseAdmin.rpc('search_services', {
           p_tenant_id: tenantId,
-          p_search_term: searchTerm,
-          p_show_inactive: showInactive,
-          p_category_id: categoryId === '' ? null : categoryId,
+          p_search_term: searchTerm || '',
+          p_show_inactive: showInactive || false,
+          p_category_id: categoryId || null,
         });
         if (error) throw error;
         responseData = data;

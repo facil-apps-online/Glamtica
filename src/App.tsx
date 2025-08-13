@@ -18,6 +18,7 @@ import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
 import { SuppliersPage } from "@/pages/SuppliersPage";
 import BranchProductsPage from "@/pages/Inventory/BranchProductsPage";
+import Purchases from "@/pages/Inventory/Purchases";
 
 
 
@@ -61,6 +62,7 @@ function App() {
                     <Route index element={<Inventory />} />
                     <Route path="suppliers" element={<SuppliersPage />} />
                     <Route path="branch-products" element={<BranchProductsPage />} />
+                    <Route path="purchases" element={<Purchases />} />
                   </Route>
                   <Route path="services" element={<Services />} />
                   <Route path="team" element={<Team />} />

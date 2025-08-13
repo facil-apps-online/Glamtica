@@ -41,3 +41,74 @@ Este documento describe el plan de trabajo para implementar la funcionalidad com
 *   **Estado:** `[✓ Completado]`
 *   **Tareas:**
     *   `[✓ Completado]` **4.1:** Crear un nuevo componente/pestaña en la página de configuración de sucursales para gestionar comisiones.
+
+---
+
+# Proyecto: Gestión de Inventario Avanzada
+
+Este documento describe el plan de trabajo para implementar las funcionalidades de Compras y Traslados de Productos.
+
+### **Fase 1: Módulo de Compras de Productos**
+
+*   **Estado:** `[ ] Pendiente`
+*   **Objetivo:** Registrar las compras a proveedores, actualizar automáticamente el stock de la sucursal correspondiente y ajustar el costo del producto según la configuración del sistema.
+
+**1.1. Base de Datos:**
+*   **Tareas:**
+    *   `[✓]` **1.1.1:** Crear migración para **eliminar** las tablas `purchases` y `purchase_items` existentes.
+    *   `[✓]` **1.1.2:** Crear migración para la nueva tabla `purchases`.
+    *   `[✓]` **1.1.3:** Crear migración para la nueva tabla `purchase_items`.
+    *   `[✓]` **1.1.4:** Crear migración para añadir la columna `cost_price` a la tabla `branch_products`.
+    *   `[✓]` **1.1.5:** Analizar `branch_products` y `products` para asegurar que existen las columnas de `stock` y `cost_price`.
+    *   `[✓]` **1.1.6:** Investigar `tenant_settings` para la configuración de cálculo de costos.
+
+**1.2. Lógica de Backend (Supabase Functions):**
+*   **Tareas:**
+    *   `[✓]` **1.2.1:** Crear RPC `create_purchase` que inserte en `purchases` y `purchase_items`.
+    *   `[✓]` **1.2.2:** El RPC debe actualizar el stock en `branch_products`.
+    *   `[✓]` **1.2.3:** El RPC debe actualizar el `cost_price` en `branch_products` según la configuración del tenant.
+
+**1.3. Interfaz de Usuario (Frontend):**
+*   **Tareas:**
+    *   `[✓]` **1.3.1:** Crear página `src/pages/Inventory/Purchases.tsx` para listar las compras.
+    *   `[✓]` **1.3.2:** Crear componente `PurchaseDialog.tsx` para registrar una nueva compra.
+    *   `[✓]` **1.3.3:** Crear hook `usePurchases.ts`.
+    *   `[✓]` **1.3.4:** Crear hook `useCreatePurchase.ts`.
+
+---
+
+### **Fase 2: Módulo de Traslados de Productos**
+
+*   **Estado:** `[ ] Pendiente`
+*   **Objetivo:** Permitir mover productos de una sucursal a otra, reflejando los cambios de stock en ambas.
+
+**2.1. Base de Datos:**
+*   **Tareas:**
+    *   `[ ]` **2.1.1:** Crear migración para la tabla `product_transfers`:
+        *   `id` (UUID, PK)
+        *   `tenant_id` (UUID, FK a `tenants`)
+        *   `from_branch_id` (UUID, FK a `branches`)
+        *   `to_branch_id` (UUID, FK a `branches`)
+        *   `transfer_date` (TIMESTAMPTZ)
+        *   `status` (TEXT, ej: 'en_proceso', 'en_transito', 'completado', 'cancelado')
+        *   `notes` (TEXT, opcional)
+    *   `[ ]` **2.1.2:** Crear migración para la tabla `product_transfer_items`:
+        *   `id` (UUID, PK)
+        *   `transfer_id` (UUID, FK a `product_transfers`)
+        *   `product_id` (UUID, FK a `products`)
+        *   `quantity` (INTEGER)
+
+**2.2. Lógica de Backend (Supabase Functions):**
+*   **Tareas:**
+    *   `[ ]` **2.2.1:** Crear RPC `create_product_transfer`.
+    *   `[ ]` **2.2.2:** El RPC debe descontar el stock de la sucursal de origen.
+    *   `[ ]` **2.2.3:** Crear RPC `update_product_transfer_status`.
+    *   `[ ]` **2.2.4:** El RPC de actualización de estado debe incrementar el stock en la sucursal de destino al completarse.
+
+**2.3. Interfaz de Usuario (Frontend):**
+*   **Tareas:**
+    *   `[ ]` **2.3.1:** Crear página `src/pages/Inventory/Transfers.tsx`.
+    *   `[ ]` **2.3.2:** Crear componente `ProductTransferDialog.tsx`.
+    *   `[ ]` **2.3.3:** Crear hook `useProductTransfers.ts`.
+    *   `[ ]` **2.3.4:** Crear hook `useCreateProductTransfer.ts`.
+    *   `[ ]` **2.2.5:** Crear hook `useUpdateProductTransferStatus.ts`.
