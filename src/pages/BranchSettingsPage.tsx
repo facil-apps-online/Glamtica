@@ -10,6 +10,7 @@ import { BranchForm } from '@/components/BranchForm';
 import BranchProductsTabContent from '@/components/BranchProductsTabContent';
 import BranchServicesTabContent from '@/components/BranchServicesTabContent';
 import BranchCommissionsTabContent from '@/components/BranchCommissionsTabContent';
+import BranchCombosTabContent from '@/components/BranchCombosTabContent';
 
 export default function BranchSettingsPage() {
   const { branchId } = useParams<{ branchId: string }>();
@@ -51,6 +52,7 @@ export default function BranchSettingsPage() {
               <TabsTrigger value="products">Productos</TabsTrigger>
               <TabsTrigger value="services">Servicios</TabsTrigger>
               <TabsTrigger value="commissions">Comisiones</TabsTrigger>
+              <TabsTrigger value="combos">Combos</TabsTrigger>
             </TabsList>
             <TabsContent value="general">
               {tenantId && <BranchForm branchToEdit={branchToEdit} onSuccess={handleSuccess} tenantId={tenantId} />}
@@ -63,6 +65,9 @@ export default function BranchSettingsPage() {
             </TabsContent>
             <TabsContent value="commissions">
               {branchId && <BranchCommissionsTabContent branchId={branchId} />}
+            </TabsContent>
+            <TabsContent value="combos">
+              {branchId && <BranchCombosTabContent branchId={branchId} />}
             </TabsContent>
           </Tabs>
         </CardContent>

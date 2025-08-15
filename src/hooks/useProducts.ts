@@ -1,30 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
-import { MasterProduct, BranchProduct } from "@/types/products";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
-// Assuming this interface is needed for the commission data returned by the Edge Function
-export interface ProductCommission {
+// --- INTERFACES ---
+
+// Interfaz para el producto maestro (catálogo general)
+export interface MasterProduct {
   id: string;
-  product_id: string;
-  user_id: string;
-  commission_rate: number;
+  name: string;
+  description?: string;
+  cost_price?: number;
+  last_purchase_cost?: number;
+  average_cost?: number;
+  is_active?: boolean;
+  category?: string;
+  brand_id?: string;
+  barcode?: string;
+  sku?: string;
+  tenant_id: string;
   created_at: string;
   updated_at: string;
-  products?: {
-    id: string;
-    name: string;
-  };
-  users?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-  };
+}
+
+// Interfaz para el producto específico de una sucursal
+export interface BranchProduct extends MasterProduct {
+  branch_product_id: string;
+  branch_id: string;
+  selling_price: number;
+  stock_quantity: number;
+  min_stock?: number;
+  max_stock?: number;
+  is_branch_active: boolean;
 }
 
 // --- HELPERS ---
 
-const callTenantAction = async (action: string, payload: any) => {
+export const callTenantAction = async (action: string, payload: any) => {
   const { data, error } = await supabase.functions.invoke('tenant-actions', {
     body: { action, payload },
   });
@@ -34,96 +47,44 @@ const callTenantAction = async (action: string, payload: any) => {
 
 // --- HOOKS ---
 
-// Hook to get products available in the selected branch
-export const useBranchProducts = (branchId?: string) => {
-  return useQuery<BranchProduct[], Error>({
-    queryKey: ['branch_products', branchId],
-    queryFn: () => callTenantAction('get_branch_products', { branchId }),
-    enabled: !!branchId && branchId !== 'all',
+// Hook para obtener los productos disponibles en la sucursal seleccionada
+export const useBranchProducts = (branchIdParam?: string) => {
+  const { selectedBranchId } = useBranchFilterStore();
+  const branchIdToUse = branchIdParam || selectedBranchId;
+
+  return useQuery({
+    queryKey: ['branch_products', branchIdToUse],
+    queryFn: () => callTenantAction('get_branch_products', { branchId: branchIdToUse }),
+    enabled: !!branchIdToUse && branchIdToUse !== 'all',
   });
 };
 
-// Hook to get all master products (the general catalog)
-export const useMasterProducts = (
-  searchTerm?: string, 
-  showInactive?: boolean,
-  filterCategory?: string,
-  filterBrand?: string
-) => {
-  return useQuery<MasterProduct[], Error>({
-    queryKey: ['master_products', searchTerm, showInactive, filterCategory, filterBrand],
-    queryFn: () => callTenantAction('get_master_products', { 
-      searchTerm, 
-      showInactive,
-      category: filterCategory,
-      brandId: filterBrand
-    }),
+// Hook para obtener todos los productos maestros (el catálogo general)
+export const useMasterProducts = (searchTerm?: string, showInactive?: boolean, category?: string, brandId?: string) => {
+  return useQuery({
+    queryKey: ['master_products', searchTerm, showInactive, category, brandId],
+    queryFn: () => callTenantAction('get_master_products', { searchTerm, showInactive, category, brandId }),
   });
 };
 
-// Hook to get prices of a master product in all its assigned branches
+// Hook para obtener los precios de un producto maestro en todas sus sucursales
 export const useProductBranchPrices = (productId: string) => {
-  return useQuery<BranchProduct[], Error>({
+  return useQuery({
     queryKey: ['product_branch_prices', productId],
     queryFn: () => callTenantAction('get_product_branch_prices', { productId }),
     enabled: !!productId,
   });
 };
 
-// Hook to get product commissions by product and branch
-export const useProductCommissionsByProduct = (productId?: string, branchId?: string) => {
-  return useQuery<ProductCommission[], Error>({
-    queryKey: ['product-commissions-by-product', productId, branchId],
-    queryFn: () => callTenantAction('get_product_commissions_by_product_and_branch', { productId, branchId }),
-    enabled: !!productId && !!branchId,
-  });
-};
+// --- MUTATIONS ---
 
-// Mutation to assign a product to one or more branches
-export const useAssignProductToBranch = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation<any, Error, { product_id: string; branch_ids: string[]; defaults: { selling_price: number; stock_quantity: number; is_active?: boolean } }>({
-    mutationFn: (payload) =>
-      callTenantAction('assign_product_to_branch', payload),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      // Invalidate master products if needed, depending on how they are displayed
-      queryClient.invalidateQueries({ queryKey: ['master_products'] });
-      toast({ title: "Asignación Exitosa", description: "El producto ha sido asignado a la(s) sucursal(es)." });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
-    },
-  });
-};
-
-// Mutation to update a product in a specific branch
-export const useUpdateBranchProduct = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation<BranchProduct, Error, { id: string; updates: Partial<Omit<BranchProduct, 'id'>> }>({
-    mutationFn: ({ id, updates }) =>
-      callTenantAction('update_branch_product', { id, updates }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Producto Actualizado", description: "El precio o stock ha sido actualizado para esta sucursal." });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-};
-
-// Mutation to create a new master product
+// Crear un nuevo producto en el catálogo maestro
 export const useCreateMasterProduct = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<MasterProduct, Error, Omit<MasterProduct, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>({
-    mutationFn: (productData) => 
+  return useMutation({
+    mutationFn: (productData: Omit<MasterProduct, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => 
       callTenantAction('create_master_product', { productData }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_products'] });
@@ -135,16 +96,17 @@ export const useCreateMasterProduct = () => {
   });
 };
 
-// Mutation to update a master product
+// Actualizar un producto del catálogo maestro
 export const useUpdateMasterProduct = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<MasterProduct, Error, { id: string; updates: Partial<MasterProduct> }>({
-    mutationFn: ({ id, updates }) =>
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<MasterProduct> }) =>
       callTenantAction('update_master_product', { id, updates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_products'] });
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
       toast({ title: "Producto Maestro Actualizado", description: "La información del producto ha sido actualizada." });
     },
     onError: (error: Error) => {
@@ -153,17 +115,54 @@ export const useUpdateMasterProduct = () => {
   });
 };
 
-// Mutation to remove a product from a branch
+// Asignar un producto a una o varias sucursales
+export const useAssignProductToBranch = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: { product_id: string; branch_ids: string[]; defaults: { selling_price: number; stock_quantity: number; is_active?: boolean } }) =>
+      callTenantAction('assign_product_to_branch', payload),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
+      queryClient.invalidateQueries({ queryKey: ['product_branch_prices', variables.product_id] });
+      toast({ title: "Asignación Exitosa", description: "El producto ha sido asignado a la(s) sucursal(es)." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Actualizar un producto en una sucursal específica
+export const useUpdateBranchProduct = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Omit<BranchProduct, 'id'>> }) =>
+      callTenantAction('update_branch_product', { id, updates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branch_products'] });
+      toast({ title: "Producto Actualizado", description: "El precio, stock o estado ha sido actualizado para esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Desvincular un producto de una sucursal
 export const useRemoveProductFromBranch = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<any, Error, string>({
-    mutationFn: (branch_product_id) =>
+  return useMutation({
+    mutationFn: (branch_product_id: string) =>
       callTenantAction('remove_product_from_branch', { branch_product_id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Producto Desvinculado", description: "El producto ha sido desvinculado de la sucursal." });
+      toast({ title: "Producto Desvinculado", description: "El producto ha sido removido de esta sucursal." });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

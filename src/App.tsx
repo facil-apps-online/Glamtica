@@ -15,10 +15,12 @@ import BranchSettingsPage from "@/pages/BranchSettingsPage";
 import NotFound from "@/pages/NotFound";
 import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
+import Combos from "@/pages/Combos";
 import Inventory from "@/pages/Inventory";
 import { SuppliersPage } from "@/pages/SuppliersPage";
 import BranchProductsPage from "@/pages/Inventory/BranchProductsPage";
-import Purchases from "@/pages/Inventory/Purchases";
+import { PurchasesPage } from "@/pages/Inventory/PurchasesPage";
+import { TransfersPage } from "@/pages/Inventory/TransfersPage";
 
 
 
@@ -58,11 +60,13 @@ function App() {
                   <Route path="appointments" element={<Appointments />} />
                   <Route path="clients" element={<Clients />} />
                   <Route path="products" element={<Products />} />
+                  <Route path="combos" element={<Combos />} />
                   <Route path="inventory">
                     <Route index element={<Inventory />} />
                     <Route path="suppliers" element={<SuppliersPage />} />
                     <Route path="branch-products" element={<BranchProductsPage />} />
-                    <Route path="purchases" element={<Purchases />} />
+                    <Route path="purchases" element={<PurchasesPage />} />
+                    <Route path="transfers" element={<TransfersPage />} />
                   </Route>
                   <Route path="services" element={<Services />} />
                   <Route path="team" element={<Team />} />

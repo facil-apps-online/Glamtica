@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Calendar,
+  Combine, // Añadido para Combos
   Package,
   Scissors,
   Settings,
@@ -57,17 +58,18 @@ export const tenantNavigationConfig = [
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
+        title: "Combos",
+        url: "/combos",
+        icon: Combine,
+        roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
         title: "Inventario",
         url: "/inventory",
         icon: Warehouse,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
-      {
-        title: "Compras",
-        url: "/inventory/purchases",
-        icon: Package, // Replace with a more appropriate icon if available
-        roles: ['tenant_super_admin', 'tenant_admin']
-      }
+      
     ]
   },
   {

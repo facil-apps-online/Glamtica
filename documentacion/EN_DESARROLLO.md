@@ -1,114 +1,73 @@
-# Proyecto: Gestión Avanzada de Comisiones
+# Plan de Desarrollo: Módulos de Compras y Traslados
 
-Este documento describe el plan de trabajo para implementar la funcionalidad completa de gestión de comisiones.
-
----
-
-### **Fase 1: El Núcleo de Datos - Creación de Hooks Centralizados**
-
-*   **Estado:** `[✓ Completado]`
-*   **Objetivo:** Crear los hooks de datos que nos permitirán consultar y modificar las comisiones de forma centralizada. Esta es la base para que las 3 interfaces (Catálogo, Sucursal y Equipo) funcionen de manera consistente.
-*   **Tareas:**
-        *   `[✓ Completado]` **1.1:** Diseñar y crear `useProductCommissionData(productId)`: Un hook que, para un producto maestro, devuelva todos los usuarios, las sucursales donde está activo y sus comisiones.
-    *   `[✓ Completado]` **1.2:** Diseñar y crear `useServiceCommissionData(serviceId)`: Equivalente al anterior, pero para servicios.
-    *   `[✓ Completado]` **1.3:** Diseñar y crear `useUserCommissionData(userId)`: Un hook que, para un usuario, devuelva todos los productos/servicios que puede realizar/vender y sus comisiones en cada sucursal relevante.
-    *   `[✓ Completado]` **1.4:** Diseñar y crear `useUpdateCommission`: Un hook de mutación para guardar los cambios de comisión.
-    *   `[✓ Completado]` **1.5:** Diseñar y crear `useBranchCommissionData(branchId)`: Un hook que, para una sucursal, devuelva todos los productos/servicios activos y sus comisiones en esa sucursal.
+Este documento describe el plan de trabajo para refactorizar y expandir las funcionalidades de Compras y Traslados a módulos de gestión dedicados.
 
 ---
 
-### **Fase 2: Implementación UI - Gestión desde Catálogos Maestros**
+### **Fase 1: Arquitectura Base y Navegación**
 
-*   **Estado:** `[✓ Completado]`
-*   **Objetivo:** Conectar la lógica de datos al botón "Gestionar Comisiones" que ya existe en las listas de Productos y Servicios.
+*   **Estado:** `[✓] Completado`
+*   **Objetivo:** Crear las nuevas páginas vacías y la navegación para acceder a ellas, reemplazando los botones de diálogo actuales y sentando las bases para los nuevos módulos.
+*   **Punto de Discusión Pre-Fase:**
+    *   Confirmar las rutas exactas (ej. `/inventory/purchases`).
+    *   Validar el texto y la ubicación de los nuevos botones de navegación.
 *   **Tareas:**
-    *   `[✓ Completado]` **2.1:** Crear un nuevo diálogo `ManageProductCommissionsDialog` que usará el hook `useProductCommissionData`.
-    *   `[✓ Completado]` **2.2:** Crear un diálogo análogo `ManageServiceCommissionsDialog` para los servicios.
+    *   `[ ]` **1.1:** Crear archivos de página: `src/pages/inventory/PurchasesPage.tsx` y `src/pages/inventory/TransfersPage.tsx`.
+    *   `[ ]` **1.2:** Configurar las rutas en el enrutador de la aplicación para las nuevas páginas.
+    *   `[ ]` **1.3:** Modificar el componente del módulo de inventario para reemplazar los botones de diálogo por enlaces a las nuevas páginas ("Compras" y "Traslados").
+    *   `[ ]` **1.4:** Añadir botones para crear nuevas compras/traslados dentro de las páginas nuevas, que reutilizarán los diálogos existentes (`PurchaseDialog.tsx`, `ProductTransferDialog.tsx`).
 
 ---
 
-### **Fase 3: Implementación UI - Gestión desde Miembro del Equipo**
+### **Fase 2: Módulo de Gestión de Compras**
 
-*   **Estado:** `[✓ Completado]`
-*   **Objetivo:** Rediseñar el diálogo de comisiones del perfil de usuario para que se ajuste a la nueva lógica de matriz.
+*   **Estado:** `[✓] Completado`
+*   **Objetivo:** Construir una interfaz completa para administrar el ciclo de vida de las compras.
+*   **Punto de Discusión Pre-Fase:**
+    *   **Recepción de Mercancía:** Definir el flujo para manejar discrepancias (faltantes/sobrantes) al recibir un pedido. ¿Se genera un backorder? ¿Se ajusta la compra original?
+    *   **Estados de Pago:** Detallar los estados de pago requeridos (ej. `no_pagado`, `pago_parcial`, `pagado`).
+    *   **Acciones:** Confirmar todas las acciones posibles sobre una compra (Completar, Cancelar, Pagar, etc.).
 *   **Tareas:**
-    *   `[✓ Completado]` **3.1:** Modificar `UserCommissionsDialog` para que use el hook `useUserCommissionData` y muestre la nueva interfaz de matriz.
+    *   `[✓]` **2.1:** Corregir la carga de detalles en el diálogo de recepción de compras.
+    *   `[✓]` **2.2:** Implementar la visualización de detalles de una recepción completada.
+    *   `[✓]` **2.3:** Crear la infraestructura de backend para registrar los detalles de la recepción (`purchase_item_receptions` y funciones RPC).
+    *   `[✓]` **2.4:** Implementar la lógica de negocio para ajustar el pago de compras con discrepancias.
+    *   `[✓]` **2.5:** Centralizar las acciones de pago en el diálogo de detalles, simplificando la interfaz principal.
 
 ---
 
-### **Fase 4: Implementación UI - Gestión desde Configuración de Sucursales**
+### **Fase 3: Módulo de Gestión de Traslados (Ampliado)**
 
-*   **Estado:** `[✓ Completado]`
+*   **Estado:** `[✓] Completado`
+*   **Objetivo:** Construir una interfaz completa para administrar el ciclo de vida de los traslados entre sucursales, incluyendo solicitudes, aprobaciones, recepciones con discrepancias y aplicación del método de costeo.
+*   **Punto de Discusión Pre-Fase:**
+    *   **Proceso de Aprobación/Confirmación:** Se define un flujo donde una sucursal de destino solicita productos a una sucursal de origen. La de origen puede **aprobar la solicitud (completa o con ajustes en las cantidades)**, o **rechazarla**. La de destino confirma la recepción ítem por ítem.
+    *   **Manejo de Discrepancias:** Al recibir, si hay faltantes/sobrantes, se ajustará el stock de ambas sucursales y se registrará la incidencia. El costo del producto se transferirá y recalculará en el destino según el método de costeo del tenant.
+    *   **Estados:** `solicitado`, `aprobado`, `rechazado`, `en_transito`, `recibido_con_incidencias`, `completado`, `cancelado`.
+    *   **Costeo:** El costo de los productos se transferirá desde la sucursal de origen. La sucursal de destino recalculará el costo de sus productos existentes basándose en el método de costeo definido para el tenant (Promedio Ponderado o Último Costo).
+
 *   **Tareas:**
-    *   `[✓ Completado]` **4.1:** Crear un nuevo componente/pestaña en la página de configuración de sucursales para gestionar comisiones.
 
----
+    *   **3.1: Backend - Ampliar Tablas y Lógica de Traslados:**
+        *   `[✓]` **3.1.1:** Modificar la tabla `product_transfers` para reflejar el nuevo flujo (solicitud/aprobación) y añadir nuevos estados.
+        *   `[✓]` **3.1.2:** Crear la tabla `product_transfer_receptions` para registrar las recepciones detalladas.
+        *   `[✓]` **3.1.3:** Crear la tabla `product_transfer_reception_items` para los detalles de cada producto en la recepción.
+        *   `[✓]` **3.1.4:** Crear/Modificar las funciones RPC de Supabase para:
+            *   `create_product_transfer_request`: Para solicitar un traslado.
+            *   `approve_product_transfer`: Para aprobar una solicitud, **permitiendo ajustar las cantidades de los productos a enviar.**
+            *   `reject_product_transfer`: Para rechazar una solicitud.
+            *   `ship_product_transfer`: Para marcar un traslado como "en tránsito".
+            *   `receive_product_transfer`: Para recibir los productos, manejar discrepancias y ajustar stock y costos.
+            *   `cancel_product_transfer`: Para cancelar un traslado.
 
-# Proyecto: Gestión de Inventario Avanzada
+    *   **3.2: Frontend - Componentes de Traslados:**
+        *   `[✓]` **3.2.1:** Crear el componente `TransfersTable.tsx` para listar los traslados.
+        *   `[✓]` **3.2.2:** Crear el diálogo `ProductTransferRequestDialog.tsx` para solicitar un traslado.
+        *   `[✓]` **3.2.3:** Crear el diálogo `ApproveTransferDialog.tsx` para que la sucursal de origen apruebe (con o sin ajustes) o rechace una solicitud.
+        *   `[✓]` **3.2.4:** Crear el diálogo `ReceiveTransferDialog.tsx` para la recepción de productos.
+        *   `[✓]` **3.2.5:** Crear el diálogo `ViewTransferReceptionDetailsDialog.tsx` para ver los detalles de una recepción.
 
-Este documento describe el plan de trabajo para implementar las funcionalidades de Compras y Traslados de Productos.
-
-### **Fase 1: Módulo de Compras de Productos**
-
-*   **Estado:** `[ ] Pendiente`
-*   **Objetivo:** Registrar las compras a proveedores, actualizar automáticamente el stock de la sucursal correspondiente y ajustar el costo del producto según la configuración del sistema.
-
-**1.1. Base de Datos:**
-*   **Tareas:**
-    *   `[✓]` **1.1.1:** Crear migración para **eliminar** las tablas `purchases` y `purchase_items` existentes.
-    *   `[✓]` **1.1.2:** Crear migración para la nueva tabla `purchases`.
-    *   `[✓]` **1.1.3:** Crear migración para la nueva tabla `purchase_items`.
-    *   `[✓]` **1.1.4:** Crear migración para añadir la columna `cost_price` a la tabla `branch_products`.
-    *   `[✓]` **1.1.5:** Analizar `branch_products` y `products` para asegurar que existen las columnas de `stock` y `cost_price`.
-    *   `[✓]` **1.1.6:** Investigar `tenant_settings` para la configuración de cálculo de costos.
-
-**1.2. Lógica de Backend (Supabase Functions):**
-*   **Tareas:**
-    *   `[✓]` **1.2.1:** Crear RPC `create_purchase` que inserte en `purchases` y `purchase_items`.
-    *   `[✓]` **1.2.2:** El RPC debe actualizar el stock en `branch_products`.
-    *   `[✓]` **1.2.3:** El RPC debe actualizar el `cost_price` en `branch_products` según la configuración del tenant.
-
-**1.3. Interfaz de Usuario (Frontend):**
-*   **Tareas:**
-    *   `[✓]` **1.3.1:** Crear página `src/pages/Inventory/Purchases.tsx` para listar las compras.
-    *   `[✓]` **1.3.2:** Crear componente `PurchaseDialog.tsx` para registrar una nueva compra.
-    *   `[✓]` **1.3.3:** Crear hook `usePurchases.ts`.
-    *   `[✓]` **1.3.4:** Crear hook `useCreatePurchase.ts`.
-
----
-
-### **Fase 2: Módulo de Traslados de Productos**
-
-*   **Estado:** `[ ] Pendiente`
-*   **Objetivo:** Permitir mover productos de una sucursal a otra, reflejando los cambios de stock en ambas.
-
-**2.1. Base de Datos:**
-*   **Tareas:**
-    *   `[ ]` **2.1.1:** Crear migración para la tabla `product_transfers`:
-        *   `id` (UUID, PK)
-        *   `tenant_id` (UUID, FK a `tenants`)
-        *   `from_branch_id` (UUID, FK a `branches`)
-        *   `to_branch_id` (UUID, FK a `branches`)
-        *   `transfer_date` (TIMESTAMPTZ)
-        *   `status` (TEXT, ej: 'en_proceso', 'en_transito', 'completado', 'cancelado')
-        *   `notes` (TEXT, opcional)
-    *   `[ ]` **2.1.2:** Crear migración para la tabla `product_transfer_items`:
-        *   `id` (UUID, PK)
-        *   `transfer_id` (UUID, FK a `product_transfers`)
-        *   `product_id` (UUID, FK a `products`)
-        *   `quantity` (INTEGER)
-
-**2.2. Lógica de Backend (Supabase Functions):**
-*   **Tareas:**
-    *   `[ ]` **2.2.1:** Crear RPC `create_product_transfer`.
-    *   `[ ]` **2.2.2:** El RPC debe descontar el stock de la sucursal de origen.
-    *   `[ ]` **2.2.3:** Crear RPC `update_product_transfer_status`.
-    *   `[ ]` **2.2.4:** El RPC de actualización de estado debe incrementar el stock en la sucursal de destino al completarse.
-
-**2.3. Interfaz de Usuario (Frontend):**
-*   **Tareas:**
-    *   `[ ]` **2.3.1:** Crear página `src/pages/Inventory/Transfers.tsx`.
-    *   `[ ]` **2.3.2:** Crear componente `ProductTransferDialog.tsx`.
-    *   `[ ]` **2.3.3:** Crear hook `useProductTransfers.ts`.
-    *   `[ ]` **2.3.4:** Crear hook `useCreateProductTransfer.ts`.
-    *   `[ ]` **2.2.5:** Crear hook `useUpdateProductTransferStatus.ts`.
+    *   **3.3: Integración y Flujo Completo:**
+        *   `[✓]` **3.3.1:** Crear la página `TransfersPage.tsx` que una la tabla y los diálogos.
+        *   `[✓]` **3.3.2:** Implementar la lógica de UI para el flujo completo (solicitar, aprobar, recibir, etc.).
+        *   `[✓]` **3.3.3:** Añadir filtros a la tabla (por sucursal, estado).

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,10 @@ import {
   AlertTriangle,
   Plus,
   Search,
-  Filter
+  Filter,
+  CheckCircle2 // Añadir CheckCircle2
 } from "lucide-react";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Importar componentes de acordeón
 import { useBranchProducts } from "@/hooks/useProducts";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,18 +24,36 @@ import { usePurchases } from "@/hooks/usePurchases";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { PurchaseDialog } from "@/components/PurchaseDialog";
 import { SupplierDialog } from "@/components/SupplierDialog";
+import { useSettings } from "@/hooks/useSettings"; // Importar useSettings
+import { useAuth } from "@/contexts/AuthContext"; // Importar useAuth
 
 import { usePriceFormat } from "@/hooks/usePriceFormat";
+import { useCompletePurchase } from "@/hooks/useCompletePurchase"; // Importar useCompletePurchase
+
+
 
 export default function Inventory() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const { selectedBranchId, setSelectedBranchId } = useBranchFilterStore();
+  const { selectedBranchId, setBranchId } = useBranchFilterStore();
   const { data: branches, isLoading: isLoadingBranches } = useBranches();
   const { data: products, isLoading: isLoadingProducts } = useBranchProducts();
   const { data: purchases } = usePurchases();
   const { data: suppliers } = useSuppliers();
   const { formatPrice } = usePriceFormat();
+  const { data: settings, isLoading: isLoadingSettings } = useSettings(); // Obtener la configuración
+  const { currentAssignment } = useAuth(); // Obtener el currentAssignment para el tenantId
+  const tenantId = currentAssignment?.tenant_id; // Asegurarse de que tenantId esté disponible
+
+  const completePurchaseMutation = useCompletePurchase();
+
+  const handleCompletePurchase = (purchaseId: string) => {
+    completePurchaseMutation.mutate({ purchase_id: purchaseId });
+  };
+
+  const purchaseIndependenceMode = settings?.purchase_independence_method || "independent"; // Obtener el modo de independencia de compras
+
+  
 
   // Productos con stock bajo
   const lowStockProducts = products?.filter(product => {
@@ -70,29 +90,33 @@ export default function Inventory() {
           </p>
         </div>
         <div className="flex gap-4 items-center">
-           <div className="w-64">
-            <Select onValueChange={setSelectedBranchId} value={selectedBranchId || ''}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona una sucursal..." />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingBranches ? (
-                  <SelectItem value="loading" disabled>Cargando sucursales...</SelectItem>
-                ) : (
-                  branches?.map(branch => (
-                    <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+           {purchaseIndependenceMode !== "centralized" && ( // Mostrar solo si no es centralizado
+             <div className="w-64">
+              <Select onValueChange={setBranchId} value={selectedBranchId || ''}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una sucursal..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingBranches ? (
+                    <SelectItem value="loading" disabled>Cargando sucursales...</SelectItem>
+                  ) : (
+                    branches?.map(branch => (
+                      <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+           )}
           <Button onClick={() => navigate('/inventory/suppliers')}>
             Proveedores
           </Button>
-          <Button onClick={() => navigate('/inventory/branch-products')}>
-            Productos por Sucursal
+          <Button onClick={() => navigate('/inventory/purchases')}>
+            Compras
           </Button>
-          <PurchaseDialog />
+          <Button onClick={() => navigate('/inventory/transfers')}>
+            Traslados
+          </Button>
         </div>
       </div>
 
@@ -256,31 +280,59 @@ export default function Inventory() {
                   />
                 </div>
               ) : (
-                <div className="space-y-4">
+                <Accordion type="single" collapsible className="w-full">
                   {recentPurchases?.map((purchase) => (
-                    <div key={purchase.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{purchase.supplier_name}</p>
-                        <p className="text-sm text-slate-600">
-                          {new Date(purchase.purchase_date).toLocaleDateString()}
-                        </p>
-                        {purchase.invoice_number && (
-                          <p className="text-sm text-slate-500">
-                            Factura: {purchase.invoice_number}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-green-600">
-                          {formatPrice(purchase.total_amount)}
-                        </p>
-                        <Badge variant={purchase.status === 'Completada' ? 'default' : 'secondary'}>
-                          {purchase.status}
-                        </Badge>
-                      </div>
-                    </div>
+                    <AccordionItem key={purchase.id} value={purchase.id}>
+                      <AccordionTrigger>
+                        <div className="flex items-center justify-between w-full pr-4">
+                          <div className="text-left">
+                            <p className="font-medium">{purchase.supplier?.name || "Sin Proveedor"}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(purchase.purchase_date).toLocaleDateString()} - {formatPrice(purchase.total_amount)}
+                            </p>
+                            {purchase.invoice_number && (
+                              <p className="text-xs text-muted-foreground">Factura: {purchase.invoice_number}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={purchase.status === 'completed' ? 'default' : 'secondary'}>
+                              {purchase.status === 'completed' ? 'Completada' : 'Borrador'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="p-4 border-t mt-2">
+                          <h4 className="font-semibold mb-2">Detalle de Productos:</h4>
+                          {purchase.items && purchase.items.length > 0 ? (
+                            <ul className="list-disc pl-5 space-y-1">
+                              {purchase.items.map((item: any, index: number) => (
+                                <li key={index} className="text-sm">
+                                  {item.products?.name || "Producto Desconocido"} (x{item.quantity}) - {formatPrice(item.cost_price)} c/u
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No hay productos en esta compra.</p>
+                          )}
+                          {purchase.status === 'draft' && (
+                            <div className="flex justify-end p-2"> {/* Nuevo div para el botón */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleCompletePurchase(purchase.id); }}
+                                disabled={completePurchaseMutation.isPending}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Completar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
               )}
             </CardContent>
           </Card>

@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Settings, Plus, Trash2, Edit } from "lucide-react";
 import { useSchedulableUsers } from "@/hooks/useSchedulableUsers";
-import { useProductCommissionsByProduct } from "@/hooks/useProducts";
-import { useCreateProductCommission, useUpdateProductCommission, useDeleteProductCommission } from "@/hooks/useProductCommissions";
+import { useProductCommissionsByProduct, useCreateProductCommission, useUpdateProductCommission, useDeleteProductCommission } from "@/hooks/useProductCommissions";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProductCommissionsDialogProps {

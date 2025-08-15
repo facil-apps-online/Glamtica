@@ -1640,6 +1640,273 @@ serve(async (req) => {
         break;
       }
 
+      // --- COMBO ACTIONS ---
+      case 'create_combo': {
+        const { comboData, items } = payload;
+        if (!comboData || !items || items.length === 0) {
+          throw new Error('Combo data and at least one item are required.');
+        }
+
+        // 1. Create the master combo
+        const { data: newCombo, error: comboError } = await supabaseAdmin
+          .from('combos')
+          .insert({ ...comboData, tenant_id: tenantId })
+          .select()
+          .single();
+
+        if (comboError) throw comboError;
+
+        // 2. Prepare and insert the combo items
+        const comboItems = items.map((item: any) => ({
+          combo_id: newCombo.id,
+          product_id: item.product_id || null,
+          service_id: item.service_id || null,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+
+        const { error: itemsError } = await supabaseAdmin
+          .from('combo_items')
+          .insert(comboItems);
+
+        if (itemsError) {
+          // Rollback combo creation if item insertion fails
+          await supabaseAdmin.from('combos').delete().eq('id', newCombo.id);
+          throw itemsError;
+        }
+
+        responseData = newCombo;
+        break;
+      }
+
+      case 'get_combos': {
+        const { data, error } = await supabaseAdmin
+          .from('combos')
+          .select(`
+            *,
+            combo_items (
+              *,
+              product:products (name),
+              service:services (name)
+            )
+          `)
+          .eq('tenant_id', tenantId)
+          .order('name');
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_combo': {
+        const { comboId, comboData, items } = payload;
+        if (!comboId || !comboData) { // Check for items removed
+          throw new Error('Combo ID and data are required for update.');
+        }
+
+        // 1. Update the master combo details
+        const { data: updatedCombo, error: comboError } = await supabaseAdmin
+          .from('combos')
+          .update(comboData)
+          .eq('id', comboId)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+
+        if (comboError) throw comboError;
+
+        // 2. If items are provided, update them.
+        if (items && Array.isArray(items)) {
+          // Delete all existing items for this combo
+          const { error: deleteError } = await supabaseAdmin
+            .from('combo_items')
+            .delete()
+            .eq('combo_id', comboId);
+          
+          if (deleteError) {
+            throw new Error(`Failed to delete old combo items: ${deleteError.message}`);
+          }
+
+          // Prepare and insert the new combo items if the array is not empty
+          if (items.length > 0) {
+            const comboItems = items.map((item: any) => ({
+              combo_id: comboId,
+              product_id: item.product_id || null,
+              service_id: item.service_id || null,
+              quantity: item.quantity,
+              price: item.price,
+            }));
+    
+            const { error: itemsError } = await supabaseAdmin
+              .from('combo_items')
+              .insert(comboItems);
+    
+            if (itemsError) {
+              throw new Error(`Failed to insert new combo items: ${itemsError.message}`);
+            }
+          }
+        }
+
+        responseData = updatedCombo;
+        break;
+      }
+
+      case 'delete_combo': {
+        const { comboId } = payload;
+        if (!comboId) throw new Error('Combo ID is required.');
+
+        const { error } = await supabaseAdmin
+          .from('combos')
+          .delete()
+          .eq('id', comboId)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      case 'assign_combo_to_branch': {
+        const { combo_id, branch_id, is_active } = payload;
+        if (!combo_id || !branch_id) throw new Error('Combo ID and Branch ID are required.');
+
+        const { data, error } = await supabaseAdmin
+          .from('branch_combos')
+          .upsert({
+            combo_id,
+            branch_id,
+            tenant_id: tenantId,
+            is_active: is_active ?? true,
+          }, { onConflict: 'branch_id, combo_id' })
+          .select()
+          .single();
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_combo_branch_details': {
+        const { comboId, branchId } = payload;
+        if (!comboId || !branchId) throw new Error('Combo ID and Branch ID are required.');
+
+        const { data, error } = await supabaseAdmin.rpc('get_combo_branch_details', {
+          p_tenant_id: tenantId,
+          p_branch_id: branchId,
+          p_combo_id: comboId,
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_combo_branch_prices': {
+        const { branch_id, combo_id, price_overrides } = payload;
+        if (!branch_id || !combo_id || !price_overrides) {
+          throw new Error('Branch ID, Combo ID, and price overrides are required.');
+        }
+
+        const { data, error } = await supabaseAdmin.rpc('update_combo_branch_prices', {
+          p_tenant_id: tenantId,
+          p_branch_id: branch_id,
+          p_combo_id: combo_id,
+          p_price_overrides: price_overrides,
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'unassign_combo_from_branch': {
+        const { combo_id, branch_id } = payload;
+        if (!combo_id || !branch_id) throw new Error('Combo ID and Branch ID are required.');
+
+        const { error } = await supabaseAdmin
+          .from('branch_combos')
+          .delete()
+          .eq('combo_id', combo_id)
+          .eq('branch_id', branch_id)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      case 'get_assigned_branches_for_combo': {
+        const { comboId } = payload;
+        if (!comboId) throw new Error('Combo ID is required.');
+
+        const { data, error } = await supabaseAdmin
+          .from('branch_combos')
+          .select('branch_id, is_active, branches(name)')
+          .eq('combo_id', comboId)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_combos_for_branch': {
+        const { branchId } = payload;
+        if (!branchId) throw new Error('Branch ID is required.');
+
+        const { data: branchCombosData, error: bcError } = await supabaseAdmin
+          .from('branch_combos')
+          .select(`
+            is_active,
+            combo_id
+          `)
+          .eq('branch_id', branchId)
+          .eq('tenant_id', tenantId);
+
+        if (bcError) throw bcError;
+
+        const detailedCombosPromises = branchCombosData.map(async (bc: any) => {
+            const { data: comboDetails, error: detailsError } = await supabaseAdmin.rpc('get_combo_branch_details', {
+                p_tenant_id: tenantId,
+                p_branch_id: branchId,
+                p_combo_id: bc.combo_id,
+            });
+            if (detailsError) {
+                console.error(`Error fetching details for combo ${bc.combo_id}:`, detailsError);
+                return null; // Or handle error appropriately
+            }
+            return {
+                ...comboDetails,
+                is_active_in_branch: bc.is_active // Add the branch-specific active status
+            };
+        });
+
+        const detailedCombos = (await Promise.all(detailedCombosPromises)).filter(Boolean);
+
+        responseData = detailedCombos;
+        break;
+      }
+
+      case 'update_branch_combo_status': {
+        const { combo_id, branch_id, is_active } = payload;
+        if (!combo_id || !branch_id || is_active === undefined) {
+          throw new Error('Combo ID, Branch ID, and active status are required.');
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('branch_combos')
+          .update({ is_active })
+          .eq('combo_id', combo_id)
+          .eq('branch_id', branch_id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       // --- USER SERVICE COMMISSIONS ---
       case 'get_user_service_commissions': {
         const { userId } = payload;

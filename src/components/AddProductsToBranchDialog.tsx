@@ -19,8 +19,12 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useMasterProducts, useAssignProductToBranch, MasterProduct } from "@/hooks/useProducts";
-import { useBranchProducts } from "@/hooks/useProducts";
+import { 
+  useMasterProducts, 
+  useAssignProductToBranch, 
+  useBranchProducts, 
+  MasterProduct 
+} from "@/hooks/useProducts";
 import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
 

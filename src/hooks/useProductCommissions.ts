@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +42,15 @@ export const useProductCommissions = (productId?: string, branchId?: string, use
   });
 };
 
+// Hook to get all commissions for a specific product and branch
+export const useProductCommissionsByProduct = (productId?: string, branchId?: string) => {
+  return useQuery<ProductCommission[], Error>({
+    queryKey: ['product-commissions-by-product', productId, branchId],
+    queryFn: () => callTenantAction('get_product_commissions_by_product_and_branch', { productId, branchId }),
+    enabled: !!productId && !!branchId,
+  });
+};
+
 // Mutation to create a new product commission
 export const useCreateProductCommission = () => {
   const queryClient = useQueryClient();
@@ -53,6 +61,7 @@ export const useCreateProductCommission = () => {
       callTenantAction('create_product_commission', { commissionData }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['product-commissions-by-product', data.product_id] });
       toast({ title: "Comisión asignada" });
     },
     onError: (error) => {
@@ -71,6 +80,7 @@ export const useUpdateProductCommission = () => {
       callTenantAction('update_product_commission', { id, updates }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['product-commissions-by-product', data.product_id] });
       toast({ title: "Comisión actualizada" });
     },
     onError: (error) => {
@@ -87,8 +97,9 @@ export const useDeleteProductCommission = () => {
   return useMutation<{ success: boolean }, Error, { id: string; product_id: string }>({
     mutationFn: ({ id }) => 
       callTenantAction('delete_product_commission', { id }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['product-commissions-by-product', variables.product_id] });
       toast({ title: "Comisión eliminada" });
     },
     onError: (error) => {
