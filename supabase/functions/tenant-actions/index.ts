@@ -42,8 +42,14 @@ serve(async (req) => {
     const userId = decodedToken.sub;
     const tenantId = decodedToken.app_metadata?.assignments?.[0]?.tenant_id;
 
-    if (!userId || !tenantId) {
-      throw new Error('User ID or Tenant ID not found in JWT.');
+    console.log("Decoded Token:", JSON.stringify(decodedToken, null, 2));
+
+    if (!userId) {
+      throw new Error('User ID not found in JWT.');
+    }
+
+    if (!tenantId) {
+      throw new Error('Tenant ID not found in JWT app_metadata.assignments[0].tenant_id.');
     }
 
     const supabaseClient = createClient(
@@ -470,6 +476,19 @@ serve(async (req) => {
           throw new Error('Branch ID and at least one item are required.');
         }
 
+        // Fetch tenant settings for costing method
+        const { data: tenantSettingsData, error: settingsError } = await supabaseAdmin
+          .from('tenant_settings')
+          .select('settings_data')
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 means no rows found
+          throw settingsError;
+        }
+
+        const costingMethod = tenantSettingsData?.settings_data?.costing_method || 'last_purchase'; // Default to last_purchase
+
         // Validación de sucursal del proveedor
         if (supplier_id) {
           const { data: supplier, error: supplierError } = await supabaseAdmin
@@ -533,10 +552,28 @@ serve(async (req) => {
             continue;
           }
 
-          // For now, we'll use a simple last-cost update.
-          // In the future, we can use a setting from tenant_settings.
+          // Determine costing method from tenant settings
+          let newCost = item.cost_price; // Default to last-cost
+
+          if (costingMethod === 'average' || costingMethod === 'ponderado') {
+            const currentStock = branchProduct.stock_quantity || 0;
+            const currentCost = branchProduct.cost_price || 0;
+            const incomingQuantity = item.quantity;
+            const incomingCost = item.cost_price;
+
+            const totalQuantity = currentStock + incomingQuantity;
+
+            if (totalQuantity > 0) {
+              newCost = ((currentStock * currentCost) + (incomingQuantity * incomingCost)) / totalQuantity;
+            } else {
+              // If total quantity is 0, and incoming is also 0, cost remains 0 or previous.
+              // If incoming is > 0 but current is 0, newCost is incomingCost.
+              // This case should ideally not happen if stock is managed correctly.
+              newCost = incomingCost;
+            }
+          }
+
           const newStock = (branchProduct.stock_quantity || 0) + item.quantity;
-          const newCost = item.cost_price;
 
           const { error: updateError } = await supabaseAdmin
             .from('branch_products')
@@ -631,10 +668,142 @@ serve(async (req) => {
           .select(`
             *,
             supplier:supplier_id (name),
-            branch:branch_id (name)
+            branch:branch_id (name),
+            items:purchase_items(*, product:product_id(name))
           `)
           .eq('tenant_id', requestedTenantId)
           .order('purchase_date', { ascending: false });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'receive_purchase': {
+        const { purchase_id, branch_id, received_items, reception_notes } = payload;
+        if (!purchase_id || !branch_id || !received_items) {
+          throw new Error('Purchase ID, Branch ID, and received items are required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('receive_purchase', {
+          p_tenant_id: tenantId,
+          p_purchase_id: purchase_id,
+          p_branch_id: branch_id,
+          p_received_items: received_items,
+          p_reception_notes: reception_notes,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'cancel_purchase': {
+        const { purchase_id } = payload;
+        if (!purchase_id) {
+          throw new Error('Purchase ID is required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('cancel_purchase', {
+          p_purchase_id: purchase_id,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_purchase_payment_status': {
+        const { purchase_id, payment_status } = payload;
+        if (!purchase_id || !payment_status) {
+          throw new Error('Purchase ID and payment status are required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('update_purchase_payment_status', {
+          p_purchase_id: purchase_id,
+          p_payment_status: payment_status,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'adjust_purchase_total': {
+        const { purchase_id } = payload;
+        if (!purchase_id) {
+          throw new Error('Purchase ID is required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('adjust_purchase_total', {
+          p_purchase_id: purchase_id,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_purchase_reception_details': {
+        const { purchase_id } = payload;
+        if (!purchase_id) {
+          throw new Error('Purchase ID is required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('get_purchase_reception_details', {
+          p_purchase_id: purchase_id,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_product_transfer': {
+        const { from_branch_id, to_branch_id, transfer_date, notes, items } = payload;
+        if (!from_branch_id || !to_branch_id || !items || items.length === 0) {
+          throw new Error('From Branch ID, To Branch ID and at least one item are required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('create_product_transfer', {
+          p_tenant_id: tenantId,
+          p_from_branch_id: from_branch_id,
+          p_to_branch_id: to_branch_id,
+          p_transfer_date: transfer_date,
+          p_notes: notes,
+          p_items: items,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_product_transfer_status': {
+        const { transfer_id, status } = payload;
+        if (!transfer_id || !status) {
+          throw new Error('Transfer ID and status are required.');
+        }
+        const { data, error } = await supabaseAdmin.rpc('update_product_transfer_status', {
+          p_tenant_id: tenantId,
+          p_transfer_id: transfer_id,
+          p_status: status,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_product_transfers': {
+        const { branchFilter, statusFilter } = payload;
+
+        let query = supabaseAdmin
+          .from('product_transfers')
+          .select(`
+            *,
+            origin_branch:origin_branch_id (name),
+            destination_branch:destination_branch_id (name),
+            items:product_transfer_items(*, product:products(name))
+          `)
+          .eq('tenant_id', tenantId)
+
+        if (branchFilter && branchFilter !== 'all') {
+          query = query.or(`origin_branch_id.eq.${branchFilter},destination_branch_id.eq.${branchFilter}`);
+        }
+
+        if (statusFilter && statusFilter !== 'all') {
+          query = query.eq('status', statusFilter);
+        }
+
+        const { data, error } = await query.order('transfer_date', { ascending: false });
 
         if (error) throw error;
         responseData = data;
@@ -1103,15 +1272,20 @@ serve(async (req) => {
 
       case 'get_branch_products': {
         const { branchId } = payload;
-        if (!branchId) throw new Error('Branch ID is required.');
-        const { data, error } = await supabaseAdmin
+        let query = supabaseAdmin
           .from('branch_products')
           .select(`
             *,
-            product:product_id (*)
+            product:product_id (*),
+            branch:branch_id (name) // Incluir el nombre de la sucursal
           `)
-          .eq('tenant_id', tenantId)
-          .eq('branch_id', branchId);
+          .eq('tenant_id', tenantId);
+
+        if (branchId && branchId !== 'all') { // Filtrar por branchId solo si se proporciona y no es 'all'
+          query = query.eq('branch_id', branchId);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         responseData = data.map((item: any) => ({
           ...item.product,
@@ -1119,6 +1293,7 @@ serve(async (req) => {
           id: item.product_id,
           branch_product_id: item.id,
           is_branch_active: item.is_active,
+          branch_name: item.branch?.name, // Añadir el nombre de la sucursal
         }));
         break;
       }
@@ -1690,6 +1865,78 @@ serve(async (req) => {
 
         if (error) throw error;
         responseData = data;
+        break;
+      }
+
+      case 'create_product_transfer_request': {
+        const { requesting_branch_id, origin_branch_id, notes, items } = payload;
+        responseData = await callRpc(supabaseAdmin, 'create_product_transfer_request', {
+          p_tenant_id: tenantId,
+          p_requesting_branch_id: requesting_branch_id,
+          p_origin_branch_id: origin_branch_id,
+          p_notes: notes,
+          p_items: items,
+        });
+        break;
+      }
+
+      case 'approve_product_transfer': {
+        const { transfer_id, adjusted_items } = payload;
+        responseData = await callRpc(supabaseAdmin, 'approve_product_transfer', {
+          p_transfer_id: transfer_id,
+          p_adjusted_items: adjusted_items,
+          p_tenant_id: tenantId,
+          p_user_id: userId,
+        });
+        break;
+      }
+
+      case 'reject_product_transfer': {
+        const { transfer_id } = payload;
+        responseData = await callRpc(supabaseAdmin, 'reject_product_transfer', {
+          p_transfer_id: transfer_id,
+        });
+        break;
+      }
+
+      case 'ship_product_transfer': {
+        const { transfer_id } = payload;
+        responseData = await callRpc(supabaseAdmin, 'ship_product_transfer', {
+          p_transfer_id: transfer_id,
+          p_tenant_id: tenantId,
+          p_user_id: userId,
+        });
+        break;
+      }
+
+      case 'receive_product_transfer': {
+        const { transfer_id, reception_notes, received_items } = payload;
+        responseData = await callRpc(supabaseAdmin, 'receive_product_transfer', {
+          p_transfer_id: transfer_id,
+          p_reception_notes: reception_notes,
+          p_received_items: received_items,
+          p_tenant_id: tenantId,
+          p_user_id: userId,
+        });
+        break;
+      }
+
+      case 'cancel_product_transfer': {
+        const { transfer_id } = payload;
+        responseData = await callRpc(supabaseAdmin, 'cancel_product_transfer', {
+          p_transfer_id: transfer_id,
+          p_tenant_id: tenantId,
+          p_user_id: userId,
+        });
+        break;
+      }
+
+      case 'get_transfer_details': {
+        const { transfer_id } = payload;
+        responseData = await callRpc(supabaseAdmin, 'get_transfer_details', {
+          p_transfer_id: transfer_id,
+          p_tenant_id: tenantId,
+        });
         break;
       }
 
