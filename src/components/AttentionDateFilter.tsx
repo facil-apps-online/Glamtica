@@ -2,26 +2,26 @@ import { DatePickerWrapper } from "@/components/ui/DatePicker";
 import { useAttentionDates } from "@/hooks/useAttentions";
 import { format } from "date-fns";
 
-interface AppointmentDateFilterProps {
+interface AttentionDateFilterProps {
   selectedDate: Date | undefined;
   onDateChange: (date: Date | undefined) => void;
   selectedUserId?: string;
 }
 
-export const AppointmentDateFilter = ({ 
+export const AttentionDateFilter = ({ 
   selectedDate, 
   onDateChange, 
   selectedUserId 
-}: AppointmentDateFilterProps) => {
+}: AttentionDateFilterProps) => {
   const { data: attentionDates } = useAttentionDates(selectedUserId);
 
   const dayClassName = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    const statuses = attentionDates?.[dateString] || [];
+    const statuses = attentionDates?.[dateString] || new Set();
     
-    if (statuses.includes('En Proceso')) return 'bg-yellow-200 text-yellow-800';
-    if (statuses.includes('Confirmada')) return 'bg-blue-200 text-blue-800';
-    if (statuses.includes('Completada')) return 'bg-green-200 text-green-800';
+    if (statuses.has('En Proceso')) return 'bg-yellow-200 text-yellow-800';
+    if (statuses.has('Confirmada')) return 'bg-blue-200 text-blue-800';
+    if (statuses.has('Completada')) return 'bg-green-200 text-green-800';
     return '';
   };
 

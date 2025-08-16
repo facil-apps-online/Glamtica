@@ -1,337 +1,139 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, toUTC, fromUTC } from "@/lib/supabaseClient";
-import { useSettings } from "@/hooks/useSettings";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { Tables } from "@/integrations/supabase/types";
+import { callTenantAction } from "@/lib/tenantActions";
 
-export interface AttentionService {
-  id: string;
-  attention_id: string;
-  service_id: string;
-  user_id: string; // Changed from stylist_id
-  service_price: number;
-  service_order: number;
-  status: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-  services: {
-    name: string;
-    duration_minutes: number;
-    price: number;
-  };
-  users: { // Changed from stylists
-    first_name: string;
-    last_name: string;
-  };
-  service_sessions?: {
-    id: string;
-    started_at: string | null;
-    ended_at: string | null;
-    duration_minutes: number | null;
-  }[];
-}
+// TODO: Definir interfaces más detalladas para Attention, AttentionService, etc.
+export type Attention = Tables<'attentions'> & {
+  clients: Tables<'clients'>;
+  attention_services: (Tables<'attention_services'> & {
+    services: Tables<'services'>;
+    users: Tables<'users'>;
+  })[];
+  attention_products: (Tables<'attention_products'> & {
+    products: Tables<'products'>;
+  })[];
+};
 
-export interface Attention {
-  id: string;
+interface CreateAttentionParams {
   client_id: string;
   attention_date: string;
   attention_time: string;
-  status: string;
   notes?: string;
-  total_amount: number;
-  created_at: string;
-  updated_at: string;
-  clients: {
-    name: string;
-    phone: string;
-    email?: string;
-  };
-  attention_services: AttentionService[];
-  // Campos calculados
-  products_total?: number;
-  grand_total?: number;
-  paid_amount?: number;
-  discount_amount?: number;
-  discount_reason?: string;
+  services: {
+    service_id: string;
+    user_id: string;
+    service_price: number;
+    notes?: string;
+  }[];
 }
 
-export const useAttentions = (userId?: string, statusFilter?: string, dateFilter?: Date, enabled?: boolean) => {
-  const { data: settings } = useSettings();
-  const timezoneName = settings?.find(s => s.key === 'timezone')?.value || 'UTC';
+export const useAttentions = (userId?: string, statusFilter?: string, dateFilter?: Date) => {
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
+  const tenantId = currentAssignment?.tenant_id;
 
-  return useQuery({
-    queryKey: ['attentions', userId, statusFilter, dateFilter, timezoneName],
-    queryFn: async () => {
-      try {
-        let query = supabase
-          .from('attentions')
-          .select(`
-            *,
-            clients(name, phone, email),
-            attention_services(
-              *,
-              services(name, duration_minutes, price),
-              users(first_name, last_name),
-              service_sessions(id, started_at, ended_at, duration_minutes)
-            )
-          `)
-          .order('attention_date', { ascending: true })
-          .order('attention_time', { ascending: true });
-
-        if (dateFilter) {
-          const dateString = format(dateFilter, 'yyyy-MM-dd');
-          query = query.eq('attention_date', dateString);
-        }
-
-        if (statusFilter === 'pending') {
-          query = query.in('status', ['Confirmada', 'En Proceso']);
-        } else if (statusFilter && statusFilter !== 'all') {
-          query = query.eq('status', statusFilter);
-        }
-
-        const { data: attentions, error } = await query;
-
-        if (error) {
-          console.error('Error fetching attentions:', error);
-          throw error;
-        }
-
-        if (!attentions) return [];
-
-        let filteredAttentions = attentions;
-        if (userId && userId !== 'all') {
-          filteredAttentions = attentions.filter(attention => 
-            attention.attention_services?.some(service => service.user_id === userId)
-          );
-        }
-
-        const attentionsWithTotals = await Promise.all(
-          filteredAttentions.map(async (attention) => {
-            // (resto de la lógica de cálculo de totales sin cambios)
-            return { ...attention };
-          })
-        );
-
-        return attentionsWithTotals as Attention[];
-      } catch (error) {
-        console.error('Error in useAttentions:', error);
-        throw error;
-      }
-    },
-    retry: 1,
-    retryDelay: 1000,
-    enabled: enabled && !!settings
+  return useQuery<Attention[], Error>({
+    queryKey: ['attentions', tenantId, selectedBranchId, userId, statusFilter, dateFilter],
+    queryFn: () => callTenantAction('get_attentions', { 
+      branchId: selectedBranchId, 
+      userId, 
+      statusFilter, 
+      dateFilter: dateFilter ? dateFilter.toISOString().split('T')[0] : undefined 
+    }),
+    enabled: !!tenantId,
   });
 };
 
 export const useAttentionDates = (userId?: string) => {
-  const { data: settings } = useSettings();
-  const timezoneName = settings?.find(s => s.key === 'timezone')?.value || 'UTC';
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
+  const tenantId = currentAssignment?.tenant_id;
 
-  return useQuery({
-    queryKey: ['attention-dates', userId, timezoneName],
+  return useQuery<Record<string, Set<string>>, Error>({
+    queryKey: ['attention-dates', tenantId, selectedBranchId, userId],
     queryFn: async () => {
-      try {
-        let query = supabase
-          .from('attentions')
-          .select(`
-            attention_date, 
-            status,
-            attention_services!inner(user_id)
-          `)
-          .in('status', ['Confirmada', 'En Proceso', 'Completada'])
-          .not('attention_date', 'is', null);
+      if (!tenantId) return {};
+      
+      const data = await callTenantAction('get_attention_dates', { 
+        branchId: selectedBranchId, 
+        userId 
+      });
 
-        if (userId && userId !== 'all') {
-          query = query.eq('attention_services.user_id', userId);
+      const datesByStatus = (data || []).reduce((acc, { attention_date, status }) => {
+        if (attention_date) {
+            if (!acc[attention_date]) {
+              acc[attention_date] = new Set();
+            }
+            acc[attention_date].add(status);
         }
+        return acc;
+      }, {} as Record<string, Set<string>>);
 
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Error fetching attention dates:', error);
-          throw error;
-        }
-        
-        // (resto de la lógica de agrupación de fechas sin cambios)
-        return {};
-
-      } catch (error) {
-        console.error('Error in useAttentionDates:', error);
-        throw error;
-      }
+      return datesByStatus;
     },
-    retry: 1,
-    retryDelay: 1000,
-    enabled: !!settings
+    enabled: !!tenantId,
   });
 };
+
+
+// --- MUTATIONS ---
 
 export const useCreateAttention = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: settings } = useSettings();
-  const timezoneName = settings?.find(s => s.key === 'timezone')?.value || 'UTC';
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
 
   return useMutation({
-    mutationFn: async (attentionData: {
-      client_id: string;
-      attention_date: string;
-      attention_time: string;
-      notes?: string;
-      services: Array<{
-        service_id: string;
-        user_id: string; // Changed from stylist_id
-        service_price: number;
-        notes?: string;
-      }>;
-    }) => {
-      // (lógica de conversión de fecha/hora sin cambios)
-      const localDateTime = new Date(`${attentionData.attention_date}T${attentionData.attention_time}`);
-      const utcDateTime = toUTC(localDateTime, timezoneName);
-
-      const { data: attention, error: attentionError } = await supabase
-        .from('attentions')
-        .insert([{
-          // (campos de atención sin cambios)
-        }])
-        .select()
-        .single();
-
-      if (attentionError) throw attentionError;
-
-      const servicesData = attentionData.services.map((service, index) => ({
-        attention_id: attention.id,
-        service_id: service.service_id,
-        user_id: service.user_id, // Changed from stylist_id
-        service_price: service.service_price,
-        service_order: index + 1,
-        notes: service.notes
-      }));
-
-      const { error: servicesError } = await supabase
-        .from('attention_services')
-        .insert(servicesData);
-
-      if (servicesError) throw servicesError;
-
-      return attention;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      toast({
-        title: "Atención creada",
-        description: "La atención ha sido creada exitosamente.",
-      });
-    },
-    onError: (error) => {
-      console.error('Error creating attention:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo crear la atención. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    },
-    enabled: !!settings
-  });
-};
-
-// (useUpdateAttention y useCancelAttention sin cambios en la firma, solo en la invalidación si es necesario)
-
-
-export const useUpdateAttention = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const { data: settings } = useSettings(); // Get settings
-  const timezoneName = settings?.find(s => s.key === 'timezone')?.value || 'UTC'; // Get timezone name, default to UTC
-
-  return useMutation({
-    mutationFn: async ({
-      id,
-      updates
-    }: {
-      id: string;
-      updates: Partial<Attention>
-    }) => {
-      // Convert attention_date and attention_time in updates to UTC if they exist
-      const updatedFields: Partial<Attention> = { ...updates };
-      if (updatedFields.attention_date && updatedFields.attention_time) {
-        const localDateTime = new Date(`${updatedFields.attention_date}T${updatedFields.attention_time}`);
-        const utcDateTime = toUTC(localDateTime, timezoneName); // Use toUTC utility
-        updatedFields.attention_date = format(utcDateTime, 'yyyy-MM-dd');
-        updatedFields.attention_time = format(utcDateTime, 'HH:mm');
-      } else if (updatedFields.attention_date && !updatedFields.attention_time) {
-        // If only date is updated, assume time is 00:00 for conversion
-        const localDateTime = new Date(`${updatedFields.attention_date}T00:00:00`);
-        const utcDateTime = toUTC(localDateTime, timezoneName); // Use toUTC utility
-        updatedFields.attention_date = format(utcDateTime, 'yyyy-MM-dd');
+    mutationFn: async (params: CreateAttentionParams) => {
+      if (!currentAssignment || !selectedBranchId || selectedBranchId === 'all') {
+        throw new Error("No se ha seleccionado una sucursal válida.");
       }
-      // If only time is updated, this is more complex as it depends on the current date.
-      // For simplicity, we'll assume the current date for conversion if only time is provided.
-      // A more robust solution might fetch the existing attention_date.
-      // For now, I'll leave it as is, as attention_date and attention_time are usually updated together.
 
-
-      const { data, error } = await supabase
-        .from('attentions')
-        .update(updatedFields) // Use updatedFields
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return callTenantAction('create_full_attention', {
+        p_client_id: params.client_id,
+        p_attention_date: params.attention_date,
+        p_attention_time: params.attention_time,
+        p_notes: params.notes,
+        p_services: JSON.stringify(params.services),
+        p_tenant_id: currentAssignment.tenant_id,
+        p_branch_id: selectedBranchId,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      toast({
-        title: "Atención actualizada",
-        description: "La atención ha sido actualizada exitosamente.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
+      toast({ title: "Atención creada", description: "La atención ha sido creada exitosamente." });
     },
     onError: (error) => {
-      console.error('Error updating attention:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la atención. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    },
-    enabled: !!settings // Only enable mutation if settings are loaded
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   });
 };
 
 export const useCancelAttention = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
 
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('attentions')
-        .update({ status: 'Cancelada' })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      toast({
-        title: "Atención cancelada",
-        description: "La atención ha sido cancelada exitosamente.",
-      });
-    },
-    onError: (error) => {
-      console.error('Error cancelling attention:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo cancelar la atención. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    },
-  });
+    return useMutation({
+        mutationFn: (attentionId: string) => callTenantAction('cancel_attention', { attentionId }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['attentions'] });
+            queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
+            toast({
+                title: 'Atención Cancelada',
+                description: 'La atención ha sido cancelada correctamente.',
+            });
+        },
+        onError: (error: Error) => {
+            toast({
+                title: 'Error al cancelar',
+                description: error.message,
+                variant: 'destructive',
+            });
+        },
+    });
 };

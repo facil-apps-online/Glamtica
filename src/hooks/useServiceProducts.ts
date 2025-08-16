@@ -1,41 +1,20 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
-
-export interface ServiceProduct {
-  id: string;
-  attention_id: string;
-  attention_service_id: string;
-  product_id: string;
-  user_id: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  commission_rate: number;
-  created_at: string;
-  updated_at: string;
-  products?: {
-    name: string;
-    price: number;
-  };
-  users?: {
-    first_name: string;
-    last_name: string;
-  };
-}
+import { Tables } from "@/integrations/supabase/types";
 
 export const useServiceProducts = (attentionServiceId: string) => {
-  return useQuery({
+  return useQuery<(Tables<'attention_products'> & { products: Tables<'products'> })[], Error>({
     queryKey: ['service-products', attentionServiceId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('attention_service_products')
-        .select(`*, products(name, price), users(first_name, last_name)`)
-        .eq('attention_service_id', attentionServiceId)
-        .order('created_at', { ascending: false });
+        .from('attention_products')
+        .select('*, products (*)')
+        .eq('attention_service_id', attentionServiceId);
 
-      if (error) throw error;
-      return data as ServiceProduct[];
+      if (error) throw new Error(error.message);
+      return data || [];
     },
     enabled: !!attentionServiceId,
   });
@@ -46,70 +25,45 @@ export const useAddServiceProduct = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (productData: {
-      attention_id: string;
-      attention_service_id: string;
-      product_id: string;
-      user_id: string;
-      quantity: number;
-      unit_price: number;
-      commission_rate: number;
-    }) => {
-      const total_price = productData.quantity * productData.unit_price;
-      
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .select('stock_quantity, name')
-        .eq('id', productData.product_id)
-        .single();
-
-      if (productError) throw new Error('No se pudo verificar el producto');
-      if (product.stock_quantity !== null && product.stock_quantity < productData.quantity) {
-        throw new Error(`Stock insuficiente. Solo hay ${product.stock_quantity} unidades.`);
-      }
-
+    mutationFn: async (newProduct: Omit<Tables<'attention_products'>, 'id' | 'created_at' | 'updated_at' | 'total_price'>) => {
       const { data, error } = await supabase
-        .from('attention_service_products')
-        .insert([{ ...productData, total_price }])
+        .from('attention_products')
+        .insert(newProduct)
         .select()
         .single();
 
-      if (error) throw error;
-
-      if (product.stock_quantity !== null) {
-        await supabase
-          .from('products')
-          .update({ stock_quantity: product.stock_quantity - productData.quantity })
-          .eq('id', productData.product_id);
-      }
-
+      if (error) throw new Error(error.message);
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['service-products', data.attention_service_id] });
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast({ title: "Producto agregado" });
+      toast({ title: "Producto agregado", description: "El producto ha sido agregado al servicio." });
     },
     onError: (error) => {
-      toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
+      toast({ title: "Error al agregar producto", description: error.message, variant: "destructive" });
     },
   });
 };
 
 export const useUserProductCommission = (userId: string, productId: string) => {
-  return useQuery({
+  return useQuery<number | null, Error>({
     queryKey: ['user-product-commission', userId, productId],
     queryFn: async () => {
+      if (!userId || !productId) return null;
+
       const { data, error } = await supabase
-        .from('product_user_commissions')
+        .from('product_commissions')
         .select('commission_rate')
         .eq('user_id', userId)
         .eq('product_id', productId)
-        .maybeSingle();
+        .single();
 
-      if (error) throw error;
-      return data?.commission_rate;
+      if (error && error.code !== 'PGRST116') { // PGRST116: no rows found
+        throw new Error(error.message);
+      }
+
+      return data?.commission_rate || null;
     },
     enabled: !!userId && !!productId,
   });

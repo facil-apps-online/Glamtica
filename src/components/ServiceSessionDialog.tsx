@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { AttentionService } from "@/hooks/useAttentionServices";
 import { Play, Square, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 interface ServiceSessionDialogProps {
   attentionService: AttentionService;
@@ -18,26 +19,16 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
   const { data: session, isLoading } = useServiceSession(attentionService.id);
   const startSessionMutation = useStartServiceSession();
   const endSessionMutation = useEndServiceSession();
+  const { toast } = useToast();
 
-  const handleStartSession = async () => {
-    try {
-      await startSessionMutation.mutateAsync({
-        attentionServiceId: attentionService.id
-      });
-    } catch (error) {
-      console.error('Error starting session:', error);
-    }
+  const handleStartSession = () => {
+    startSessionMutation.mutate({ attentionServiceId: attentionService.id });
   };
 
-  const handleEndSession = async () => {
-    try {
-      await endSessionMutation.mutateAsync({
-        attentionServiceId: attentionService.id
-      });
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Error ending session:', error);
-    }
+  const handleEndSession = () => {
+    endSessionMutation.mutate({ attentionServiceId: attentionService.id }, {
+      onSuccess: () => onOpenChange(false)
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -56,13 +47,15 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
   const formatDuration = (minutes: number | null) => {
     if (!minutes) return "0 min";
     const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
+    const remainingMinutes = Math.round(minutes % 60);
     
     if (hours > 0) {
       return `${hours}h ${remainingMinutes}min`;
     }
     return `${remainingMinutes}min`;
   };
+
+  const userName = `${attentionService.users?.first_name || ''} ${attentionService.users?.last_name || ''}`.trim();
 
   if (isLoading) {
     return (
@@ -84,16 +77,15 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
         </DialogHeader>
         
         <div className="space-y-6">
-          {/* Información del servicio */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium">{attentionService.services.name}</h3>
+              <h3 className="font-medium">{attentionService.services?.name || 'Servicio no encontrado'}</h3>
               {getStatusBadge(attentionService.status)}
             </div>
             
             <div className="text-sm text-muted-foreground space-y-1">
-              <p><strong>Estilista:</strong> {attentionService.stylists.name}</p>
-              <p><strong>Duración estimada:</strong> {attentionService.services.duration_minutes} minutos</p>
+              <p><strong>Estilista:</strong> {userName || 'No asignado'}</p>
+              <p><strong>Duración estimada:</strong> {attentionService.services?.duration_minutes || 0} minutos</p>
               <p><strong>Precio:</strong> ${attentionService.service_price}</p>
               {attentionService.notes && (
                 <p><strong>Notas:</strong> {attentionService.notes}</p>
@@ -101,7 +93,6 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
             </div>
           </div>
 
-          {/* Información de la sesión */}
           {session && (
             <div className="border rounded-lg p-4 space-y-3">
               <h4 className="font-medium flex items-center gap-2">
@@ -141,7 +132,6 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
             </div>
           )}
 
-          {/* Botones de acción */}
           <div className="flex gap-2 justify-end">
             <Button
               variant="outline"
@@ -150,7 +140,7 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
               Cerrar
             </Button>
             
-            {!session && attentionService.status === 'Pendiente' && (
+            {attentionService.status === 'Pendiente' && (
               <Button
                 onClick={handleStartSession}
                 disabled={startSessionMutation.isPending}
@@ -161,7 +151,7 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
               </Button>
             )}
             
-            {session && !session.ended_at && attentionService.status === 'En Proceso' && (
+            {attentionService.status === 'En Proceso' && (
               <Button
                 onClick={handleEndSession}
                 disabled={endSessionMutation.isPending}

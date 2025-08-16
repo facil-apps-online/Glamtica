@@ -112,3 +112,24 @@ BEGIN
   GROUP BY cm.user_id, cm.user_name;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Correcciones en el módulo de Atenciones
+
+-- 1. `useAttentions.ts`:
+--    - Se corrigió la lógica de filtrado por `userId` para que funcione correctamente con las tablas anidadas de Supabase. Se utilizó `!inner` para asegurar un `INNER JOIN` y que el filtro en `attention_services` afecte a las `attentions` devueltas.
+
+-- 2. `useAttentionServices.ts`:
+--    - Se añadió la invalidación de la query `['attention-dates']` en la mutación `useAddAttentionService`. Esto asegura que la vista del calendario se actualice correctamente cuando se añade un nuevo servicio a una atención.
+
+-- 3. `AttentionDialog.tsx`:
+--    - Se resetea el `user_id` seleccionado cuando se cambia el `service_id` en el formulario de servicio. Esto previene que un usuario incorrecto quede seleccionado.
+--    - Se añadió un ID único a cada servicio en el estado del formulario para usarlo como `key` en el componente `ServiceFormCard`, mejorando la performance y estabilidad de React.
+--    - Se añadió un indicador de carga en el selector de usuarios mientras se obtienen los usuarios disponibles, mejorando la experiencia de usuario.
+
+-- 4. `useAvailableUsers.ts`:
+--    - Se identificó un problema de performance: el hook realiza una llamada a la base de datos por cada usuario para verificar su disponibilidad. Se recomienda refactorizar esto en una única función de base de datos en el futuro para mejorar la escalabilidad.
+
+-- 5. Refactorización a Edge Function `tenant-actions`:
+--    - Se centralizaron todas las llamadas a la base de datos del módulo de atenciones en la Edge Function `tenant-actions`.
+--    - Se crearon los `case` necesarios en la Edge Function para manejar las operaciones de atenciones.
+--    - Se refactorizaron los hooks `useAttentions`, `useAttentionServices` y `useAvailableUsers` para que utilicen `callTenantAction`.

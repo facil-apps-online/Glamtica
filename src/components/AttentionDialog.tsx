@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,17 +7,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useClients } from "@/hooks/useClients";
-import { useBranchServices } from "@/hooks/useServices"; // Cambiado de useActiveServices
+import { useBranchServices, Service } from "@/hooks/useServices";
 import { useAvailableUsers } from "@/hooks/useAvailableUsers";
 import { useCreateAttention } from "@/hooks/useAttentions";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tables } from "@/integrations/supabase/types";
 
 interface AttentionDialogProps {
   children: React.ReactNode;
+  branchId?: string;
 }
 
 interface ServiceForm {
+  id: string; // Unique ID for the service form
   service_id: string;
   user_id: string;
   service_price: number;
@@ -24,27 +28,39 @@ interface ServiceForm {
   notes?: string;
 }
 
-export const AttentionDialog = ({ children }: AttentionDialogProps) => {
+interface ServiceFormCardProps {
+  service: ServiceForm;
+  index: number;
+  attentionDate: string;
+  attentionTime: string;
+  branchId?: string;
+  onUpdate: (index: number, field: keyof Omit<ServiceForm, 'id'>, value: string | number) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+  availableServices: (Tables<'services'> & { selling_price: number })[];
+}
+
+export const AttentionDialog = ({ children, branchId }: AttentionDialogProps) => {
   const [open, setOpen] = useState(false);
   const [clientId, setClientId] = useState("");
   const [attentionDate, setAttentionDate] = useState("");
   const [attentionTime, setAttentionTime] = useState("");
   const [notes, setNotes] = useState("");
   const [services, setServices] = useState<ServiceForm[]>([
-    { service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }
+    { id: crypto.randomUUID(), service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }
   ]);
 
   const { data: clients } = useClients();
-  const { data: branchServices } = useBranchServices(); // Cambiado de availableServices
+  const { data: branchServices } = useBranchServices(branchId);
   const createAttentionMutation = useCreateAttention();
 
   const addService = () => {
-    setServices([...services, { service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }]);
+    setServices([...services, { id: crypto.randomUUID(), service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }]);
   };
 
-  const removeService = (index: number) => {
+  const removeService = (id: string) => {
     if (services.length > 1) {
-      setServices(services.filter((_, i) => i !== index));
+      setServices(services.filter((s) => s.id !== id));
     }
   };
 
@@ -53,12 +69,12 @@ export const AttentionDialog = ({ children }: AttentionDialogProps) => {
     const currentService = { ...updatedServices[index], [field]: value };
 
     if (field === 'service_id') {
-      const service = branchServices?.find(s => s.id === value); // Cambiado de availableServices
+      const service = branchServices?.find(s => s.id === value);
       if (service) {
-        currentService.service_price = service.selling_price; // Cambiado de service.price
+        currentService.service_price = service.selling_price;
         currentService.duration = service.duration_minutes;
       }
-      currentService.user_id = "";
+      currentService.user_id = ""; // Reset user when service changes
     }
     updatedServices[index] = currentService;
     setServices(updatedServices);
@@ -131,15 +147,16 @@ export const AttentionDialog = ({ children }: AttentionDialogProps) => {
             </div>
             {services.map((service, index) => (
               <ServiceFormCard
-                key={index}
+                key={service.id}
                 service={service}
                 index={index}
                 attentionDate={attentionDate}
                 attentionTime={attentionTime}
+                branchId={branchId}
                 onUpdate={updateService}
-                onRemove={removeService}
+                onRemove={() => removeService(service.id)}
                 canRemove={services.length > 1}
-                availableServices={branchServices || []} // Cambiado de availableServices
+                availableServices={branchServices || []}
               />
             ))}
           </div>
@@ -159,15 +176,15 @@ export const AttentionDialog = ({ children }: AttentionDialogProps) => {
   );
 };
 
-const ServiceFormCard = ({ service, index, attentionDate, attentionTime, onUpdate, onRemove, canRemove, availableServices }: any) => {
-  const { data: availableUsers } = useAvailableUsers(service.service_id, attentionDate, attentionTime, service.duration);
+const ServiceFormCard = ({ service, index, attentionDate, attentionTime, branchId, onUpdate, onRemove, canRemove, availableServices }: ServiceFormCardProps) => {
+  const { data: availableUsers, isLoading } = useAvailableUsers(service.service_id, attentionDate, attentionTime, service.duration, branchId);
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">Servicio {index + 1}</CardTitle>
-          {canRemove && <Button type="button" onClick={() => onRemove(index)} size="sm" variant="ghost" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>}
+          {canRemove && <Button type="button" onClick={onRemove} size="sm" variant="ghost" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -176,7 +193,7 @@ const ServiceFormCard = ({ service, index, attentionDate, attentionTime, onUpdat
           <Select value={service.service_id} onValueChange={(value) => onUpdate(index, 'service_id', value)} required>
             <SelectTrigger><SelectValue placeholder="Selecciona un servicio" /></SelectTrigger>
             <SelectContent>
-              {availableServices?.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              {availableServices?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -184,9 +201,9 @@ const ServiceFormCard = ({ service, index, attentionDate, attentionTime, onUpdat
           <div className="space-y-2">
             <Label>Usuario</Label>
             <Select value={service.user_id} onValueChange={(value) => onUpdate(index, 'user_id', value)} required>
-              <SelectTrigger><SelectValue placeholder={availableUsers?.length ? "Selecciona un usuario" : "No hay usuarios disponibles"} /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={isLoading ? "Cargando..." : (availableUsers?.length ? "Selecciona un usuario" : "No hay usuarios disponibles")} /></SelectTrigger>
               <SelectContent>
-                {availableUsers?.map((u: any) => <SelectItem key={u.user_id} value={u.user_id}>{u.users?.name}</SelectItem>)}
+                {availableUsers?.map((u) => <SelectItem key={u.user_id} value={u.user_id}>{u.users?.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

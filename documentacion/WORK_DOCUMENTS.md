@@ -923,3 +923,57 @@ Se han corregido y mejorado las funciones RPC `get_product_commission_matrix` y 
     -   `get_service_commission_matrix`: Actualizada para usar `auth.users` y extraer `branch_id` de `raw_user_meta_data->'assignments'`, y corregir la referencia a `service_id`.
 
 **Estado:** Completado y verificado (a través de la creación de una nueva migración).
+---
+### Módulo: Corrección y Mejora del Módulo de Atenciones
+
+**Fecha de Finalización:** 15 de agosto de 2025
+
+**Descripción General:**
+Se ha realizado una revisión y corrección exhaustiva del módulo de atenciones para solucionar varios bugs, mejorar la experiencia de usuario y la estabilidad general. Se ha identificado y documentado una oportunidad de mejora de performance en el backend.
+
+**Correcciones y Mejoras Clave:**
+
+1.  **Filtro de Atenciones por Usuario:**
+    -   **Problema:** El filtro de atenciones por usuario no funcionaba correctamente debido a una consulta ineficiente en una tabla anidada.
+    -   **Solución:** Se ha modificado el hook `useAttentions.ts` para utilizar un `INNER JOIN` explícito (`!inner`) en la consulta de Supabase. Esto asegura que solo se devuelvan las atenciones que corresponden al usuario seleccionado, solucionando el bug de filtrado.
+
+2.  **Actualización de la Vista de Calendario:**
+    -   **Problema:** Al añadir un nuevo servicio a una atención existente, la vista de calendario no se actualizaba para reflejar el cambio.
+    -   **Solución:** Se ha modificado el hook `useAttentionServices.ts` para que, tras añadir un servicio, invalide no solo la query de `attentions`, sino también la de `attention-dates`, forzando la actualización del calendario.
+
+3.  **Estabilidad del Formulario de Atenciones (`AttentionDialog.tsx`):**
+    -   **Reset de Usuario:** Se ha añadido lógica para que el usuario seleccionado se resetee automáticamente al cambiar el servicio, evitando asignaciones incorrectas.
+    -   **Keys Estables en React:** Se ha reemplazado el uso de `index` como `key` por un ID único para cada servicio en el formulario, mejorando la performance y evitando bugs de estado en la renderización de la lista de servicios.
+    -   **Feedback de Carga:** Se ha añadido un indicador de "Cargando..." en el selector de usuarios para mejorar la UX mientras se espera la respuesta del servidor.
+
+4.  **Identificación de Deuda Técnica (Performance):**
+    -   Se ha identificado que el hook `useAvailableUsers.ts` realiza una llamada a la base de datos por cada usuario para verificar su disponibilidad, lo que causa lentitud. Se ha documentado en `SOLUTION_LOG.md` la necesidad de refactorizar esta lógica en una única función de base de datos en el backend para optimizar el rendimiento.
+
+**Componentes Técnicos Modificados:**
+
+-   **Hooks:** `useAttentions.ts`, `useAttentionServices.ts`.
+-   **Componentes:** `AttentionDialog.tsx`.
+
+**Estado:** Completado y verificado. La funcionalidad del módulo de atenciones es ahora más estable y robusta. La mejora de performance queda como deuda técnica documentada.
+---
+### Módulo: Centralización de Llamadas a Base de Datos en `tenant-actions`
+
+**Fecha de Finalización:** 15 de agosto de 2025
+
+**Descripción General:**
+Se ha refactorizado el módulo de atenciones para centralizar todas las llamadas directas a la base de datos a través de la Edge Function `tenant-actions`. Esta estandarización mejora la seguridad, el mantenimiento y la consistencia del código.
+
+**Funcionalidades Clave:**
+
+1.  **Creación de Nuevos `case` en `tenant-actions`:**
+    -   Se han añadido nuevos `case` a la Edge Function para manejar todas las operaciones de base de datos del módulo de atenciones, incluyendo la obtención de atenciones, la creación y cancelación de las mismas, la adición de servicios y la obtención de usuarios disponibles.
+
+2.  **Refactorización de Hooks:**
+    -   Se han modificado los hooks `useAttentions`, `useAttentionServices` y `useAvailableUsers` para que utilicen la función `callTenantAction` en lugar de realizar llamadas directas a Supabase (`supabase.from(...)` o `supabase.rpc(...)`).
+
+**Componentes Técnicos Modificados:**
+
+-   **Edge Function:** `supabase/functions/tenant-actions/index.ts`
+-   **Hooks:** `useAttentions.ts`, `useAttentionServices.ts`, `useAvailableUsers.ts`
+
+**Estado:** Completado y verificado.

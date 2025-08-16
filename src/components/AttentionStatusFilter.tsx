@@ -1,12 +1,11 @@
-
 import { FilterableSelect } from "./FilterableSelect";
 
-interface AppointmentStatusFilterProps {
+interface AttentionStatusFilterProps {
   selectedStatus: string;
   onStatusChange: (status: string) => void;
 }
 
-export const AppointmentStatusFilter = ({ selectedStatus, onStatusChange }: AppointmentStatusFilterProps) => {
+export const AttentionStatusFilter = ({ selectedStatus, onStatusChange }: AttentionStatusFilterProps) => {
   const statusOptions = [
     { value: "all", label: "Todos los Estados" },
     { value: "pending", label: "Solo Pendientes" },

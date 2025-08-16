@@ -23,8 +23,8 @@ export const tenantNavigationConfig = [
         roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
       },
       {
-        title: "Citas",
-        url: "/appointments",
+        title: "Atenciones",
+        url: "/attentions",
         icon: Calendar,
         roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
       },

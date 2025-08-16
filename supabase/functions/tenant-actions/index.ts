@@ -1249,24 +1249,63 @@ serve(async (req) => {
       case 'get_branch_services': {
         const { branchId } = payload;
         if (!branchId) throw new Error('Branch ID is required.');
-        const { data, error } = await supabaseAdmin
+
+        const userRole = decodedToken.app_metadata?.assignments?.[0]?.role_name;
+
+        let query = supabaseAdmin
           .from('branch_services')
           .select(`
             *,
             service:service_id (*)
           `)
           .eq('tenant_id', tenantId)
-          .eq('branch_id', branchId);
+
+        if (branchId === 'all' && userRole !== 'tenant_super_admin') {
+          const userBranchId = decodedToken.app_metadata?.assignments?.[0]?.branch_id;
+          if (userBranchId) {
+            query = query.eq('branch_id', userBranchId);
+          } else {
+            // Handle case where user has no branch_id, maybe return empty array
+            responseData = [];
+            break;
+          }
+        } else if (branchId !== 'all') {
+          query = query.eq('branch_id', branchId);
+        }
+
+        const { data, error } = await query;
+
         if (error) throw error;
-        responseData = data.map((item: any) => ({
-          id: item.service_id, // ID del servicio maestro
-          branch_service_id: item.id, // ID de la relación branch_services
-          name: item.service?.name, // Nombre del servicio maestro
-          description: item.service?.description, // Descripción del servicio maestro
-          duration_minutes: item.service?.duration_minutes, // Duración del servicio maestro
-          selling_price: item.selling_price, // Precio de venta en esta sucursal
-          is_branch_active: item.is_active, // Estado activo en esta sucursal
-        }));
+
+        if (branchId === 'all' && userRole === 'tenant_super_admin') {
+          const serviceIds = new Set();
+          const uniqueServices = data.filter((item: any) => {
+            if (!serviceIds.has(item.service_id)) {
+              serviceIds.add(item.service_id);
+              return true;
+            }
+            return false;
+          });
+          responseData = uniqueServices.map((item: any) => ({
+            id: item.service_id,
+            branch_service_id: item.id,
+            name: item.service?.name,
+            description: item.service?.description,
+            duration_minutes: item.service?.duration_minutes,
+            selling_price: item.selling_price,
+            is_branch_active: item.is_active,
+          }));
+        } else {
+          responseData = data.map((item: any) => ({
+            id: item.service_id,
+            branch_service_id: item.id,
+            name: item.service?.name,
+            description: item.service?.description,
+            duration_minutes: item.service?.duration_minutes,
+            selling_price: item.selling_price,
+            is_branch_active: item.is_active,
+          }));
+        }
         break;
       }
 
@@ -1959,6 +1998,143 @@ serve(async (req) => {
           .eq('tenant_id', tenantId);
         if (error) throw error;
         responseData = { success: true };
+        break;
+      }
+
+      case 'get_attentions': {
+        const { branchId, userId, statusFilter, dateFilter } = payload;
+        const { data, error } = await supabaseAdmin.rpc('get_attentions_with_details', {
+          p_tenant_id: tenantId,
+          p_branch_id: branchId === 'all' ? null : branchId,
+          p_user_id: userId === 'all' ? null : userId,
+          p_status_filter: statusFilter === 'all' ? null : statusFilter,
+          p_date_filter: dateFilter
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_attention_dates': {
+        const { branchId, userId } = payload;
+
+        let query = supabaseAdmin
+          .from('attentions')
+          .select('attention_date, status')
+          .in('status', ['Confirmada', 'En Proceso', 'Completada', 'Pagada'])
+          .eq('tenant_id', tenantId);
+
+        if (branchId && branchId !== 'all') {
+          query = query.eq('branch_id', branchId);
+        }
+
+        // This part of the logic will be handled in the frontend
+        // as it requires creating a Set, which is not directly supported in the same way here.
+        const { data, error } = await query;
+        if (error) throw error;
+
+        responseData = data;
+        break;
+      }
+
+      case 'create_full_attention': {
+        const { p_client_id, p_attention_date, p_attention_time, p_notes, p_services, p_tenant_id, p_branch_id } = payload;
+        const { data, error } = await supabaseAdmin.rpc('create_full_attention', {
+          p_client_id,
+          p_attention_date,
+          p_attention_time,
+          p_notes,
+          p_services,
+          p_tenant_id,
+          p_branch_id,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'cancel_attention': {
+        const { attentionId } = payload;
+        const { error } = await supabaseAdmin
+          .from('attentions')
+          .update({ status: 'Cancelada' })
+          .eq('id', attentionId);
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      case 'add_attention_service': {
+        const { newService } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('attention_services')
+          .insert(newService)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_available_users': {
+        const { serviceId, appointmentDate, appointmentTime, duration, branchId } = payload;
+        if (!serviceId || !appointmentDate || !appointmentTime || !duration || !branchId || !tenantId) {
+          responseData = [];
+          break;
+        }
+  
+        // 1. Find users who have a commission for this service in this branch
+        const { data: usersWithCommission, error: commissionError } = await supabaseAdmin
+          .from('service_user_commissions')
+          .select('user_id, commission_rate, users!inner(id, first_name, last_name, is_active, is_schedulable)')
+          .eq('service_id', serviceId)
+          .eq('branch_id', branchId)
+          .eq('users.is_active', true)
+          .eq('users.is_schedulable', true);
+  
+        if (commissionError) {
+          console.error('Error fetching users with commission:', commissionError);
+          throw new Error(commissionError.message);
+        }
+  
+        if (!usersWithCommission || usersWithCommission.length === 0) {
+          responseData = [];
+          break;
+        }
+  
+        // 2. For each user, check their availability using the DB function
+        const availabilityChecks = usersWithCommission.map(commission =>
+          supabaseAdmin.rpc('check_user_availability', {
+            p_user_id: commission.users!.id,
+            p_appointment_date: appointmentDate,
+            p_appointment_time: appointmentTime,
+            p_duration_minutes: duration,
+          })
+        );
+  
+        const availabilityResults = await Promise.all(availabilityChecks);
+  
+        // 3. Filter the users based on the availability check result
+        const availableUsers = usersWithCommission.filter((_, index) => {
+          const result = availabilityResults[index];
+          if (result.error) {
+            console.error(`Error checking availability for user ${usersWithCommission[index].users!.id}:`, result.error);
+            return false;
+          }
+          return result.data === true;
+        });
+        
+        // Format the final result
+        responseData = availableUsers.map(u => ({
+          user_id: u.users!.id,
+          commission_rate: u.commission_rate,
+          users: {
+              id: u.users!.id,
+              name: `${u.users!.first_name || ''} ${u.users!.last_name || ''}`.trim(),
+              is_active: u.users!.is_active
+          }
+        }));
         break;
       }
 

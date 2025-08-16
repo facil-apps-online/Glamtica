@@ -582,3 +582,25 @@ El sistema utiliza un motor de plantillas para todas las comunicaciones por corr
 3.  **Propagación Automática**: Al crear una nueva plantilla maestra (ej. "Resumen de Ventas Semanal"), puedes marcarla para que se "propague" a todos los tenants nuevos. Esto significa que automáticamente les aparecerá la opción para activar o desactivar esta nueva comunicación en su panel.
 
 *(Nota: La interfaz para gestionar estas plantillas y configuraciones se desarrollará en una fase posterior.)*
+---
+### Módulo: Centralización de Llamadas a Base de Datos en `tenant-actions`
+
+**Fecha de Finalización:** 15 de agosto de 2025
+
+**Descripción General:**
+Se ha refactorizado el módulo de atenciones para centralizar todas las llamadas directas a la base de datos a través de la Edge Function `tenant-actions`. Esta estandarización mejora la seguridad, el mantenimiento y la consistencia del código.
+
+**Funcionalidades Clave:**
+
+1.  **Creación de Nuevos `case` en `tenant-actions`:**
+    -   Se han añadido nuevos `case` a la Edge Function para manejar todas las operaciones de base de datos del módulo de atenciones, incluyendo la obtención de atenciones, la creación y cancelación de las mismas, la adición de servicios y la obtención de usuarios disponibles.
+
+2.  **Refactorización de Hooks:**
+    -   Se han modificado los hooks `useAttentions`, `useAttentionServices` y `useAvailableUsers` para que utilicen la función `callTenantAction` en lugar de realizar llamadas directas a Supabase (`supabase.from(...)` o `supabase.rpc(...)`).
+
+**Componentes Técnicos Modificados:**
+
+-   **Edge Function:** `supabase/functions/tenant-actions/index.ts`
+-   **Hooks:** `useAttentions.ts`, `useAttentionServices.ts`, `useAvailableUsers.ts`
+
+**Estado:** Completado y verificado.

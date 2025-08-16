@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchProducts } from "@/hooks/useProducts";
 import { useAddServiceProduct, useUserProductCommission } from "@/hooks/useServiceProducts";
-import { ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
 interface AddServiceProductDialogProps {
   children: React.ReactNode;
@@ -30,6 +32,8 @@ export const AddServiceProductDialog = ({
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(0);
 
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
   const { data: productsInBranch } = useBranchProducts();
   const availableProducts = productsInBranch?.filter(p => p.is_branch_active);
   const { data: commissionRate } = useUserProductCommission(userId, productId);
@@ -44,10 +48,8 @@ export const AddServiceProductDialog = ({
     }
   }, [selectedProduct]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!productId || quantity <= 0 || unitPrice <= 0) {
+  const handleMutation = (commission: number) => {
+    if (!productId || quantity <= 0 || unitPrice <= 0 || !currentAssignment || !selectedBranchId || selectedBranchId === 'all') {
       toast({ title: "Error", description: "Por favor, complete todos los campos correctamente.", variant: "destructive" });
       return;
     }
@@ -57,27 +59,27 @@ export const AddServiceProductDialog = ({
       return;
     }
 
-    
+    addProductMutation.mutate({
+      attention_id: attentionId,
+      attention_service_id: attentionServiceId,
+      product_id: productId,
+      user_id: userId,
+      quantity: quantity,
+      unit_price: unitPrice,
+      commission_rate: commission,
+      tenant_id: currentAssignment.tenant_id,
+      branch_id: selectedBranchId,
+    }, {
+      onSuccess: () => {
+        setOpen(false);
+        resetForm();
+      }
+    });
+  };
 
-    try {
-      await addProductMutation.mutateAsync({
-        attention_id: attentionId,
-        attention_service_id: attentionServiceId,
-        product_id: productId,
-        user_id: userId,
-        quantity: quantity,
-        unit_price: unitPrice,
-        commission_rate: commissionRate || 0,
-      });
-      
-      setOpen(false);
-      resetForm();
-      
-      toast({ title: "Producto agregado", description: `${selectedProduct?.name} agregado al servicio.` });
-    } catch (error) {
-      console.error('Error adding product:', error);
-      toast({ title: "Error", description: "No se pudo agregar el producto.", variant: "destructive" });
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleMutation(commissionRate || 0);
   };
 
   const resetForm = () => {
@@ -142,28 +144,15 @@ export const AddServiceProductDialog = ({
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            {commissionRate === undefined ? (
+            {commissionRate === null && productId ? (
               <ConfirmationDialog
-                onConfirm={async () => {
-                  await addProductMutation.mutateAsync({
-                    attention_id: attentionId,
-                    attention_service_id: attentionServiceId,
-                    product_id: productId,
-                    user_id: userId,
-                    quantity: quantity,
-                    unit_price: unitPrice,
-                    commission_rate: 0,
-                  });
-                  setOpen(false);
-                  resetForm();
-                  toast({ title: "Producto agregado", description: `${selectedProduct?.name} agregado al servicio.` });
-                }}
+                onConfirm={() => handleMutation(0)}
                 title="Confirmar Venta sin Comisión"
                 description={`El usuario ${userName} no tiene comisión configurada para este producto. ¿Desea continuar con 0% de comisión?`}
                 confirmText="Sí, continuar"
                 cancelText="No, cancelar"
               >
-                <Button type="submit" disabled={addProductMutation.isPending || !productId}>
+                <Button type="button" disabled={addProductMutation.isPending || !productId}>
                   Agregar Producto
                 </Button>
               </ConfirmationDialog>

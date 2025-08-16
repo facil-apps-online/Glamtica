@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Layout } from "@/components/Layout";
 import Index from "@/pages/Index";
-import Appointments from "@/pages/Appointments";
+import Attentions from "@/pages/Attentions";
 import Clients from "@/pages/Clients";
 import Services from "@/pages/Services";
 import Team from "@/pages/Team";
@@ -57,7 +57,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Index />} /> {/* RUTA INDEX PARA LA PÁGINA DE INICIO */}
                   <Route path="profile-settings" element={<ProfileSettings />} />
-                  <Route path="appointments" element={<Appointments />} />
+                  <Route path="attentions" element={<Attentions />} />
                   <Route path="clients" element={<Clients />} />
                   <Route path="products" element={<Products />} />
                   <Route path="combos" element={<Combos />} />

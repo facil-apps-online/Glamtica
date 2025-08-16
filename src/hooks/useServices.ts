@@ -20,12 +20,13 @@ const callTenantAction = async (action: string, payload: any) => {
 // Hook para obtener los servicios disponibles en la sucursal seleccionada
 export const useBranchServices = (branchIdParam?: string) => {
   const { selectedBranchId } = useBranchFilterStore();
+  const { currentAssignment } = useAuth();
   const branchIdToUse = branchIdParam || selectedBranchId;
 
   return useQuery<BranchService[], Error>({
-    queryKey: ['branch_services', branchIdToUse],
+    queryKey: ['branch_services', branchIdToUse, currentAssignment?.assignment_id],
     queryFn: () => callTenantAction('get_branch_services', { branchId: branchIdToUse }),
-    enabled: !!branchIdToUse && branchIdToUse !== 'all',
+    enabled: !!branchIdToUse && (branchIdToUse !== 'all' || currentAssignment?.role_name !== 'tenant_super_admin'),
   });
 };
 

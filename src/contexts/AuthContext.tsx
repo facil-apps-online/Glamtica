@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useBranchFilterStore } from '@/stores/branchFilterStore';
 
 // --- INTERFACES ---
 interface UserProfile {
@@ -59,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const navigate = useNavigate();
   const { toast } = useToast();
   const previousAssignmentRef = useRef<UserAssignment | null>(null);
+  const { setBranchId } = useBranchFilterStore();
 
   const processSession = useCallback(async (sessionData: Session | null) => {
     try {
@@ -251,6 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
 
     // 1. Actualizar el estado local inmediatamente para una respuesta de UI rápida.
     setCurrentAssignment(newAssignment);
+    setBranchId(newAssignment.branch_id || 'all');
     
     // Guardar la asignación seleccionada en localStorage
     localStorage.setItem('lastSelectedAssignmentId', assignmentId);

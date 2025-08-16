@@ -1,4 +1,3 @@
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,23 +10,23 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useCancelAppointment } from "@/hooks/useAppointments";
+import { useCancelAttention } from "@/hooks/useAttentions";
 
-interface CancelAppointmentDialogProps {
-  appointmentId: string;
+interface CancelAttentionDialogProps {
+  attentionId: string;
   clientName: string;
   children: React.ReactNode;
 }
 
-export const CancelAppointmentDialog = ({ 
-  appointmentId, 
+export const CancelAttentionDialog = ({ 
+  attentionId, 
   clientName, 
   children 
-}: CancelAppointmentDialogProps) => {
-  const cancelMutation = useCancelAppointment();
+}: CancelAttentionDialogProps) => {
+  const cancelMutation = useCancelAttention();
 
   const handleCancel = () => {
-    cancelMutation.mutate(appointmentId);
+    cancelMutation.mutate(attentionId);
   };
 
   return (
@@ -37,20 +36,20 @@ export const CancelAppointmentDialog = ({
       </AlertDialogTrigger>
       <AlertDialogContent className="w-[95vw] sm:max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Cancelar cita?</AlertDialogTitle>
+          <AlertDialogTitle>¿Cancelar atención?</AlertDialogTitle>
           <AlertDialogDescription>
-            ¿Estás seguro de que quieres cancelar la cita de <strong>{clientName}</strong>? 
+            ¿Estás seguro de que quieres cancelar la atención de <strong>{clientName}</strong>? 
             Esta acción no se puede deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>No, mantener cita</AlertDialogCancel>
+          <AlertDialogCancel>No, mantener atención</AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleCancel}
             disabled={cancelMutation.isPending}
             className="bg-red-600 hover:bg-red-700"
           >
-            Sí, cancelar cita
+            Sí, cancelar atención
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

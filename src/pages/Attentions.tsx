@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, Camera, ShoppingCart, Package } from "lucide-react";
+import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, Camera, ShoppingCart, Package, MoreVertical, Trash2 } from "lucide-react";
 import { useAttentions, Attention, AttentionService } from "@/hooks/useAttentions";
 import { useSettings } from "@/hooks/useSettings";
 import { AttentionDialog } from "@/components/AttentionDialog";
-import { CancelAppointmentDialog } from "@/components/CancelAppointmentDialog";
+import { DialogTrigger } from "@/components/ui/dialog";
+import { CancelAttentionDialog } from "@/components/CancelAttentionDialog";
 import { UserSelector } from "@/components/UserSelector";
-import { AppointmentDateFilter } from "@/components/AppointmentDateFilter";
-import { AppointmentStatusFilter } from "@/components/AppointmentStatusFilter";
+import { AttentionDateFilter } from "@/components/AttentionDateFilter";
+import { AttentionStatusFilter } from "@/components/AttentionStatusFilter";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -18,20 +19,26 @@ import { EvidenceUpload } from "@/components/EvidenceUpload";
 import { AddServiceDialog } from "@/components/AddServiceDialog";
 import { AddServiceProductDialog } from "@/components/AddServiceProductDialog";
 import { useServiceProducts } from "@/hooks/useServiceProducts";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function Appointments() {
+export default function Attentions() {
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(new Date());
   const [selectedService, setSelectedService] = useState<AttentionService | null>(null);
+  const { selectedBranchId } = useBranchFilterStore();
+  const { currentAssignment } = useAuth();
+
+  const branchIdForDialog = selectedBranchId !== 'all' ? selectedBranchId : currentAssignment?.branch_id;
 
   const { data: settings, isLoading: settingsLoading } = useSettings();
 
   const { data: attentions, isLoading: attentionsLoading, error: attentionsError } = useAttentions(
     selectedUser,
     statusFilter,
-    dateFilter,
-    !settingsLoading
+    dateFilter
   );
   const { formatPrice } = usePriceFormat();
 
@@ -59,16 +66,29 @@ export default function Appointments() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-primary">Agenda de Atenciones</h1>
-        <AttentionDialog>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Atención
-          </Button>
+        <AttentionDialog branchId={branchIdForDialog}>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DialogTrigger asChild>
+                  <Button disabled={!branchIdForDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nueva Atención
+                  </Button>
+                </DialogTrigger>
+              </TooltipTrigger>
+              {!branchIdForDialog && (
+                <TooltipContent>
+                  <p>Selecciona una sucursal para crear una atención.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </AttentionDialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <AppointmentDateFilter
+        <AttentionDateFilter
           selectedDate={dateFilter}
           onDateChange={setDateFilter}
           selectedUserId={selectedUser}
@@ -77,7 +97,7 @@ export default function Appointments() {
           selectedUserId={selectedUser}
           onUserChange={setSelectedUser}
         />
-        <AppointmentStatusFilter
+        <AttentionStatusFilter
           selectedStatus={statusFilter}
           onStatusChange={setStatusFilter}
         />
@@ -105,11 +125,24 @@ export default function Appointments() {
                   ? 'No se encontraron atenciones con los filtros aplicados'
                   : 'Comienza creando tu primera atención'}
               </p>
-              <AttentionDialog>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nueva Atención
-                </Button>
+              <AttentionDialog branchId={branchIdForDialog}>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DialogTrigger asChild>
+                        <Button disabled={!branchIdForDialog}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Nueva Atención
+                        </Button>
+                      </DialogTrigger>
+                    </TooltipTrigger>
+                    {!branchIdForDialog && (
+                      <TooltipContent>
+                        <p>Selecciona una sucursal para crear una atención.</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </AttentionDialog>
             </CardContent>
           </Card>
@@ -168,14 +201,16 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
     }
   };
 
-  const hasStartedServices = attention.attention_services?.some((service: AttentionService) => service.status === 'En Proceso' || service.status === 'Completado');
-  
+  const totalServices = attention.attention_services?.reduce((sum, s) => sum + (s.service_price || 0), 0) || 0;
+  const totalProducts = attention.attention_products?.reduce((sum, p) => sum + (p.total_price || 0), 0) || 0;
+  const grandTotal = totalServices + totalProducts;
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
-            <CardTitle className="text-lg text-primary">{attention.clients.name}</CardTitle>
+            <CardTitle className="text-lg text-primary">{attention.clients?.name || 'Cliente no asignado'}</CardTitle>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
@@ -187,48 +222,63 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
               </div>
               <div className="flex items-center gap-1">
                 <Phone className="w-4 h-4" />
-                {attention.clients.phone}
+                {attention.clients?.phone || 'N/A'}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(attention.status)}
+            <CancelAttentionDialog attentionId={attention.id} clientName={attention.clients?.name || ''}>
+                <Button variant="ghost" size="icon">
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                </Button>
+            </CancelAttentionDialog>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium flex items-center gap-2">
-              <Scissors className="w-4 h-4" />
-              Servicios
-            </h4>
-          </div>
-          
-          {attention.attention_services?.map((service: AttentionService, index: number) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              isFirst={index === 0}
-              formatPrice={formatPrice}
-              onServiceSelect={onServiceSelect}
-              getServiceStatusBadge={getServiceStatusBadge}
-              attentionStatus={attention.status}
-            />
-          ))}
-        </div>
+        {attention.attention_services && attention.attention_services.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium flex items-center gap-2"><Scissors className="w-4 h-4" />Servicios</h4>
+              {attention.attention_services.map((service, index) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  isFirst={index === 0}
+                  formatPrice={formatPrice}
+                  onServiceSelect={onServiceSelect}
+                  getServiceStatusBadge={getServiceStatusBadge}
+                  attentionStatus={attention.status}
+                />
+              ))}
+            </div>
+        )}
+
+        {attention.attention_products && attention.attention_products.length > 0 && (
+            <div className="space-y-3 pt-4 border-t">
+                 <h4 className="font-medium flex items-center gap-2"><ShoppingCart className="w-4 h-4" />Productos Vendidos</h4>
+                {attention.attention_products.map(product => (
+                    <div key={product.id} className="flex justify-between items-center text-sm pl-8">
+                        <div>
+                            <p>{product.products?.name || 'Producto no encontrado'} (x{product.quantity})</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-medium">{formatPrice(product.total_price || 0)}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
 
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="text-right space-y-1 ml-auto">
             <div className="text-sm text-muted-foreground">
-              <span>Total Servicios: {formatPrice(attention.attention_services?.reduce((sum: number, s: AttentionService) => sum + s.service_price, 0) || 0)}</span>
-              {attention.products_total && attention.products_total > 0 && (
-                <span className="ml-2">+ Productos: {formatPrice(attention.products_total)}</span>
-              )}
+              <span>Total Servicios: {formatPrice(totalServices)}</span>
+              <span className="ml-2">+ Productos: {formatPrice(totalProducts)}</span>
             </div>
             <div className="text-lg font-bold">
-              Total: {formatPrice(attention.grand_total || attention.total_amount)}
+              Total: {formatPrice(grandTotal)}
             </div>
           </div>
         </div>
@@ -244,12 +294,10 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
           {!['Cancelada', 'Pagada'].includes(attention.status) && (
             <AddServiceDialog 
               attentionId={attention.id}
-              attentionDate={attention.attention_date}
-              attentionTime={attention.attention_time}
             >
               <Button size="sm" variant="outline">
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Vender Producto
+                <Plus className="w-4 h-4 mr-2" />
+                Añadir Servicio
               </Button>
             </AddServiceDialog>
           )}
@@ -280,15 +328,15 @@ const ServiceCard = ({ service, isFirst, formatPrice, onServiceSelect, getServic
 
       <div className="flex justify-between items-start">
         <div className="space-y-1">
-          <p className="font-medium">{service.services.name}</p>
+          <p className="font-medium">{service.services?.name || 'Servicio no encontrado'}</p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <User className="w-4 h-4" />
-              {userName}
+              {userName || 'Usuario no asignado'}
             </div>
             <div className="flex items-center gap-1">
               <DollarSign className="w-4 h-4" />
-              {formatPrice(service.service_price)}
+              {formatPrice(service.service_price || 0)}
             </div>
           </div>
         </div>
@@ -304,80 +352,6 @@ const ServiceCard = ({ service, isFirst, formatPrice, onServiceSelect, getServic
       {service.notes && (
         <p className="text-sm text-muted-foreground mt-1">Notas: {service.notes}</p>
       )}
-
-      <div className="space-y-3 mt-3">
-        {(service.status === 'En Proceso' || service.status === 'Completado') && (
-          <ServiceProductsList
-            attentionServiceId={service.id}
-            attentionId={service.attention_id}
-            userId={service.user_id}
-            userName={userName}
-            canManageService={canManageService}
-            formatPrice={formatPrice}
-          />
-        )}
-
-        {canManageService && (
-          <div className="mt-2">
-            <AddServiceProductDialog
-              attentionId={service.attention_id}
-              attentionServiceId={service.id}
-              userId={service.user_id}
-              userName={userName}
-            >
-              <Button size="sm" variant="outline">
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Vender Producto
-              </Button>
-            </AddServiceProductDialog>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-interface ServiceProductsListProps {
-  attentionServiceId: string;
-  attentionId: string;
-  userId: string;
-  userName: string;
-  canManageService: boolean;
-  formatPrice: (price: number) => string;
-}
-
-const ServiceProductsList = ({ 
-  attentionServiceId, 
-  formatPrice
-}: ServiceProductsListProps) => {
-  const { data: serviceProducts, isLoading } = useServiceProducts(attentionServiceId);
-
-  if (isLoading) return <p className="text-sm text-muted-foreground">Cargando productos...</p>;
-
-  if (!serviceProducts || serviceProducts.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-2">
-      <h6 className="text-sm font-medium flex items-center gap-2">
-        <Package className="w-4 h-4" />
-        Productos Vendidos
-      </h6>
-      <div className="space-y-2 border-l-2 pl-4 ml-1">
-        {serviceProducts.map((product) => (
-          <div key={product.id} className="flex justify-between items-center text-sm">
-            <div>
-              <p>{product.products.name} (x{product.quantity})</p>
-              <p className="text-xs text-muted-foreground">Comisión: {product.commission_rate}%</p>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">{formatPrice(product.total_price)}</p>
-              <p className="text-xs text-green-600">+{formatPrice(product.total_price * (product.commission_rate / 100))}</p>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 };
