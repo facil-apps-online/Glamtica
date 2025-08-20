@@ -24,8 +24,8 @@ AS PERMISSIVE
 FOR ALL
 TO authenticated
 USING (
-  (get_my_claim('tenant_id'::text)) = tenant_id
+  (select auth.jwt() ->> 'tenant_id')::uuid = tenant_id
 )
 WITH CHECK (
-  (get_my_claim('tenant_id'::text)) = tenant_id
-);
+  (select auth.jwt() ->> 'tenant_id')::uuid = tenant_id
+);;
