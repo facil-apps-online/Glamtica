@@ -1,67 +1,100 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from './use-toast';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface Equipment {
   id: string;
   name: string;
-  type_name: string;
-  brand: string;
-  model: string;
-  serial_number: string;
-  assigned_user_name: string | null;
-  branch_name: string | null;
-  // Add other fields from the equipment table if needed for full representation
-  // For now, I'll stick to what get_equipment returns.
-  // If the UI needs more details (e.g., purchase_date, is_active),
-  // I'll need to update the RPC or fetch them separately.
+  type_id: string;
+  brand_id?: string;
+  brand_name?: string;
+  model?: string;
+  serial_number?: string;
+  purchase_date?: string;
+  last_maintenance_date?: string;
+  maintenance_frequency?: number;
+  maintenance_frequency_unit?: string;
+  notes?: string;
+  is_active: boolean;
+  assigned_user_name?: string | null;
+  branch_name?: string | null;
 }
 
-export const useEquipment = () => {
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [loading, setLoading] = useState(true);
+// Helper function to call tenant-actions
+const callTenantAction = async (action: string, payload?: any) => {
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+    body: { action, payload },
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const useEquipment = (searchTerm?: string, showInactive?: boolean, typeId?: string, brandId?: string) => {
   const { session } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchEquipment = useCallback(async (branchId?: string, userId?: string) => {
-    if (!session?.user?.app_metadata?.assignments?.[0]?.tenant_id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('tenant-actions', {
-        body: {
-          action: 'get_equipment',
-          payload: {
-            branchId: branchId || null, // Pass null if not provided
-            userId: userId || null,     // Pass null if not provided
-          },
-        },
+  // Fetch equipment
+  const { data: equipment, isLoading: loading, refetch: refreshEquipment } = useQuery<Equipment[]>({ 
+    queryKey: ['equipment', searchTerm, showInactive, typeId, brandId], // Include filters in query key
+    queryFn: async () => {
+      if (!session?.user?.app_metadata?.assignments?.[0]?.tenant_id) return [];
+      return callTenantAction('get_equipment', { 
+        searchTerm: searchTerm || null,
+        showInactive: showInactive || false,
+        typeId: typeId || null,
+        brandId: brandId || null
       });
+    },
+    enabled: !!session?.user?.app_metadata?.assignments?.[0]?.tenant_id,
+  });
 
-      if (error) throw error;
-      setEquipment(data as Equipment[]);
-    } catch (error: any) {
-      console.error('Error fetching equipment:', error.message);
+  // Add equipment
+  const createEquipmentMutation = useMutation({
+    mutationFn: (equipmentData: any) =>
+      callTenantAction('create_equipment', { equipmentData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      toast({
+        title: 'Éxito',
+        description: 'Equipo creado correctamente.',
+      });
+    },
+    onError: (error: any) => {
       toast({
         title: 'Error',
-        description: `Failed to load equipment: ${error.message}`,
+        description: `Error al crear el equipo: ${error.message}`,
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
-    }
-  }, [session, toast]);
+    },
+  });
 
-  useEffect(() => {
-    fetchEquipment(); // Initial fetch without filters
-  }, [fetchEquipment]);
+  // Update equipment
+  const updateEquipmentMutation = useMutation({
+    mutationFn: ({ equipmentId, equipmentData }: { equipmentId: string; equipmentData: any }) =>
+      callTenantAction('update_equipment', { equipmentId, equipmentData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      toast({
+        title: 'Éxito',
+        description: 'Equipo actualizado correctamente.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Error al actualizar el equipo: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
 
-  const refreshEquipment = useCallback((branchId?: string, userId?: string) => {
-    fetchEquipment(branchId, userId);
-  }, [fetchEquipment]);
-
-  return { equipment, loading, refreshEquipment, fetchEquipment }; // Export fetchEquipment for direct use with filters
+  return {
+    equipment: equipment || [],
+    loading,
+    refreshEquipment,
+    createEquipment: createEquipmentMutation.mutateAsync,
+    updateEquipment: updateEquipmentMutation.mutateAsync,
+  };
 };

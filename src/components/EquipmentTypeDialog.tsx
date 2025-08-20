@@ -8,26 +8,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { EquipmentBrand, useEquipmentBrands } from '@/hooks/useEquipmentBrands';
-import { Plus } from 'lucide-react';
+import { useEquipmentTypes, EquipmentType } from '@/hooks/useEquipmentTypes';
+import { Plus, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
+  name: z.string().min(1, "El nombre es requerido"),
   description: z.string().optional(),
   is_active: z.boolean().default(true),
 });
 
-interface EquipmentBrandDialogProps {
-  brand?: EquipmentBrand | null;
+interface EquipmentTypeDialogProps {
+  type?: EquipmentType | null;
   trigger?: React.ReactNode;
   onSuccess?: () => void;
 }
 
-export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ brand, trigger, onSuccess }) => {
+export const EquipmentTypeDialog: React.FC<EquipmentTypeDialogProps> = ({ type, trigger, onSuccess }) => {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -36,15 +36,15 @@ export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ bran
     }
   });
 
-  const { addBrand, updateBrand, loading: isMutating } = useEquipmentBrands();
+  const { addType, updateType, loading: isMutating } = useEquipmentTypes();
 
   useEffect(() => {
     if (open) {
-      if (brand) {
+      if (type) {
         reset({
-          name: brand.name,
-          description: brand.description || '',
-          is_active: brand.is_active,
+          name: type.name,
+          description: type.description || '',
+          is_active: type.is_active,
         });
       } else {
         reset({
@@ -54,16 +54,16 @@ export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ bran
         });
       }
     }
-  }, [brand, open, reset]);
+  }, [type, open, reset]);
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
-      if (brand) {
-        await updateBrand({ id: brand.id, updates: data });
-        toast({ title: "Éxito", description: "Marca de equipo actualizada correctamente." });
+      if (type) {
+        await updateType({ id: type.id, updates: data });
+        toast({ title: "Éxito", description: "Tipo de equipo actualizado correctamente." });
       } else {
-        await addBrand(data);
-        toast({ title: "Éxito", description: "Marca de equipo creada correctamente." });
+        await addType({ name: data.name, description: data.description, is_active: data.is_active });
+        toast({ title: "Éxito", description: "Tipo de equipo creado correctamente." });
       }
       setOpen(false);
       onSuccess?.();
@@ -78,25 +78,25 @@ export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ bran
         {trigger || (
           <Button>
             <Plus className="w-4 h-4 mr-2" />
-            Añadir Marca
+            Añadir Tipo
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {brand ? "Editar Marca de Equipo" : "Nueva Marca de Equipo"}
+            {type ? "Editar Tipo de Equipo" : "Nuevo Tipo de Equipo"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre de la Marca</Label>
+            <Label htmlFor="name">Nombre del Tipo</Label>
             <Input
               id="name"
               {...register('name')}
-              placeholder="Ej: L'Oréal"
+              placeholder="Ej: Herramientas"
             />
-            {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -104,14 +104,14 @@ export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ bran
             <Textarea
               id="description"
               {...register('description')}
-              placeholder="Descripción de la marca..."
+              placeholder="Descripción del tipo de equipo..."
             />
           </div>
 
           <div className="flex items-center space-x-2">
             <Controller
-              name="is_active"
               control={control}
+              name="is_active"
               render={({ field }) => (
                 <Switch
                   id="is_active"
@@ -135,7 +135,7 @@ export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ bran
               type="submit"
               disabled={isMutating}
             >
-              {isMutating ? 'Guardando...' : (brand ? "Actualizar" : "Crear")}
+              {isMutating ? 'Guardando...' : (type ? "Actualizar" : "Crear")}
             </Button>
           </div>
         </form>

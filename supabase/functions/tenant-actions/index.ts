@@ -1743,13 +1743,28 @@ serve(async (req) => {
 
       // --- EQUIPMENT BRAND ACTIONS ---
       case 'get_equipment_brands': {
+        console.log('DEBUG: get_equipment_brands - Inicio');
+        const startTime = performance.now();
+
         const { data, error } = await supabaseAdmin
           .from('equipment_brands')
           .select('*')
           .eq('tenant_id', tenantId)
           .order('name');
-        if (error) throw error;
+
+        const queryEndTime = performance.now();
+        console.log(`DEBUG: get_equipment_brands - Consulta a DB finalizada en ${queryEndTime - startTime} ms`);
+
+        if (error) {
+          console.error('DEBUG: get_equipment_brands - Error en consulta:', error);
+          throw error;
+        }
+
+        const responseEndTime = performance.now();
+        console.log(`DEBUG: get_equipment_brands - Preparación de respuesta finalizada en ${responseEndTime - queryEndTime} ms`);
+
         responseData = data;
+        console.log('DEBUG: get_equipment_brands - Fin');
         break;
       }
 
@@ -1767,11 +1782,11 @@ serve(async (req) => {
       }
 
       case 'update_equipment_brand': {
-        const { id, name, description, is_active } = payload;
-        if (!id || !name) throw new Error('Equipment brand ID and name are required.');
+        const { id, ...updates } = payload;
+        if (!id) throw new Error('Equipment brand ID is required.');
         const { data, error } = await supabaseAdmin
           .from('equipment_brands')
-          .update({ name, description, is_active })
+          .update(updates)
           .eq('id', id)
           .eq('tenant_id', tenantId)
           .select()
@@ -1836,11 +1851,13 @@ serve(async (req) => {
 
       // --- EQUIPMENT ACTIONS ---
       case 'get_equipment': {
-        const { branchId, userId } = payload;
+        const { searchTerm, showInactive, typeId, brandId } = payload;
         responseData = await callRpc(supabaseAdmin, 'get_equipment', {
           p_tenant_id: tenantId,
-          p_branch_id: branchId,
-          p_user_id: userId,
+          p_search_term: searchTerm || null,
+          p_show_inactive: showInactive || false,
+          p_type_id: typeId || null,
+          p_brand_id: brandId || null,
         });
         break;
       }

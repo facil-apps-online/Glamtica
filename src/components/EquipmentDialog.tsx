@@ -9,20 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Settings } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
-import { EquipmentTypeManagementDialog } from './EquipmentTypeManagementDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { Equipment } from '@/hooks/useEquipment';
+import { Equipment, useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentBrands } from '@/hooks/useEquipmentBrands';
-import { EquipmentBrandDialog } from './EquipmentBrandDialog';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   type_id: z.string().min(1, "El tipo es requerido"),
-  brand_id: z.string().optional(),
+  brand_id: z.string().uuid().optional(),
   model: z.string().optional(),
   serial_number: z.string().optional(),
   purchase_date: z.string().optional(),
@@ -41,12 +39,12 @@ interface EquipmentDialogProps {
 
 export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equipment, onSuccess }) => {
   const [open, setOpen] = useState(false);
-  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
-  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
-  const { types: equipmentTypes, loading: typesLoading, fetchEquipmentTypes } = useEquipmentTypes();
-  const { brands: equipmentBrands, loading: brandsLoading, fetchBrands: fetchEquipmentBrands } = useEquipmentBrands();
+  const { types: equipmentTypes, loading: typesLoading } = useEquipmentTypes();
+  const { brands: equipmentBrands, loading: brandsLoading } = useEquipmentBrands();
   const { toast } = useToast();
   const { session } = useAuth();
+
+  const { createEquipment, updateEquipment, loading: equipmentMutating } = useEquipment();
 
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -106,34 +104,9 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
 
     try {
       if (equipment) {
-        const { error } = await supabase.functions.invoke('tenant-actions', {
-          body: {
-            action: 'update_equipment',
-            payload: {
-              equipmentId: equipment.id,
-              equipmentData: equipmentData,
-            },
-          },
-        });
-        if (error) throw error;
-        toast({
-          title: 'Éxito',
-          description: 'Equipo actualizado correctamente.',
-        });
+        await updateEquipment({ equipmentId: equipment.id, equipmentData: equipmentData });
       } else {
-        const { error } = await supabase.functions.invoke('tenant-actions', {
-          body: {
-            action: 'create_equipment',
-            payload: {
-              equipmentData: equipmentData,
-            },
-          },
-        });
-        if (error) throw error;
-        toast({
-          title: 'Éxito',
-          description: 'Equipo creado correctamente.',
-        });
+        await createEquipment(equipmentData);
       }
       setOpen(false);
       onSuccess?.();
@@ -188,9 +161,6 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
                       </Select>
                     )}
                   />
-                  <Button type="button" variant="outline" size="icon" onClick={() => setTypeDialogOpen(true)}>
-                    <Plus className="w-4 h-4"/>
-                  </Button>
                 </div>
                 {errors.type_id && <p className="text-red-500 text-sm mt-1">{errors.type_id.message}</p>}
               </div>
@@ -213,9 +183,6 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
                       </Select>
                     )}
                   />
-                  <Button type="button" variant="outline" size="icon" onClick={() => setBrandDialogOpen(true)}>
-                    <Plus className="w-4 h-4"/>
-                  </Button>
                 </div>
               </div>
               <div className="space-y-2">
@@ -279,24 +246,13 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit" disabled={equipmentMutating}>
+                Guardar
+              </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-      <EquipmentBrandDialog
-        open={brandDialogOpen}
-        onOpenChange={setBrandDialogOpen}
-        brand={null}
-      />
-      <EquipmentTypeManagementDialog
-        open={typeDialogOpen}
-        onOpenChange={setTypeDialogOpen}
-        type={null}
-        onSuccess={() => {
-          fetchEquipmentTypes();
-        }}
-      />
-    </>
+      </>
   );
 };

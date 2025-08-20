@@ -27,6 +27,7 @@ import EquipmentPage from "@/pages/EquipmentPage";
 
 
 
+
 import ProfileSettings from "@/pages/ProfileSettings";
 import TenantSettings from "@/pages/TenantAdmin/TenantSettings";
 import RegisterTenant from "@/pages/RegisterTenant";
@@ -73,7 +74,10 @@ function App() {
                   </Route>
                   <Route path="services" element={<Services />} />
                   <Route path="team" element={<Team />} />
-                  <Route path="equipment" element={<EquipmentPage />} />
+                  <Route path="equipment">
+                    <Route index element={<EquipmentPage />} />
+                    
+                  </Route>
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="branches" element={<BranchesPage />} />

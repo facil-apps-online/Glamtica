@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,107 +11,95 @@ export interface EquipmentBrand {
   created_at: string;
 }
 
+// Helper function to call tenant-actions
+const callTenantAction = async (action: string, payload?: any) => {
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+    body: { action, payload },
+  });
+  if (error) throw error;
+  return data;
+};
+
 export const useEquipmentBrands = () => {
-  const { session } = useAuth();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [brands, setBrands] = useState<EquipmentBrand[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { session } = useAuth();
 
-  const fetchBrands = useCallback(async () => {
-    if (!session) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('tenant-actions', {
-        body: { action: 'get_equipment_brands' },
-      });
+  // Fetch brands
+  const { data: brands, isLoading: loading, error } = useQuery<EquipmentBrand[]>({ 
+    queryKey: ['equipment_brands'],
+    queryFn: async () => {
+      if (!session) return [];
+      return callTenantAction('get_equipment_brands');
+    },
+    enabled: !!session,
+  });
 
-      if (error) throw error;
-      setBrands(data || []);
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: `Error al cargar las marcas de equipos: ${error.message}`,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [session, toast]);
-
-  useEffect(() => {
-    fetchBrands();
-  }, [fetchBrands]);
-
-  const addBrand = async (brandData: { name: string; description?: string }) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('tenant-actions', {
-        body: { action: 'create_equipment_brand', payload: brandData },
-      });
-      if (error) throw error;
+  // Add brand
+  const addBrandMutation = useMutation({
+    mutationFn: (brandData: { name: string; description?: string }) =>
+      callTenantAction('create_equipment_brand', brandData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment_brands'] });
       toast({
         title: 'Éxito',
         description: 'Marca de equipo creada correctamente.',
       });
-      fetchBrands(); // Refresh list
-      return data;
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       toast({
         title: 'Error',
         description: `Error al crear la marca de equipo: ${error.message}`,
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  const updateBrand = async (id: string, updates: Partial<EquipmentBrand>) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('tenant-actions', {
-        body: { action: 'update_equipment_brand', payload: { id, ...updates } },
-      });
-      if (error) throw error;
+  // Update brand
+  const updateBrandMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<EquipmentBrand> }) =>
+      callTenantAction('update_equipment_brand', { id, ...updates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment_brands'] });
       toast({
         title: 'Éxito',
         description: 'Marca de equipo actualizada correctamente.',
       });
-      fetchBrands(); // Refresh list
-      return data;
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       toast({
         title: 'Error',
         description: `Error al actualizar la marca de equipo: ${error.message}`,
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  const deleteBrand = async (id: string) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.functions.invoke('tenant-actions', {
-        body: { action: 'delete_equipment_brand', payload: { id } },
-      });
-      if (error) throw error;
+  // Delete brand
+  const deleteBrandMutation = useMutation({
+    mutationFn: (id: string) =>
+      callTenantAction('delete_equipment_brand', { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment_brands'] });
       toast({
         title: 'Éxito',
         description: 'Marca de equipo eliminada correctamente.',
       });
-      fetchBrands(); // Refresh list
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       toast({
         title: 'Error',
         description: `Error al eliminar la marca de equipo: ${error.message}`,
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  return { brands, loading, fetchBrands, addBrand, updateBrand, deleteBrand };
+  return {
+    brands: brands || [],
+    loading,
+    addBrand: addBrandMutation.mutateAsync,
+    updateBrand: updateBrandMutation.mutateAsync,
+    deleteBrand: deleteBrandMutation.mutateAsync,
+  };
 };
