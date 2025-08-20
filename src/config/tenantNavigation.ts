@@ -9,7 +9,8 @@ import {
   Users,
   Warehouse,
   TrendingUp,
-  Store
+  Store,
+  HardHat // New import for Equipment icon
 } from 'lucide-react';
 
 export const tenantNavigationConfig = [
@@ -39,11 +40,28 @@ export const tenantNavigationConfig = [
         url: "/services",
         icon: Scissors,
         roles: ['tenant_super_admin', 'tenant_admin']
-      },
+      }
+    ]
+  },
+  {
+    group: "Staff",
+    items: [
       {
         title: "Equipo",
         url: "/team",
         icon: UserCheck,
+        roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
+        title: "Gestión de Ausencias",
+        url: "/time-off-management",
+        icon: UserCheck, // Opcional: puedes usar otro ícono
+        roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
+        title: "Historial de Ausencias",
+        url: "/time-off-history",
+        icon: UserCheck, // Opcional: puedes usar otro ícono
         roles: ['tenant_super_admin', 'tenant_admin']
       }
     ]
@@ -67,6 +85,12 @@ export const tenantNavigationConfig = [
         title: "Inventario",
         url: "/inventory",
         icon: Warehouse,
+        roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
+        title: "Equipos",
+        url: "/equipment",
+        icon: HardHat,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       

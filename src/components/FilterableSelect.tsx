@@ -18,6 +18,7 @@ interface FilterableSelectProps {
   options: Option[];
   value: string;
   onValueChange: (value: string) => void;
+  onSearch?: (value: string) => void;
   emptyText?: string;
   searchPlaceholder?: string;
 }
@@ -28,30 +29,21 @@ export const FilterableSelect = ({
   options,
   value,
   onValueChange,
+  onSearch,
   emptyText = "No se encontraron opciones",
   searchPlaceholder = "Buscar..."
 }: FilterableSelectProps) => {
   const [open, setOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
 
   const selectedOption = useMemo(() => 
     options.find(option => option.value === value),
     [options, value]
   );
 
-  const filteredOptions = useMemo(() => {
-    if (!searchValue) return options;
-    
-    return options.filter(option =>
-      option.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-      option.value.toLowerCase().includes(searchValue.toLowerCase())
-    );
-  }, [options, searchValue]);
-
   const handleSelect = (selectedValue: string) => {
     onValueChange(selectedValue === value ? "" : selectedValue);
     setOpen(false);
-    setSearchValue(""); // Limpiar búsqueda al seleccionar
+    if (onSearch) onSearch(""); // Limpiar búsqueda al seleccionar
   };
 
   const popoverContent = (
@@ -68,16 +60,15 @@ export const FilterableSelect = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command shouldFilter={!onSearch}>
           <CommandInput 
             placeholder={searchPlaceholder} 
-            value={searchValue}
-            onValueChange={setSearchValue}
+            onValueChange={onSearch}
           />
           <CommandEmpty>{emptyText}</CommandEmpty>
           <CommandGroup>
             <CommandList className="max-h-[200px] overflow-y-auto">
-              {filteredOptions.map((option) => (
+              {options.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.value}

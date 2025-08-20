@@ -21,6 +21,9 @@ import { SuppliersPage } from "@/pages/SuppliersPage";
 import BranchProductsPage from "@/pages/Inventory/BranchProductsPage";
 import { PurchasesPage } from "@/pages/Inventory/PurchasesPage";
 import { TransfersPage } from "@/pages/Inventory/TransfersPage";
+import TimeOffManagementPage from "@/pages/TimeOffManagementPage";
+import TimeOffHistoryPage from "@/pages/TimeOffHistoryPage";
+import EquipmentPage from "@/pages/EquipmentPage";
 
 
 
@@ -70,12 +73,15 @@ function App() {
                   </Route>
                   <Route path="services" element={<Services />} />
                   <Route path="team" element={<Team />} />
+                  <Route path="equipment" element={<EquipmentPage />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="branches" element={<BranchesPage />} />
                   <Route path="branches/:branchId/edit" element={<EditBranchPage />} />
                   <Route path="branches/:branchId/settings" element={<BranchSettingsPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />
+                  <Route path="time-off-management" element={<TimeOffManagementPage />} />
+                  <Route path="time-off-history" element={<TimeOffHistoryPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Route>

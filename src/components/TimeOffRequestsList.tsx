@@ -1,16 +1,21 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { useUserTimeOff, useUpdateTimeOffRequest, TimeOffRequest } from "@/hooks/useUserTimeOff";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface TimeOffRequestsListProps {
-  userId: string;
   canApprove?: boolean;
+  branchId?: string;
+  statusFilter?: TimeOffRequest['status'] | 'all' | TimeOffRequest['status'][];
+  typeFilter?: string;
+  dateRange?: { from?: Date; to?: Date };
+  searchTerm?: string;
+  userId?: string;
 }
 
 const STATUS_CONFIG = {
@@ -19,9 +24,27 @@ const STATUS_CONFIG = {
   rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
-export const TimeOffRequestsList = ({ userId, canApprove = false }: TimeOffRequestsListProps) => {
-  const { profile } = useAuth();
-  const { data: requests, isLoading } = useUserTimeOff(userId);
+export const TimeOffRequestsList = ({ 
+  canApprove = false, 
+  branchId, 
+  statusFilter = 'pending', 
+  typeFilter, 
+  dateRange, 
+  searchTerm,
+  userId
+}: TimeOffRequestsListProps) => {
+  const { profile, currentAssignment } = useAuth();
+  let branchIdToUse: string | undefined = undefined;
+
+  if (currentAssignment?.role_name === 'tenant_super_admin') {
+    branchIdToUse = branchId; // Use the prop passed from a branch selector
+  } else if (currentAssignment?.branch_id) {
+    branchIdToUse = currentAssignment.branch_id; // Use the branch from context
+  }
+
+  const { data: requests, isLoading } = useUserTimeOff(userId, statusFilter, typeFilter, dateRange, branchIdToUse, searchTerm);
+  console.log("TimeOffRequestsList - requests:", requests);
+  console.log("TimeOffRequestsList - isLoading:", isLoading);
   const updateRequestMutation = useUpdateTimeOffRequest();
 
   const handleApproval = async (requestId: string, status: 'approved' | 'rejected') => {
@@ -38,18 +61,31 @@ export const TimeOffRequestsList = ({ userId, canApprove = false }: TimeOffReque
   };
 
   const formatTimeOffPeriod = (request: TimeOffRequest) => {
-    const startDate = format(new Date(request.start_date), "dd/MM/yyyy", { locale: es });
-    const endDate = request.start_date !== request.end_date 
-      ? format(new Date(request.end_date), "dd/MM/yyyy", { locale: es })
-      : null;
-    
-    const dateRange = endDate ? `${startDate} - ${endDate}` : startDate;
-    
-    if (request.start_time && request.end_time) {
-      return `${dateRange} de ${request.start_time.slice(0,5)} a ${request.end_time.slice(0,5)}`;
+    const userTimezone = profile?.timezone || 'UTC';
+
+    const startDateFormatted = formatInTimeZone(request.start_date, userTimezone, "dd/MM/yyyy", { locale: es });
+    const endDateFormatted = formatInTimeZone(request.end_date, userTimezone, "dd/MM/yyyy", { locale: es });
+
+    let periodString = '';
+
+    if (request.is_partial_day) {
+      const startTime = formatInTimeZone(request.start_date, userTimezone, "HH:mm", { locale: es });
+      const endTime = formatInTimeZone(request.end_date, userTimezone, "HH:mm", { locale: es });
+      
+      if (startDateFormatted === endDateFormatted) {
+        periodString = `${startDateFormatted} (${startTime} - ${endTime})`;
+      } else {
+        periodString = `${startDateFormatted} ${startTime} - ${endDateFormatted} ${endTime}`;
+      }
     } else {
-      return `${dateRange} (día completo)`;
+      if (startDateFormatted === endDateFormatted) {
+        periodString = `${startDateFormatted} (día completo)`;
+      } else {
+        periodString = `${startDateFormatted} - ${endDateFormatted} (días completos)`;
+      }
     }
+    
+    return periodString;
   };
 
   if (isLoading) {
@@ -76,7 +112,8 @@ export const TimeOffRequestsList = ({ userId, canApprove = false }: TimeOffReque
           <Card key={request.id}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Solicitud de Permiso</CardTitle>
+                <CardTitle className="text-lg">Solicitud de Permiso {request.user_name ? `de ${request.user_name}` : ''}</CardTitle>
+                {request.branch_name && <p className="text-sm text-muted-foreground">Sucursal: {request.branch_name}</p>}
                 <Badge className={statusConfig?.color || 'bg-gray-100 text-gray-800'}>
                   <StatusIcon className="w-3 h-3 mr-1" />
                   {statusConfig?.label || request.status}

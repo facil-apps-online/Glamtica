@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, Camera, ShoppingCart, Package, MoreVertical, Trash2 } from "lucide-react";
 import { useAttentions, Attention, AttentionService } from "@/hooks/useAttentions";
 import { useSettings } from "@/hooks/useSettings";
-import { AttentionDialog } from "@/components/AttentionDialog";
-import { DialogTrigger } from "@/components/ui/dialog";
+import { AttentionForm } from "@/components/AttentionForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CancelAttentionDialog } from "@/components/CancelAttentionDialog";
 import { UserSelector } from "@/components/UserSelector";
 import { AttentionDateFilter } from "@/components/AttentionDateFilter";
@@ -28,6 +29,7 @@ export default function Attentions() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(new Date());
   const [selectedService, setSelectedService] = useState<AttentionService | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { selectedBranchId } = useBranchFilterStore();
   const { currentAssignment } = useAuth();
 
@@ -66,7 +68,7 @@ export default function Attentions() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-primary">Agenda de Atenciones</h1>
-        <AttentionDialog branchId={branchIdForDialog}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -84,7 +86,17 @@ export default function Attentions() {
               )}
             </Tooltip>
           </TooltipProvider>
-        </AttentionDialog>
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nueva Atención</DialogTitle>
+            </DialogHeader>
+            <AttentionForm 
+              branchId={branchIdForDialog} 
+              onFormSubmit={() => setIsDialogOpen(false)} 
+              onCancel={() => setIsDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -125,7 +137,7 @@ export default function Attentions() {
                   ? 'No se encontraron atenciones con los filtros aplicados'
                   : 'Comienza creando tu primera atención'}
               </p>
-              <AttentionDialog branchId={branchIdForDialog}>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -143,7 +155,17 @@ export default function Attentions() {
                     )}
                   </Tooltip>
                 </TooltipProvider>
-              </AttentionDialog>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Nueva Atención</DialogTitle>
+                  </DialogHeader>
+                  <AttentionForm 
+                    branchId={branchIdForDialog} 
+                    onFormSubmit={() => setIsDialogOpen(false)} 
+                    onCancel={() => setIsDialogOpen(false)}
+                  />
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         )}

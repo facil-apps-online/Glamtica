@@ -1,6 +1,4 @@
-
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,10 +11,13 @@ import { useCreateAttention } from "@/hooks/useAttentions";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
+import { FilterableSelect } from "./FilterableSelect";
+import { debounce } from "@/lib/utils";
 
-interface AttentionDialogProps {
-  children: React.ReactNode;
+interface AttentionFormProps {
   branchId?: string;
+  onFormSubmit: () => void;
+  onCancel: () => void;
 }
 
 interface ServiceForm {
@@ -40,9 +41,9 @@ interface ServiceFormCardProps {
   availableServices: (Tables<'services'> & { selling_price: number })[];
 }
 
-export const AttentionDialog = ({ children, branchId }: AttentionDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const AttentionForm = ({ branchId, onFormSubmit, onCancel }: AttentionFormProps) => {
   const [clientId, setClientId] = useState("");
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [attentionDate, setAttentionDate] = useState("");
   const [attentionTime, setAttentionTime] = useState("");
   const [notes, setNotes] = useState("");
@@ -50,9 +51,11 @@ export const AttentionDialog = ({ children, branchId }: AttentionDialogProps) =>
     { id: crypto.randomUUID(), service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }
   ]);
 
-  const { data: clients } = useClients();
+  const { data: clients } = useClients(clientSearchTerm);
   const { data: branchServices } = useBranchServices(branchId);
   const createAttentionMutation = useCreateAttention();
+
+  const debouncedSetClientSearchTerm = useMemo(() => debounce(setClientSearchTerm, 300), []);
 
   const addService = () => {
     setServices([...services, { id: crypto.randomUUID(), service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }]);
@@ -98,86 +101,81 @@ export const AttentionDialog = ({ children, branchId }: AttentionDialogProps) =>
           notes: s.notes
         }))
       });
-      setOpen(false);
-      resetForm();
+      onFormSubmit();
     } catch (error) {
       console.error('Error creating attention:', error);
     }
   };
 
-  const resetForm = () => {
-    setClientId("");
-    setAttentionDate("");
-    setAttentionTime("");
-    setNotes("");
-    setServices([{ service_id: "", user_id: "", service_price: 0, duration: 0, notes: "" }]);
-  };
+  const clientOptions = clients?.map(client => ({
+    value: client.id,
+    label: `${client.name} - ${client.phone} - ${client.email}`
+  })) || [];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetForm(); setOpen(isOpen); }}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Nueva Atención</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="client">Cliente</Label>
-              <Select value={clientId} onValueChange={setClientId} required>
-                <SelectTrigger><SelectValue placeholder="Selecciona un cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="date">Fecha</Label>
-              <Input id="date" type="date" value={attentionDate} onChange={(e) => setAttentionDate(e.target.value)} required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="time">Hora</Label>
-            <Input id="time" type="time" value={attentionTime} onChange={(e) => setAttentionTime(e.target.value)} required />
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Servicios</Label>
-              <Button type="button" onClick={addService} size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" />Agregar</Button>
-            </div>
-            {services.map((service, index) => (
-              <ServiceFormCard
-                key={service.id}
-                service={service}
-                index={index}
-                attentionDate={attentionDate}
-                attentionTime={attentionTime}
-                branchId={branchId}
-                onUpdate={updateService}
-                onRemove={() => removeService(service.id)}
-                canRemove={services.length > 1}
-                availableServices={branchServices || []}
-              />
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notas (opcional)</Label>
-            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={createAttentionMutation.isPending || !clientId || services.some(s => !s.service_id || !s.user_id)}>
-              Crear Atención
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <FilterableSelect
+            label="Cliente"
+            placeholder="Selecciona un cliente"
+            options={clientOptions}
+            value={clientId}
+            onValueChange={setClientId}
+            onSearch={debouncedSetClientSearchTerm}
+            searchPlaceholder="Buscar por nombre, teléfono o email"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="date">Fecha</Label>
+          <Input id="date" type="date" value={attentionDate} onChange={(e) => setAttentionDate(e.target.value)} required />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="time">Hora</Label>
+        <Input id="time" type="time" value={attentionTime} onChange={(e) => setAttentionTime(e.target.value)} required />
+      </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label>Servicios</Label>
+          <Button type="button" onClick={addService} size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" />Agregar</Button>
+        </div>
+        {services.map((service, index) => (
+          <ServiceFormCard
+            key={service.id}
+            service={service}
+            index={index}
+            attentionDate={attentionDate}
+            attentionTime={attentionTime}
+            branchId={branchId}
+            onUpdate={updateService}
+            onRemove={() => removeService(service.id)}
+            canRemove={services.length > 1}
+            availableServices={branchServices || []}
+          />
+        ))}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notas (opcional)</Label>
+        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" disabled={createAttentionMutation.isPending || !clientId || services.some(s => !s.service_id || !s.user_id)}>
+          Crear Atención
+        </Button>
+      </div>
+    </form>
   );
 };
 
 const ServiceFormCard = ({ service, index, attentionDate, attentionTime, branchId, onUpdate, onRemove, canRemove, availableServices }: ServiceFormCardProps) => {
   const { data: availableUsers, isLoading } = useAvailableUsers(service.service_id, attentionDate, attentionTime, service.duration, branchId);
+
+  const userOptions = availableUsers?.map(user => ({
+    value: user.user_id,
+    label: user.users.name
+  })) || [];
 
   return (
     <Card>
@@ -199,13 +197,14 @@ const ServiceFormCard = ({ service, index, attentionDate, attentionTime, branchI
         </div>
         {service.service_id && attentionDate && attentionTime && (
           <div className="space-y-2">
-            <Label>Usuario</Label>
-            <Select value={service.user_id} onValueChange={(value) => onUpdate(index, 'user_id', value)} required>
-              <SelectTrigger><SelectValue placeholder={isLoading ? "Cargando..." : (availableUsers?.length ? "Selecciona un usuario" : "No hay usuarios disponibles")} /></SelectTrigger>
-              <SelectContent>
-                {availableUsers?.map((u) => <SelectItem key={u.user_id} value={u.user_id}>{u.users?.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FilterableSelect
+              label="Usuario"
+              placeholder="Selecciona un usuario"
+              options={userOptions}
+              value={service.user_id}
+              onValueChange={(value) => onUpdate(index, 'user_id', value)}
+              emptyText={isLoading ? "Cargando..." : "No hay usuarios disponibles"}
+            />
           </div>
         )}
         <div className="space-y-2">

@@ -41,19 +41,16 @@ export const useDashboardStats = () => {
     queryFn: async () => {
       if (!tenantId) throw new Error("Tenant ID not available.");
 
-      let data;
-      let error;
-
-      if (roleName === 'tenant_super_admin') {
-        ({ data, error } = await supabase.rpc('get_dashboard_stats', { p_tenant_id: tenantId, p_branch_id: null, p_user_id: null }));
-      } else if (roleName === 'tenant_admin') {
-        ({ data, error } = await supabase.rpc('get_dashboard_stats', { p_tenant_id: tenantId, p_branch_id: branchId, p_user_id: null }));
-      } else if (roleName === 'tenant_user') {
-        // This will be a new RPC function for user-specific stats
-        ({ data, error } = await supabase.rpc('get_user_dashboard_stats', { p_tenant_id: tenantId, p_user_id: userId }));
-      } else {
-        throw new Error("Unsupported role for dashboard stats.");
-      }
+      const { data, error } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'get-dashboard-stats',
+          payload: {
+            p_tenant_id: tenantId,
+            p_branch_id: roleName === 'tenant_super_admin' ? null : branchId,
+            p_user_id: roleName === 'tenant_user' ? userId : null,
+          }
+        }
+      });
 
       if (error) throw new Error(error.message);
       return data;

@@ -31,15 +31,19 @@ export interface Client {
 export const useClients = (searchTerm: string = '', showInactive: boolean = false) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+  const branchId = currentAssignment?.branch_id;
+  const roleName = currentAssignment?.role_name;
+
+  const branchIdToFilter = roleName === 'tenant_super_admin' ? 'all' : branchId;
 
   return useQuery<Client[], Error>({
-    queryKey: ['clients', tenantId, searchTerm, showInactive],
+    queryKey: ['clients', tenantId, branchIdToFilter, searchTerm, showInactive],
     queryFn: async () => {
       if (!tenantId) return [];
-      // Pass searchTerm and showInactive to the edge function
-      return fetchTenantAction('get_clients_by_branch', { branchId: 'all', searchTerm, showInactive });
+      if (!branchIdToFilter) return []; // Don't fetch if branchId is not available for non-super-admins
+      return fetchTenantAction('get_clients_by_branch', { branchId: branchIdToFilter, searchTerm, showInactive });
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!branchIdToFilter,
   });
 };
 

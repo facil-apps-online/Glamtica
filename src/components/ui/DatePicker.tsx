@@ -1,45 +1,48 @@
+import * as React from "react"
+import { format } from "date-fns"
+import { Calendar as CalendarIcon } from "lucide-react"
 
-import React from 'react';
-import DatePicker, { registerLocale } from 'react-datepicker';
-import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
-import { CalendarIcon } from 'lucide-react';
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
-// Registrar el locale en español para que los nombres de los meses y días aparezcan correctamente
-registerLocale('es', es);
-
-interface DatePickerWrapperProps {
-  selected: Date | null;
-  onChange: (date: Date | null) => void;
-  className?: string;
+interface DatePickerProps {
+  selected: Date | undefined;
+  onSelect: (date: Date | undefined) => void;
+  label?: string;
 }
 
-export const DatePickerWrapper = ({ selected, onChange, className }: DatePickerWrapperProps) => {
-  const CustomInput = React.forwardRef<HTMLInputElement, { value?: string; onClick?: () => void }>(
-    ({ value, onClick }, ref) => (
-      <div className="relative w-full">
-        <Input
-          value={value}
-          onClick={onClick}
-          ref={ref}
-          readOnly
-          placeholder="Seleccionar fecha"
-          className={cn("pl-3 text-left font-normal", className)}
-        />
-        <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
-      </div>
-    )
-  );
-
+export function DatePickerWrapper({ selected, onSelect, label }: DatePickerProps) {
   return (
-    <DatePicker
-      selected={selected}
-      onChange={onChange}
-      locale="es"
-      dateFormat="PPP"
-      customInput={<CustomInput />}
-      wrapperClassName="w-full"
-    />
-  );
-};
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !selected && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {selected ? format(selected, "PPP") : <span>{label || "Pick a date"}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={onSelect}
+          initialFocus
+          fromYear={1900} // Example: allow selection from year 1900
+          toYear={2100}   // Example: allow selection up to year 2100
+          captionLayout="dropdown-buttons"
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}

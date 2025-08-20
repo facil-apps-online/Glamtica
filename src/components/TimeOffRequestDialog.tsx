@@ -1,14 +1,21 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePickerWrapper } from "@/components/ui/DatePicker";
 import { Plus } from "lucide-react";
 import { useCreateTimeOffRequest } from "@/hooks/useUserTimeOff";
-import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { registerLocale } from "react-datepicker";
+import es from "date-fns/locale/es";
+
+registerLocale("es", es);
 
 interface TimeOffRequestDialogProps {
   userId: string;
@@ -27,34 +34,66 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
   const [open, setOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [startTime, setStartTime] = useState<string | null>(null);
+  const [endTime, setEndTime] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [isPartialDay, setIsPartialDay] = useState(false);
-
+  const [type, setType] = useState("");
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
   const createRequestMutation = useCreateTimeOffRequest();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!startDate || !endDate) return;
+    const branchIdToUse = selectedBranchId === 'all' ? null : selectedBranchId;
+
+    console.log({
+      startDate,
+      endDate,
+      type,
+      branchIdToUse,
+    });
+
+    if (!startDate || !endDate || !type || !branchIdToUse) return;
+
+    let finalStartDate = startDate;
+    let finalEndDate = endDate;
+
+    if (isPartialDay) {
+      // Combine date and time for partial day
+      if (startTime) {
+        const [hours, minutes] = startTime.split(':').map(Number);
+        finalStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), hours, minutes);
+      }
+      if (endTime) {
+        const [hours, minutes] = endTime.split(':').map(Number);
+        finalEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), hours, minutes);
+      }
+    } else {
+      // For full day, set time to start/end of day
+      finalStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+      finalEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
+    }
 
     try {
       await createRequestMutation.mutateAsync({
         user_id: userId,
-        start_date: format(startDate, 'yyyy-MM-dd'),
-        end_date: format(endDate, 'yyyy-MM-dd'),
-        start_time: isPartialDay ? startTime : undefined,
-        end_time: isPartialDay ? endTime : undefined,
+        start_date: finalStartDate,
+        end_date: finalEndDate,
+        type: type,
         reason: reason || undefined,
+        is_partial_day: isPartialDay,
+        branch_id: branchIdToUse,
       });
 
       setStartDate(null);
       setEndDate(null);
-      setStartTime("");
-      setEndTime("");
+      setStartTime(null);
+      setEndTime(null);
       setReason("");
       setIsPartialDay(false);
+      setType("");
       setOpen(false);
     } catch (error) {
       console.error('Error creating time off request:', error);
@@ -67,28 +106,53 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
         {trigger || (
           <Button>
             <Plus className="w-4 h-4 mr-2" />
-            Solicitar Permiso
+            Solicitar Ausencia
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Solicitar Permiso o Ausencia</DialogTitle>
+          <DialogTitle>Solicitar Ausencia</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          
+          <div className="space-y-2">
+            <Label>Tipo de Ausencia</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_OFF_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fecha de Inicio</Label>
-              <DatePickerWrapper
+              <DatePicker
                 selected={startDate}
-                onChange={setStartDate}
+                onChange={(date: Date) => setStartDate(date)}
+                locale="es"
+                dateFormat="dd/MM/yyyy"
+                minDate={new Date()} // Disable past dates
+                className="w-full px-3 py-2 border border-input rounded-md" // Basic styling to match Input
               />
             </div>
             <div className="space-y-2">
               <Label>Fecha de Fin</Label>
-              <DatePickerWrapper
+              <DatePicker
                 selected={endDate}
-                onChange={setEndDate}
+                onChange={(date: Date) => setEndDate(date)}
+                locale="es"
+                dateFormat="dd/MM/yyyy"
+                minDate={startDate || new Date()} // Disable past dates, and ensure end date is not before start date
+                className="w-full px-3 py-2 border border-input rounded-md" // Basic styling to match Input
               />
             </div>
           </div>
@@ -110,7 +174,7 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
                 <Input
                   id="startTime"
                   type="time"
-                  value={startTime}
+                  value={startTime || ''}
                   onChange={(e) => setStartTime(e.target.value)}
                 />
               </div>
@@ -119,7 +183,7 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
                 <Input
                   id="endTime"
                   type="time"
-                  value={endTime}
+                  value={endTime || ''}
                   onChange={(e) => setEndTime(e.target.value)}
                 />
               </div>
@@ -140,7 +204,7 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={createRequestMutation.isPending || !startDate || !endDate}>
+            <Button type="submit" disabled={createRequestMutation.isPending || !startDate || !endDate || !type || (isPartialDay && (!startTime || !endTime))}>
               {createRequestMutation.isPending ? 'Enviando...' : 'Enviar Solicitud'}
             </Button>
           </div>

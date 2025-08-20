@@ -1,50 +1,105 @@
-# Plan de Desarrollo: Corrección y Mejora del Módulo de Atenciones
+# Plan de Desarrollo: Módulo de Equipos
 
-Este documento describe el plan de trabajo para solucionar bugs, mejorar la performance y la experiencia de usuario en el módulo de atenciones.
+## Objetivo
+
+Crear un módulo para gestionar equipos, como máquinas y herramientas, que requieran mantenimiento. El módulo permitirá a los usuarios rastrear la información del equipo, el programa de mantenimiento y la asignación a un usuario y sucursal. La asignación será bidireccional, permitiendo a los usuarios asignar equipos desde la página de equipos y desde la página del usuario.
+
+## 1. Esquema de la Base de Datos
+
+- [x] Crear tabla `equipment`
+- [x] Crear tabla `equipment_types`
+- [x] Crear tabla `equipment_assignments`
+- [x] Crear tabla `equipment_maintenance_history`
+- [x] Reforzar seguridad con `tenant_id` en tablas relacionadas.
+
+## 2. Backend (Supabase)
+
+- [x] Crear archivo de migración para las nuevas tablas.
+- [x] Crear funciones RPC para las operaciones CRUD.
+- [x] Reforzar funciones RPC con `tenant_id`.
+- [x] Crear Edge Function `cron-jobs` para tareas programadas.
+- [x] Implementar lógica de notificaciones de mantenimiento en `cron-jobs`.
+- [x] Crear infraestructura segura para ejecutar cron jobs.
+- [x] Programar el cron job de notificaciones de mantenimiento.
+
+## 3. Frontend (React)
+
+- [x] Crear página `src/pages/EquipmentPage.tsx`.
+- [x] Crear componente `src/components/EquipmentDialog.tsx`.
+- [x] Crear componente `src/components/MaintenanceHistoryDialog.tsx`.
+- [x] Crear componente `src/components/AssignEquipmentDialog.tsx`.
+- [x] Crear componente `src/components/EquipmentSelector.tsx`.
+- [x] Crear componente `src/components/EquipmentTypeManagementDialog.tsx`.
+- [x] Crear hook `src/hooks/useEquipment.ts`.
+- [x] Crear hook `src/hooks/useEquipmentAssignments.ts`.
+- [x] Crear hook `src/hooks/useMaintenanceHistory.ts`.
+- [x] Crear hook `src/hooks/useEquipmentTypes.ts`.
+- [x] Añadir ruta en `src/App.tsx`.
+- [x] Añadir enlace en `src/components/AppSidebar.tsx`.
+- [x] Modificar la página `Team` (`src/pages/Team.tsx`).
+
+## 4. Interfaz de Usuario (UI)
+
+- [x] Diseñar la tabla de equipos en `EquipmentPage`.
+- [x] Diseñar el formulario en `EquipmentDialog`.
+- [x] Diseñar el historial en `MaintenanceHistoryDialog`.
+- [x] Diseñar el diálogo de asignación en `AssignEquipmentDialog`.
+- [x] Añadir botón en la tarjeta de usuario en la página `Team`.
+
+## 5. Conexión Frontend-Backend
+
+- [x] **Tipos de Equipo (Equipment Types)**
+  - [x] Crear migración para las funciones RPC de CRUD de `equipment_types`.
+  - [x] Actualizar el hook `useEquipmentTypes` para usar las funciones RPC.
+  - [x] Conectar el componente `EquipmentTypeManagementDialog` para usar el hook actualizado.
+- [x] **Equipos (Equipment)**
+  - [x] Actualizar el hook `useEquipment` para usar la función RPC `get_equipment`.
+  - [x] Conectar el componente `EquipmentDialog` para crear y actualizar equipos usando las funciones RPC.
+- [x] **Asignaciones de Equipos (Equipment Assignments)**
+  - [x] Actualizar el hook `useEquipmentAssignments` para usar la función RPC `assign_equipment_to_user`.
+  - [x] Conectar el componente `AssignEquipmentDialog` para usar el hook actualizado.
+- [x] **Historial de Mantenimiento (Maintenance History)**
+  - [x] Actualizar el hook `useMaintenanceHistory` para usar las funciones RPC `get_equipment_maintenance_history` y `create_equipment_maintenance_record`.
+  - [x] Conectar el componente `MaintenanceHistoryDialog` para usar el hook actualizado.
 
 ---
 
-### **Fase 1: Análisis y Corrección de Bugs**
+# Plan de Refactorización del Módulo de Equipos
 
-*   **Estado:** `[✓] Completado`
-*   **Objetivo:** Identificar y solucionar los bugs reportados en el módulo de atenciones, enfocándose en la lógica de negocio y la interacción con la base de datos.
-*   **Tareas:**
-    *   `[✓]` **1.1:** Analizar el hook `useAttentions.ts` y corregir la lógica de filtrado por usuario.
-    *   `[✓]` **1.2:** Analizar el hook `useAttentionServices.ts` y asegurar que todas las queries relevantes se invaliden correctamente tras una mutación.
-    *   `[✓]` **1.3:** Revisar el componente `AttentionDialog.tsx` para identificar y corregir bugs de estado y de flujo de usuario.
+**Objetivo:** Separar la gestión completa de "Tipos de Equipo" y "Marcas" en sus propias páginas dedicadas, y dejar en el formulario de creación de equipos solo una funcionalidad de "añadido rápido" para estos dos catálogos.
 
 ---
 
-### **Fase 2: Mejora de la Experiencia de Usuario (UX)**
+### **Fase 1: Backend - Creación de la Entidad `equipment_brands`**
 
-*   **Estado:** `[✓] Completado`
-*   **Objetivo:** Mejorar la usabilidad y la robustez del formulario de creación de atenciones.
-*   **Tareas:**
-    *   `[✓]` **2.1:** Implementar un ID único para cada servicio en el formulario de atenciones para mejorar la estabilidad de la renderización en React.
-    *   `[✓]` **2.2:** Añadir un indicador de carga en el selector de usuarios para dar feedback visual mientras se obtienen los datos.
-    *   `[✓]` **2.3:** Asegurar que el usuario seleccionado se resetee al cambiar el servicio para prevenir asignaciones incorrectas.
-
----
-
-### **Fase 3: Análisis de Performance e Identificación de Deuda Técnica**
-
-*   **Estado:** `[✓] Completado`
-*   **Objetivo:** Investigar la causa de la lentitud en la carga de usuarios disponibles y documentar la solución recomendada.
-*   **Tareas:**
-    *   `[✓]` **3.1:** Analizar el hook `useAvailableUsers.ts` y su interacción con la base de datos.
-    *   `[✓]` **3.2:** Identificar el cuello de botella de performance (N+1 queries) en la verificación de disponibilidad de usuarios.
-    *   `[✓]` **3.3:** Documentar el problema y la solución recomendada (refactorización a una única función de base de datos) en el archivo `SOLUTION_LOG.md`.
+- [ ] **Migración de Base de Datos:**
+    - [ ] Crear la migración para la tabla **`equipment_brands`**.
+    - [ ] Campos: `id`, `name`, `description`, `tenant_id`, `is_active`, `created_at`.
+- [ ] **Actualización de Edge Function (`tenant-actions`):**
+    - [ ] Añadir los actions: **`create_equipment_brand`**, **`get_equipment_brands_by_tenant`**, **`update_equipment_brand`** y **`delete_equipment_brand`**.
 
 ---
 
-### **Fase 4: Refactorización a Edge Functions**
+### **Fase 2: Frontend - Gestión Completa de Marcas de Equipo**
 
-*   **Estado:** `[✓] Completado`
-*   **Objetivo:** Centralizar todas las llamadas a la base de datos del módulo de atenciones a través de la Edge Function `tenant-actions` para mejorar la seguridad y mantenibilidad.
-*   **Tareas:**
-    *   `[✓]` **4.1:** Añadir los casos `get_attentions`, `get_attention_dates`, `create_full_attention`, y `cancel_attention` a la Edge Function `tenant-actions`.
-    *   `[✓]` **4.2:** Refactorizar el hook `useAttentions.ts` para utilizar `callTenantAction`.
-    *   `[✓]` **4.3:** Añadir el caso `add_attention_service` a la Edge Function `tenant-actions`.
-    *   `[✓]` **4.4:** Refactorizar el hook `useAttentionServices.ts` para utilizar `callTenantAction`.
-    *   `[✓]` **4.5:** Añadir el caso `get_available_users` a la Edge Function `tenant-actions`.
-    *   `[✓]` **4.6:** Refactorizar el hook `useAvailableUsers.ts` para utilizar `callTenantAction`.
+- [ ] **Creación del Hook `useEquipmentBrands`:**
+    - [ ] Crear el hook **`useEquipmentBrands.ts`** para comunicar con la edge function.
+- [ ] **Creación de la Página de Gestión de Marcas:**
+    - [ ] La nueva página se llamará **`EquipmentBrandManagementPage.tsx`**.
+- [ ] **Creación del Diálogo de Gestión de Marcas:**
+    - [ ] El diálogo se llamará **`EquipmentBrandDialog.tsx`**.
+
+---
+
+### **Fase 3: Frontend - Refactorización del Formulario de Equipos**
+
+- [ ] **Modificación de `EquipmentDialog.tsx`:**
+    - [ ] El `Select` de marcas usará el nuevo hook **`useEquipmentBrands`**.
+    - [ ] El botón de "añadido rápido" abrirá el **`EquipmentBrandDialog.tsx`**.
+
+---
+
+### **Fase 4: Frontend - Refactorización de la Gestión de Tipos de Equipo**
+
+- [ ] **Creación de la Página de Gestión de Tipos:** `EquipmentTypeManagementPage.tsx`.
+- [ ] **Simplificación del Diálogo:** `EquipmentTypeManagementDialog.tsx` solo para creación rápida.

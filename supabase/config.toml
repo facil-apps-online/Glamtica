@@ -20,3 +20,14 @@ entrypoint = "./functions/create-subscription-checkout/index.ts"
 schemas = ["public", "storage", "graphql_public", "schema_introspector"]
 extra_search_path = ["public", "schema_introspector"]
 max_rows = 1000
+
+[functions.cron-jobs]
+enabled = true
+verify_jwt = true
+import_map = "./functions/cron-jobs/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/cron-jobs/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/cron-jobs/*.html" ]

@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_user_time_off_filters ON public.user_time_off (tenant_id, user_id, branch_id, status, type, created_at);

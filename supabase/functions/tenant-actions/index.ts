@@ -2,9 +2,18 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { jwtDecode } from "https://esm.sh/jwt-decode@4.0.0";
 
-const callRpc = async (supabaseAdmin: any, rpcName: string, params: any) => {
-  const { data, error } = await supabaseAdmin.rpc(rpcName, params);
-  if (error) throw error;
+const callRpc = async (supabaseAdmin: any, rpcName: string, ...params: any[]) => {
+  console.log(`Calling RPC: ${rpcName} with params: ${JSON.stringify(params)}`);
+  const { data, error } = await supabaseAdmin.rpc(rpcName, ...params);
+  console.log(`RPC ${rpcName} returned - data: ${JSON.stringify(data)}, error: ${JSON.stringify(error)}`);
+
+  if (error) {
+    // If error is an empty object or doesn't have a message, create a new Error
+    if (typeof error === 'object' && error !== null && !('message' in error)) {
+      throw new Error(`RPC Error for ${rpcName}: ${JSON.stringify(error)}`);
+    }
+    throw error; // Re-throw the original error if it has a message
+  }
   return data;
 };
 
@@ -19,10 +28,28 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  console.log("SUPABASE_URL:", Deno.env.get('SUPABASE_URL') ? "Loaded" : "MISSING/EMPTY");
+  console.log("SUPABASE_SERVICE_ROLE_KEY:", Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? "Loaded" : "MISSING/EMPTY");
+
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
+  console.log("After supabaseAdmin createClient. supabaseAdmin is:", supabaseAdmin ? "VALID" : "NULL/UNDEFINED");
+
+  // --- START DIAGNOSTIC TEST ---
+  try {
+    console.log("Running diagnostic: Attempting to select from 'users' table...");
+    const { data: testData, error: testError } = await supabaseAdmin.from('users').select('*').limit(1);
+    if (testError) {
+      console.error("Diagnostic Test Error (users table):", testError);
+    } else {
+      console.log("Diagnostic Test Success (users table): Data received.", testData);
+    }
+  } catch (diagError: any) {
+    console.error("Diagnostic Test Exception (users table):", diagError.message);
+  }
+  // --- END DIAGNOSTIC TEST ---
 
   const { action, payload } = await req.json();
   console.log("Received action:", action);
@@ -32,6 +59,10 @@ serve(async (req) => {
   const startTime = performance.now();
 
   try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase Admin client failed to initialize.');
+    }
+    console.log("Inside try block");
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization Header');
@@ -43,6 +74,7 @@ serve(async (req) => {
     const tenantId = decodedToken.app_metadata?.assignments?.[0]?.tenant_id;
 
     console.log("Decoded Token:", JSON.stringify(decodedToken, null, 2));
+    console.log("UserId:", userId, "TenantId:", tenantId);
 
     if (!userId) {
       throw new Error('User ID not found in JWT.');
@@ -57,6 +89,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
+    console.log("After supabaseClient createClient");
 
     switch (action) {
       // --- CLIENT ACTIONS ---
@@ -219,6 +252,18 @@ serve(async (req) => {
 
         if (error) throw error;
         responseData = { success: true };
+        break;
+      }
+
+      case 'get-dashboard-stats': {
+        const { p_tenant_id, p_branch_id, p_user_id } = payload;
+        const { data, error } = await supabaseAdmin.rpc('get_dashboard_stats', {
+          p_tenant_id,
+          p_branch_id,
+          p_user_id,
+        });
+        if (error) throw error;
+        responseData = data;
         break;
       }
       
@@ -1679,6 +1724,212 @@ serve(async (req) => {
         break;
       }
 
+      case 'get_user_time_off_history': {
+        const { userId, statusFilter, typeFilter, dateRange, branchId, searchTerm } = payload;
+        const { data, error } = await supabaseAdmin.rpc('get_user_time_off_history', {
+          p_tenant_id: tenantId,
+          p_user_id: userId || null,
+          p_status_filter: statusFilter,
+          p_type_filter: typeFilter,
+          p_date_range_start: dateRange?.from ? new Date(dateRange.from).toISOString().split('T')[0] : null,
+          p_date_range_end: dateRange?.to ? new Date(dateRange.to).toISOString().split('T')[0] : null,
+          p_branch_id: branchId || null,
+          p_search_term: searchTerm || null,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      // --- EQUIPMENT BRAND ACTIONS ---
+      case 'get_equipment_brands': {
+        const { data, error } = await supabaseAdmin
+          .from('equipment_brands')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('name');
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_equipment_brand': {
+        const { name, description } = payload;
+        if (!name) throw new Error('Equipment brand name is required.');
+        const { data, error } = await supabaseAdmin
+          .from('equipment_brands')
+          .insert([{ tenant_id: tenantId, name, description, is_active: true }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_equipment_brand': {
+        const { id, name, description, is_active } = payload;
+        if (!id || !name) throw new Error('Equipment brand ID and name are required.');
+        const { data, error } = await supabaseAdmin
+          .from('equipment_brands')
+          .update({ name, description, is_active })
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_equipment_brand': {
+        const { id } = payload;
+        if (!id) throw new Error('Equipment brand ID is required.');
+        const { error } = await supabaseAdmin
+          .from('equipment_brands')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      // --- EQUIPMENT TYPE ACTIONS ---
+      case 'get_equipment_types': {
+        responseData = await callRpc(supabaseAdmin, 'get_equipment_types', { p_tenant_id: tenantId });
+        break;
+      }
+
+      case 'create_equipment_type': {
+        const { name, description } = payload;
+        if (!name) throw new Error('Equipment type name is required.');
+        responseData = await callRpc(supabaseAdmin, 'create_equipment_type', {
+          p_tenant_id: tenantId,
+          p_name: name,
+          p_description: description,
+        });
+        break;
+      }
+
+      case 'update_equipment_type': {
+        const { id, name, description, is_active } = payload;
+        if (!id || !name) throw new Error('Equipment type ID and name are required.');
+        responseData = await callRpc(supabaseAdmin, 'update_equipment_type', {
+          p_tenant_id: tenantId,
+          p_type_id: id,
+          p_name: name,
+          p_description: description,
+          p_is_active: is_active,
+        });
+        break;
+      }
+
+      case 'delete_equipment_type': {
+        const { id } = payload;
+        if (!id) throw new Error('Equipment type ID is required.');
+        responseData = await callRpc(supabaseAdmin, 'delete_equipment_type', {
+          p_tenant_id: tenantId,
+          p_type_id: id,
+        });
+        break;
+      }
+
+      // --- EQUIPMENT ACTIONS ---
+      case 'get_equipment': {
+        const { branchId, userId } = payload;
+        responseData = await callRpc(supabaseAdmin, 'get_equipment', {
+          p_tenant_id: tenantId,
+          p_branch_id: branchId,
+          p_user_id: userId,
+        });
+        break;
+      }
+
+      case 'create_equipment': {
+        const { equipmentData } = payload;
+        const { data, error } = await supabaseAdmin.rpc('create_equipment', {
+          p_equipment_data: equipmentData,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_equipment': {
+        const { equipmentId, equipmentData } = payload;
+        const { data, error } = await supabaseAdmin.rpc('update_equipment', {
+          p_equipment_id: equipmentId,
+          p_equipment_data: equipmentData,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_equipment': {
+        const { equipmentId } = payload;
+        const { data, error } = await supabaseAdmin.rpc('delete_equipment', {
+          p_equipment_id: equipmentId,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_equipment_assignments': {
+        const { equipmentId } = payload;
+        const { data, error } = await supabaseAdmin.rpc('get_equipment_assignments', {
+          p_equipment_id: equipmentId,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'assign_equipment_to_user': {
+        const { equipmentId, userId, branchId, assignmentDate } = payload;
+        const { data, error } = await supabaseAdmin.rpc('assign_equipment_to_user', {
+          p_equipment_id: equipmentId,
+          p_user_id: userId,
+          p_branch_id: branchId,
+          p_assignment_date: assignmentDate,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'return_equipment': {
+        const { assignmentId, returnDate } = payload;
+        const { data, error } = await supabaseAdmin.rpc('return_equipment', {
+          p_assignment_id: assignmentId,
+          p_return_date: returnDate,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_equipment_maintenance_history': {
+        const { equipmentId } = payload;
+        const { data, error } = await supabaseAdmin.rpc('get_equipment_maintenance_history', {
+          p_equipment_id: equipmentId,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_equipment_maintenance_record': {
+        const { maintenanceData } = payload;
+        const { data, error } = await supabaseAdmin.rpc('create_equipment_maintenance_record', {
+          p_maintenance_data: maintenanceData,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       // --- COMBO ACTIONS ---
       case 'create_combo': {
         const { comboData, items } = payload;
@@ -2486,11 +2737,32 @@ serve(async (req) => {
       status: status,
     });
   } catch (error) {
-    status = 500; // Internal Server Error for unhandled exceptions
-    console.error("Error in tenant-actions Edge Function:", JSON.stringify(error, null, 2));
-    return new Response(JSON.stringify({ error: error.message }), {
+    status = 500;
+    console.error("Error in tenant-actions Edge Function (raw):", error);
+    console.error("Error in tenant-actions Edge Function (JSON):", JSON.stringify(error, null, 2));
+    console.error("Error in tenant-actions Edge Function (typeof):", typeof error);
+    console.error("Error in tenant-actions Edge Function (constructor):", error ? error.constructor.name : 'null/undefined');
+
+    let errorMessage: string;
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      try {
+        errorMessage = JSON.stringify(error);
+      } catch (e) {
+        errorMessage = 'An unknown object error occurred (stringify failed).';
+      }
+    } else {
+      errorMessage = String(error);
+    }
+
+    if (!errorMessage || errorMessage === '{}' || errorMessage === 'null' || errorMessage === 'undefined' || errorMessage === '[object Object]') {
+        errorMessage = 'An unexpected error occurred in the Edge Function. Check Supabase logs for details.';
+    }
+
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: status,
     });
   } finally {
     const endTime = performance.now();
