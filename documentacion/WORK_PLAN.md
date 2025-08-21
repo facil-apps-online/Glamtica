@@ -133,3 +133,6 @@ $$ LANGUAGE plpgsql;
 --    - Se centralizaron todas las llamadas a la base de datos del módulo de atenciones en la Edge Function `tenant-actions`.
 --    - Se crearon los `case` necesarios en la Edge Function para manejar las operaciones de atenciones.
 --    - Se refactorizaron los hooks `useAttentions`, `useAttentionServices` y `useAvailableUsers` para que utilicen `callTenantAction`.
+
+-- Plan de Desarrollo: Sistema de Pantalla de Turnos (TV Turn Display) - Completado
+-- Fecha de finalización: jueves, 21 de agosto de 2025

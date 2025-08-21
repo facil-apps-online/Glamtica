@@ -41,6 +41,8 @@ import ResetPasswordPage from "@/pages/ResetPassword";
 import GoogleCallbackPage from "@/pages/integrations/google/Callback";
 
 import UpdatePasswordPage from "@/pages/UpdatePasswordPage";
+import TvManagementPage from "@/pages/TvManagementPage";
+import TvDisplayPage from "@/pages/TvDisplayPage";
 
 function App() {
   return (
@@ -54,6 +56,7 @@ function App() {
               <Route path="/register-tenant" element={<RegisterTenant />} />
               <Route path="/update-password" element={<UpdatePasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
+              <Route path="/tv-display/:registrationCode" element={<TvDisplayPage />} />
 
               <Route element={<ProtectedRoute />}>
                 
@@ -80,6 +83,7 @@ function App() {
                   </Route>
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="settings/tv-management" element={<TvManagementPage />} />
                   <Route path="branches" element={<BranchesPage />} />
                   <Route path="branches/:branchId/edit" element={<EditBranchPage />} />
                   <Route path="branches/:branchId/settings" element={<BranchSettingsPage />} />

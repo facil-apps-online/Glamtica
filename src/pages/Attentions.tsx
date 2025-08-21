@@ -250,6 +250,16 @@ const AttentionCard = ({ attention, formatPrice, onServiceSelect }: AttentionCar
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(attention.status)}
+            {attention.status === 'waiting' && (
+              <Button size="sm" onClick={() => supabase.rpc('call_turn', { p_turn_id: attention.id })}>
+                Llamar Cliente
+              </Button>
+            )}
+            {attention.status === 'waiting' && (
+              <Button size="sm" onClick={() => supabase.rpc('start_service_for_turn', { p_turn_id: attention.id })}>
+                Llamar e Iniciar
+              </Button>
+            )}
             <CancelAttentionDialog attentionId={attention.id} clientName={attention.clients?.name || ''}>
                 <Button variant="ghost" size="icon">
                     <Trash2 className="w-4 h-4 text-red-500" />

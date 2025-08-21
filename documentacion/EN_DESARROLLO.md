@@ -1,105 +1,76 @@
-# Plan de Desarrollo: Módulo de Equipos
+# Plan de Desarrollo: Sistema de Pantalla de Turnos (TV Turn Display)
 
 ## Objetivo
+Implementar un sistema que permita a cada sucursal mostrar los turnos de clientes en una pantalla de TV, con la capacidad de que los estilistas llamen a los clientes, y que la TV pueda reproducir contenido multimedia. El registro de la TV se hará mediante un código de activación.
 
-Crear un módulo para gestionar equipos, como máquinas y herramientas, que requieran mantenimiento. El módulo permitirá a los usuarios rastrear la información del equipo, el programa de mantenimiento y la asignación a un usuario y sucursal. La asignación será bidireccional, permitiendo a los usuarios asignar equipos desde la página de equipos y desde la página del usuario.
+## Fases del Proyecto
 
-## 1. Esquema de la Base de Datos
+### Fase 1: Backend - Gestión Central de Turnos y Registro de TV
 
-- [x] Crear tabla `equipment`
-- [x] Crear tabla `equipment_types`
-- [x] Crear tabla `equipment_assignments`
-- [x] Crear tabla `equipment_maintenance_history`
-- [x] Reforzar seguridad con `tenant_id` en tablas relacionadas.
+- [x] **1.1 Diseño de la Base de Datos (Supabase):**
+    - [x] Crear tabla `tv_displays`:
+        - `id` (UUID, PK)
+        - `branch_id` (UUID, FK a `branches`)
+        - `registration_code` (TEXT, UNIQUE, código corto para activación)
+        - `is_registered` (BOOLEAN, default FALSE)
+        - `registered_at` (TIMESTAMP WITH TIME ZONE, nullable)
+        - `last_heartbeat` (TIMESTAMP WITH TIME ZONE, para monitoreo)
+        - `media_playlist_id` (UUID, FK a `media_playlists`, nullable)
+    - [x] Crear tabla `turns`:
+        - `id` (UUID, PK)
+        - `branch_id` (UUID, FK a `branches`)
+        - `client_id` (UUID, FK a `clients`)
+        - `stylist_id` (UUID, FK a `users`)
+        - `status` (TEXT, ENUM: 'waiting', 'called', 'in_service', 'completed')
+        - `called_at` (TIMESTAMP WITH TIME ZONE, nullable)
+        - `created_at` (TIMESTAMP WITH TIME ZONE, default NOW())
+    - [x] Crear tabla `media_playlists`:
+        - `id` (UUID, PK)
+        - `tenant_id` (UUID, FK a `tenants`)
+        - `name` (TEXT)
+        - `description` (TEXT, nullable)
+        - `created_at` (TIMESTAMP WITH TIME ZONE, default NOW())
+    - [x] Crear tabla `playlist_items`:
+        - `id` (UUID, PK)
+        - `playlist_id` (UUID, FK a `media_playlists`)
+        - `media_url` (TEXT, URL de YouTube/Spotify)
+        - `media_type` (TEXT, ENUM: 'youtube', 'spotify')
+        - `item_order` (INTEGER, para el orden de reproducción)
+        - `created_at` (TIMESTAMP WITH TIME ZONE, default NOW())
 
-## 2. Backend (Supabase)
+- [x] **1.2 Funciones RPC (Supabase):**
+    - [x] `register_tv_display(p_registration_code text)`: Crea un registro `tv_display` con `is_registered = false`.
+    - [x] `authorize_tv_display(p_tv_display_id uuid, p_branch_id uuid, p_tenant_id uuid)`: Autoriza una TV.
+    - [x] `get_tv_display_by_code(p_registration_code text)`: Obtiene detalles de TV por código.
+    - [x] `get_tv_display_settings(p_tv_display_id uuid)`: Obtiene configuración de TV (incluye playlist).
+    - [x] `get_playlist_items(p_playlist_id uuid)`: Obtiene ítems de una playlist.
+    - [x] `get_current_turns_for_branch(p_branch_id uuid)`: Obtiene turnos 'waiting'/'called'.
+    - [x] `add_turn(p_branch_id uuid, p_client_id uuid, p_stylist_id uuid)`: Añade un nuevo turno.
+    - [x] `call_turn(p_turn_id uuid)`: Cambia estado a 'called', registra `called_at`.
+    - [x] `start_service_for_turn(p_turn_id uuid)`: Cambia estado a 'in_service' o 'completed' (desaparece de TV).
+    - [x] `update_tv_heartbeat(p_tv_display_id uuid)`: Actualiza `last_heartbeat`.
 
-- [x] Crear archivo de migración para las nuevas tablas.
-- [x] Crear funciones RPC para las operaciones CRUD.
-- [x] Reforzar funciones RPC con `tenant_id`.
-- [x] Crear Edge Function `cron-jobs` para tareas programadas.
-- [x] Implementar lógica de notificaciones de mantenimiento en `cron-jobs`.
-- [x] Crear infraestructura segura para ejecutar cron jobs.
-- [x] Programar el cron job de notificaciones de mantenimiento.
+- [x] **1.3 Realtime:**
+    - [x] Habilitar Realtime para la tabla `turns`.
 
-## 3. Frontend (React)
+### Fase 2: Frontend - Interfaz de Administración y Estilista
 
-- [x] Crear página `src/pages/EquipmentPage.tsx`.
-- [x] Crear componente `src/components/EquipmentDialog.tsx`.
-- [x] Crear componente `src/components/MaintenanceHistoryDialog.tsx`.
-- [x] Crear componente `src/components/AssignEquipmentDialog.tsx`.
-- [x] Crear componente `src/components/EquipmentSelector.tsx`.
-- [x] Crear componente `src/components/EquipmentTypeManagementDialog.tsx`.
-- [x] Crear hook `src/hooks/useEquipment.ts`.
-- [x] Crear hook `src/hooks/useEquipmentAssignments.ts`.
-- [x] Crear hook `src/hooks/useMaintenanceHistory.ts`.
-- [x] Crear hook `src/hooks/useEquipmentTypes.ts`.
-- [x] Añadir ruta en `src/App.tsx`.
-- [x] Añadir enlace en `src/components/AppSidebar.tsx`.
-- [x] Modificar la página `Team` (`src/pages/Team.tsx`).
+    - [x] Administración de TVs (Nueva Página `src/pages/TvManagementPage.tsx`):
+    - [x] Listar TVs registradas.
+    - [x] Formulario para registrar/autorizar TVs con código.
+    - [x] CRUD para `media_playlists` y `playlist_items`.
+    - [x] Asignar `media_playlist` a `tv_display`.
 
-## 4. Interfaz de Usuario (UI)
+### Fase 3: Frontend - Aplicación de TV (Integrada en la App Principal)
 
-- [x] Diseñar la tabla de equipos en `EquipmentPage`.
-- [x] Diseñar el formulario en `EquipmentDialog`.
-- [x] Diseñar el historial en `MaintenanceHistoryDialog`.
-- [x] Diseñar el diálogo de asignación en `AssignEquipmentDialog`.
-- [x] Añadir botón en la tarjeta de usuario en la página `Team`.
+    - [x] Nuevo Componente (`src/pages/TvDisplayPage.tsx`):
+    - [x] Vista de Registro: Muestra código único para activación.
+    - [x] Vista Principal:
+        - [x] Conexión a Supabase Realtime para `turns`.
+        - [x] Muestra turnos 'waiting' y 'called' para la sucursal asignada.
+        - [x] Reproducción embebida de YouTube/Spotify (iframes).
+        - [x] Lógica para rotación de medios.
+        - [x] Animación/sonido para turnos 'called'.
 
-## 5. Conexión Frontend-Backend
-
-- [x] **Tipos de Equipo (Equipment Types)**
-  - [x] Crear migración para las funciones RPC de CRUD de `equipment_types`.
-  - [x] Actualizar el hook `useEquipmentTypes` para usar las funciones RPC.
-  - [x] Conectar el componente `EquipmentTypeManagementDialog` para usar el hook actualizado.
-- [x] **Equipos (Equipment)**
-  - [x] Actualizar el hook `useEquipment` para usar la función RPC `get_equipment`.
-  - [x] Conectar el componente `EquipmentDialog` para crear y actualizar equipos usando las funciones RPC.
-- [x] **Asignaciones de Equipos (Equipment Assignments)**
-  - [x] Actualizar el hook `useEquipmentAssignments` para usar la función RPC `assign_equipment_to_user`.
-  - [x] Conectar el componente `AssignEquipmentDialog` para usar el hook actualizado.
-- [x] **Historial de Mantenimiento (Maintenance History)**
-  - [x] Actualizar el hook `useMaintenanceHistory` para usar las funciones RPC `get_equipment_maintenance_history` y `create_equipment_maintenance_record`.
-  - [x] Conectar el componente `MaintenanceHistoryDialog` para usar el hook actualizado.
-
----
-
-# Plan de Refactorización del Módulo de Equipos
-
-**Objetivo:** Separar la gestión completa de "Tipos de Equipo" y "Marcas" en sus propias páginas dedicadas, y dejar en el formulario de creación de equipos solo una funcionalidad de "añadido rápido" para estos dos catálogos.
-
----
-
-### **Fase 1: Backend - Creación de la Entidad `equipment_brands`**
-
-- [ ] **Migración de Base de Datos:**
-    - [ ] Crear la migración para la tabla **`equipment_brands`**.
-    - [ ] Campos: `id`, `name`, `description`, `tenant_id`, `is_active`, `created_at`.
-- [ ] **Actualización de Edge Function (`tenant-actions`):**
-    - [ ] Añadir los actions: **`create_equipment_brand`**, **`get_equipment_brands_by_tenant`**, **`update_equipment_brand`** y **`delete_equipment_brand`**.
-
----
-
-### **Fase 2: Frontend - Gestión Completa de Marcas de Equipo**
-
-- [ ] **Creación del Hook `useEquipmentBrands`:**
-    - [ ] Crear el hook **`useEquipmentBrands.ts`** para comunicar con la edge function.
-- [ ] **Creación de la Página de Gestión de Marcas:**
-    - [ ] La nueva página se llamará **`EquipmentBrandManagementPage.tsx`**.
-- [ ] **Creación del Diálogo de Gestión de Marcas:**
-    - [ ] El diálogo se llamará **`EquipmentBrandDialog.tsx`**.
-
----
-
-### **Fase 3: Frontend - Refactorización del Formulario de Equipos**
-
-- [ ] **Modificación de `EquipmentDialog.tsx`:**
-    - [ ] El `Select` de marcas usará el nuevo hook **`useEquipmentBrands`**.
-    - [ ] El botón de "añadido rápido" abrirá el **`EquipmentBrandDialog.tsx`**.
-
----
-
-### **Fase 4: Frontend - Refactorización de la Gestión de Tipos de Equipo**
-
-- [ ] **Creación de la Página de Gestión de Tipos:** `EquipmentTypeManagementPage.tsx`.
-- [ ] **Simplificación del Diálogo:** `EquipmentTypeManagementDialog.tsx` solo para creación rápida.
+**Proyecto Completado: Sistema de Pantalla de Turnos (TV Turn Display)**
+**Fecha de finalización:** jueves, 21 de agosto de 2025

@@ -1,0 +1,3 @@
+ALTER TABLE tv_displays
+ALTER COLUMN branch_id DROP NOT NULL,
+ALTER COLUMN tenant_id DROP NOT NULL;

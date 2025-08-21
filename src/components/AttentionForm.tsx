@@ -89,7 +89,8 @@ export const AttentionForm = ({ branchId, onFormSubmit, onCancel }: AttentionFor
       return;
     }
     try {
-      await createAttentionMutation.mutateAsync({
+      // Create attention
+      const attentionData = {
         client_id: clientId,
         attention_date: attentionDate,
         attention_time: attentionTime,
@@ -100,7 +101,26 @@ export const AttentionForm = ({ branchId, onFormSubmit, onCancel }: AttentionFor
           service_price: s.service_price,
           notes: s.notes
         }))
-      });
+      };
+
+      await createAttentionMutation.mutateAsync(attentionData);
+
+      // Add client to turns table if there are services and a branchId
+      if (branchId && services.length > 0) {
+        const firstService = services.find(s => s.service_id && s.user_id);
+        if (firstService) {
+          const { error: turnError } = await supabase.rpc('add_turn', {
+            p_branch_id: branchId,
+            p_client_id: clientId,
+            p_stylist_id: firstService.user_id,
+          });
+
+          if (turnError) {
+            console.error('Error adding turn:', turnError);
+            // Optionally, show a toast or handle this error more gracefully
+          }
+        }
+      }
       onFormSubmit();
     } catch (error) {
       console.error('Error creating attention:', error);
