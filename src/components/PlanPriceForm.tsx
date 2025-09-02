@@ -5,12 +5,16 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { DatePickerWrapper } from '@/components/ui/DatePicker';
+import DatePicker, { registerLocale } from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import es from "date-fns/locale/es";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabaseClient';
+
+registerLocale("es", es);
 
 const priceSchema = z.object({
   base_price_cop: z.coerce.number().gt(0, "El precio debe ser mayor que cero."),
@@ -71,7 +75,19 @@ export function PlanPriceForm({ planId, onPriceScheduled }: PlanPriceFormProps) 
               <FormItem><FormLabel>Precio Sucursal Extra (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="effective_date" render={({ field }) => (
-              <FormItem className="flex flex-col"><FormLabel>Fecha de Vigencia</FormLabel><FormControl><DatePickerWrapper selected={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
+              <FormItem className="flex flex-col"><FormLabel>Fecha de Vigencia</FormLabel>
+                <FormControl>
+                  <DatePicker
+                    selected={field.value}
+                    onChange={field.onChange}
+                    locale="es"
+                    dateFormat="dd/MM/yyyy"
+                    popperPlacement="bottom-start"
+                    className="w-full h-10 px-3 py-2 border border-input rounded-md"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
             <Button type="submit" className="self-end" disabled={isSubmitting}><PlusCircle className="mr-2 h-4 w-4" /> Programar</Button>
           </form>

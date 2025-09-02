@@ -53,7 +53,7 @@ export const useBranches = (tenantIdParam?: string) => {
       if (!response.ok) {
         throw new Error(json.error || 'Failed to fetch branches');
       }
-      return json as Branch[];
+      return Array.isArray(json.data) ? json.data as Branch[] : [];
     },
     enabled: !!tenantId,
   });

@@ -75,7 +75,7 @@ export function ActivateBranchDialog({ isOpen, onOpenChange, branchId, branchNam
 
         {result && (
           <Alert variant="success">
-            <AlertTitle>Activación Completada</AlertTitle>
+            <AlertTitle>Activación Finalizada</AlertTitle>
             <AlertDescription>
               La sucursal <strong>{branchName}</strong> ha sido activada.
               <br />

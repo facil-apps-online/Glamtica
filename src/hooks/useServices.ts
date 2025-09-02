@@ -18,14 +18,56 @@ const callTenantAction = async (action: string, payload: any) => {
 // --- HOOKS ---
 
 // Hook para obtener los servicios disponibles en la sucursal seleccionada
-export const useBranchServices = (branchIdParam?: string) => {
+export const useBranchServicesAndCombos = (branchIdParam?: string) => {
   const { selectedBranchId } = useBranchFilterStore();
   const { currentAssignment } = useAuth();
   const branchIdToUse = branchIdParam || selectedBranchId;
 
-  return useQuery<BranchService[], Error>({
-    queryKey: ['branch_services', branchIdToUse, currentAssignment?.assignment_id],
-    queryFn: () => callTenantAction('get_branch_services', { branchId: branchIdToUse }),
+  return useQuery<(BranchService & { type: 'service' | 'combo' })[], Error>({
+    queryKey: ['branch_services_and_combos', branchIdToUse, currentAssignment?.assignment_id],
+    queryFn: async () => {
+      if (!branchIdToUse || (branchIdToUse === 'all' && currentAssignment?.role_name === 'tenant_super_admin')) {
+        return [];
+      }
+
+      const [services, combos] = await Promise.all([
+        callTenantAction('get_branch_services', { branchId: branchIdToUse }),
+        callTenantAction('get_combos_for_branch', { branchId: branchIdToUse })
+      ]);
+
+      const formattedServices = services.map((s: BranchService) => ({ ...s, type: 'service' }));
+      const formattedCombos = combos.map((combo: any) => {
+        const items = Array.isArray(combo.items) ? combo.items : [];
+
+        const totalPrice = items.reduce((acc: number, item: any) => {
+          const price = item.final_price || item.base_price || 0;
+          const quantity = item.quantity || 1;
+          return acc + (price * quantity);
+        }, 0);
+
+        const totalDuration = items.reduce((acc: number, item: any) => {
+            if (item.service_id) {
+                const duration = item.duration_minutes || 0;
+                const quantity = item.quantity || 1;
+                return acc + (duration * quantity);
+            }
+            return acc;
+        }, 0);
+
+        return {
+          id: combo.id,
+          name: combo.name,
+          description: combo.description,
+          selling_price: totalPrice,
+          duration_minutes: totalDuration,
+          is_branch_active: combo.is_active_in_branch,
+          type: 'combo',
+          items: items // <-- AÑADIDO
+        };
+      });
+
+      return [...formattedServices, ...formattedCombos];
+    },
     enabled: !!branchIdToUse && (branchIdToUse !== 'all' || currentAssignment?.role_name !== 'tenant_super_admin'),
   });
 };
@@ -35,6 +77,14 @@ export const useMasterServices = (searchTerm?: string, showInactive?: boolean, f
   return useQuery<MasterService[], Error>({
     queryKey: ['master_services', searchTerm, showInactive, filterCategory],
     queryFn: () => callTenantAction('get_master_services', { searchTerm, showInactive, categoryId: filterCategory }),
+  });
+};
+
+// Hook para obtener todos los combos maestros (el catálogo general)
+export const useMasterCombos = () => {
+  return useQuery<any[], Error>({ // TODO: Definir un tipo MasterCombo
+    queryKey: ['master_combos'],
+    queryFn: () => callTenantAction('get_master_combos', {}),
   });
 };
 
@@ -134,6 +184,60 @@ export const useRemoveServiceFromBranch = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_services'] });
       toast({ title: "Servicio Desvinculado", description: "El servicio ha sido removido de esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Asignar un combo a una o varias sucursales
+export const useAssignComboToBranch = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, { combo_id: string; branch_id: string; selling_price: number; is_active?: boolean }>({
+    mutationFn: ({ combo_id, branch_id, selling_price, is_active }) =>
+      callTenantAction('assign_combo_to_branch', { combo_id, branch_id, selling_price, is_active }),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos'] });
+      toast({ title: "Asignación Exitosa", description: "El combo ha sido asignado a la sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Actualizar un combo en una sucursal específica
+export const useUpdateBranchCombo = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, { id: string; branchId: string; updates: { selling_price?: number; is_active_in_branch?: boolean } }>({
+    mutationFn: ({ id, branchId, updates }) =>
+      callTenantAction('update_branch_combo_status', { combo_id: id, branch_id: branchId, is_active: updates.is_active_in_branch }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', variables.branchId] });
+      toast({ title: "Combo Actualizado", description: "El precio o estado ha sido actualizado para esta sucursal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Actualizar masivamente los precios de combos en una sucursal
+export const useBulkUpdateBranchComboPrices = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, { branchId: string; updates: { combo_id: string; selling_price: number }[] }>({
+    mutationFn: (payload) =>
+      callTenantAction('bulk_update_branch_combo_prices', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos'] });
+      toast({ title: "Precios de Combos Actualizados", description: "Los precios de los combos han sido actualizados masivamente." });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

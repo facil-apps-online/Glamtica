@@ -231,8 +231,7 @@ export type Database = {
       }
       appointments: {
         Row: {
-          appointment_date: string
-          appointment_time: string
+          attention_datetime: string
           client_id: string
           created_at: string
           id: string
@@ -244,8 +243,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          appointment_date: string
-          appointment_time: string
+          attention_datetime: string
           client_id: string
           created_at?: string
           id?: string
@@ -257,8 +255,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          appointment_date?: string
-          appointment_time?: string
+          attention_datetime?: string
           client_id?: string
           created_at?: string
           id?: string
@@ -475,8 +472,7 @@ export type Database = {
       }
       attentions: {
         Row: {
-          attention_date: string
-          attention_time: string
+          attention_datetime: string | null
           client_id: string
           created_at: string
           id: string
@@ -486,8 +482,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          attention_date: string
-          attention_time: string
+          attention_datetime: string | null
           client_id: string
           created_at?: string
           id?: string
@@ -497,8 +492,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          attention_date?: string
-          attention_time?: string
+          attention_datetime?: string | null
           client_id?: string
           created_at?: string
           id?: string
@@ -1400,8 +1394,7 @@ export type Database = {
       check_stylist_availability: {
         Args: {
           p_stylist_id: string
-          p_appointment_date: string
-          p_appointment_time: string
+          p_attention_datetime: string
           p_duration_minutes?: number
         }
         Returns: boolean

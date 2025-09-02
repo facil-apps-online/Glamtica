@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AssignmentFormValue } from '@/hooks/useUserAssignments';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeUserAction } from '@/hooks/useUserActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoles } from '@/hooks/useRoles';
@@ -20,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Trash2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useScreenSize } from '@/hooks/useScreenSize'; // <-- IMPORTADO
+import { useScreenSize } from '@/hooks/useScreenSize';
 
 import { TenantUserAssignment } from '@/hooks/useTenantUsers';
 
@@ -59,6 +59,7 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   userName,
   initialUserAssignments,
 }) => {
+  const queryClient = useQueryClient();
   const { data: roles, isLoading: isLoadingRoles } = useRoles();
   const { data: branches, isLoading: isLoadingBranches } = useBranches(tenantId);
   const { refreshUser } = useAuth();
@@ -68,6 +69,7 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
     },
     onSuccess: async () => {
       toast({ title: 'Éxito', description: 'Asignaciones actualizadas correctamente.' });
+      await queryClient.invalidateQueries({ queryKey: ['tenantUsers', tenantId] });
       onOpenChange(false);
       await refreshUser(); // Refresh user session to reflect changes
     },
@@ -76,9 +78,13 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
     },
   });
   const { toast } = useToast();
-  const screenSize = useScreenSize(); // <-- HOOK EN USO
+  const screenSize = useScreenSize();
 
   const [editableAssignments, setEditableAssignments] = useState<AssignmentFormValue[]>([]);
+
+  const superAdminRoleId = useMemo(() => {
+    return roles?.find(r => r.name === 'tenant_super_admin')?.id;
+  }, [roles]);
 
   useEffect(() => {
     if (initialUserAssignments) {
@@ -90,17 +96,24 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
       }));
       setEditableAssignments(formattedAssignments);
     }
-  }, [initialUserAssignments]);
+  }, [initialUserAssignments, open]); // Added open to reset on reopen
 
   const handleAssignmentChange = (index: number, field: 'role_id' | 'branch_id' | 'status', value: string | boolean) => {
     const newAssignments = [...editableAssignments];
-    const statusValue = typeof value === 'boolean' ? (value ? 'active' : 'inactive') : value;
-    
+    const currentAssignment = { ...newAssignments[index] };
+
     if (field === 'status') {
-      newAssignments[index] = { ...newAssignments[index], status: statusValue as 'active' | 'inactive' };
+      currentAssignment.status = typeof value === 'boolean' ? (value ? 'active' : 'inactive') : value as 'active' | 'inactive';
     } else {
-      newAssignments[index] = { ...newAssignments[index], [field]: value };
+      (currentAssignment[field] as any) = value;
     }
+
+    // Super Admin Rule: if role is super admin, branch must be null
+    if (field === 'role_id' && value === superAdminRoleId) {
+      currentAssignment.branch_id = null;
+    }
+    
+    newAssignments[index] = currentAssignment;
     setEditableAssignments(newAssignments);
   };
 
@@ -114,87 +127,99 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   };
 
   const handleSaveChanges = () => {
-    const assignmentsToSave = editableAssignments;
+    const assignmentsToSave = editableAssignments.map(a => ({
+      ...a,
+      // Ensure branch_id is null if role is super_admin before saving
+      branch_id: a.role_id === superAdminRoleId ? null : a.branch_id,
+    }));
     updateAssignmentsMutation.mutate({ userId, tenantId, assignments: assignmentsToSave });
   };
 
   const isLoading = isLoadingRoles || isLoadingBranches;
-  const isError = false; // No hay error de carga de asignaciones iniciales, ya vienen como prop
+  const isError = false;
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton />;
     if (isError) return <p className="text-red-500 text-center py-8">Error al cargar los datos necesarios.</p>;
 
-    // --- VISTA MÓVIL ---
-    if (screenSize === 'mobile') {
-      return (
-        <div className="space-y-4">
-          {editableAssignments.map((assignment, index) => (
-            <div key={index} className="p-3 border rounded-lg space-y-3 relative">
-              <Button variant="ghost" size="icon" className="absolute top-1 right-1" onClick={() => handleRemoveAssignment(index)}>
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
-              
-              <div className="space-y-1">
-                <Label>Rol</Label>
-                <Select value={assignment.role_id || ''} onValueChange={(value) => handleAssignmentChange(index, 'role_id', value)}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar Rol" /></SelectTrigger>
-                  <SelectContent>{roles?.map(role => <SelectItem key={role.id} value={role.id}>{role.display_name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+    const usedBranchIds = editableAssignments.map(a => a.branch_id).filter(Boolean);
 
-              <div className="space-y-1">
-                <Label>Sucursal</Label>
-                <Select value={assignment.branch_id || ''} onValueChange={(value) => handleAssignmentChange(index, 'branch_id', value)}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar Sucursal" /></SelectTrigger>
-                  <SelectContent>{branches?.map(branch => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+    const renderAssignmentRow = (assignment: AssignmentFormValue, index: number) => {
+      const isSuperAdmin = assignment.role_id === superAdminRoleId;
+      const availableBranches = branches?.filter(b => !usedBranchIds.includes(b.id) || b.id === assignment.branch_id);
 
-              <div className="flex items-center justify-between pt-2">
-                <Label>Estado</Label>
-                <div className="flex items-center space-x-2">
-                  <Switch id={`status-mobile-${index}`} checked={assignment.status === 'active'} onCheckedChange={(checked) => handleAssignmentChange(index, 'status', checked)} />
-                  <Label htmlFor={`status-mobile-${index}`} className={assignment.status === 'active' ? 'text-green-600' : 'text-red-600'}>
-                    {assignment.status === 'active' ? 'Activo' : 'Inactivo'}
-                  </Label>
-                </div>
+      if (screenSize === 'mobile') {
+        return (
+          <div key={index} className="p-3 border rounded-lg space-y-3 relative">
+            <Button variant="ghost" size="icon" className="absolute top-1 right-1" onClick={() => handleRemoveAssignment(index)}>
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+            <div className="space-y-1">
+              <Label>Rol</Label>
+              <Select value={assignment.role_id || ''} onValueChange={(value) => handleAssignmentChange(index, 'role_id', value)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar Rol" /></SelectTrigger>
+                <SelectContent>{roles?.map(role => <SelectItem key={role.id} value={role.id}>{role.display_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Sucursal</Label>
+              <Select
+                value={assignment.branch_id || ''}
+                onValueChange={(value) => handleAssignmentChange(index, 'branch_id', value)}
+                disabled={isSuperAdmin}
+              >
+                <SelectTrigger><SelectValue placeholder={isSuperAdmin ? "N/A" : "Seleccionar Sucursal"} /></SelectTrigger>
+                <SelectContent>
+                  {availableBranches?.map(branch => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <Label>Estado</Label>
+              <div className="flex items-center space-x-2">
+                <Switch id={`status-mobile-${index}`} checked={assignment.status === 'active'} onCheckedChange={(checked) => handleAssignmentChange(index, 'status', checked)} />
+                <Label htmlFor={`status-mobile-${index}`} className={assignment.status === 'active' ? 'text-green-600' : 'text-red-600'}>
+                  {assignment.status === 'active' ? 'Activo' : 'Inactivo'}
+                </Label>
               </div>
             </div>
-          ))}
-          <Button variant="outline" onClick={handleAddAssignment} className="w-full">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Asignación
+          </div>
+        );
+      }
+
+      return (
+        <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-2 p-2 rounded-lg border">
+          <Select value={assignment.role_id || ''} onValueChange={(value) => handleAssignmentChange(index, 'role_id', value)}>
+            <SelectTrigger><SelectValue placeholder="Seleccionar Rol" /></SelectTrigger>
+            <SelectContent>{roles?.map(role => <SelectItem key={role.id} value={role.id}>{role.display_name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select
+            value={assignment.branch_id || ''}
+            onValueChange={(value) => handleAssignmentChange(index, 'branch_id', value)}
+            disabled={isSuperAdmin}
+          >
+            <SelectTrigger><SelectValue placeholder={isSuperAdmin ? "N/A" : "Seleccionar Sucursal"} /></SelectTrigger>
+            <SelectContent>
+              {availableBranches?.map(branch => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center space-x-2 justify-self-center px-4">
+            <Switch id={`status-desktop-${index}`} checked={assignment.status === 'active'} onCheckedChange={(checked) => handleAssignmentChange(index, 'status', checked)} />
+            <Label htmlFor={`status-desktop-${index}`} className={assignment.status === 'active' ? 'text-green-600' : 'text-red-600'}>
+              {assignment.status === 'active' ? 'Activo' : 'Inactivo'}
+            </Label>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(index)}>
+            <Trash2 className="h-4 w-4 text-red-500" />
           </Button>
         </div>
       );
-    }
+    };
 
-    // --- VISTA ESCRITORIO ---
     return (
       <div className="space-y-4">
-        {editableAssignments.map((assignment, index) => (
-          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-2 p-2 rounded-lg border">
-            <Select value={assignment.role_id || ''} onValueChange={(value) => handleAssignmentChange(index, 'role_id', value)}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar Rol" /></SelectTrigger>
-              <SelectContent>{roles?.map(role => <SelectItem key={role.id} value={role.id}>{role.display_name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={assignment.branch_id || ''} onValueChange={(value) => handleAssignmentChange(index, 'branch_id', value)}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar Sucursal" /></SelectTrigger>
-              <SelectContent>{branches?.map(branch => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <div className="flex items-center space-x-2 justify-self-center px-4">
-              <Switch id={`status-desktop-${index}`} checked={assignment.status === 'active'} onCheckedChange={(checked) => handleAssignmentChange(index, 'status', checked)} />
-              <Label htmlFor={`status-desktop-${index}`} className={assignment.status === 'active' ? 'text-green-600' : 'text-red-600'}>
-                {assignment.status === 'active' ? 'Activo' : 'Inactivo'}
-              </Label>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(index)}>
-              <Trash2 className="h-4 w-4 text-red-500" />
-            </Button>
-          </div>
-        ))}
-        <Button variant="outline" onClick={handleAddAssignment}>
+        {editableAssignments.map(renderAssignmentRow)}
+        <Button variant="outline" onClick={handleAddAssignment} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" />
           Añadir Asignación
         </Button>
@@ -232,3 +257,4 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
     </Dialog>
   );
 };
+

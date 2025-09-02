@@ -296,7 +296,7 @@ export default function Inventory() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant={purchase.status === 'completed' ? 'default' : 'secondary'}>
-                              {purchase.status === 'completed' ? 'Completada' : 'Borrador'}
+                              {purchase.status === 'completed' ? 'Finalizada' : 'Borrador'}
                             </Badge>
                           </div>
                         </div>

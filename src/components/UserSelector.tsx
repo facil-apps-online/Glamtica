@@ -1,15 +1,13 @@
-
 import { FilterableSelect } from "./FilterableSelect";
-import { useSchedulableUsers } from "@/hooks/useSchedulableUsers";
+import { TenantUserAssignment } from "@/hooks/useTenantUsers";
 
 interface UserSelectorProps {
   selectedUserId: string;
   onUserChange: (userId: string) => void;
+  users: TenantUserAssignment[];
 }
 
-export const UserSelector = ({ selectedUserId, onUserChange }: UserSelectorProps) => {
-  const { data: users } = useSchedulableUsers();
-
+export const UserSelector = ({ selectedUserId, onUserChange, users }: UserSelectorProps) => {
   const userOptions = [
     { value: "all", label: "Todos los usuarios" },
     ...(users?.map(user => ({
@@ -24,10 +22,10 @@ export const UserSelector = ({ selectedUserId, onUserChange }: UserSelectorProps
       placeholder="Selecciona un usuario"
       options={userOptions}
       value={selectedUserId}
-      onValueChange={onUserChange}
+      onValue-Change={onUserChange}
       searchPlaceholder="Buscar usuario..."
       emptyText="No se encontraron usuarios"
+      className="flex flex-col h-16"
     />
   );
 };
-

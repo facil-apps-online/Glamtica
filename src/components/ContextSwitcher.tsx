@@ -16,21 +16,13 @@ export const ContextSwitcher: React.FC = () => {
 
   
 
-  if (!profile || assignments.length <= 1) {
-    return null; // No mostrar si no hay múltiples asignaciones
+  if (!profile || !assignments || assignments.length <= 1) {
+    return null; // No mostrar si no hay múltiples asignaciones activas
   }
 
   const currentContextName = currentAssignment?.branch_name 
     ? `${currentAssignment.tenant_name} (${currentAssignment.branch_name})`
     : currentAssignment?.tenant_name;
-
-  // Filtrar solo las asignaciones activas
-  const activeAssignments = assignments.filter(assignment => assignment.status === 'active');
-
-  // Si después de filtrar no quedan asignaciones activas o solo una, no mostrar el switcher
-  if (activeAssignments.length <= 1) {
-    return null;
-  }
 
   return (
     <DropdownMenu>
@@ -44,7 +36,7 @@ export const ContextSwitcher: React.FC = () => {
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>Cambiar de Contexto</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {activeAssignments.map((assignment) => { // Usar activeAssignments aquí
+        {assignments.map((assignment) => { // Usar assignments directamente
           const contextName = assignment.branch_name
             ? `${assignment.tenant_name} (${assignment.branch_name})`
             : assignment.tenant_name;
@@ -62,7 +54,7 @@ export const ContextSwitcher: React.FC = () => {
               <div className="flex flex-col">
                 <span>{contextName}</span>
                 <span className="text-xs text-muted-foreground capitalize">
-                  {assignment.role_name.replace(/_/g, ' ')}
+                  {assignment.role_display_name}
                 </span>
               </div>
             </DropdownMenuItem>

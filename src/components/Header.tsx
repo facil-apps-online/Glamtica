@@ -18,6 +18,7 @@ interface HeaderProps {
 
 export function Header({ panelTitle = "" }: HeaderProps) {
   const { profile, logout, currentAssignment } = useAuth();
+  console.log('[Header Render] currentAssignment:', currentAssignment);
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
         {!isMobile && (
           <div className="text-sm text-right">
             <p className="font-semibold text-slate-700 truncate max-w-xs">{displayName}</p>
-            <p className="text-xs text-slate-500 capitalize">{currentAssignment?.role_name?.replace(/_/g, ' ')}</p>
+                        <p className="text-xs text-slate-500 capitalize">{currentAssignment?.role_display_name}</p>
           </div>
         )}
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -89,7 +90,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
               </Avatar>
               <div className="truncate">
                 <p className="text-sm font-medium text-slate-900 truncate">{displayName}</p>
-                <p className="text-xs text-slate-500 capitalize">{currentAssignment?.role_name?.replace(/_/g, ' ')}</p>
+                            <p className="text-xs text-slate-500 capitalize">{currentAssignment?.role_display_name}</p>
               </div>
             </div>
             <Separator className="my-2" />

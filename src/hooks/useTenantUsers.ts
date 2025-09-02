@@ -38,10 +38,9 @@ const fetchTenantUsers = async (tenantId: string): Promise<TenantUserAssignment[
 
 export const useTenantUsers = (tenantId: string) => {
   return useQuery<TenantUserAssignment[], Error>({
-    // The queryKey now includes the tenantId to ensure uniqueness
     queryKey: ['tenantUsers', tenantId],
     queryFn: () => fetchTenantUsers(tenantId),
-    // enabled: !!tenantId, // This ensures the query doesn't run if tenantId is not yet available
+    enabled: !!tenantId, // This ensures the query doesn't run if tenantId is not yet available
   });
 };
 

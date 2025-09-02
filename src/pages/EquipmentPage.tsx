@@ -51,7 +51,7 @@ const EquipmentPage: React.FC = () => {
   };
 
   return (
-    <div className="relative space-y-6"> 
+    <div className="relative space-y-8"> 
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -60,8 +60,8 @@ const EquipmentPage: React.FC = () => {
       <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Equipos</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-2xl font-bold">Equipos</h1>
+            <p className="text-muted-foreground">
               Gestiona los equipos, máquinas y herramientas de tu negocio.
             </p>
           </div>
@@ -77,7 +77,7 @@ const EquipmentPage: React.FC = () => {
           </div>
         </div>
 
-        <Card>
+        <Card className="mt-4">
           <CardContent className="py-4">
             <div className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
@@ -129,11 +129,11 @@ const EquipmentPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="mt-8">
           <CardHeader>
             <CardTitle>Lista de Equipos</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
@@ -148,7 +148,7 @@ const EquipmentPage: React.FC = () => {
                   {equipment.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.type}</TableCell>
+                      <TableCell>{item.type_name}</TableCell>
                       <TableCell>{item.brand_name}</TableCell>
                       <TableCell>
                         {item.assigned_user_name ? (

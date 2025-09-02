@@ -11,11 +11,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true, // Let Supabase handle session persistence.
     detectSessionInUrl: false,
   },
-  // Initialize the global property to ensure it exists.
-  global: {
-    headers: {},
-  },
 });
+
+console.log('Supabase Client URL:', SUPABASE_URL); // Añade esta línea
 
 // Asegurar que supabase.global y supabase.global.headers existan
 if (!supabase.global) {

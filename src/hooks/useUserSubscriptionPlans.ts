@@ -12,6 +12,7 @@ export interface UserSubscriptionPlan {
   price_id: string;
   calculated_price: number;
   calculated_extra_branch_price: number;
+  calculated_promotional_price: number; // New field
   currency_code: string;
   currency_symbol: string;
   base_price: number;
@@ -21,13 +22,14 @@ export interface UserSubscriptionPlan {
 const fetchTenantSubscriptionPlans = async (tenantId: string): Promise<UserSubscriptionPlan[]> => {
   if (!tenantId) return [];
 
-  const { data, error } = await supabase.rpc('get_subscription_plans_for_tenant', {
-    p_tenant_id: tenantId,
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+    body: { action: 'GET_SUBSCRIPTION_PLANS', payload: { tenantId } },
   });
 
   if (error) {
     throw new Error(`Error fetching tenant subscription plans: ${error.message}`);
   }
+
   return data || [];
 };
 

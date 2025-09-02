@@ -37,8 +37,8 @@ export const ServiceSessionDialog = ({ attentionService, open, onOpenChange }: S
         return <Badge variant="secondary">Pendiente</Badge>;
       case 'En Proceso':
         return <Badge variant="default" className="bg-blue-500">En Proceso</Badge>;
-      case 'Completado':
-        return <Badge variant="default" className="bg-green-500">Completado</Badge>;
+      case 'Finalizado':
+        return <Badge variant="default" className="bg-green-500">Finalizado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

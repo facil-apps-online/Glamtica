@@ -9,11 +9,30 @@ import { TimeOffRequestDialog } from "@/components/TimeOffRequestDialog";
 import { TimeOffRequestsList } from "@/components/TimeOffRequestsList";
 import { UserCommissionsDialog } from "@/components/UserCommissionsDialog";
 import { AssignEquipmentDialog } from '@/components/AssignEquipmentDialog';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { invokeTenantAction, TenantUserAssignment } from '@/hooks/useTenantUsers';
 
 export default function Team() {
   const { data: users, isLoading } = useSchedulableUsers();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
 
-  if (isLoading) {
+  const { data: allUserAssignments, isLoading: isLoadingAssignments } = useQuery<TenantUserAssignment[], Error>({
+    queryKey: ['all-tenant-user-assignments', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const assignments = await invokeTenantAction('get_users_for_tenant', { tenantId });
+      // Añadir tenant_id a cada asignación
+      return assignments.map((assignment: TenantUserAssignment) => ({
+        ...assignment,
+        tenant_id: tenantId, // Añadir el tenant_id aquí
+      }));
+    },
+    enabled: !!tenantId,
+  });
+
+  if (isLoading || isLoadingAssignments) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -41,6 +60,9 @@ export default function Team() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {users?.map((user) => {
             const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+            const userSpecificAssignments = allUserAssignments?.filter(
+              (assignment) => assignment.user_id === user.id
+            ) || [];
             return (
               <Card key={user.id} className="bg-card hover:shadow-lg transition-all duration-300">
                 <CardHeader className="flex flex-row items-start justify-between">
@@ -81,6 +103,7 @@ export default function Team() {
                       <UserScheduleDialog
                         userId={user.id}
                         userName={userName}
+                        targetUserAssignments={userSpecificAssignments}
                         trigger={
                           <Button variant="outline" size="sm" className="flex-1">
                             <CalendarCheck className="w-4 h-4 mr-1" />

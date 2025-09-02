@@ -51,8 +51,8 @@ export default function BranchSettingsPage() {
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="products">Productos</TabsTrigger>
               <TabsTrigger value="services">Servicios</TabsTrigger>
-              <TabsTrigger value="commissions">Comisiones</TabsTrigger>
               <TabsTrigger value="combos">Combos</TabsTrigger>
+              <TabsTrigger value="commissions">Comisiones</TabsTrigger>
             </TabsList>
             <TabsContent value="general">
               {tenantId && <BranchForm branchToEdit={branchToEdit} onSuccess={handleSuccess} tenantId={tenantId} />}
@@ -63,11 +63,11 @@ export default function BranchSettingsPage() {
             <TabsContent value="services">
               {branchId && <BranchServicesTabContent branchId={branchId} />}
             </TabsContent>
-            <TabsContent value="commissions">
-              {branchId && <BranchCommissionsTabContent branchId={branchId} />}
-            </TabsContent>
             <TabsContent value="combos">
               {branchId && <BranchCombosTabContent branchId={branchId} />}
+            </TabsContent>
+            <TabsContent value="commissions">
+              {branchId && <BranchCommissionsTabContent branchId={branchId} />}
             </TabsContent>
           </Tabs>
         </CardContent>

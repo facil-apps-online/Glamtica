@@ -37,7 +37,7 @@ export const useCompletePurchase = () => {
       // También invalidar las consultas de productos de la sucursal para reflejar los cambios de stock/costo
       queryClient.invalidateQueries({ queryKey: ['branch_products'] }); 
       toast({
-        title: "Compra Completada",
+        title: "Compra Finalizada",
         description: "La compra ha sido marcada como completada y el inventario actualizado.",
       });
     },

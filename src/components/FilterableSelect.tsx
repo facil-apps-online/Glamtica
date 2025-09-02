@@ -1,5 +1,4 @@
-import { useState, useMemo } from "react";
-import { Input } from "@/components/ui/input";
+import { useState, useMemo, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,10 +9,11 @@ import { cn } from "@/lib/utils";
 interface Option {
   value: string;
   label: string;
+  shortLabel?: string;
 }
 
 interface FilterableSelectProps {
-  label?: string; // <-- Made optional
+  label?: string;
   placeholder?: string;
   options: Option[];
   value: string;
@@ -21,6 +21,8 @@ interface FilterableSelectProps {
   onSearch?: (value: string) => void;
   emptyText?: string;
   searchPlaceholder?: string;
+  className?: string;
+  disabled?: boolean;
 }
 
 export const FilterableSelect = ({
@@ -31,7 +33,9 @@ export const FilterableSelect = ({
   onValueChange,
   onSearch,
   emptyText = "No se encontraron opciones",
-  searchPlaceholder = "Buscar..."
+  searchPlaceholder = "Buscar...",
+  className,
+  disabled = false
 }: FilterableSelectProps) => {
   const [open, setOpen] = useState(false);
 
@@ -40,11 +44,11 @@ export const FilterableSelect = ({
     [options, value]
   );
 
-  const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue === value ? "" : selectedValue);
+  const handleSelect = useCallback((selectedValue: string) => {
+    onValueChange(selectedValue);
     setOpen(false);
-    if (onSearch) onSearch(""); // Limpiar búsqueda al seleccionar
-  };
+    if (onSearch) onSearch("");
+  }, [onValueChange, onSearch]);
 
   const popoverContent = (
     <Popover open={open} onOpenChange={setOpen}>
@@ -54,12 +58,17 @@ export const FilterableSelect = ({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
+          disabled={disabled}
         >
-          {selectedOption ? selectedOption.label : placeholder}
+          <div className="flex-1 text-left min-w-0">
+            <span className="truncate">
+              {selectedOption ? (selectedOption.shortLabel || selectedOption.label) : placeholder}
+            </span>
+          </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command shouldFilter={!onSearch}>
           <CommandInput 
             placeholder={searchPlaceholder} 
@@ -81,7 +90,7 @@ export const FilterableSelect = ({
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <span className="truncate">{option.label}</span>
                 </CommandItem>
               ))}
             </CommandList>
@@ -91,13 +100,12 @@ export const FilterableSelect = ({
     </Popover>
   );
 
-  // If no label, return only the popover. Otherwise, wrap it with the label.
   if (!label) {
     return popoverContent;
   }
 
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-2", className)}>
       <Label>{label}</Label>
       {popoverContent}
     </div>

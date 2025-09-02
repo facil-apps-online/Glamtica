@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION get_product_commission_matrix(
   product_id_param uuid,
   tenant_id_param uuid
 )
-RETURNS TABLE(user_id uuid, user_name text, branches json) AS $$
+RETURNS TABLE(user_id uuid, first_name text, last_name text, branches json) AS $
 BEGIN
   RETURN QUERY
   WITH relevant_branches AS (
@@ -69,7 +69,7 @@ CREATE OR REPLACE FUNCTION get_service_commission_matrix(
   service_id_param uuid,
   tenant_id_param uuid
 )
-RETURNS TABLE(user_id uuid, user_name text, branches json) AS $$
+RETURNS TABLE(user_id uuid, first_name text, last_name text, branches json) AS $
 BEGIN
   RETURN QUERY
   WITH relevant_branches AS (

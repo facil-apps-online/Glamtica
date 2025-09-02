@@ -23,13 +23,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, MoreHorizontal, Users, Search } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Users, Search, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useAuth } from '@/contexts/AuthContext';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { AssignmentManagerDialog } from '@/components/AssignmentManagerDialog';
+import { UserScheduleDialog } from '@/components/UserScheduleDialog'; // Importar UserScheduleDialog
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,7 +64,9 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
   
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAssignmentManagerOpen, setIsAssignmentManagerOpen] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false); // Nuevo estado
   const [selectedUser, setSelectedUser] = useState<GroupedUser | null>(null);
+  const [selectedUserForSchedule, setSelectedUserForSchedule] = useState<GroupedUser | null>(null); // Nuevo estado
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -104,6 +107,11 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
   const handleOpenAssignmentManager = (user: GroupedUser) => {
     setSelectedUser(user);
     setIsAssignmentManagerOpen(true);
+  };
+
+  const handleOpenScheduleDialog = (user: GroupedUser) => { // Nueva función
+    setSelectedUserForSchedule(user);
+    setIsScheduleDialogOpen(true);
   };
 
   const handleCreateUser = (values: InviteOrAssignUserFormValues) => {
@@ -170,6 +178,10 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleResetPassword(user.email)}>
                       Generar Enlace de Recuperación
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleOpenScheduleDialog(user)}> {/* Nuevo botón */}
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Horarios
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -269,6 +281,15 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
           tenantId={tenantId}
           userName={`${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() || selectedUser.email}
           initialUserAssignments={selectedUser.assignments}
+        />
+      )}
+      {selectedUserForSchedule && (
+        <UserScheduleDialog
+          open={isScheduleDialogOpen}
+          onOpenChange={setIsScheduleDialogOpen}
+          userId={selectedUserForSchedule.user_id}
+          userName={`${selectedUserForSchedule.first_name || ''} ${selectedUserForSchedule.last_name || ''}`.trim() || selectedUserForSchedule.email}
+          targetUserAssignments={selectedUserForSchedule.assignments} // Pasar las asignaciones del usuario objetivo
         />
       )}
       <AlertDialog open={!!resetLink} onOpenChange={() => setResetLink(null)}>

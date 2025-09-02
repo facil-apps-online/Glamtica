@@ -4,32 +4,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent } from "@/components/ui/card";
 import { Camera, Upload, X, Eye } from "lucide-react";
 import { useUploadEvidence, useAppointmentEvidence, getEvidenceUrl } from "@/hooks/useAppointmentEvidence";
+import { useAuth } from "@/hooks/useAuth";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
 interface EvidenceUploadProps {
-  appointmentId?: string;
-  attentionId?: string;
-  sessionId?: string;
-  serviceSessionId?: string;
-  stylistId?: string;
-  extraServiceSessionId?: string;
+  attentionServiceId: string;
+  onUploadComplete?: () => void;
   trigger?: React.ReactNode;
 }
 
 export const EvidenceUpload = ({ 
-  appointmentId, 
-  attentionId, 
-  sessionId, 
-  serviceSessionId, 
-  stylistId, 
-  extraServiceSessionId, 
+  attentionServiceId,
+  onUploadComplete,
   trigger 
 }: EvidenceUploadProps) => {
   const [open, setOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const { tenantId } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
+  
   const uploadMutation = useUploadEvidence();
-  const { data: existingEvidence = [] } = useAppointmentEvidence(appointmentId, attentionId, extraServiceSessionId, serviceSessionId);
+  const { data: existingEvidence = [] } = useAppointmentEvidence(attentionServiceId);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -42,40 +39,23 @@ export const EvidenceUpload = ({
   };
 
   const handleUpload = async () => {
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0 || !tenantId || selectedBranchId === 'all') return;
 
     try {
       for (const file of selectedFiles) {
         await uploadMutation.mutateAsync({
           file,
-          appointmentId,
-          attentionId,
-          sessionId,
-          serviceSessionId,
-          stylistId,
-          extraServiceSessionId,
+          attentionServiceId,
+          tenantId,
+          branchId: selectedBranchId,
         });
       }
       setSelectedFiles([]);
       setOpen(false);
+      if (onUploadComplete) onUploadComplete();
     } catch (error) {
       console.error('Error uploading files:', error);
     }
-  };
-
-  // Determinar el título del modal basado en el contexto
-  const getModalTitle = () => {
-    if (!serviceSessionId && attentionId) {
-      return "Evidencia de Cancelación";
-    }
-    return "Evidencia Fotográfica del Servicio";
-  };
-
-  const getModalDescription = () => {
-    if (!serviceSessionId && attentionId) {
-      return "Carga evidencias relacionadas con la cancelación de la atención (capturas de WhatsApp, emails, etc.)";
-    }
-    return "Carga fotos del antes, durante o después del servicio realizado";
   };
 
   return (
@@ -90,39 +70,35 @@ export const EvidenceUpload = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{getModalTitle()}</DialogTitle>
+          <DialogTitle>Evidencia Fotográfica del Servicio</DialogTitle>
           <p className="text-sm text-slate-600">
-            {getModalDescription()}
+            Carga fotos del antes, durante o después del servicio realizado.
           </p>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Evidencias existentes */}
           {existingEvidence.length > 0 && (
             <div className="space-y-2">
-              <h3 className="font-medium">Evidencias ya cargadas:</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <h3 className="font-medium">Evidencias existentes:</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {existingEvidence.map((evidence) => (
                   <Card key={evidence.id} className="overflow-hidden">
                     <CardContent className="p-2">
                       <div className="relative">
                         <img
-                          src={getEvidenceUrl(evidence.file_path)}
+                          src={getEvidenceUrl(evidence.google_drive_file_id)}
                           alt={evidence.file_name}
                           className="w-full h-32 object-cover rounded"
                         />
                         <Button
                           variant="secondary"
-                          size="sm"
-                          className="absolute top-2 right-2"
-                          onClick={() => window.open(getEvidenceUrl(evidence.file_path), '_blank')}
+                          size="icon"
+                          className="absolute top-1 right-1 h-7 w-7"
+                          onClick={() => window.open(getEvidenceUrl(evidence.google_drive_file_id), '_blank')}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1 truncate">
-                        {evidence.file_name}
-                      </p>
                     </CardContent>
                   </Card>
                 ))}
@@ -130,21 +106,15 @@ export const EvidenceUpload = ({
             </div>
           )}
 
-          {/* Subir nuevas evidencias */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                className="gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Seleccionar Fotos
-              </Button>
-              <span className="text-sm text-gray-600">
-                {selectedFiles.length} archivo(s) seleccionado(s)
-              </span>
-            </div>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Seleccionar Fotos
+            </Button>
 
             <input
               ref={fileInputRef}
@@ -155,9 +125,8 @@ export const EvidenceUpload = ({
               className="hidden"
             />
 
-            {/* Preview de archivos seleccionados */}
             {selectedFiles.length > 0 && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {selectedFiles.map((file, index) => (
                   <Card key={index} className="relative overflow-hidden">
                     <CardContent className="p-2">
@@ -169,16 +138,13 @@ export const EvidenceUpload = ({
                         />
                         <Button
                           variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2"
+                          size="icon"
+                          className="absolute top-1 right-1 h-7 w-7"
                           onClick={() => removeFile(index)}
                         >
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1 truncate">
-                        {file.name}
-                      </p>
                     </CardContent>
                   </Card>
                 ))}
@@ -186,20 +152,20 @@ export const EvidenceUpload = ({
             )}
 
             {selectedFiles.length > 0 && (
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setSelectedFiles([])}
                 >
-                  Limpiar
+                  Cancelar
                 </Button>
                 <Button
                   onClick={handleUpload}
-                  disabled={uploadMutation.isPending}
+                  disabled={uploadMutation.isPending || selectedBranchId === 'all'}
                   className="gap-2"
                 >
                   <Upload className="w-4 h-4" />
-                  {uploadMutation.isPending ? "Subiendo..." : "Subir Evidencias"}
+                  {uploadMutation.isPending ? "Subiendo..." : `Subir ${selectedFiles.length} archivo(s)`}
                 </Button>
               </div>
             )}

@@ -5,7 +5,7 @@ import { ManageServiceInBranchDialog } from "@/components/ManageServiceInBranchD
 import AddServicesToBranchDialog from "@/components/AddServicesToBranchDialog";
 import BulkEditBranchServicePricesDialog from "@/components/BulkEditBranchServicePricesDialog";
 import { useQueryClient } from "@tanstack/react-query";
-import { useBranchServices, useUpdateBranchService, BranchService } from "@/hooks/useServices";
+import { useBranchServicesAndCombos, useUpdateBranchService, BranchService } from "@/hooks/useServices";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -18,7 +18,8 @@ interface BranchServicesTabContentProps {
 const BranchServicesTabContent: React.FC<BranchServicesTabContentProps> = ({ branchId }) => {
   const [isAddServiceDialogOpen, setIsAddServiceDialogOpen] = useState(false);
   const [isBulkEditPricesDialogOpen, setIsBulkEditPricesDialogOpen] = useState(false);
-  const { data: branchServices, isLoading: isLoadingServices } = useBranchServices(branchId);
+  const { data: branchServicesAndCombos, isLoading: isLoadingServices } = useBranchServicesAndCombos(branchId);
+  const branchServices = branchServicesAndCombos?.filter(item => item.type === 'service') || [];
   const { mutate: updateBranchService } = useUpdateBranchService();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();

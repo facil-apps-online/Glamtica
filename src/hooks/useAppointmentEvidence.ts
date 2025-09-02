@@ -1,213 +1,108 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "./useAuth";
 
-export interface AppointmentEvidence {
-  id: string;
-  appointment_id?: string;
-  attention_id?: string;
-  service_session_id?: string;
-  session_id?: string;
-  extra_service_session_id?: string;
-  file_path: string;
-  file_name: string;
-  file_size?: number;
-  mime_type?: string;
-  uploaded_by?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export const useAppointmentEvidence = (appointmentId?: string, attentionId?: string, extraServiceId?: string, serviceSessionId?: string) => {
-  return useQuery({
-    queryKey: ['appointment-evidence', appointmentId, attentionId, extraServiceId, serviceSessionId],
-    queryFn: async () => {
-      // Determinar qué tabla usar basado en los parámetros
-      if (attentionId) {
-        // Nueva estructura - service_evidence
-        let query = supabase
-          .from('service_evidence')
-          .select('*')
-          .eq('attention_id', attentionId);
-
-        // Si se especifica un serviceSessionId, filtrar por él
-        if (serviceSessionId) {
-          // Primero obtener el service_session_id real si se pasa attention_service_id
-          const { data: sessionData } = await supabase
-            .from('service_sessions')
-            .select('id')
-            .eq('attention_service_id', serviceSessionId)
-            .maybeSingle();
-          
-          if (sessionData) {
-            query = query.eq('service_session_id', sessionData.id);
-          } else {
-            // Si no existe sesión, no hay evidencias para este servicio
-            return [];
-          }
-        }
-
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw error;
-        return data as AppointmentEvidence[];
-      } else if (appointmentId) {
-        // Estructura antigua - appointment_evidence
-        let query = supabase
-          .from('appointment_evidence')
-          .select('*')
-          .eq('appointment_id', appointmentId);
-
-        if (extraServiceId) {
-          query = query.eq('extra_service_session_id', extraServiceId);
-        } else {
-          query = query.is('extra_service_session_id', null);
-        }
-
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw error;
-        return data as AppointmentEvidence[];
-      }
-
-      return [];
-    },
-    enabled: !!(appointmentId || attentionId),
+// Helper to convert file to base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = (error) => reject(error);
   });
 };
 
+export interface AttentionServiceEvidence {
+  id: string;
+  attention_service_id: string;
+  google_drive_file_id: string;
+  file_name: string;
+  mime_type?: string;
+  created_at: string;
+  user_id?: string;
+}
+
+// Hook to get evidence for a specific attention service
+export const useAppointmentEvidence = (attentionServiceId?: string) => {
+  return useQuery({
+    queryKey: ['attention-service-evidence', attentionServiceId],
+    queryFn: async (): Promise<AttentionServiceEvidence[]> => {
+      if (!attentionServiceId) return [];
+
+      const { data, error } = await supabase
+        .from('attention_service_evidences')
+        .select('*')
+        .eq('attention_service_id', attentionServiceId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!attentionServiceId,
+  });
+};
+
+// Hook to upload evidence via the centralized Google Drive edge function
 export const useUploadEvidence = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { session } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ 
-      file, 
-      appointmentId,
-      attentionId, 
-      sessionId,
-      serviceSessionId, 
-      stylistId,
-      extraServiceSessionId
-    }: { 
-      file: File; 
-      appointmentId?: string;
-      attentionId?: string; 
-      sessionId?: string;
-      serviceSessionId?: string;
-      stylistId?: string;
-      extraServiceSessionId?: string;
+    mutationFn: async ({
+      file,
+      attentionServiceId,
+      tenantId,
+      branchId,
+    }: {
+      file: File;
+      attentionServiceId: string;
+      tenantId: string;
+      branchId: string;
     }) => {
-      // Generate unique file name
-      const fileExt = file.name.split('.').pop();
-      const baseId = appointmentId || attentionId;
-      const fileName = `${baseId}-${Date.now()}.${fileExt}`;
-      const filePath = `${baseId}/${fileName}`;
+      if (!session) throw new Error("User is not authenticated.");
 
-      // Upload file to storage
-      const { error: uploadError } = await supabase.storage
-        .from('appointment-evidence')
-        .upload(filePath, file);
+      const fileBase64 = await fileToBase64(file);
 
-      if (uploadError) throw uploadError;
+      const { data, error } = await supabase.functions.invoke('google-drive-upload', {
+        body: {
+          tenantId,
+          branchId,
+          userId: session.user.id,
+          fileBase64,
+          mimeType: file.type,
+          fileName: file.name,
+          uploadContext: 'ServiceEvidence',
+          contextId: attentionServiceId,
+        },
+      });
 
-      // Determinar en qué tabla guardar basado en los parámetros
-      if (attentionId && serviceSessionId) {
-        // Nueva estructura - service_evidence
-        // serviceSessionId puede ser attention_service_id, necesitamos obtener el service_session_id real
-        let actualServiceSessionId = serviceSessionId;
-        
-        // Si no es un UUID de service_session, buscar en service_sessions
-        const { data: sessionData } = await supabase
-          .from('service_sessions')
-          .select('id')
-          .eq('attention_service_id', serviceSessionId)
-          .maybeSingle();
-        
-        if (sessionData) {
-          actualServiceSessionId = sessionData.id;
-        } else {
-          // Si no existe una sesión de servicio, crear una temporal solo para evidencia
-          const { data: newSession, error: sessionError } = await supabase
-            .from('service_sessions')
-            .insert({
-              attention_service_id: serviceSessionId,
-              notes: 'Sesión creada para evidencia'
-            })
-            .select()
-            .single();
-          
-          if (sessionError) throw sessionError;
-          actualServiceSessionId = newSession.id;
-        }
-
-        const evidenceData = {
-          service_session_id: actualServiceSessionId,
-          attention_id: attentionId,
-          file_path: filePath,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type,
-          uploaded_by: stylistId,
-        };
-
-        const { data, error } = await supabase
-          .from('service_evidence')
-          .insert(evidenceData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      } else if (appointmentId) {
-        // Estructura antigua - appointment_evidence
-        const evidenceData: TablesInsert<'appointment_evidence'> = {
-          appointment_id: appointmentId,
-          session_id: sessionId,
-          file_path: filePath,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type,
-          uploaded_by: stylistId,
-        };
-
-        if (extraServiceSessionId) {
-          evidenceData.extra_service_session_id = extraServiceSessionId;
-        }
-
-        const { data, error } = await supabase
-          .from('appointment_evidence')
-          .insert(evidenceData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      }
-
-      throw new Error('Invalid parameters for evidence upload');
+      if (error) throw new Error(error.message);
+      return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['appointment-evidence'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['attention-service-evidence', variables.attentionServiceId] 
+      });
       toast({
         title: "Evidencia cargada",
-        description: "La foto ha sido subida exitosamente.",
+        description: "La foto ha sido subida a Google Drive exitosamente.",
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "No se pudo cargar la evidencia. Inténtalo de nuevo.",
+        title: "Error al subir evidencia",
+        description: error.message,
         variant: "destructive",
       });
-      console.error('Error uploading evidence:', error);
+      console.error('Error uploading evidence via Edge Function:', error);
     },
   });
 };
 
-export const getEvidenceUrl = (filePath: string) => {
-  const { data } = supabase.storage
-    .from('appointment-evidence')
-    .getPublicUrl(filePath);
-  
-  return data.publicUrl;
+// Function to get the proxied Google Drive image URL
+export const getEvidenceUrl = (googleDriveFileId: string) => {
+  const functionUrl = `${supabase.functions.getURL('proxy-google-drive-image')}?fileId=${googleDriveFileId}`;
+  return functionUrl;
 };

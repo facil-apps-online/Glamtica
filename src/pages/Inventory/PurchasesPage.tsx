@@ -145,8 +145,8 @@ export function PurchasesPage() {
                       <TableCell>
                         <Badge variant={getStatusVariant(purchase.status)}>
                           {purchase.status === 'draft' ? 'Borrador' :
-                           purchase.status === 'completed' ? 'Completada' :
-                           purchase.status === 'completada_con_incidencias' ? 'Completada con Incidencias' :
+                           purchase.status === 'completed' ? 'Finalizada' :
+                           purchase.status === 'completada_con_incidencias' ? 'Finalizada con Incidencias' :
                            purchase.status === 'cancelled' ? 'Cancelada' :
                            purchase.status.replace('_', ' ')}
                         </Badge>

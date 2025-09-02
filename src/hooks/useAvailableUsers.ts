@@ -4,24 +4,32 @@ import { callTenantAction } from '@/lib/tenantActions';
 
 export const useAvailableUsers = (
   serviceId?: string,
+  itemType?: 'service' | 'combo',
   appointmentDate?: string,
   appointmentTime?: string,
   duration?: number,
-  branchId?: string
+  branchId?: string,
+  assignedUserId?: string,
+  attentionId?: string // New parameter
 ) => {
+  console.log(`[useAvailableUsers hook] serviceId: ${serviceId}, itemType: ${itemType}, date: ${appointmentDate}, time: ${appointmentTime}, duration: ${duration}, branchId: ${branchId}`);
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery({
-    queryKey: ['available-users', serviceId, appointmentDate, appointmentTime, duration, branchId],
+    queryKey: ['available-users', serviceId, itemType, appointmentDate, appointmentTime, duration, branchId, assignedUserId, attentionId],
     queryFn: () => callTenantAction('get_available_users', { 
       serviceId, 
+      itemType,
       appointmentDate, 
       appointmentTime, 
       duration, 
       branchId, 
-      tenantId 
+      tenantId,
+      assignedUserId,
+      attentionId // Pasar el ID de la atención al backend
     }),
-    enabled: !!serviceId && !!appointmentDate && !!appointmentTime && !!duration && !!branchId,
+    enabled: !!serviceId && !!itemType && (duration > 0 || itemType === 'combo'),
+    staleTime: 0, // Force refetch on every change
   });
 };

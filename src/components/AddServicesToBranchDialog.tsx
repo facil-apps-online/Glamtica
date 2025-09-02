@@ -19,8 +19,8 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useMasterServices, useAssignServiceToBranch } from "@/hooks/useServices";
-import { useBranchServices } from "@/hooks/useServices";
+import { useMasterServices, useAssignServiceToBranch, useServiceBranchPrices, useBranchServicesAndCombos } from "@/hooks/useServices";
+
 import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
 import { MasterService } from "@/types/services";
@@ -40,7 +40,7 @@ const AddServicesToBranchDialog: React.FC<AddServicesToBranchDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const { data: masterServices, isLoading: isLoadingMasterServices } = useMasterServices();
-  const { data: branchServices, isLoading: isLoadingBranchServices } = useBranchServices(branchId);
+  const { data: branchServicesAndCombos, isLoading: isLoadingBranchServices } = useBranchServicesAndCombos(branchId);
   const { mutate: assignService, isPending: isAssigning } = useAssignServiceToBranch();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,9 +52,9 @@ const AddServicesToBranchDialog: React.FC<AddServicesToBranchDialogProps> = ({
 
   const availableServices = useMemo(() => {
     if (isLoadingMasterServices || isLoadingBranchServices) return [];
-    const assignedServiceIds = new Set(branchServices?.map(bs => bs.id));
+    const assignedServiceIds = new Set(branchServicesAndCombos?.filter(item => item.type === 'service').map(bs => bs.id));
     return masterServices?.filter(ms => !assignedServiceIds.has(ms.id));
-  }, [masterServices, branchServices, isLoadingMasterServices, isLoadingBranchServices]);
+  }, [masterServices, branchServicesAndCombos, isLoadingMasterServices, isLoadingBranchServices]);
 
   const filteredServices = availableServices?.filter(service =>
     service.name.toLowerCase().includes(searchTerm.toLowerCase())

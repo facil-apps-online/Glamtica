@@ -12,14 +12,13 @@ interface SchedulableUser {
   branch_name?: string | null;
 }
 
-export const useSchedulableUsers = () => {
+export const useSchedulableUsers = (selectedBranchId?: string) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-  const branchId = currentAssignment?.branch_id;
   const userRole = currentAssignment?.role_name;
 
   return useQuery<SchedulableUser[], Error>({
-    queryKey: ['schedulable-users', tenantId, branchId, userRole],
+    queryKey: ['schedulable-users', tenantId, selectedBranchId, userRole],
     queryFn: async () => {
       if (!tenantId) return [];
 
@@ -49,11 +48,11 @@ export const useSchedulableUsers = () => {
 
       let filteredUsers = Array.from(schedulableUsersMap.values());
 
-      if (branchId) {
+      if (selectedBranchId && selectedBranchId !== 'all') {
         filteredUsers = filteredUsers.filter(user =>
           allAssignments.some(assignment =>
             assignment.user_id === user.id &&
-            assignment.branch_id === branchId &&
+            assignment.branch_id === selectedBranchId &&
             assignment.status === 'active'
           )
         );

@@ -1,6 +1,12 @@
-import { DatePickerWrapper } from "@/components/ui/DatePicker";
 import { useAttentionDates } from "@/hooks/useAttentions";
 import { format } from "date-fns";
+import DatePicker, { registerLocale } from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import es from "date-fns/locale/es";
+import { Label } from "@/components/ui/label";
+import DatePickerButtonInput from "./DatePickerButtonInput";
+
+registerLocale("es", es);
 
 interface AttentionDateFilterProps {
   selectedDate: Date | undefined;
@@ -8,35 +14,53 @@ interface AttentionDateFilterProps {
   selectedUserId?: string;
 }
 
-export const AttentionDateFilter = ({ 
-  selectedDate, 
-  onDateChange, 
-  selectedUserId 
+export const AttentionDateFilter = ({
+  selectedDate,
+  onDateChange,
+  selectedUserId
 }: AttentionDateFilterProps) => {
   const { data: attentionDates } = useAttentionDates(selectedUserId);
 
   const dayClassName = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
     const statuses = attentionDates?.[dateString] || new Set();
-    
+
     if (statuses.has('En Proceso')) return 'bg-yellow-200 text-yellow-800';
     if (statuses.has('Confirmada')) return 'bg-blue-200 text-blue-800';
-    if (statuses.has('Completada')) return 'bg-green-200 text-green-800';
+    if (statuses.has('Finalizada')) return 'bg-green-200 text-green-800';
     return '';
   };
 
+  const renderDayContents = (day: number, date: Date) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const statuses = attentionDates?.[dateString] || new Set();
+    const tooltipText = Array.from(statuses).join(', ');
+
+    return (
+      <span title={tooltipText}>
+        {day}
+      </span>
+    );
+  };
+
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">Fecha</label>
-      <DatePickerWrapper
-        selected={selectedDate}
-        onChange={onDateChange}
-        dayClassName={dayClassName}
-      />
-      <div className="p-1 text-xs text-muted-foreground space-y-1">
-        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-200 rounded-full"></div><span>Confirmadas</span></div>
-        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-200 rounded-full"></div><span>En Proceso</span></div>
-        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-green-200 rounded-full"></div><span>Completadas</span></div>
+    <div className="flex flex-col space-y-2">
+      <Label>Fecha</Label>
+      <div className="flex w-full">
+        <DatePicker
+          selected={selectedDate}
+          onChange={onDateChange}
+          locale="es"
+          dateFormat="dd/MM/yyyy"
+          popperPlacement="bottom-start"
+          popperClassName="z-50"
+          customInput={<DatePickerButtonInput />}
+          className="w-full"
+          style={{ width: '100%' }}
+          wrapperClassName="w-full"
+          dayClassName={dayClassName}
+          renderDayContents={renderDayContents}
+        />
       </div>
     </div>
   );

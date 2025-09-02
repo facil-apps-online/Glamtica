@@ -2,13 +2,17 @@ import React, { useState } from "react";
 import { Package, Edit, Link, PlusCircle, DollarSign } from "lucide-react";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { useQueryClient } from "@tanstack/react-query";
-import { Combo, useGetBranchCombos, useUpdateCombo, useUpdateBranchComboStatus } from "@/hooks/useCombos";
+// Importar los hooks correctos de useServices
+import { useBranchServicesAndCombos, useUpdateBranchCombo } from "@/hooks/useServices";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ComboBranchPriceDialog } from "@/components/ComboBranchPriceDialog";
 import { Badge } from "@/components/ui/badge";
+// Importar los nuevos diálogos
+import AddCombosToBranchDialog from "@/components/AddCombosToBranchDialog";
+import BulkEditBranchComboPricesDialog from "@/components/BulkEditBranchComboPricesDialog";
 
 interface BranchCombosTabContentProps {
   branchId: string;
@@ -16,34 +20,49 @@ interface BranchCombosTabContentProps {
 
 const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchId }) => {
   const [isPriceDialogOpen, setIsPriceDialogOpen] = useState(false);
-  const [selectedComboForPrices, setSelectedComboForPrices] = useState<Combo | null>(null);
+  const [selectedComboForPrices, setSelectedComboForPrices] = useState<any | null>(null); // Usar any temporalmente
+  // Nuevos estados para los diálogos
+  const [isAddComboDialogOpen, setIsAddComboDialogOpen] = useState(false);
+  const [isBulkEditPricesDialogOpen, setIsBulkEditPricesDialogOpen] = useState(false);
 
-  const { data: branchCombos, isLoading: isLoadingCombos } = useGetBranchCombos(branchId);
-  const { mutate: updateBranchComboStatus } = useUpdateBranchComboStatus(); // Usar el nuevo hook
+  // Usar useBranchServicesAndCombos y filtrar los combos
+  const { data: branchServicesAndCombos, isLoading: isLoadingCombos } = useBranchServicesAndCombos(branchId);
+  const branchCombos = branchServicesAndCombos?.filter(item => item.type === 'combo') || [];
+
+  // Usar el hook useUpdateBranchCombo
+  const { mutate: updateBranchCombo } = useUpdateBranchCombo();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
 
-  const handleToggleStatus = (combo: Combo & { is_active_in_branch: boolean }) => {
-    updateBranchComboStatus({ 
-      combo_id: combo.id, 
-      branch_id: branchId, 
-      is_active: !combo.is_active_in_branch 
+  const handleToggleStatus = (combo: any, currentBranchId: string) => { // Usar any temporalmente
+    updateBranchCombo({ 
+      id: combo.id, // Usar combo.id (el ID del combo maestro) para la mutación
+      branchId: currentBranchId, // Pasar el branchId correcto
+      updates: { is_active_in_branch: !combo.is_branch_active } 
     });
   };
 
-  const handleOpenPriceDialog = (combo: Combo) => {
+  const handleOpenPriceDialog = (combo: any) => { // Usar any temporalmente
     setSelectedComboForPrices(combo);
     setIsPriceDialogOpen(true);
   };
 
-  const calculateBasePrice = (combo: Combo) => {
+  const calculateBasePrice = (combo: any) => { // Usar any temporalmente
     if (!combo.combo_items) return 0;
-    return combo.combo_items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return combo.combo_items.reduce((total: number, item: any) => total + (item.price * item.quantity), 0);
   };
 
-  const calculateBranchTotalPrice = (combo: Combo & { is_active_in_branch: boolean }) => {
-    if (!combo.items) return 0; // Usar combo.items que viene de ComboBranchDetails
-    return combo.items.reduce((total, item) => total + (item.final_price * item.quantity), 0);
+  const calculateBranchTotalPrice = (combo: any) => { // Usar any temporalmente
+    if (!combo.items) return 0;
+    return combo.items.reduce((total: number, item: any) => total + (item.final_price * item.quantity), 0);
+  };
+
+  const handleAddComboSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', branchId] });
+  };
+
+  const handleBulkEditPricesSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', branchId] });
   };
 
   if (!branchId) {
@@ -64,7 +83,16 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-lg font-semibold">Combos de la Sucursal</CardTitle>
-        {/* No hay botones de añadir/editar masivo aquí, se gestiona desde el catálogo principal */}
+        <div className="flex items-center gap-2">
+          {/* <Button size="sm" variant="outline" onClick={() => setIsBulkEditPricesDialogOpen(true)} disabled={!branchCombos || branchCombos.length === 0}>
+            <DollarSign className="mr-2 h-4 w-4" />
+            Editar Precios Masivamente
+          </Button> */}
+          <Button size="sm" onClick={() => setIsAddComboDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Añadir Combos
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
@@ -80,7 +108,7 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
             </TableRow>
           </TableHeader>
           <TableBody>
-            {branchCombos?.map((combo: Combo & { is_active_in_branch: boolean }) => (
+            {branchCombos?.map((combo: any) => ( // Usar any temporalmente
               <TableRow key={combo.id}>
                 <TableCell>
                   <div className="font-medium">{combo.name}</div>
@@ -94,8 +122,8 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
                 <TableCell>{formatPrice(calculateBranchTotalPrice(combo))}</TableCell>
                 <TableCell>
                   <Switch
-                    checked={combo.is_active_in_branch}
-                    onCheckedChange={() => handleToggleStatus(combo)}
+                    checked={combo.is_branch_active}
+                    onCheckedChange={() => handleToggleStatus(combo, branchId)}
                   />
                 </TableCell>
                 <TableCell>
@@ -125,6 +153,29 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
           branch={{ id: branchId, name: "" }} // TODO: Pasar el nombre de la sucursal real
         />
       )}
+
+      <AddCombosToBranchDialog
+        isOpen={isAddComboDialogOpen}
+        onOpenChange={setIsAddComboDialogOpen}
+        branchId={branchId}
+        onSuccess={handleAddComboSuccess}
+      />
+
+      {/* {branchCombos && branchCombos.length > 0 && (
+        <BulkEditBranchComboPricesDialog
+          isOpen={isBulkEditPricesDialogOpen}
+          onOpenChange={setIsBulkEditPricesDialogOpen}
+          branchId={branchId}
+          branchCombos={branchCombos.map(combo => ({
+            id: combo.id,
+            name: combo.name,
+            selling_price: combo.selling_price,
+            is_branch_active: combo.is_active_in_branch,
+            branch_combo_id: combo.branch_combo_id,
+          }))}
+          onSuccess={handleBulkEditPricesSuccess}
+        />
+      )} */}
     </Card>
   );
 };

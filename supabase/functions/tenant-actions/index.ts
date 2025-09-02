@@ -2270,13 +2270,14 @@ serve(async (req) => {
       }
 
       case 'get_attentions': {
-        const { branchId, userId, statusFilter, dateFilter } = payload;
+        const { branchId, userId, statusFilter, dateRange } = payload;
         const { data, error } = await supabaseAdmin.rpc('get_attentions_with_details', {
           p_tenant_id: tenantId,
           p_branch_id: branchId === 'all' ? null : branchId,
           p_user_id: userId === 'all' ? null : userId,
           p_status_filter: statusFilter === 'all' ? null : statusFilter,
-          p_date_filter: dateFilter
+          p_start_date: dateRange?.from,
+          p_end_date: dateRange?.to
         });
 
         if (error) throw error;
@@ -2284,24 +2285,14 @@ serve(async (req) => {
         break;
       }
 
-      case 'get_attention_dates': {
-        const { branchId, userId } = payload;
+      case 'get_attention_datetimes': {
+        const { p_branch_id, p_user_id } = payload;
+        const { data, error } = await supabaseAdmin.rpc('get_attention_datetimes', {
+            p_branch_id: p_branch_id === 'all' ? null : p_branch_id,
+            p_user_id: p_user_id === 'all' ? null : p_user_id
+        });
 
-        let query = supabaseAdmin
-          .from('attentions')
-          .select('attention_date, status')
-          .in('status', ['Confirmada', 'En Proceso', 'Completada', 'Pagada'])
-          .eq('tenant_id', tenantId);
-
-        if (branchId && branchId !== 'all') {
-          query = query.eq('branch_id', branchId);
-        }
-
-        // This part of the logic will be handled in the frontend
-        // as it requires creating a Set, which is not directly supported in the same way here.
-        const { data, error } = await query;
         if (error) throw error;
-
         responseData = data;
         break;
       }
@@ -2742,6 +2733,317 @@ serve(async (req) => {
           products: productsWithCommissions,
           services: servicesWithCommissions,
         };
+        break;
+      }
+
+      case 'GET_SUBSCRIPTION_STATUS': {
+        if (!tenantId) {
+          throw new Error('Tenant ID is required to get subscription status.');
+        }
+
+        // Llama a la función RPC para obtener el estado de la suscripción
+        const { data, error } = await supabaseAdmin.rpc('get_subscription_status_for_tenant', {
+          p_tenant_id: tenantId
+        });
+
+        if (error) {
+          console.error('Error calling get_subscription_status_for_tenant RPC:', error);
+          throw error;
+        }
+        
+        // La RPC devuelve directamente el objeto que necesitamos
+        responseData = data;
+        break;
+      }
+
+      case 'start_attention_service': {
+        const { serviceId } = payload;
+        if (!serviceId) {
+          throw new Error('serviceId (attention_service_id) is required to start a service.');
+        }
+
+        // Llama a la función RPC que ya existe en la base de datos
+        const { error } = await supabaseAdmin.rpc('start_service', {
+          p_attention_service_id: serviceId
+        });
+
+        if (error) {
+          console.error('Error calling start_service RPC:', error);
+          throw error;
+        }
+        
+        responseData = { success: true, message: 'Servicio iniciado correctamente.' };
+        break;
+      }
+
+      case 'finish_attention_service': {
+        const { serviceId } = payload;
+        if (!serviceId) {
+          throw new Error('serviceId (attention_service_id) is required to finish a service.');
+        }
+
+        // Llama a la función RPC que ya existe en la base de datos
+        const { error } = await supabaseAdmin.rpc('end_service', {
+          p_attention_service_id: serviceId
+        });
+
+        if (error) {
+          console.error('Error calling end_service RPC:', error);
+          throw error;
+        }
+        
+        responseData = { success: true, message: 'Servicio finalizado correctamente.' };
+        break;
+      }
+
+      case 'call_client_for_service': {
+        const { serviceId } = payload; // This is attention_service_id
+        if (!serviceId) {
+          throw new Error('serviceId (attention_service_id) is required to call a client.');
+        }
+
+        // 1. Get attention details from the serviceId
+        const { data: attentionService, error: serviceError } = await supabaseAdmin
+          .from('attention_services')
+          .select(`
+            user_id,
+            attentions (
+              branch_id,
+              client_id
+            )
+          `)
+          .eq('id', serviceId)
+          .single();
+
+        if (serviceError) throw new Error(`Error fetching attention details: ${serviceError.message}`);
+        if (!attentionService) throw new Error(`Attention service with ID ${serviceId} not found.`);
+
+        const { user_id: stylist_id, attentions } = attentionService;
+        const { branch_id, client_id } = attentions;
+
+        if (!stylist_id || !branch_id || !client_id) {
+          throw new Error('Could not determine stylist, branch, or client from the attention service.');
+        }
+
+        // 2. Insert a new record into the turns table
+        const { error: turnError } = await supabaseAdmin
+          .from('turns')
+          .insert({
+            tenant_id: tenantId, // tenantId is available from the JWT
+            branch_id,
+            client_id,
+            stylist_id,
+            status: 'called', // Assuming 'called' is a valid status
+            called_at: new Date().toISOString()
+          });
+
+        if (turnError) {
+          console.error('Error creating turn:', turnError);
+          throw new Error(`Could not create turn: ${turnError.message}`);
+        }
+
+        responseData = { success: true, message: 'Cliente llamado a la TV correctamente.' };
+        break;
+      }
+
+      case 'create_branch': {
+        const { data, error } = await supabaseAdmin.rpc('create_branch', {
+          p_tenant_id: tenantId, // Aseguramos el tenant_id del usuario autenticado
+          ...payload
+        });
+
+        if (error) {
+          console.error('Error calling create_branch RPC:', error);
+          throw error;
+        }
+        
+        responseData = data;
+        break;
+      }
+
+      case 'update_branch': {
+        const { data, error } = await supabaseAdmin.rpc('update_branch', {
+          p_tenant_id: tenantId, // Aseguramos el tenant_id del usuario autenticado
+          ...payload
+        });
+
+        if (error) {
+          console.error('Error calling update_branch RPC:', error);
+          throw error;
+        }
+        
+        responseData = data;
+        break;
+      }
+
+      case 'update_equipment_maintenance_record': {
+        const { recordId, updates } = payload;
+        if (!recordId || !updates) {
+          throw new Error('recordId and updates are required.');
+        }
+
+        const { error } = await supabaseAdmin.rpc('update_equipment_maintenance_record', {
+          p_tenant_id: tenantId,
+          p_record_id: recordId,
+          p_updates: updates
+        });
+
+        if (error) {
+          console.error('Error calling update_equipment_maintenance_record RPC:', error);
+          throw error;
+        }
+        
+        responseData = { success: true, message: 'Registro de mantenimiento actualizado.' };
+        break;
+      }
+
+      case 'delete_equipment_maintenance_record': {
+        const { recordId } = payload;
+        if (!recordId) {
+          throw new Error('recordId is required.');
+        }
+
+        const { error } = await supabaseAdmin.rpc('delete_equipment_maintenance_record', {
+          p_tenant_id: tenantId,
+          p_record_id: recordId
+        });
+
+        if (error) {
+          console.error('Error calling delete_equipment_maintenance_record RPC:', error);
+          throw error;
+        }
+        
+        responseData = { success: true, message: 'Registro de mantenimiento eliminado.' };
+        break;
+      }
+
+      case 'get_product_sellers': {
+        const { productId, branchId, tenantId: payloadTenantId } = payload;
+        if (!productId || !branchId || !payloadTenantId) {
+          throw new Error('productId, branchId, and tenantId are required.');
+        }
+
+        const { data, error } = await supabaseAdmin.rpc('get_product_sellers', {
+          p_product_id: productId,
+          p_branch_id: branchId,
+          p_tenant_id: payloadTenantId
+        });
+
+        if (error) {
+          console.error('Error calling get_product_sellers RPC:', error);
+          throw error;
+        }
+        
+        responseData = data;
+        break;
+      }
+
+      case 'get_master_combos': {
+        const { data, error } = await supabaseAdmin
+          .from('combos')
+          .select(`
+            *,
+            combo_items (
+              *,
+              product:products (name),
+              service:services (name)
+            )
+          `)
+          .eq('tenant_id', tenantId);
+
+        if (error) {
+          console.error('Error fetching master combos:', error);
+          throw error;
+        }
+        
+        responseData = data;
+        break;
+      }
+
+      case 'update_combo_branch_prices': {
+        const { combo_id, branch_id, price_overrides } = payload;
+        if (!combo_id || !branch_id || !price_overrides) {
+          throw new Error('combo_id, branch_id, and price_overrides are required.');
+        }
+
+        const { error } = await supabaseAdmin.rpc('update_combo_branch_prices', {
+          p_tenant_id: tenantId,
+          p_combo_id: combo_id,
+          p_branch_id: branch_id,
+          p_price_overrides: price_overrides
+        });
+
+        if (error) {
+          console.error('Error calling update_combo_branch_prices RPC:', error);
+          throw error;
+        }
+        
+        responseData = { success: true, message: 'Precios de ítems del combo actualizados.' };
+        break;
+      }
+
+      case 'update_tenant': {
+        const { id, values } = payload;
+        if (!id || !values) {
+          throw new Error('Tenant ID and values are required for update.');
+        }
+
+        // Asegurarnos de que el tenant que se intenta actualizar es el mismo del token
+        if (id !== tenantId) {
+          throw new Error('Authorization error: You can only update your own tenant.');
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('tenants')
+          .update(values)
+          .eq('id', tenantId)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating tenant:', error);
+          throw error;
+        }
+        
+        responseData = data;
+        break;
+      }
+
+      case 'update_attention_items': {
+        const { p_payload } = payload;
+        if (!p_payload) {
+          throw new Error('p_payload is required.');
+        }
+
+        const { error } = await supabaseAdmin.rpc('update_attention_items', {
+          p_payload
+        });
+
+        if (error) {
+          console.error('Error calling update_attention_items RPC:', error);
+          throw error;
+        }
+        
+        responseData = { success: true, message: 'Ítems de la atención actualizados.' };
+        break;
+      }
+
+      case 'GET_SUBSCRIPTION_PLANS': {
+        const { tenantId: payloadTenantId } = payload;
+        if (!payloadTenantId) {
+          throw new Error('tenantId is required.');
+        }
+
+        const { data, error } = await supabaseAdmin.rpc('get_subscription_plans_for_tenant', {
+          p_tenant_id: payloadTenantId
+        });
+
+        if (error) {
+          console.error('Error calling get_subscription_plans_for_tenant RPC:', error);
+          throw error;
+        }
+        
+        responseData = data;
         break;
       }
 

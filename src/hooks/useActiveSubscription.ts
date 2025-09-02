@@ -10,41 +10,35 @@ export interface SubscriptionInfo {
   plan_name: string | null;
 }
 
-const fetchSubscriptionStatus = async (tenantId: string): Promise<SubscriptionInfo | null> => {
-  console.log(`[Hook] Fetching status for tenantId: ${tenantId}`);
-  if (!tenantId) {
-    console.log("[Hook] No tenantId provided, returning null.");
-    return null;
-  }
+const fetchSubscriptionStatus = async (): Promise<SubscriptionInfo | null> => {
 
-  const { data, error } = await supabase
-    .rpc('get_tenant_subscription_status', { p_tenant_id: tenantId });
+  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+    body: { action: 'GET_SUBSCRIPTION_STATUS' },
+  });
 
-  console.log("[Hook] Raw response from RPC:", { data, error });
+  console.log("[Hook] Raw response from Edge Function:", { data, error });
 
   if (error) {
-    console.error('[Hook] Error fetching subscription status:', error);
+    console.error('[Hook] Error fetching subscription status from Edge Function:', error);
     throw new Error(error.message);
   }
-
-  if (!data || data.length === 0) {
-    console.log("[Hook] No data returned from RPC, resolving to 'cancelado'.");
-    return { status: 'cancelado', end_date: null };
-  }
-
-  const result = data[0] as SubscriptionInfo;
   
-  return result;
+  // The Edge Function now handles the 'no data' case and returns a default object
+  return data as SubscriptionInfo;
 };
 
 export const useSubscriptionStatus = (tenantId: string | null | undefined) => {
-  return useQuery<SubscriptionInfo | null, Error>({
+  const queryResult = useQuery<SubscriptionInfo | null, Error>({
     queryKey: ['subscription_status', tenantId],
-    queryFn: () => fetchSubscriptionStatus(tenantId as string),
+    queryFn: () => fetchSubscriptionStatus(),
     enabled: !!tenantId,
     // Configuración para revalidación agresiva
     staleTime: 1000 * 60 * 5, // 5 minutos
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+
+  console.log("[Hook] useSubscriptionStatus result:", { data: queryResult.data, isLoading: queryResult.isLoading, isError: queryResult.isError, error: queryResult.error });
+
+  return queryResult;
 };

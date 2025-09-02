@@ -5,45 +5,80 @@ import { useBranchFilterStore } from "@/stores/branchFilterStore";
 import { Tables } from "@/integrations/supabase/types";
 import { callTenantAction } from "@/lib/tenantActions";
 
-// TODO: Definir interfaces más detalladas para Attention, AttentionService, etc.
+export type AttentionService = Tables<'attention_services'> & {
+  services: Tables<'services'>;
+  users: Tables<'users'>;
+  combo_id: string | null;
+  status_history: {
+    status: string;
+    created_at: string;
+  }[];
+};
+
 export type Attention = Tables<'attentions'> & {
   clients: Tables<'clients'>;
-  attention_services: (Tables<'attention_services'> & {
-    services: Tables<'services'>;
-    users: Tables<'users'>;
-  })[];
+  attention_datetime: string;
+  attention_services: AttentionService[];
   attention_products: (Tables<'attention_products'> & {
     products: Tables<'products'>;
+    users: Tables<'users'>;
+    combo_id: string | null;
+  })[];
+  attention_combos: (Tables<'attention_combos'> & {
+    combos: (Tables<'combos'> & {
+      combo_items: (Tables<'combo_items'> & {
+        services: Tables<'services'> | null;
+        products: Tables<'products'> | null;
+      })[];
+    });
+    users: Tables<'users'>;
   })[];
 };
 
 interface CreateAttentionParams {
-  client_id: string;
-  attention_date: string;
-  attention_time: string;
-  notes?: string;
-  services: {
-    service_id: string;
-    user_id: string;
-    service_price: number;
-    notes?: string;
-  }[];
+  p_client_id: string;
+  p_attention_datetime: string; // Changed from date and time to a single datetime string
+  p_notes: string | null;
+  p_services: any[];
+  p_products: any[];
+  p_combos: any[];
+  p_branch_id: string; // branch_id is required
+  p_total_amount: number;
 }
 
-export const useAttentions = (userId?: string, statusFilter?: string, dateFilter?: Date) => {
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
+export const useAttentions = (userId?: string, statusFilter?: string, dateRange?: DateRange) => {
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
   const tenantId = currentAssignment?.tenant_id;
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return undefined;
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      return undefined;
+    }
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
   return useQuery<Attention[], Error>({
-    queryKey: ['attentions', tenantId, selectedBranchId, userId, statusFilter, dateFilter],
-    queryFn: () => callTenantAction('get_attentions', { 
-      branchId: selectedBranchId, 
-      userId, 
-      statusFilter, 
-      dateFilter: dateFilter ? dateFilter.toISOString().split('T')[0] : undefined 
-    }),
-    enabled: !!tenantId,
+    queryKey: ['attentions', tenantId, selectedBranchId, userId, statusFilter, dateRange],
+    queryFn: async () => {
+      const data = await callTenantAction('get_attentions', { 
+        branchId: selectedBranchId, 
+        userId, 
+        statusFilter, 
+        dateRange: {
+          from: formatDate(dateRange?.from),
+          to: formatDate(dateRange?.to)
+        }
+      });
+      return data;
+    },
+    enabled: !!tenantId && !!dateRange?.from && !!dateRange?.to,
   });
 };
 
@@ -57,17 +92,18 @@ export const useAttentionDates = (userId?: string) => {
     queryFn: async () => {
       if (!tenantId) return {};
       
-      const data = await callTenantAction('get_attention_dates', { 
-        branchId: selectedBranchId, 
-        userId 
+      const data = await callTenantAction('get_attention_datetimes', { 
+        p_branch_id: selectedBranchId, 
+        p_user_id: userId 
       });
 
-      const datesByStatus = (data || []).reduce((acc, { attention_date, status }) => {
-        if (attention_date) {
-            if (!acc[attention_date]) {
-              acc[attention_date] = new Set();
+      const datesByStatus = (data || []).reduce((acc, { attention_datetime, status }) => {
+        if (attention_datetime) {
+            const dateStr = attention_datetime.split('T')[0];
+            if (!acc[dateStr]) {
+              acc[dateStr] = new Set();
             }
-            acc[attention_date].add(status);
+            acc[dateStr].add(status);
         }
         return acc;
       }, {} as Record<string, Set<string>>);
@@ -93,15 +129,18 @@ export const useCreateAttention = () => {
         throw new Error("No se ha seleccionado una sucursal válida.");
       }
 
-      return callTenantAction('create_full_attention', {
-        p_client_id: params.client_id,
-        p_attention_date: params.attention_date,
-        p_attention_time: params.attention_time,
-        p_notes: params.notes,
-        p_services: JSON.stringify(params.services),
-        p_tenant_id: currentAssignment.tenant_id,
-        p_branch_id: selectedBranchId,
+      const response = await callTenantAction('create_full_attention', {
+        p_client_id: params.p_client_id,
+        p_attention_datetime: params.p_attention_datetime,
+        p_notes: params.p_notes,
+        p_services: params.p_services,
+        p_products: params.p_products,
+        p_combos: params.p_combos,
+        p_tenant_id: currentAssignment?.tenant_id,
+        p_branch_id: params.p_branch_id,
+        p_total_amount: params.p_total_amount,
       });
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });

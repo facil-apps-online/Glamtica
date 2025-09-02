@@ -130,9 +130,10 @@ serve(async (req) => {
     const tokens = await tokenResponse.json();
     const accessToken = tokens.access_token;
 
-    // 6. Create dynamic folder structure
+    // 6. Create dynamic folder structure: Glamtica -> Tenant ID -> Context -> Context ID
     const rootFolderId = await findOrCreateFolder('Glamtica', null, accessToken);
-    const contextFolderId = await findOrCreateFolder(uploadContext, rootFolderId, accessToken);
+    const tenantFolderId = await findOrCreateFolder(tenantId, rootFolderId, accessToken);
+    const contextFolderId = await findOrCreateFolder(uploadContext, tenantFolderId, accessToken);
     const finalFolderId = await findOrCreateFolder(contextId, contextFolderId, accessToken);
 
     // 7. Upload the file to Google Drive
@@ -188,7 +189,37 @@ serve(async (req) => {
       }
     );
 
-    // 9. Return only the fileId
+    // 9. Post-upload processing based on context
+    switch (uploadContext) {
+      case 'ServiceEvidence': {
+        const { branchId, userId } = body;
+        if (!branchId || !userId) {
+          throw new Error('Missing branchId or userId for ServiceEvidence context.');
+        }
+        const { error: dbError } = await supabaseAdmin
+          .from('attention_service_evidences')
+          .insert({
+            attention_service_id: contextId,
+            google_drive_file_id: fileId,
+            file_name: newFileName,
+            mime_type: mimeType,
+            tenant_id: tenantId,
+            branch_id: branchId,
+            user_id: userId,
+          });
+        if (dbError) {
+          // TODO: Consider deleting the file from Google Drive if DB insert fails
+          throw new Error(`Failed to save evidence record to database: ${dbError.message}`);
+        }
+        break;
+      }
+      // Add other cases for different upload contexts here in the future
+      default:
+        // No specific post-upload action required for this context
+        break;
+    }
+
+    // 10. Return only the fileId
     return new Response(JSON.stringify({ success: true, fileId: fileId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

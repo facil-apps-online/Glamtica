@@ -51,7 +51,7 @@ export default function Reports() {
           <p className="text-2xl font-bold">{formatPrice(generalReport?.totalRevenue || 0)}</p>
         </CardContent></Card>
         <Card><CardContent className="p-6">
-          <p className="text-sm font-medium text-muted-foreground">Atenciones Completadas</p>
+          <p className="text-sm font-medium text-muted-foreground">Atenciones Finalizadas</p>
           <p className="text-2xl font-bold">{generalReport?.completedAttentions || 0}</p>
         </CardContent></Card>
         <Card><CardContent className="p-6">

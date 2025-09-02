@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     console.log(`[user-actions] Antes del switch - Acción: ${action}, Payload:`, payload);
 
     switch (action) {
-      case 'login-tenant': {
+            case 'login-tenant': {
         console.log('Iniciando acción: login-tenant');
         const { email, password, platform_id } = payload;
         if (!email || !password || !platform_id) {
@@ -61,46 +61,95 @@ Deno.serve(async (req) => {
         });
 
         if (error) {
-          console.error('Error en signInWithPassword:', error.message);
-          // Personalizar el mensaje para credenciales inválidas
-          if (error.message.includes('Invalid login credentials')) {
-            throw new Error('El correo electrónico o la contraseña no son correctos.');
-          }
+          console.error('Error detallado en signInWithPassword:', error);
           throw new Error(`Error de autenticación: ${error.message}`);
         }
 
         if (!data.session || !data.user) {
             throw new Error('Inicio de sesión fallido, no se recibió una sesión o usuario.');
         }
+        
+        // SIMPLIFICADO: Devolver solo la sesión y el usuario. El cliente se encargará
+        // de llamar a 'get-active-assignments' para obtener los datos de la sesión.
+        responseData = { success: true, session: data.session, user: data.user };
+        break;
+      }
 
-        // --- LÓGICA OPTIMIZADA PARA OBTENER ASIGNACIONES HIDRATADAS ---
-        console.log('Usuario autenticado. Obteniendo asignaciones hidratadas desde la base de datos...');
-        const authenticatedUser = data.user;
-
-        // Llamar a la nueva función RPC para obtener las asignaciones ya hidratadas
-        const { data: hydratedAssignments, error: rpcError } = await supabaseAdmin.rpc(
-          'get_hydrated_user_assignments',
-          { p_user_id: authenticatedUser.id }
-        );
-
-        if (rpcError) {
-          console.error('Error al llamar a get_hydrated_user_assignments:', rpcError.message);
-          throw new Error(`Error al obtener las asignaciones del usuario: ${rpcError.message}`);
+      case 'confirm-user-email': {
+        console.log('Iniciando acción: confirm-user-email');
+        const { email, platform_id } = payload;
+        if (!email || !platform_id) {
+          throw new Error('El email y el platform_id son obligatorios para confirmar el email.');
         }
 
-        console.log('Asignaciones hidratadas recibidas:', hydratedAssignments);
+        const synthetic_email = `${platform_id}_${email}`;
 
-        // Crear un nuevo objeto de usuario con las asignaciones hidratadas, sin modificar el original
-        const userWithHydratedAssignments = {
-          ...authenticatedUser,
-          app_metadata: {
-            ...authenticatedUser.app_metadata,
-            assignments: hydratedAssignments || [],
-          },
+        const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
+        if (findError) throw new Error(`Error al buscar usuario: ${findError.message}`);
+        if (!users || users.length === 0) throw new Error('No se encontró un usuario con ese correo electrónico para esta plataforma.');
+        
+        const userToConfirm = users[0];
+
+        const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          userToConfirm.id,
+          { email_confirm: true }
+        );
+
+        if (updateError) throw new Error(`Error al confirmar el email del usuario: ${updateError.message}`);
+        
+        responseData = { success: true, message: 'Email de usuario confirmado exitosamente.', user: updatedUser.user };
+        break;
+      }
+
+      case 'switch-assignment': {
+        console.log('Iniciando acción: switch-assignment');
+        const { userId, newAssignmentId } = payload;
+        if (!userId || !newAssignmentId) {
+          throw new Error('El userId y el newAssignmentId son obligatorios.');
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('user_assignments')
+          .select('id')
+          .eq('id', newAssignmentId)
+          .eq('user_id', userId)
+          .single();
+
+        if (error || !data) {
+          console.error('Error al verificar la asignación:', error);
+          throw new Error('La asignación seleccionada no es válida para este usuario.');
+        }
+
+        responseData = { success: true, message: 'Asignación verificada exitosamente.' };
+        break;
+      }
+
+      case 'update-user-settings': {
+        console.log('Iniciando acción: update-user-settings');
+        const { userId, metadata } = payload;
+        if (!userId || !metadata) {
+          throw new Error('El userId y los metadatos son obligatorios.');
+        }
+
+        const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (getUserError) throw new Error(`Error de Supabase al obtener usuario: ${getUserError.message}`);
+
+        const updatedUserMetadata = {
+          ...currentUser.user_metadata,
+          ...metadata,
         };
 
-        // Devolver la sesión y el objeto de usuario con las asignaciones ya hidratadas
-        responseData = { success: true, session: data.session, user: userWithHydratedAssignments };
+        const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { user_metadata: updatedUserMetadata }
+        );
+
+        if (updateError) {
+          console.error('Error al actualizar user_metadata:', updateError.message);
+          throw new Error(`Error al actualizar metadatos del usuario: ${updateError.message}`);
+        }
+
+        responseData = { success: true, message: 'Configuración de usuario actualizada.', user: updatedUserResponse.user };
         break;
       }
 
@@ -233,33 +282,22 @@ Deno.serve(async (req) => {
           throw new Error('El userId y el newAssignmentId son obligatorios.');
         }
 
-        const { data: { user }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (getUserError) throw new Error(`Error al obtener usuario: ${getUserError.message}`);
+        // Verificar que la asignación le pertenece al usuario en la tabla correcta.
+        const { data, error } = await supabaseAdmin
+          .from('user_assignments')
+          .select('id')
+          .eq('id', newAssignmentId)
+          .eq('user_id', userId)
+          .single();
 
-        const assignments = user.app_metadata.assignments || [];
-        const targetAssignmentIndex = assignments.findIndex(a => a.assignment_id === newAssignmentId);
-
-        if (targetAssignmentIndex === -1) {
+        if (error || !data) {
+          console.error('Error al verificar la asignación:', error);
           throw new Error('La asignación seleccionada no es válida para este usuario.');
         }
 
-        const newAssignmentsOrder = [...assignments];
-        const [targetAssignment] = newAssignmentsOrder.splice(targetAssignmentIndex, 1);
-        newAssignmentsOrder.unshift(targetAssignment);
-        console.log('[Edge Function] Nueva orden de asignaciones:', newAssignmentsOrder);
-
-        const updatedAppMetadata = { ...user.app_metadata, assignments: newAssignmentsOrder };
-        console.log('[Edge Function] app_metadata a enviar a updateUserById:', updatedAppMetadata);
-
-        const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          userId,
-          { app_metadata: updatedAppMetadata }
-        );
-
-        if (updateError) throw new Error(`Error al actualizar app_metadata: ${updateError.message}`);
-        console.log('[Edge Function] app_metadata del usuario actualizado después de updateUserById:', updatedUser.user.app_metadata);
-
-        responseData = { success: true, message: 'Asignación cambiada exitosamente.', user: updatedUser.user };
+        // Si la verificación es exitosa, no necesitamos hacer nada más.
+        // El cliente ya actualizó el estado localmente.
+        responseData = { success: true, message: 'Asignación verificada exitosamente.' };
         break;
       }
 
@@ -405,23 +443,9 @@ Deno.serve(async (req) => {
       }
 
       case 'invite_or_assign_user_to_tenant': {
-        console.log('[DEBUG] Iniciando acción: invite_or_assign_user_to_tenant');
-        console.log('[DEBUG] Payload completo recibido:', JSON.stringify(payload, null, 2));
-
+        console.log('Iniciando acción: invite_or_assign_user_to_tenant');
         const { email, password, tenantId, roleId, branchId, platformId, firstName, lastName } = payload;
 
-        console.log(`[DEBUG] Variables extraídas:
-          - email: ${email}
-          - password: ${password ? 'Presente' : 'No presente'}
-          - tenantId: ${tenantId}
-          - roleId: ${roleId}
-          - branchId: ${branchId}
-          - platformId: ${platformId}
-          - firstName: ${firstName}
-          - lastName: ${lastName}
-        `);
-
-        // La validación de branchId se maneja en la lógica, aquí solo los campos esenciales.
         if (!email || !tenantId || !roleId || !platformId) {
           throw new Error('Los campos email, tenantId, roleId y platformId son obligatorios.');
         }
@@ -429,124 +453,85 @@ Deno.serve(async (req) => {
         const synthetic_email = `${platformId}_${email}`;
         let userToAssign;
 
-        // 1. Buscar o crear el usuario en auth.users
-        if (password) {
-          // Escenario: Nuevo usuario, se proporciona contraseña. Crear directamente.
+        // 1. Find or create the user in auth.users
+        const { data: existingUsers, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
+        if (findError) throw new Error(`Error al buscar usuario: ${findError.message}`);
+
+        if (existingUsers && existingUsers.users.length > 0) {
+          userToAssign = existingUsers.users[0];
+          console.log(`[invite_or_assign_user_to_tenant] Usuario existente encontrado:`, userToAssign.id);
+        } else {
           const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: synthetic_email,
-            password: password,
-            email_confirm: true, // Lo confirmamos de inmediato
+            password: password || crypto.randomUUID(), // Create with a random password if not provided
+            email_confirm: true,
             user_metadata: {
-              // Guardamos datos importantes para la UI
               real_email: email,
               first_name: firstName,
               last_name: lastName,
             },
-            app_metadata: {
-              // Inicializamos las asignaciones con la primera
-              assignments: [] 
-            }
           });
 
-          if (authError) {
-            throw new Error(`Error al crear el usuario: ${authError.message}`);
-          }
-          if (!authData.user) {
-            throw new Error('No se pudo obtener el objeto de usuario después de la creación.');
-          }
+          if (authError) throw new Error(`Error al crear el usuario: ${authError.message}`);
           userToAssign = authData.user;
-          console.log(`[invite_or_assign_user_to_tenant] Usuario creado directamente:`, userToAssign);
-        } else {
-          // Escenario: Usuario existente, no se proporciona contraseña
-          const { data: { users }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
-          if (findError || !users || users.length === 0) {
-            throw new Error(`No se encontró un usuario con el email ${email} para esta plataforma.`);
-          }
-          userToAssign = users[0];
-          console.log(`[invite_or_assign_user_to_tenant] userToAssign después de búsqueda:`, userToAssign);
+          console.log(`[invite_or_assign_user_to_tenant] Usuario nuevo creado:`, userToAssign.id);
         }
 
         if (!userToAssign) {
           throw new Error('No se pudo obtener el usuario para asignar.');
         }
 
-        // 2. Gestionar asignaciones en app_metadata
-        const appMetadata = userToAssign.app_metadata || {};
-        const currentAssignments = appMetadata.assignments || [];
+        // 2. Check if an assignment already exists in the user_assignments table
+        const { data: existingAssignment, error: checkError } = await supabaseAdmin
+          .from('user_assignments')
+          .select('id')
+          .eq('user_id', userToAssign.id)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
 
-        // Verificar si el usuario ya tiene una asignación para este tenant
-        const existingAssignment = currentAssignments.find(
-          (assignment: any) => assignment.tenant_id === tenantId
-        );
+        if (checkError) throw new Error(`Error al verificar asignaciones existentes: ${checkError.message}`);
+        if (existingAssignment) throw new Error('Este usuario ya es miembro de este negocio.');
 
-        if (existingAssignment) {
-          throw new Error('Este usuario ya es miembro de este negocio.');
+        // 3. Insert the new assignment into the user_assignments table
+        const { error: insertError } = await supabaseAdmin
+          .from('user_assignments')
+          .insert({
+            tenant_id: tenantId,
+            user_id: userToAssign.id,
+            role_id: roleId,
+            branch_id: branchId || null,
+            status: 'active',
+            platform_id: platformId
+          });
+
+        if (insertError) {
+            console.error("Error inserting new assignment:", insertError);
+            // Potentially delete the user if they were just created to keep things clean
+            throw new Error(`Error al crear la asignación: ${insertError.message}`);
         }
 
-        // Crear nueva asignación
-        const newAssignment = {
-          assignment_id: crypto.randomUUID(),
-          tenant_id: tenantId,
-          role_id: roleId,
-          branch_id: branchId || null, // Asegurarse de que sea null si no se proporciona
-          status: 'active', // Estado inicial de la asignación
-        };
-
-        const updatedAssignments = [...currentAssignments, newAssignment];
-
-        const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          userToAssign.id,
-          { app_metadata: { ...appMetadata, assignments: updatedAssignments } }
-        );
-
-        if (updateError) {
-          throw new Error(`Error al actualizar las asignaciones del usuario: ${updateError.message}`);
-        }
-
-        responseData = { success: true, message: 'Usuario asignado correctamente.', user: updatedUser.user };
+        responseData = { success: true, message: 'Usuario asignado correctamente.', user: userToAssign };
         break;
       }
 
       case 'update-assignments': {
-        console.log('Iniciando acción: update-assignments');
         const { userId, tenantId, assignments } = payload;
-
         if (!userId || !tenantId || !assignments) {
           throw new Error('userId, tenantId y assignments son obligatorios.');
         }
 
-        // 1. Obtener el usuario actual para fusionar el app_metadata existente
-        const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (getUserError) throw new Error(`Error de Supabase al obtener usuario: ${getUserError.message}`);
+        const { error } = await supabaseAdmin.rpc('update_user_assignments', {
+          p_user_id: userId,
+          p_tenant_id: tenantId,
+          p_new_assignments: assignments
+        });
 
-        const currentAppMetadata = currentUser.app_metadata || {};
-        const existingAssignments = currentAppMetadata.assignments || [];
-
-        // 2. Filtrar las asignaciones existentes para excluir las del tenant actual
-        const assignmentsForOtherTenants = existingAssignments.filter(
-          (assignment: any) => assignment.tenant_id !== tenantId
-        );
-
-        // 3. Combinar las asignaciones de otros tenants con las nuevas asignaciones del tenant actual
-        // Asegurarse de que cada asignación tenga un assignment_id
-        const assignmentsWithIds = assignments.map((a: any) => ({
-          ...a,
-          assignment_id: a.assignment_id || crypto.randomUUID(),
-        }));
-        const updatedAssignments = [...assignmentsForOtherTenants, ...assignmentsWithIds];
-
-        // 4. Actualizar el app_metadata del usuario
-        const { data: updatedUserResponse, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          userId,
-          { app_metadata: { ...currentAppMetadata, assignments: updatedAssignments } }
-        );
-
-        if (updateError) {
-          console.error('Error al actualizar app_metadata con asignaciones:', updateError.message);
-          throw new Error(`Error al actualizar asignaciones del usuario: ${updateError.message}`);
+        if (error) {
+          console.error('Error calling update_user_assignments RPC:', error);
+          throw new Error('Ocurrió un error al actualizar las asignaciones.');
         }
 
-        responseData = { success: true, message: 'Asignaciones de usuario actualizadas.', user: updatedUserResponse.user };
+        responseData = { success: true, message: 'Asignaciones de usuario actualizadas.' };
         break;
       }
 
@@ -581,6 +566,51 @@ Deno.serve(async (req) => {
         }
 
         responseData = { success: true, message: 'Usuario de Auth creado exitosamente.', user: authData.user };
+        break;
+      }
+
+      case 'get-active-assignments': {
+        console.log('Iniciando acción: get-active-assignments');
+        const { userId, platformId } = payload;
+        if (!userId || !platformId) {
+          throw new Error('El userId y el platformId son obligatorios.');
+        }
+
+        const { data: assignments, error: queryError } = await supabaseAdmin
+          .from('user_assignments')
+          .select(`
+            assignment_id:id,
+            tenant_id,
+            role_id,
+            branch_id,
+            status,
+            tenants!inner ( name, platform_id ),
+            roles ( name, display_name ),
+            branches ( name )
+          `)
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .eq('tenants.platform_id', platformId);
+
+        if (queryError) {
+          console.error('Error al obtener las asignaciones activas:', queryError.message);
+          throw new Error(`Error al consultar las asignaciones: ${queryError.message}`);
+        }
+
+        const mappedAssignments = assignments.map((a: any) => ({
+          assignment_id: a.assignment_id,
+          tenant_id: a.tenant_id,
+          tenant_name: a.tenants.name || 'N/A',
+          platform_id: platformId,
+          role_id: a.role_id,
+          role_name: a.roles.name || 'N/A',
+          role_display_name: a.roles.display_name || 'N/A',
+          branch_id: a.branch_id || null,
+          branch_name: a.branches?.name || null,
+          status: a.status,
+        }));
+
+        responseData = { success: true, assignments: mappedAssignments };
         break;
       }
 

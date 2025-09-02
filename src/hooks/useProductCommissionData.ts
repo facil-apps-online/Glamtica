@@ -40,17 +40,22 @@ const callTenantAction = async (action: string, payload: any) => {
  * Devuelve, para un producto dado, todos los usuarios que pueden venderlo
  * y la comisión que tienen en cada sucursal donde el producto está disponible.
  * @param productId - El ID del producto maestro.
+ * @param branchId - El ID de la sucursal para filtrar los resultados.
  */
-export const useProductCommissionData = (productId?: string) => {
+export const useProductCommissionData = (productId?: string, branchId?: string) => {
   return useQuery<TransformedProductCommissionData[], Error>({
-    queryKey: ['product_commission_data', productId],
+    queryKey: ['product_commission_data', productId, branchId],
     queryFn: async () => {
-      const rawCommissionData: ProductCommissionData[] = await callTenantAction('get_product_commission_matrix', { productId });
+      const rawCommissionData: ProductCommissionData[] = await callTenantAction('get_product_commission_matrix', { productId, branchId });
 
       const transformedDataMap = new Map<string, TransformedProductCommissionData>();
 
       rawCommissionData.forEach(userData => {
         userData.branches.forEach(branchData => {
+          // Only process branches that match the provided branchId, if branchId is provided
+          if (branchId && branchData.branch_id !== branchId) {
+            return; 
+          }
           if (!transformedDataMap.has(branchData.branch_id)) {
             transformedDataMap.set(branchData.branch_id, {
               branch_id: branchData.branch_id,
@@ -74,7 +79,7 @@ export const useProductCommissionData = (productId?: string) => {
 
       return sortedTransformedData;
     },
-    enabled: !!productId,
+    enabled: !!productId && !!branchId,
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos
   });
 };

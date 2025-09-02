@@ -1,0 +1,22 @@
+
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { callTenantAction } from '@/lib/tenantActions';
+
+export const useProductSellers = (
+  productId?: string,
+  branchId?: string,
+) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useQuery({
+    queryKey: ['product-sellers', productId, branchId],
+    queryFn: () => callTenantAction('get_product_sellers', { 
+      productId, 
+      branchId, 
+      tenantId 
+    }),
+    enabled: !!productId && !!branchId,
+  });
+};

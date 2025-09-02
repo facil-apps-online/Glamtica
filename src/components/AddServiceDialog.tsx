@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useBranchServices } from "@/hooks/useServices";
+import { useBranchServicesAndCombos } from "@/hooks/useServices";
 import { useAvailableUsers } from "@/hooks/useAvailableUsers";
 import { useAddAttentionService } from "@/hooks/useAttentionServices";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +27,7 @@ export const AddServiceDialog = ({ children, attentionId }: AddServiceDialogProp
 
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
-  const { data: branchServices } = useBranchServices();
+  const { data: branchServicesAndCombos } = useBranchServicesAndCombos();
   // TODO: La fecha y hora de la atención deben pasarse como props
   const { data: availableUsers } = useAvailableUsers(serviceId, new Date().toISOString(), "12:00", duration);
   const addServiceMutation = useAddAttentionService();
@@ -64,10 +64,16 @@ export const AddServiceDialog = ({ children, attentionId }: AddServiceDialogProp
     setServiceId(value);
     setUserId("");
     
-    const service = branchServices?.find(s => s.id === value);
-    if (service) {
-      setServicePrice(service.selling_price);
-      setDuration(service.duration_minutes);
+    const selectedItem = branchServicesAndCombos?.find(item => item.id === value);
+    if (selectedItem) {
+      if (selectedItem.type === 'service') {
+        setServicePrice(selectedItem.selling_price);
+        setDuration(selectedItem.duration_minutes);
+      } else if (selectedItem.type === 'combo') {
+        setServicePrice(selectedItem.total_price);
+        // For combos, duration might be sum of items or fixed, assuming 0 for now
+        setDuration(0);
+      }
     }
   };
 
@@ -87,11 +93,20 @@ export const AddServiceDialog = ({ children, attentionId }: AddServiceDialogProp
             <Select value={serviceId} onValueChange={handleServiceChange} required>
               <SelectTrigger><SelectValue placeholder="Selecciona un servicio" /></SelectTrigger>
               <SelectContent>
-                {branchServices?.map((service) => (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.name}
-                  </SelectItem>
-                ))}
+                <optgroup label="Servicios">
+                  {branchServicesAndCombos?.filter(item => item.type === 'service').map((service) => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.name}
+                    </SelectItem>
+                  ))}
+                </optgroup>
+                <optgroup label="Combos">
+                  {branchServicesAndCombos?.filter(item => item.type === 'combo').map((combo) => (
+                    <SelectItem key={combo.id} value={combo.id}>
+                      {combo.name}
+                    </SelectItem>
+                  ))}
+                </optgroup>
               </SelectContent>
             </Select>
           </div>

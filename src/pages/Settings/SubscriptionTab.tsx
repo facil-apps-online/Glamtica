@@ -11,11 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { supabase } from '@/lib/supabaseClient';
 
 // New component to display the current subscription status
 const CurrentSubscriptionStatus = () => {
   const { currentAssignment } = useAuth();
-  const { data: subscription, isLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
+  const { data: subscriptionArray, isLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
+  const subscription = subscriptionArray?.[0];
 
   if (isLoading) {
     return <Skeleton className="h-24 w-full mb-8" />;
@@ -61,6 +63,8 @@ export function SubscriptionTab() {
   const { profile, currentAssignment, loading: isAuthLoading } = useAuth();
   const { data: plans, isLoading: arePlansLoading } = useTenantSubscriptionPlans();
   
+  
+
   const { formatPrice } = usePriceFormat();
   const { toast } = useToast();
   
@@ -163,6 +167,11 @@ export function SubscriptionTab() {
               </CardHeader>
               <CardContent className="flex-grow flex flex-col">
                 <div className="mb-4">
+                  {plan.calculated_promotional_price > plan.calculated_price && plan.calculated_promotional_price > 0 && (
+                    <span className="text-xl text-muted-foreground line-through mr-2">
+                      {formatPrice(plan.calculated_promotional_price)}
+                    </span>
+                  )}
                   <span className="text-4xl font-bold">
                     {formatPrice(plan.calculated_price)}
                   </span>

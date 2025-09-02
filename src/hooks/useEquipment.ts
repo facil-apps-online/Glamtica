@@ -31,23 +31,23 @@ const callTenantAction = async (action: string, payload?: any) => {
 };
 
 export const useEquipment = (searchTerm?: string, showInactive?: boolean, typeId?: string, brandId?: string) => {
-  const { session } = useAuth();
+  const { currentAssignment } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch equipment
-  const { data: equipment, isLoading: loading, refetch: refreshEquipment } = useQuery<Equipment[]>({ 
-    queryKey: ['equipment', searchTerm, showInactive, typeId, brandId], // Include filters in query key
+  const { data: equipment, isLoading: loading, refetch: refreshEquipment } = useQuery<Equipment[]>({
+    queryKey: ['equipment', currentAssignment?.tenant_id, searchTerm, showInactive, typeId, brandId], // Include tenant_id and other filters in query key
     queryFn: async () => {
-      if (!session?.user?.app_metadata?.assignments?.[0]?.tenant_id) return [];
-      return callTenantAction('get_equipment', { 
+      if (!currentAssignment?.tenant_id) return [];
+      return callTenantAction('get_equipment', {
         searchTerm: searchTerm || null,
         showInactive: showInactive || false,
         typeId: typeId || null,
         brandId: brandId || null
       });
     },
-    enabled: !!session?.user?.app_metadata?.assignments?.[0]?.tenant_id,
+    enabled: !!currentAssignment?.tenant_id, // Enable only when tenant_id is available
   });
 
   // Add equipment

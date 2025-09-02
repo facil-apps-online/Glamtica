@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION get_attentions_with_details(
   p_tenant_id uuid,
   p_branch_id uuid,
@@ -56,7 +55,6 @@ BEGIN
     af.client_id,
     af.attention_date,
     af.attention_time,
-    af.status,
     af.notes,
     (
       SELECT json_build_object(

@@ -11,7 +11,7 @@ export const AttentionStatusFilter = ({ selectedStatus, onStatusChange }: Attent
     { value: "pending", label: "Solo Pendientes" },
     { value: "Confirmada", label: "Confirmadas" },
     { value: "En Proceso", label: "En Proceso" },
-    { value: "Completada", label: "Completadas" },
+    { value: "Finalizada", label: "Finalizadas" },
     { value: "Pagada", label: "Pagadas" },
     { value: "Cancelada", label: "Canceladas" }
   ];
@@ -25,6 +25,7 @@ export const AttentionStatusFilter = ({ selectedStatus, onStatusChange }: Attent
       onValueChange={onStatusChange}
       searchPlaceholder="Buscar estado..."
       emptyText="No se encontraron estados"
+      className="flex flex-col h-16"
     />
   );
 };
