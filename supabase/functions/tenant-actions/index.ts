@@ -992,6 +992,41 @@ serve(async (req) => {
         break;
       }
 
+      case 'create_branch': {
+        // The payload is already prefixed with p_ which matches the RPC function
+        const { data, error } = await supabaseAdmin.rpc('create_branch', {
+          p_tenant_id: tenantId,
+          ...payload
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_branch': {
+        // The payload is already prefixed with p_ which matches the RPC function
+        const { data, error } = await supabaseAdmin.rpc('update_branch', payload);
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'calculate_batch_activation_proration': {
+        const { branchIds } = payload;
+        if (!branchIds || branchIds.length === 0) {
+          throw new Error('Branch IDs are required for proration calculation.');
+        }
+        
+        const { data, error } = await supabaseAdmin.rpc('calculate_batch_activation_proration', {
+          p_tenant_id: tenantId,
+          p_branch_ids: branchIds,
+        });
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       case 'get_users_for_tenant': {
         const { tenantId: requestedTenantId } = payload;
         if (!requestedTenantId) throw new Error('Tenant ID is required for get_users_for_tenant.');
@@ -1512,7 +1547,7 @@ serve(async (req) => {
         if (commissionsError) throw commissionsError;
 
         // Fetch all users for the tenant using the RPC
-        const users = await callRpc(supabaseAdmin, 'get_tenant_users', { target_tenant_id: tenantId });
+        const users = await callRpc(supabaseAdmin, 'get_tenant_users', { p_target_tenant_id: tenantId });
         const usersMap = new Map(users.map((user: any) => [user.user_id, user]));
 
         responseData = commissions.map((commission: any) => ({
@@ -1537,7 +1572,7 @@ serve(async (req) => {
         if (commissionsError) throw commissionsError;
 
         // Fetch all users for the tenant using the RPC
-        const users = await callRpc(supabaseAdmin, 'get_tenant_users', { target_tenant_id: tenantId });
+        const users = await callRpc(supabaseAdmin, 'get_tenant_users', { p_target_tenant_id: tenantId });
         const usersMap = new Map(users.map((user: any) => [user.user_id, user]));
 
         responseData = commissions.map((commission: any) => ({
@@ -2644,95 +2679,17 @@ serve(async (req) => {
 
       case 'get_branch_commission_matrix': {
         const { branchId } = payload;
-        if (!branchId) throw new Error('Branch ID is required.');
+        if (!branchId) {
+          throw new Error('Branch ID is required for get_branch_commission_matrix.');
+        }
+        
+        const { data, error } = await supabaseAdmin.rpc('get_branch_commission_matrix', {
+          tenant_id_param: tenantId,
+          branch_id_param: branchId,
+        });
 
-        // Fetch all users for the tenant using the RPC
-        const tenantUsers = await callRpc(supabaseAdmin, 'get_tenant_users', { target_tenant_id: tenantId });
-        const tenantUsersMap = new Map(tenantUsers.map((user: any) => [user.user_id, user]));
-
-        // Filter users assigned to the current branch
-        const branchUsers = tenantUsers.filter((user: any) =>
-          user.branch_id === branchId
-        ).map((user: any) => ({
-          user_id: user.user_id,
-          user_name: user.first_name || user.email || 'Unknown User', // Use first_name from RPC
-        }));
-
-        // Fetch active products in the branch
-        const { data: branchProducts, error: bpError } = await supabaseAdmin
-          .from('branch_products')
-          .select('product_id, products(name)')
-          .eq('tenant_id', tenantId)
-          .eq('branch_id', branchId)
-          .eq('is_active', true);
-        if (bpError) throw bpError;
-
-        const productsWithCommissions = await Promise.all(branchProducts.map(async (bp: any) => {
-          const { data: productCommissions, error: pcError } = await supabaseAdmin
-            .from('product_user_commissions')
-            .select('*')
-            .eq('tenant_id', tenantId)
-            .eq('branch_id', branchId)
-            .eq('product_id', bp.product_id);
-          if (pcError) throw pcError;
-
-          const usersWithCommissions = branchUsers.map(user => { // Use branchUsers
-            const commission = productCommissions.find(pc => pc.user_id === user.user_id);
-            return {
-              user_id: user.user_id,
-              user_name: user.user_name,
-              commission_rate: commission?.commission_rate || null,
-              commission_id: commission?.id || null,
-            };
-          });
-
-          return {
-            product_id: bp.product_id,
-            product_name: bp.products?.name || 'Unknown Product',
-            users: usersWithCommissions,
-          };
-        }));
-
-        // Fetch active services in the branch
-        const { data: branchServices, error: bsError } = await supabaseAdmin
-          .from('branch_services')
-          .select('service_id, services(name)')
-          .eq('tenant_id', tenantId)
-          .eq('branch_id', branchId)
-          .eq('is_active', true);
-        if (bsError) throw bsError;
-
-        const servicesWithCommissions = await Promise.all(branchServices.map(async (bs: any) => {
-          const { data: serviceCommissions, error: scError } = await supabaseAdmin
-            .from('service_user_commissions')
-            .select('*')
-            .eq('tenant_id', tenantId)
-            .eq('branch_id', branchId)
-            .eq('service_id', bs.service_id);
-          if (scError) throw scError;
-
-          const usersWithCommissions = branchUsers.map(user => { // Use branchUsers
-            const commission = serviceCommissions.find(sc => sc.user_id === user.user_id);
-            return {
-              user_id: user.user_id,
-              user_name: user.user_name,
-              commission_rate: commission?.commission_rate || null,
-              can_perform: commission?.can_perform || false,
-              commission_id: commission?.id || null,
-            };
-          });
-
-          return {
-            service_id: bs.service_id,
-            service_name: bs.services?.name || 'Unknown Service',
-            users: usersWithCommissions,
-          };
-        }));
-
-        responseData = {
-          products: productsWithCommissions,
-          services: servicesWithCommissions,
-        };
+        if (error) throw error;
+        responseData = data;
         break;
       }
 

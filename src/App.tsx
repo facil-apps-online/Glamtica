@@ -10,6 +10,7 @@ import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import BranchesPage from "@/pages/BranchesPage";
+import NewBranchPage from "@/pages/NewBranchPage";
 import EditBranchPage from "@/pages/EditBranchPage";
 import BranchSettingsPage from "@/pages/BranchSettingsPage";
 import NotFound from "@/pages/NotFound";
@@ -85,6 +86,7 @@ function App() {
                   <Route path="settings" element={<Settings />} />
                   <Route path="settings/tv-management" element={<TvManagementPage />} />
                   <Route path="branches" element={<BranchesPage />} />
+                  <Route path="branches/new" element={<NewBranchPage />} />
                   <Route path="branches/:branchId/edit" element={<EditBranchPage />} />
                   <Route path="branches/:branchId/settings" element={<BranchSettingsPage />} />
                   <Route path="translations" element={<TranslationAdmin />} />

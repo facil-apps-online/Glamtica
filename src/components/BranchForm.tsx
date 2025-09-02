@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useMemo, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,10 +11,14 @@ import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
 import { MapDisplay } from '@/components/MapDisplay';
 import { Save, Store } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTimezones } from '@/hooks/useTimezones';
+import { SearchableSelect } from './ui/searchable-select';
+import { useTenantById } from '@/hooks/useTenants';
 
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre de la sucursal es requerido."),
+  timezone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   contact_phone: z.string().optional().nullable(),
   whatsapp_phone: z.string().optional().nullable(),
@@ -42,11 +46,16 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
   const { toast } = useToast();
   const createBranchMutation = useCreateBranch(tenantId);
   const updateBranchMutation = useUpdateBranch(tenantId);
+  const { data: timezones } = useTimezones();
+  const { data: tenant } = useTenantById(tenantId);
+
+  const timezoneOptions = useMemo(() => timezones?.map(t => ({ value: t.name, label: t.name })) || [], [timezones]);
 
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      timezone: '',
       address: '',
       contact_phone: '',
       whatsapp_phone: '',
@@ -69,6 +78,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
     if (branchToEdit) {
       form.reset({
         name: branchToEdit.name || '',
+        timezone: branchToEdit.timezone || '',
         address: branchToEdit.address || '',
         contact_phone: branchToEdit.contact_phone || '',
         whatsapp_phone: branchToEdit.whatsapp_phone || '',
@@ -82,8 +92,10 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
         latitude: branchToEdit.latitude || null,
         longitude: branchToEdit.longitude || null,
       });
+    } else if (tenant) {
+      form.setValue('timezone', tenant.default_timezone);
     }
-  }, [branchToEdit, form]);
+  }, [branchToEdit, tenant, form]);
 
   const handlePlaceSelected = (place: google.maps.places.PlaceResult) => {
     const get = (type: string) => place.address_components?.find(c => c.types.includes(type))?.long_name || '';
@@ -104,6 +116,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
         await updateBranchMutation.mutateAsync({
           p_branch_id: branchToEdit.id,
           p_name: values.name,
+          p_timezone: values.timezone,
           p_address: values.address,
           p_contact_phone: values.contact_phone,
           p_whatsapp_phone: values.whatsapp_phone,
@@ -121,6 +134,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
       } else {
         await createBranchMutation.mutateAsync({
           p_name: values.name,
+          p_timezone: values.timezone,
           p_address: values.address,
           p_contact_phone: values.contact_phone,
           p_whatsapp_phone: values.whatsapp_phone,
@@ -160,11 +174,23 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
                   <CardHeader>
                     <CardTitle className="text-lg">Información General</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
                     <FormField control={form.control} name="name" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nombre de la Sucursal</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <Controller name="timezone" control={form.control} render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Zona Horaria</FormLabel>
+                        <SearchableSelect 
+                          options={timezoneOptions} 
+                          value={timezoneOptions.find(t => t.value === field.value) || null} 
+                          onChange={(option) => field.onChange(option ? option.value : '')} 
+                          placeholder="Selecciona una zona horaria"
+                        />
                         <FormMessage />
                       </FormItem>
                     )} />

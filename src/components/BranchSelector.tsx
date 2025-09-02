@@ -11,7 +11,8 @@ export const BranchSelector: React.FC = () => {
   if (authLoading) {
     return <Skeleton className="h-10 w-48" />;
   }
-  const { data: branches, isLoading } = useBranches(currentAssignment?.tenant_id || '');
+  
+  const { data: branches, isLoading } = useBranches(currentAssignment?.tenant_id || '', true);
   const { selectedBranchId, setBranchId } = useBranchFilterStore();
 
   if (isLoading) {

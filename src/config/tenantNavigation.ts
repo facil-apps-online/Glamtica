@@ -34,12 +34,6 @@ export const tenantNavigationConfig = [
         url: "/clients",
         icon: Users,
         roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
-      },
-      {
-        title: "Servicios",
-        url: "/services",
-        icon: Scissors,
-        roles: ['tenant_super_admin', 'tenant_admin']
       }
     ]
   },
@@ -69,6 +63,12 @@ export const tenantNavigationConfig = [
   {
     group: "Inventario",
     items: [
+      {
+        title: "Servicios",
+        url: "/services",
+        icon: Scissors,
+        roles: ['tenant_super_admin', 'tenant_admin']
+      },
       {
         title: "Productos",
         url: "/products",

@@ -29,12 +29,12 @@ export interface Branch {
 }
 
 // GET branches by calling the RPC function
-export const useBranches = (tenantIdParam?: string) => {
+export const useBranches = (tenantIdParam?: string, activeOnly = false) => {
   const { session, currentAssignment } = useAuth();
   const tenantId = tenantIdParam || currentAssignment?.tenant_id;
 
   return useQuery<Branch[], Error>({
-    queryKey: ['branches', tenantId],
+    queryKey: ['branches', tenantId, activeOnly],
     queryFn: async () => {
       if (!tenantId) return [];
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
@@ -50,10 +50,19 @@ export const useBranches = (tenantIdParam?: string) => {
       });
 
       const json = await response.json();
+
       if (!response.ok) {
         throw new Error(json.error || 'Failed to fetch branches');
       }
-      return Array.isArray(json.data) ? json.data as Branch[] : [];
+      
+      // FIX: The API returns the array directly, not in a 'data' property.
+      const branches = Array.isArray(json) ? json as Branch[] : [];
+      
+      if (activeOnly) {
+        return branches.filter(branch => branch.status === 'active');
+      }
+      
+      return branches;
     },
     enabled: !!tenantId,
   });
@@ -80,6 +89,7 @@ export const useCreateBranch = (tenantIdParam?: string) => {
       p_physical_postal_code?: string | null;
       p_latitude?: number | null;
       p_longitude?: number | null;
+      p_timezone?: string | null;
     }) => {
       if (!tenantId) throw new Error("Tenant ID not available");
       if (!session) throw new Error("Session not available");
@@ -92,7 +102,7 @@ export const useCreateBranch = (tenantIdParam?: string) => {
         },
         body: JSON.stringify({
           action: 'create_branch',
-          payload: vars,
+          payload: { ...vars, p_tenant_id: tenantId },
         }),
       });
 
@@ -130,6 +140,7 @@ export const useUpdateBranch = (tenantIdParam?: string) => {
       p_physical_postal_code?: string | null;
       p_latitude?: number | null;
       p_longitude?: number | null;
+      p_timezone?: string | null;
     }) => {
       if (!tenantId) throw new Error("Tenant ID not available");
       if (!session) throw new Error("Session not available");
@@ -252,12 +263,27 @@ export const useCalculateBatchProration = (tenantIdParam: string, branchIds: str
     queryKey: ['batchProration', tenantId, branchIds],
     queryFn: async () => {
       if (!tenantId || !branchIds || branchIds.length === 0) return null;
-      const { data, error } = await supabase.rpc('calculate_batch_activation_proration', {
-        p_tenant_id: tenantId,
-        p_branch_ids: branchIds,
+      if (!session) throw new Error("Session not available");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'calculate_batch_activation_proration',
+          payload: { branchIds: branchIds },
+        }),
       });
-      if (error) throw new Error(error.message);
-      return data;
+
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to calculate proration');
+      }
+      
+      return json;
     },
     enabled: options.enabled && !!tenantId && branchIds.length > 0,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
