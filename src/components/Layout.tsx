@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionStatus } from "@/hooks/useActiveSubscription";
+import { useTenantSettings } from "@/hooks/useTenantSettings"; // Importar el nuevo hook
 import { ReadOnlyProvider } from "@/contexts/ReadOnlyContext";
 import { ReadOnlyBanner } from "./ReadOnlyBanner";
 import { GracePeriodBanner } from "./GracePeriodBanner";
@@ -12,21 +13,24 @@ import { CancelledBanner } from "./CancelledBanner";
 import { tenantNavigationConfig } from "@/config/tenantNavigation"; // Importar la config del menú
 
 export function Layout() {
-  const { user } = useAuth();
-  const { data: subscription, isLoading } = useSubscriptionStatus(user?.tenant_id);
+  const { currentAssignment } = useAuth();
+  const { data: subscription, isLoading: isSubscriptionLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
+  const { data: settings, isLoading: areSettingsLoading } = useTenantSettings(); // Usar el nuevo hook
   const navigate = useNavigate();
   const location = useLocation();
 
   const status = subscription?.status;
-  const isAdmin = user?.role === 'tenant_super_admin' || user?.role === 'tenant_admin';
+  const isAdmin = currentAssignment?.role_name === 'tenant_super_admin' || currentAssignment?.role_name === 'tenant_admin';
   const isReadOnly = status === 'suspendido' || status === 'cancelado';
   const showGraceBanner = status === 'gracia' && isAdmin;
 
   React.useEffect(() => {
-    if (!isLoading && status === 'suspendido' && location.pathname !== '/subscribe') {
+    if (!isSubscriptionLoading && status === 'suspendido' && location.pathname !== '/subscribe') {
       navigate('/subscribe');
     }
-  }, [status, isLoading, location.pathname, navigate]);
+  }, [status, isSubscriptionLoading, location.pathname, navigate]);
+
+  const isLoading = isSubscriptionLoading || areSettingsLoading;
 
   if (isLoading) {
     return (
@@ -43,7 +47,7 @@ export function Layout() {
           <AppSidebar 
             menuConfig={tenantNavigationConfig}
             homeUrl="/"
-            title={user?.tenant_name || "Panel de Tenant"}
+            title={settings?.commercial_name || currentAssignment?.tenant_name || "Panel de Tenant"}
             subtitle="Glamtica.app"
           />
           <div className="flex-1 flex flex-col">
@@ -52,7 +56,7 @@ export function Layout() {
             {showGraceBanner && <GracePeriodBanner />}
             {status === 'cancelado' && <CancelledBanner />}
 
-            <main className="flex-1 overflow-auto relative p-4 sm:p-6">
+            <main className="flex-1 overflow-auto relative p-2 sm:p-4 md:p-6">
               <Outlet />
               {status === 'cancelado' && (
                 <div 

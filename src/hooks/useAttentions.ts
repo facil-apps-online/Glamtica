@@ -92,8 +92,11 @@ export const useAttentionDates = (userId?: string) => {
     queryFn: async () => {
       if (!tenantId) return {};
       
+      // Ensure a valid branch_id is always passed, using 'all' as the convention for no specific branch.
+      const branchIdToSend = selectedBranchId || 'all';
+
       const data = await callTenantAction('get_attention_datetimes', { 
-        p_branch_id: selectedBranchId, 
+        p_branch_id: branchIdToSend, 
         p_user_id: userId 
       });
 

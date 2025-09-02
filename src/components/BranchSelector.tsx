@@ -4,6 +4,7 @@ import { useBranches } from '@/hooks/useBranches';
 import { useBranchFilterStore } from '@/stores/branchFilterStore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from './ui/skeleton';
+import { Store } from 'lucide-react';
 
 export const BranchSelector: React.FC = () => {
   const { currentAssignment, loading: authLoading } = useAuth();
@@ -24,8 +25,13 @@ export const BranchSelector: React.FC = () => {
       value={selectedBranchId}
       onValueChange={(value) => setBranchId(value)}
     >
-      <SelectTrigger className="w-full md:w-48">
-        <SelectValue placeholder="Seleccionar sucursal..." />
+      <SelectTrigger 
+        className="w-10 h-10 p-0 sm:w-auto sm:px-3 flex items-center justify-center sm:justify-start max-w-[150px] sm:max-w-xs"
+      >
+        <Store className="h-4 w-4 sm:mr-2" />
+        <div className="hidden sm:inline-block">
+          <SelectValue placeholder="Seleccionar sucursal..." />
+        </div>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">Todas las Sucursales</SelectItem>

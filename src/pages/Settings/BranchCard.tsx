@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MoreVertical, Archive, Power, MapPin, Phone, Mail, Globe } from 'lucide-react';
-import { ActivateBranchDialog } from './ActivateBranchDialog';
+import { ActivateBranchesBatchDialog } from './ActivateBranchesBatchDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useArchiveBranch } from '@/hooks/useBranches';
@@ -102,11 +102,10 @@ export function BranchCard({ branch, onSuccess, tenantId }) {
         {branch.is_main_branch && <p className="text-sm text-slate-500 mt-2">Esta es tu sucursal principal.</p>}
       </CardContent>
 
-      <ActivateBranchDialog
+      <ActivateBranchesBatchDialog
         isOpen={isActivateDialogOpen}
         onOpenChange={setActivateDialogOpen}
-        branchId={branch.id}
-        branchName={branch.name}
+        branchIds={[branch.id]}
         onSuccess={onSuccess}
         tenantId={tenantId}
       />

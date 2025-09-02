@@ -10,6 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageHeader } from '@/components/PageHeader';
 
 export default function BranchesPage() {
   const { user } = useAuth();
@@ -56,13 +57,15 @@ export default function BranchesPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestionar Sucursales</h1>
+      <PageHeader
+        title="Gestionar Sucursales"
+        subtitle="Añade, edita y administra las ubicaciones de tu negocio."
+      >
         <Button onClick={handleAdd}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Añadir Sucursal
         </Button>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
         <p>Cargando sucursales...</p>

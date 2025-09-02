@@ -83,7 +83,7 @@ export const AttentionItemCard = ({
   };
 
   const canPerformActions = type !== 'product' && type !== 'combo' && attentionStatus !== 'Cancelada' && attentionStatus !== 'Pagada' && attentionStatus !== 'Finalizada';
-  const canUploadEvidence = type === 'service' && !['Cancelada', 'Pagada', 'Finalizada'].includes(attentionStatus);
+  const canUploadEvidence = type === 'service';
 
   return (
     <>
@@ -117,10 +117,10 @@ export const AttentionItemCard = ({
                 </div>
             </div>
             <div className={`flex items-center gap-2 ${isMobile ? 'self-end' : ''}`}>
-                {status && (status === 'En Proceso' || status === 'Finalizado') ? (
+                {type !== 'combo' && status && (status === 'En Proceso' || status === 'Finalizado') ? (
                     <ServiceTimer status={status} statusHistory={statusHistory} />
                 ) : (
-                    status && getStatusBadge(status, attentionStatus)
+                    type !== 'combo' && status && getStatusBadge(status, attentionStatus)
                 )}
                 {(canPerformActions || canUploadEvidence) && (
                   <DropdownMenu>

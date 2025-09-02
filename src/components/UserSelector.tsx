@@ -22,10 +22,10 @@ export const UserSelector = ({ selectedUserId, onUserChange, users }: UserSelect
       placeholder="Selecciona un usuario"
       options={userOptions}
       value={selectedUserId}
-      onValue-Change={onUserChange}
+      onValueChange={onUserChange}
       searchPlaceholder="Buscar usuario..."
       emptyText="No se encontraron usuarios"
-      className="flex flex-col h-16"
+      className="flex flex-col"
     />
   );
 };

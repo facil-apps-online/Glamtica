@@ -37,19 +37,7 @@ serve(async (req) => {
   );
   console.log("After supabaseAdmin createClient. supabaseAdmin is:", supabaseAdmin ? "VALID" : "NULL/UNDEFINED");
 
-  // --- START DIAGNOSTIC TEST ---
-  try {
-    console.log("Running diagnostic: Attempting to select from 'users' table...");
-    const { data: testData, error: testError } = await supabaseAdmin.from('users').select('*').limit(1);
-    if (testError) {
-      console.error("Diagnostic Test Error (users table):", testError);
-    } else {
-      console.log("Diagnostic Test Success (users table): Data received.", testData);
-    }
-  } catch (diagError: any) {
-    console.error("Diagnostic Test Exception (users table):", diagError.message);
-  }
-  // --- END DIAGNOSTIC TEST ---
+  // --- DIAGNOSTIC TEST REMOVED ---
 
   const { action, payload } = await req.json();
   console.log("Received action:", action);
@@ -1030,43 +1018,19 @@ serve(async (req) => {
       case 'get_users_for_tenant': {
         const { tenantId: requestedTenantId } = payload;
         if (!requestedTenantId) throw new Error('Tenant ID is required for get_users_for_tenant.');
+        
         const userAssignments = decodedToken.app_metadata?.assignments || [];
         const hasAccess = userAssignments.some( (assignment: any) => assignment.tenant_id === requestedTenantId);
         if (!hasAccess) {
           throw new Error('Acceso denegado: El usuario no tiene asignaciones para el tenant solicitado.');
         }
-        const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
-        if (usersError) throw usersError;
-        const allUsers = usersData.users;
-        const tenantUsers = allUsers.filter(user => 
-          user.app_metadata?.assignments?.some((assignment: any) => assignment.tenant_id === requestedTenantId)
-        );
-        const [{ data: roles, error: rolesError }, { data: branches, error: branchesError }] = await Promise.all([
-          supabaseAdmin.from('roles').select('id, name, display_name'),
-          supabaseAdmin.from('branches').select('id, name'),
-        ]);
-        if (rolesError) console.error("Error fetching roles:", rolesError.message);
-        if (branchesError) console.error("Error fetching branches:", branchesError.message);
-        responseData = tenantUsers.flatMap(user => {
-          const assignmentsForTenant = user.app_metadata?.assignments?.filter((assignment: any) => assignment.tenant_id === requestedTenantId) || [];
-          return assignmentsForTenant.map((assignment: any) => {
-            const role = roles?.find((r: any) => r.id === assignment.role_id);
-            const branch = branches?.find((b: any) => b.id === assignment.branch_id);
-            return {
-              assignment_id: assignment.assignment_id,
-              user_id: user.id,
-              email: user.user_metadata?.real_email || user.user_metadata?.email || user.email || '',
-              first_name: user.user_metadata?.first_name || null,
-              last_name: user.user_metadata?.last_name || null,
-              role_id: assignment.role_id || null,
-              role_name: role?.name || null,
-              role_display_name: role?.display_name || null,
-              branch_id: assignment.branch_id || null,
-              branch_name: branch?.name || null,
-              status: assignment.status,
-            };
-          });
+
+        const { data, error } = await supabaseAdmin.rpc('get_tenant_users', { 
+          p_target_tenant_id: requestedTenantId 
         });
+
+        if (error) throw error;
+        responseData = data;
         break;
       }
 
@@ -1264,10 +1228,10 @@ serve(async (req) => {
         const { searchTerm, showInactive, category, brandId } = payload;
         const { data, error } = await supabaseAdmin.rpc('search_products', {
           p_tenant_id: tenantId,
-          p_search_term: searchTerm,
-          p_show_inactive: showInactive,
-          p_category_name: category,
-          p_brand_id: brandId === '' ? null : brandId,
+          p_search_term: searchTerm || null,
+          p_show_inactive: showInactive || false,
+          p_category_name: category || null,
+          p_brand_id: brandId === '' ? null : (brandId || null),
         });
         if (error) throw error;
         responseData = data;

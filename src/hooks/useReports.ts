@@ -96,22 +96,24 @@ export const useUserPerformanceReport = (dateFrom: string, dateTo: string) => {
   });
 };
 
-export const useStockReport = () => {
+export const useStockReport = (dateFrom: string, dateTo: string) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery<StockReportItem[], Error>({
-    queryKey: ['stock-report', tenantId],
+    queryKey: ['stock-report', tenantId, dateFrom, dateTo],
     queryFn: async () => {
       if (!tenantId) throw new Error("Parámetros inválidos");
 
       const { data, error } = await supabase.rpc('get_stock_report', { 
-        p_tenant_id: tenantId
+        p_tenant_id: tenantId,
+        p_date_from: dateFrom,
+        p_date_to: dateTo
       });
 
       if (error) throw new Error(error.message);
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!dateFrom && !!dateTo,
   });
 };

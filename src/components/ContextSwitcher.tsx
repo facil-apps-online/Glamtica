@@ -14,10 +14,8 @@ import { ChevronsUpDown, Building, Check } from 'lucide-react';
 export const ContextSwitcher: React.FC = () => {
   const { assignments, currentAssignment, switchAssignment, profile } = useAuth();
 
-  
-
   if (!profile || !assignments || assignments.length <= 1) {
-    return null; // No mostrar si no hay múltiples asignaciones activas
+    return null;
   }
 
   const currentContextName = currentAssignment?.branch_name 
@@ -27,16 +25,19 @@ export const ContextSwitcher: React.FC = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-full md:w-auto justify-start">
-          <Building className="mr-2 h-4 w-4" />
-          <span className="truncate">{currentContextName}</span>
-          <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+        <Button 
+          variant="outline" 
+          className="w-10 h-10 p-0 sm:w-auto sm:px-3 flex items-center justify-center sm:justify-start max-w-[220px] sm:max-w-xs"
+        >
+          <Building className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline truncate">{currentContextName}</span>
+          <ChevronsUpDown className="hidden sm:inline ml-auto h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>Cambiar de Contexto</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {assignments.map((assignment) => { // Usar assignments directamente
+        {assignments.map((assignment) => {
           const contextName = assignment.branch_name
             ? `${assignment.tenant_name} (${assignment.branch_name})`
             : assignment.tenant_name;

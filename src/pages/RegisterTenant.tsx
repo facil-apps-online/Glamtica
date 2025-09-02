@@ -187,10 +187,12 @@ export default function RegisterTenant() {
     }
   }, [form]);
 
-  const debouncedCheckUser = useDebounce(checkUserExists, 500);
+  const debouncedCheckUser = useCallback(useDebounce(checkUserExists, 500), [checkUserExists]);
 
   useEffect(() => {
-    debouncedCheckUser(adminEmail);
+    if (adminEmail) {
+      debouncedCheckUser(adminEmail);
+    }
   }, [adminEmail, debouncedCheckUser]);
 
   useEffect(() => {

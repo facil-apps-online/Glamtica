@@ -29,6 +29,10 @@ import { useAuth } from "@/contexts/AuthContext"; // Importar useAuth
 
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { useCompletePurchase } from "@/hooks/useCompletePurchase"; // Importar useCompletePurchase
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { MoreHorizontal } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 
@@ -44,6 +48,8 @@ export default function Inventory() {
   const { data: settings, isLoading: isLoadingSettings } = useSettings(); // Obtener la configuración
   const { currentAssignment } = useAuth(); // Obtener el currentAssignment para el tenantId
   const tenantId = currentAssignment?.tenant_id; // Asegurarse de que tenantId esté disponible
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const completePurchaseMutation = useCompletePurchase();
 
@@ -80,15 +86,10 @@ export default function Inventory() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">
-            Gestión de Inventario
-          </h1>
-          <p className="text-slate-600 mt-2">
-            Control completo de productos, stock y proveedores por sucursal
-          </p>
-        </div>
+      <PageHeader
+        title="Gestión de Inventario"
+        subtitle="Control completo de productos, stock y proveedores por sucursal"
+      >
         <div className="flex gap-4 items-center">
            {purchaseIndependenceMode !== "centralized" && ( // Mostrar solo si no es centralizado
              <div className="w-64">
@@ -108,17 +109,40 @@ export default function Inventory() {
               </Select>
             </div>
            )}
-          <Button onClick={() => navigate('/inventory/suppliers')}>
-            Proveedores
-          </Button>
-          <Button onClick={() => navigate('/inventory/purchases')}>
-            Compras
-          </Button>
-          <Button onClick={() => navigate('/inventory/transfers')}>
-            Traslados
-          </Button>
+          {isMobile ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate('/inventory/suppliers')}>
+                  Proveedores
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/inventory/purchases')}>
+                  Compras
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/inventory/transfers')}>
+                  Traslados
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button onClick={() => navigate('/inventory/suppliers')}>
+                Proveedores
+              </Button>
+              <Button onClick={() => navigate('/inventory/purchases')}>
+                Compras
+              </Button>
+              <Button onClick={() => navigate('/inventory/transfers')}>
+                Traslados
+              </Button>
+            </>
+          )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Métricas principales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

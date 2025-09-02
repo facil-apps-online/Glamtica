@@ -7,6 +7,9 @@ import { TransfersTable } from "@/components/TransfersTable";
 import { ProductTransferRequestDialog } from "@/components/ProductTransferRequestDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/useBranches";
+import { PageHeader } from "@/components/PageHeader";
+import { TransfersList } from "@/components/TransfersList";
+import { useScreenSize } from "@/hooks/useScreenSize";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function TransfersPage() {
@@ -14,6 +17,8 @@ export function TransfersPage() {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const { data: branches } = useBranches(tenantId);
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -22,30 +27,32 @@ export function TransfersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
-                <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold">Gestión de Traslados</h1>
-        </div>
+      <PageHeader
+        title="Gestión de Traslados"
+        subtitle="Solicita, aprueba y gestiona transferencias de productos entre sucursales."
+        backButton={
+          <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        }
+      >
         <ProductTransferRequestDialog
             trigger={
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo Traslado
+              <Button size={isMobile ? "icon" : "default"}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline sm:ml-2">Nuevo Traslado</span>
               </Button>
             }
           />
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between">
+          <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between'}`}>
             <CardTitle>Historial de Traslados</CardTitle>
-            <div className="flex gap-4">
+            <div className={`flex ${isMobile ? 'flex-col gap-4' : 'gap-4'}`}>
               <Select onValueChange={setBranchFilter} value={branchFilter || ''}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Filtrar por sucursal" />
                 </SelectTrigger>
                 <SelectContent>
@@ -56,7 +63,7 @@ export function TransfersPage() {
                 </SelectContent>
               </Select>
               <Select onValueChange={setStatusFilter} value={statusFilter || ''}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
@@ -69,8 +76,12 @@ export function TransfersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <TransfersTable branchFilter={branchFilter} statusFilter={statusFilter} />
+        <CardContent className="p-0 sm:p-6">
+          {isMobile ? (
+            <TransfersList branchFilter={branchFilter} statusFilter={statusFilter} />
+          ) : (
+            <TransfersTable branchFilter={branchFilter} statusFilter={statusFilter} />
+          )}
         </CardContent>
       </Card>
     </div>

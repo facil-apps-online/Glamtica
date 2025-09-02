@@ -37,6 +37,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageHeader } from "@/components/PageHeader";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { PurchaseCard } from "@/components/PurchaseCard";
 
 export function PurchasesPage() {
   const navigate = useNavigate();
@@ -46,6 +49,8 @@ export function PurchasesPage() {
   const { formatPrice } = usePriceFormat();
   const cancelPurchaseMutation = useCancelPurchase();
   const updatePaymentStatusMutation = useUpdatePurchasePaymentStatus();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -101,98 +106,120 @@ export function PurchasesPage() {
   return (
     <>
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-              <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
-                  <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h1 className="text-2xl font-bold">Gestión de Compras</h1>
-          </div>
+        <PageHeader 
+          title="Gestión de Compras"
+          subtitle="Crea, gestiona y registra las compras de tus proveedores."
+          backButton={
+            <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          }
+        >
           <PurchaseDialog
               trigger={
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nueva Compra
+                <Button size={isMobile ? "icon" : "default"}>
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline sm:ml-2">Nueva Compra</span>
                 </Button>
               }
             />
-        </div>
+        </PageHeader>
 
         <Card>
           <CardHeader>
             <CardTitle>Historial de Compras</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Proveedor</TableHead>
-                  <TableHead>Sucursal</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Estado Compra</TableHead>
-                  <TableHead>Estado Pago</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead className="text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <CardContent className="p-0 sm:p-6">
+            {isMobile ? (
+              <div className="space-y-4 p-4">
                 {purchases && purchases.length > 0 ? (
                   purchases.map((purchase) => (
-                    <TableRow key={purchase.id}>
-                      <TableCell>{purchase.supplier?.name || "N/A"}</TableCell>
-                      <TableCell>{purchase.branch?.name || "N/A"}</TableCell>
-                      <TableCell>{new Date(purchase.purchase_date).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(purchase.status)}>
-                          {purchase.status === 'draft' ? 'Borrador' :
-                           purchase.status === 'completed' ? 'Finalizada' :
-                           purchase.status === 'completada_con_incidencias' ? 'Finalizada con Incidencias' :
-                           purchase.status === 'cancelled' ? 'Cancelada' :
-                           purchase.status.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getPaymentStatusVariant(purchase.payment_status)}>
-                          {purchase.payment_status === 'pagado' ? 'Pagado' : 'No Pagado'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{formatPrice(purchase.total_amount)}</TableCell>
-                      <TableCell className="text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem 
-                              onClick={() => handleReceiveClick(purchase)}
-                              disabled={purchase.status !== 'draft' && !['completed', 'completada_con_incidencias'].includes(purchase.status)}
-                            >
-                              {purchase.status === 'draft' ? 'Ver/Recibir' : 'Ver Detalles Recepción'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleCancelClick(purchase)}
-                              disabled={purchase.status !== 'draft'}
-                            >
-                              Cancelar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                    <PurchaseCard
+                      key={purchase.id}
+                      purchase={purchase}
+                      formatPrice={formatPrice}
+                      onReceiveClick={handleReceiveClick}
+                      onCancelClick={handleCancelClick}
+                    />
                   ))
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      No hay compras registradas.
-                    </TableCell>
-                  </TableRow>
+                  <div className="text-center py-8 text-muted-foreground">
+                    No hay compras registradas.
+                  </div>
                 )}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Proveedor</TableHead>
+                    <TableHead>Sucursal</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Estado Compra</TableHead>
+                    <TableHead>Estado Pago</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {purchases && purchases.length > 0 ? (
+                    purchases.map((purchase) => (
+                      <TableRow key={purchase.id}>
+                        <TableCell>{purchase.supplier?.name || "N/A"}</TableCell>
+                        <TableCell>{purchase.branch?.name || "N/A"}</TableCell>
+                        <TableCell>{new Date(purchase.purchase_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusVariant(purchase.status)}>
+                            {purchase.status === 'draft' ? 'Borrador' :
+                             purchase.status === 'completed' ? 'Finalizada' :
+                             purchase.status === 'completada_con_incidencias' ? 'Finalizada con Incidencias' :
+                             purchase.status === 'cancelled' ? 'Cancelada' :
+                             purchase.status.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getPaymentStatusVariant(purchase.payment_status)}>
+                            {purchase.payment_status === 'pagado' ? 'Pagado' : 'No Pagado'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{formatPrice(purchase.total_amount)}</TableCell>
+                        <TableCell className="text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Abrir menú</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem 
+                                onClick={() => handleReceiveClick(purchase)}
+                                disabled={purchase.status !== 'draft' && !['completed', 'completada_con_incidencias'].includes(purchase.status)}
+                              >
+                                {purchase.status === 'draft' ? 'Ver/Recibir' : 'Ver Detalles Recepción'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleCancelClick(purchase)}
+                                disabled={purchase.status !== 'draft'}
+                              >
+                                Cancelar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center">
+                        No hay compras registradas.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
         {selectedPurchase && (

@@ -188,27 +188,7 @@ export const useDeleteBranch = (tenantIdParam?: string) => {
   });
 };
 
-// ACTIVATE a branch using RPC
-export const useActivateBranch = (tenantIdParam?: string) => {
-    const queryClient = useQueryClient();
-    const { session } = useAuth();
-    const tenantId = tenantIdParam || (session?.user?.app_metadata?.tenant_id);
-  
-    return useMutation({
-      mutationFn: async (p_branch_id: string) => {
-        if (!tenantId) throw new Error("Tenant ID not available");
-        const { data, error } = await supabase.rpc('activate_branch', { 
-          p_tenant_id: tenantId, 
-          p_branch_id: p_branch_id 
-        });
-        if (error) throw new Error(error.message);
-        return data;
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['branches', tenantId] });
-      },
-    });
-  };
+
 
 // ARCHIVE a branch using RPC
 export const useArchiveBranch = (tenantIdParam?: string) => {

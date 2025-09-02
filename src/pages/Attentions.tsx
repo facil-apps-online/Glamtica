@@ -24,6 +24,7 @@ import AttentionCalendarView from "@/components/attentions/AttentionCalendarView
 import { useToast } from "@/hooks/use-toast";
 import { AttentionItemCard } from "@/components/attentions/AttentionItemCard";
 import { useScreenSize } from "@/hooks/useScreenSize";
+import { PageHeader } from "@/components/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const generateColorPalette = (count: number) => {
@@ -307,6 +308,8 @@ export default function Attentions() {
     }
   };
 
+  const isMobile = screenSize === 'mobile';
+
   const NewAttentionButton = (
     <TooltipProvider>
       <Tooltip>
@@ -315,9 +318,11 @@ export default function Attentions() {
             <Button
               onClick={handleNewAttentionClick}
               disabled={!branchIdForDialog}
+              size={isMobile ? "icon" : "default"}
               className="inline-flex items-center"
             >
-              <Plus className="mr-2 h-4 w-4" /> Nueva Atención
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline sm:ml-2">Nueva Atención</span>
             </Button>
           </span>
         </TooltipTrigger>
@@ -332,10 +337,12 @@ export default function Attentions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-primary">Agenda de Atenciones</h1>
+      <PageHeader 
+        title="Agenda de Atenciones"
+        subtitle="Gestiona y programa las citas de tus clientes."
+      >
         {NewAttentionButton}
-      </div>
+      </PageHeader>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="w-[95%] max-h-[90vh] md:w-full md:max-h-fit flex flex-col">

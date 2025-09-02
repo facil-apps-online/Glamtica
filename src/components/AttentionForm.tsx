@@ -40,7 +40,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
   const { toast } = useToast();
   const isMobile = screenSize === 'mobile';
   const isEditMode = !!attention;
-  const [clientId, setClientId] = useState(attention?.client_id || "");
+  const [clientId, setClientId] = useState(attention?.clients?.id || "");
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [attentionDateTime, setAttentionDateTime] = useState<Date | null>(
     attention ? new Date(attention.attention_datetime) : initialDate || null
@@ -78,15 +78,15 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
           user_name: `${c.users?.first_name || ''} ${c.users?.last_name || ''}`.trim(),
           price: c.price,
           quantity: c.quantity || 1,
-          notes: c.notes,
+          notes: c.notes || '', // Fallback to empty string
           item_name: c.combos?.name,
           is_existing: true,
           status: c.status,
-          start_time: c.start_time,
-          end_time: c.end_time,
-          is_parallel: c.is_parallel,
-          parallel_group_id: c.parallel_group_id,
-          offset_minutes: c.offset_minutes,
+          start_time: c.start_time || '', // Fallback to empty string
+          end_time: c.end_time || '', // Fallback to empty string
+          is_parallel: c.is_parallel || false, // Fallback to false
+          parallel_group_id: c.parallel_group_id || null, // Fallback to null
+          offset_minutes: c.offset_minutes || 0, // Fallback to 0
           items: [], // Initialize with empty items
         };
         comboMap.set(c.id, comboItem);
@@ -280,7 +280,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
     for (let i = 0; i < newItems.length; i++) {
       const item = newItems[i];
 
-      if ((item.type !== 'service' && item.type !== 'combo') || item.status !== 'Pendiente') {
+      if ((item.type !== 'service' && item.type !== 'combo')) {
         continue;
       }
 
@@ -423,7 +423,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
           product_id: i.item_id,
           quantity: i.quantity,
           unit_price: i.price,
-          commission_user_id: i.commission_user_id || null,
+          user_id: i.commission_user_id || null,
         }));
 
       const combosToUpsert = items
@@ -487,106 +487,123 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
     }
   };
 
-  const clientOptions = clients?.map(client => ({ 
-    value: client.id, 
-    label: `${client.name} - ${client.phone} - ${client.email}`,
-    shortLabel: client.name 
-  })) || [];
+  const clientOptions = useMemo(() => {
+    const options = clients?.map(client => ({ 
+      value: client.id, 
+      label: `${client.name} - ${client.phone} - ${client.email}`,
+      shortLabel: client.name 
+    })) || [];
+
+    if (isEditMode && clientId && attention?.clients) {
+      const clientExists = options.some(opt => opt.value === clientId);
+      if (!clientExists) {
+        options.unshift({
+          value: clientId,
+          label: `${attention.clients.name} - ${attention.clients.phone}`,
+          shortLabel: attention.clients.name
+        });
+      }
+    }
+    
+    return options;
+  }, [clients, isEditMode, clientId, attention]);
+
   const isAttentionEditable = isEditMode ? !['Finalizada', 'Pagada', 'Cancelada'].includes(attention!.status) : true;
 
   return (
-    <form id="attention-form" onSubmit={handleSubmit} className="space-y-4 pb-4">
-      <div className="space-y-2">
-        <FilterableSelect
-          label="Cliente"
-          placeholder="Selecciona un cliente"
-          options={clientOptions}
-          value={clientId}
-          onValueChange={setClientId}
-          onSearch={debouncedSetClientSearchTerm}
-          searchPlaceholder="Buscar por nombre, teléfono o email"
-          disabled={isEditMode}
-        />
-      </div>
-      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4 items-end`}>
-        <div className="flex flex-col space-y-2 h-20">
-          <Label htmlFor="date">Fecha</Label>
-          <DatePicker
-            selected={attentionDateTime}
-            onChange={handleDateChange}
-            locale="es"
-            dateFormat="dd/MM/yyyy"
-            popperPlacement="bottom-start"
-            customInput={<DatePickerButtonInput />}
-            className="w-full"
-            wrapperClassName="w-full"
+    <form id="attention-form" onSubmit={handleSubmit} className="relative">
+      <div className="space-y-4 pb-20">
+        <div className="space-y-2">
+          <FilterableSelect
+            label="Cliente"
+            placeholder="Selecciona un cliente"
+            options={clientOptions}
+            value={clientId}
+            onValueChange={setClientId}
+            onSearch={debouncedSetClientSearchTerm}
+            searchPlaceholder="Buscar por nombre, teléfono o email"
             disabled={isEditMode}
           />
         </div>
-        <div className="flex flex-col space-y-2 h-20">
-          <Label htmlFor="time">Hora</Label>
-          <Input 
-            id="time" 
-            type="time" 
-            value={attentionTime}
-            onChange={handleTimeChange} 
-            required 
-            className="h-10" 
-            disabled={isEditMode} 
-          />
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div className={`flex ${isMobile ? 'flex-col gap-2' : 'items-center justify-between'}`}>
-          <Label>Items de la Atención</Label>
-          {isAttentionEditable && (
-            <div className="flex gap-2 flex-wrap">
-              <Button type="button" onClick={() => addItem('service')} size="sm" variant="outline" disabled={!clientId || !attentionDateTime}><Plus className="w-4 h-4 mr-2" />Servicio</Button>
-              <Button type="button" onClick={() => addItem('product')} size="sm" variant="outline" disabled={!clientId || !attentionDateTime}><Plus className="w-4 h-4 mr-2" />Producto</Button>
-              <Button type="button" onClick={() => addItem('combo')} size="sm" variant="outline" disabled={!clientId || !attentionDateTime}><Plus className="w-4 h-4 mr-2" />Combo</Button>
-            </div>
-          )}
-        </div>
-        <div className="max-h-[40vh] overflow-y-auto pr-2 space-y-3">
-        {items.map((item, index) => (
-            <ItemFormCard
-                key={item.id}
-                item={item}
-                index={index}
-                attentionDate={attentionDateTime ? format(attentionDateTime, 'yyyy-MM-dd') : ''}
-                attentionTime={attentionTime}
-                branchId={branchId}
-                onUpdate={updateItem}
-                onRemove={() => handleRemoveItem(index)}
-                canRemove={items.length > 0}
-                availableServicesAndCombos={branchServicesAndCombos || []}
-                availableBranchProducts={branchProducts || []}
-                isAttentionEditable={isAttentionEditable}
-                tenantId={tenantId}
-                screenSize={screenSize}
+        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4 items-end`}>
+          <div className="flex flex-col space-y-2 h-20">
+            <Label htmlFor="date">Fecha</Label>
+            <DatePicker
+              selected={attentionDateTime}
+              onChange={handleDateChange}
+              locale="es"
+              dateFormat="dd/MM/yyyy"
+              popperPlacement="bottom-start"
+              customInput={<DatePickerButtonInput />}
+              className="w-full"
+              wrapperClassName="w-full"
+              disabled={isEditMode}
             />
-        ))}
+          </div>
+          <div className="flex flex-col space-y-2 h-20">
+            <Label htmlFor="time">Hora</Label>
+            <Input 
+              id="time" 
+              type="time" 
+              value={attentionTime}
+              onChange={handleTimeChange} 
+              required 
+              className="h-10" 
+              disabled={isEditMode} 
+            />
+          </div>
         </div>
-      </div>
+        <div className="space-y-4">
+          <div className={`flex ${isMobile ? 'flex-col gap-2' : 'items-center justify-between'}`}>
+            <Label>Items de la Atención</Label>
+            {isAttentionEditable && (
+              <div className="flex gap-2 flex-wrap">
+                <Button type="button" onClick={() => addItem('service')} size="sm" variant="outline" disabled={!clientId || !attentionDateTime}><Plus className="w-4 h-4 mr-2" />Servicio</Button>
+                <Button type="button" onClick={() => addItem('product')} size="sm" variant="outline" disabled={!clientId || !attentionDateTime}><Plus className="w-4 h-4 mr-2" />Producto</Button>
+                <Button type="button" onClick={() => addItem('combo')} size="sm" variant="outline" disabled={!clientId || !attentionDateTime}><Plus className="w-4 h-4 mr-2" />Combo</Button>
+              </div>
+            )}
+          </div>
+          <div className="max-h-[40vh] overflow-y-auto pr-2 space-y-3">
+          {items.map((item, index) => (
+              <ItemFormCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  attentionDateTime={attentionDateTime}
+                  branchId={branchId}
+                  onUpdate={updateItem}
+                  onRemove={() => handleRemoveItem(index)}
+                  canRemove={items.length > 0}
+                  availableServicesAndCombos={branchServicesAndCombos || []}
+                  availableBranchProducts={branchProducts || []}
+                  isAttentionEditable={isAttentionEditable}
+                  tenantId={tenantId}
+                  screenSize={screenSize}
+              />
+          ))}
+          </div>
+        </div>
 
-      <div className="p-3 bg-muted rounded-md text-sm space-y-1">
-        <div className="flex justify-between">
-          <span>Duración total de servicios:</span>
-          <span className="font-semibold">{totalDuration} min</span>
+        <div className="p-3 bg-muted rounded-md text-sm space-y-1">
+          <div className="flex justify-between">
+            <span>Duración total de servicios:</span>
+            <span className="font-semibold">{totalDuration} min</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Hora de finalización estimada:</span>
+            <span className="font-semibold">{finalEndTime}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Valor Total:</span>
+            <span className="font-semibold">{formatPrice(totalValue)}</span>
+          </div>
         </div>
-        <div className="flex justify-between">
-          <span>Hora de finalización estimada:</span>
-          <span className="font-semibold">{finalEndTime}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Valor Total:</span>
-          <span className="font-semibold">{formatPrice(totalValue)}</span>
-        </div>
-      </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notas de la Atención</Label>
-        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <div className="space-y-2">
+          <Label htmlFor="notes">Notas de la Atención</Label>
+          <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={!isAttentionEditable} />
+        </div>
       </div>
       <DialogFooter className="fixed bottom-0 right-0 w-full bg-background pt-4 pb-4 pr-6">
         <Button type="button" variant="outline" onClick={onFinished}>Cancelar</Button>

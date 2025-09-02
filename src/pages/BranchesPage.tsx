@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBranches } from '@/hooks/useBranches';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Power, Store } from 'lucide-react';
-import { CreateBranchDialog } from '@/components/CreateBranchDialog';
+import { PlusCircle, Power } from 'lucide-react';
 import { BranchCard } from '@/pages/Settings/BranchCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,8 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { BranchActions } from '@/pages/Settings/BranchActions';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ActivateBranchesBatchDialog } from '@/pages/Settings/ActivateBranchesBatchDialog';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
+import { PageHeader } from '@/components/PageHeader';
 
 const statusConfig = {
   active: { label: 'Activa', className: 'bg-green-100 text-green-800' },
@@ -25,24 +24,6 @@ const statusConfig = {
 export default function BranchesPage() {
   const { currentAssignment, loading: authLoading } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-
-  // Si la autenticación está cargando, muestra un esqueleto o un mensaje de carga
-  if (authLoading) {
-    return (
-      <div className="mt-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-4 w-3/4 mt-2" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-48 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const navigate = useNavigate();
   const [isBatchActivateDialogOpen, setBatchActivateDialogOpen] = useState(false);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
@@ -50,6 +31,7 @@ export default function BranchesPage() {
   
   const queryClient = useQueryClient();
   const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const pendingBranches = useMemo(() => {
     return branches?.filter(b => b.status === 'pending_activation') || [];
@@ -77,9 +59,19 @@ export default function BranchesPage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-1/4" />
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
   const renderContent = () => {
     if (isLoading) {
-      return screenSize === 'mobile'
+      return isMobile
         ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}</div>
         : <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
     }
@@ -92,7 +84,7 @@ export default function BranchesPage() {
       return <p>No hay sucursales para este tenant.</p>
     }
 
-    if (screenSize === 'mobile') {
+    if (isMobile) {
       return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {branches.map((branch) => (
@@ -162,35 +154,26 @@ export default function BranchesPage() {
   };
 
   return (
-    <div className="mt-4">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-primary">
-                <Store className="h-5 w-5" />
-                Gestionar Sucursales
-              </CardTitle>
-              <CardDescription>Crea, activa y administra las sucursales del tenant.</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              {selectedBranchIds.length > 0 && (
-                <Button variant="outline" onClick={() => setBatchActivateDialogOpen(true)}>
-                  <Power className="mr-2 h-4 w-4" />
-                  Activar ({selectedBranchIds.length})
-                </Button>
-              )}
-              <Button onClick={() => navigate('/branches/new')}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Añadir Sucursal
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {renderContent()}
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Gestionar Sucursales"
+        subtitle="Crea, activa y administra las sucursales de tu negocio."
+      >
+        <div className="flex items-center gap-2">
+          {selectedBranchIds.length > 0 && (
+            <Button variant="outline" onClick={() => setBatchActivateDialogOpen(true)} size={isMobile ? 'icon' : 'default'}>
+              <Power className="h-4 w-4" />
+              <span className="hidden sm:inline sm:ml-2">Activar ({selectedBranchIds.length})</span>
+            </Button>
+          )}
+          <Button onClick={() => navigate('/branches/new')} size={isMobile ? 'icon' : 'default'}>
+            <PlusCircle className="h-4 w-4" />
+            <span className="hidden sm:inline sm:ml-2">Añadir Sucursal</span>
+          </Button>
+        </div>
+      </PageHeader>
+      
+      {renderContent()}
 
       <ActivateBranchesBatchDialog
         isOpen={isBatchActivateDialogOpen}
