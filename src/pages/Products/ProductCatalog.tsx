@@ -36,6 +36,9 @@ import AssignProductToBranchesDialog from "@/components/AssignProductToBranchesD
 import ManageProductPricesDialog from "@/components/ManageProductPricesDialog";
 import { ManageProductCommissionsDialog } from "@/components/ManageProductCommissionsDialog"; // NEW IMPORT
 
+import { UnitOfMeasureManagementDialog } from "@/components/UnitOfMeasureManagementDialog";
+import { SlidersHorizontal } from "lucide-react";
+
 const ProductCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [confirmedSearchTerm, setConfirmedSearchTerm] = useState("");
@@ -110,6 +113,7 @@ const ProductCatalog = () => {
             <p className="text-muted-foreground">Crea y edita los productos base de tu negocio.</p>
           </div>
           <div className="flex items-center gap-2">
+            <UnitOfMeasureManagementDialog trigger={<Button variant="outline" size="sm"><SlidersHorizontal className="w-4 h-4 mr-2" />UoM</Button>} />
             <ProductCategoryManagementDialog trigger={<Button size="sm"><ListFilter className="w-4 h-4 mr-2" />Categorías</Button>} />
             <BrandManagementDialog trigger={<Button size="sm"><Tag className="w-4 h-4 mr-2" />Marcas</Button>} />
             <MasterProductDialog trigger={<Button size="sm"><Plus className="w-4 h-4 mr-2" />Nuevo Producto</Button>} />

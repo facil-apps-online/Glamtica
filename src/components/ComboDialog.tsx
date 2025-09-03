@@ -24,7 +24,7 @@ interface ComboDialogProps {
 type SelectableItem = {
   value: string;
   label: string;
-  id: string;
+  data: any; // Almacenará el objeto completo del producto o servicio
   type: 'product' | 'service';
 };
 
@@ -35,7 +35,7 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sku, setSku] = useState("");
-  const [items, setItems] = useState<Partial<ComboItem> & { name?: string }[]>([]);
+  const [items, setItems] = useState<any[]>([]); // Usamos 'any' para flexibilidad con el objeto completo
 
   // Hooks de mutación
   const { mutate: createCombo, isPending: isCreating } = useCreateCombo();
@@ -47,8 +47,8 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
 
   // Lista combinada de ítems seleccionables
   const selectableItems = useMemo<SelectableItem[]>(() => {
-    const productItems = products?.map(p => ({ value: `product-${p.id}`, label: `[P] ${p.name}`, id: p.id, type: 'product' as const })) || [];
-    const serviceItems = services?.map(s => ({ value: `service-${s.id}`, label: `[S] ${s.name}`, id: s.id, type: 'service' as const })) || [];
+    const productItems = products?.map(p => ({ value: `product-${p.id}`, label: `[P] ${p.name}`, data: p, type: 'product' as const })) || [];
+    const serviceItems = services?.map(s => ({ value: `service-${s.id}`, label: `[S] ${s.name}`, data: s, type: 'service' as const })) || [];
     return [...productItems, ...serviceItems];
   }, [products, services]);
 
@@ -58,9 +58,12 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
       setName(combo.name || "");
       setDescription(combo.description || "");
       setSku(combo.sku || "");
+      // Aquí asumimos que combo.combo_items tiene la info completa. Si no, necesitaríamos un fetch.
       const initialItems = combo.combo_items.map(item => ({
         ...item,
-        name: item.product?.name || item.service?.name || 'Ítem desconocido'
+        name: item.product?.name || item.service?.name || 'Ítem desconocido',
+        product: item.product, // Aseguramos que el objeto producto esté
+        service: item.service, // Aseguramos que el objeto servicio esté
       }));
       setItems(initialItems);
     } else {
@@ -70,12 +73,15 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
 
   // Lógica de manejo de ítems
   const handleAddItem = (item: SelectableItem) => {
-    const newItem: Partial<ComboItem> & { name?: string } = {
-      product_id: item.type === 'product' ? item.id : null,
-      service_id: item.type === 'service' ? item.id : null,
+    const newItem = {
+      product_id: item.type === 'product' ? item.data.id : null,
+      service_id: item.type === 'service' ? item.data.id : null,
       quantity: 1,
       price: 0,
-      name: item.label
+      name: item.label,
+      // Guardamos el objeto completo para acceder a sus propiedades
+      product: item.type === 'product' ? item.data : null,
+      service: item.type === 'service' ? item.data : null,
     };
     setItems(prev => [...prev, newItem]);
   };
@@ -170,7 +176,22 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
               {items.map((item, index) => (
                 <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
                   <div className="flex-grow font-medium text-sm">{item.name}</div>
-                  <div className="w-20"><Label className="sr-only">Cantidad</Label><Input type="number" placeholder="Cant." value={item.quantity} onChange={(e) => handleUpdateItem(index, 'quantity', parseInt(e.target.value, 10))} min={1} /></div>
+                  <div className="w-20">
+                    <Label className="sr-only">Cantidad</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Cant." 
+                      value={item.quantity} 
+                      onChange={(e) => {
+                        const isDecimalAllowed = item.product?.allow_decimal_sale;
+                        const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+                        handleUpdateItem(index, 'quantity', value || 0);
+                      }}
+                      min={item.product?.allow_decimal_sale ? 0.01 : 1}
+                      step={item.product?.allow_decimal_sale ? 0.01 : 1}
+                      disabled={item.service_id !== null}
+                    />
+                  </div>
                   <div className="w-28"><Label className="sr-only">Precio</Label><Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" /></div>
                   <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
                 </div>

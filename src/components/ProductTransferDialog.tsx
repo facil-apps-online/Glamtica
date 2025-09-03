@@ -15,7 +15,7 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 
 const transferItemSchema = z.object({
   product_id: z.string().uuid({ message: "ID de producto inválido." }),
-  quantity: z.coerce.number().int().positive({ message: "La cantidad debe ser un número entero positivo." }),
+  quantity: z.coerce.number().positive({ message: "La cantidad debe ser un número positivo." }),
 });
 
 const transferFormSchema = z.object({
@@ -125,6 +125,10 @@ export function ProductTransferDialog({ trigger }: { trigger: React.ReactNode })
                   const productsForThisSelect = products?.filter(p => 
                     !selectedProductIds.includes(p.id) || p.id === item.product_id
                   );
+                  
+                  // Encontrar el producto seleccionado para este item
+                  const selectedProduct = products?.find(p => p.id === item.product_id);
+                  const isDecimalAllowed = selectedProduct?.allow_decimal_sale || false;
 
                   return (
                     <div key={index} className="grid grid-cols-12 gap-2 items-end">
@@ -145,7 +149,21 @@ export function ProductTransferDialog({ trigger }: { trigger: React.ReactNode })
                       </div>
                       <div className="col-span-3">
                         <Label className="text-xs">Cantidad</Label>
-                        <Input type="number" min="1" className="w-full" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} />
+                        <Input 
+                          type="number" 
+                          min={isDecimalAllowed ? "0.01" : "1"}
+                          step={isDecimalAllowed ? "0.01" : "1"}
+                          className="w-full" 
+                          {...form.register(`items.${index}.quantity`, { 
+                            valueAsNumber: true,
+                            onChange: (e) => {
+                              // Forzar entero si no se permiten decimales
+                              if (!isDecimalAllowed) {
+                                e.target.value = parseInt(e.target.value, 10) || '';
+                              }
+                            }
+                          })} 
+                        />
                       </div>
                       <Button type="button" variant="outline" size="sm" onClick={() => form.setValue("items", form.getValues("items").filter((_, i) => i !== index))} disabled={form.watch("items").length === 1} className="col-span-1 h-10">
                         <Trash2 className="w-4 h-4" />

@@ -220,6 +220,19 @@ const ItemFormCard = ({
         label: `${seller.first_name || ''} ${seller.last_name || ''}`.trim() || seller.email,
     })) || [];
 
+    // Encontrar el producto actual para verificar si permite decimales
+    const currentProduct = availableBranchProducts.find(p => p.id === item.item_id);
+    const isDecimalAllowed = currentProduct?.allow_decimal_sale || false;
+
+    const handleQuantityChange = (value: string) => {
+      const newQuantity = isDecimalAllowed ? parseFloat(value) : parseInt(value, 10);
+      if (!isNaN(newQuantity) && newQuantity > 0) {
+        onUpdate(index, { quantity: newQuantity });
+      } else if (value === "") {
+        onUpdate(index, { quantity: 0 }); // Permitir vaciar el campo temporalmente
+      }
+    };
+
     return (
         <Card className="relative mb-4 w-full">
             <CardContent className="p-4 space-y-4">
@@ -245,8 +258,9 @@ const ItemFormCard = ({
                         <Input 
                             type="number" 
                             value={item.quantity} 
-                            onChange={(e) => handleQuantityChange(parseInt(e.target.value, 10) || 1)} 
-                            min={1} 
+                            onChange={(e) => handleQuantityChange(e.target.value)} 
+                            min={isDecimalAllowed ? 0.01 : 1}
+                            step={isDecimalAllowed ? 0.01 : 1}
                             disabled={isItemDisabled || !item.item_id}
                             className="w-full"
                         />

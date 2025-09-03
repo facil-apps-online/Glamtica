@@ -1575,6 +1575,51 @@ serve(async (req) => {
         break;
       }
 
+      // --- UNITS OF MEASURE (UOM) ACTIONS ---
+      case 'MANAGE_UOM': {
+        const { operation, uomData } = payload;
+        if (!operation) throw new Error('Operation is required for MANAGE_UOM.');
+
+        switch (operation) {
+          case 'GET':
+            responseData = await callRpc(supabaseAdmin, 'get_units_of_measure', { p_tenant_id: tenantId });
+            break;
+          case 'CREATE':
+            if (!uomData || !uomData.name || !uomData.abbreviation) {
+              throw new Error('Name and abbreviation are required to create a unit of measure.');
+            }
+            responseData = await callRpc(supabaseAdmin, 'create_unit_of_measure', {
+              p_tenant_id: tenantId,
+              p_name: uomData.name,
+              p_abbreviation: uomData.abbreviation,
+            });
+            break;
+          case 'UPDATE':
+            if (!uomData || !uomData.id || !uomData.name || !uomData.abbreviation) {
+              throw new Error('ID, name, and abbreviation are required to update a unit of measure.');
+            }
+            responseData = await callRpc(supabaseAdmin, 'update_unit_of_measure', {
+              p_id: uomAata.id,
+              p_tenant_id: tenantId,
+              p_name: uomData.name,
+              p_abbreviation: uomData.abbreviation,
+            });
+            break;
+          case 'DELETE':
+            if (!uomData || !uomData.id) {
+              throw new Error('ID is required to delete a unit of measure.');
+            }
+            responseData = await callRpc(supabaseAdmin, 'delete_unit_of_measure', {
+              p_id: uomData.id,
+              p_tenant_id: tenantId,
+            });
+            break;
+          default:
+            throw new Error(`Invalid operation for MANAGE_UOM: ${operation}`);
+        }
+        break;
+      }
+
       case 'get_client_settings': {
         const { data, error } = await supabaseAdmin
           .from('tenant_client_settings')

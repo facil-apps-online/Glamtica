@@ -17,7 +17,7 @@ const receiveItemSchema = z.object({
   product_id: z.string(),
   product_name: z.string(),
   quantity_expected: z.number(),
-  quantity_received: z.coerce.number().int().min(0, "La cantidad no puede ser negativa"),
+  quantity_received: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
 });
 
 const receiveTransferSchema = z.object({
@@ -100,19 +100,33 @@ export function ReceiveTransferDialog({ isOpen, onOpenChange, transfer }: Receiv
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {fields.map((field, index) => (
-                    <TableRow key={field.id}>
-                      <TableCell>{field.product_name}</TableCell>
-                      <TableCell className="text-center">{field.quantity_expected}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          className="w-24 mx-auto text-center"
-                          {...form.register(`items.${index}.quantity_received`)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {fields.map((field, index) => {
+                    // Encontrar los detalles completos del item actual para obtener allow_decimal_sale
+                    const itemDetails = transferDetails?.find((d: any) => d.item_id === field.transfer_item_id);
+                    const isDecimalAllowed = itemDetails?.allow_decimal_sale || false;
+
+                    return (
+                      <TableRow key={field.id}>
+                        <TableCell>{field.product_name}</TableCell>
+                        <TableCell className="text-center">{field.quantity_expected}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            className="w-24 mx-auto text-center"
+                            min={isDecimalAllowed ? 0 : 0} // Permitir 0 para indicar no recibido
+                            step={isDecimalAllowed ? "0.01" : "1"}
+                            {...form.register(`items.${index}.quantity_received`, {
+                              onChange: (e) => {
+                                if (!isDecimalAllowed) {
+                                  e.target.value = parseInt(e.target.value, 10) || '';
+                                }
+                              }
+                            })}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               <div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,8 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useTaxTypes } from "@/hooks/useTaxTypes";
 import { useProductTaxTypes, useAddProductTaxType, useRemoveProductTaxType } from "@/hooks/useProductTaxTypes";
 import { useToast } from "@/hooks/use-toast";
+import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
+import { Switch } from "@/components/ui/switch";
 
 interface MasterProductDialogProps {
   product?: MasterProduct;
@@ -24,6 +25,8 @@ interface MasterProductDialogProps {
 export const MasterProductDialog = ({ product, trigger }: MasterProductDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  
+  // Campos existentes
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [costPrice, setCostPrice] = useState<number | string>("");
@@ -32,6 +35,11 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
   const [barcode, setBarcode] = useState("");
   const [sku, setSku] = useState("");
   const [selectedTaxTypeIds, setSelectedTaxTypeIds] = useState<string[]>([]);
+
+  // Nuevos campos para UoM
+  const [unitOfMeasureId, setUnitOfMeasureId] = useState("");
+  const [packageContentQuantity, setPackageContentQuantity] = useState<number | string>(1);
+  const [allowDecimalSale, setAllowDecimalSale] = useState(false);
 
   const { mutate: createProduct, isPending: isCreating } = useCreateMasterProduct();
   const { mutate: updateProduct, isPending: isUpdating } = useUpdateMasterProduct();
@@ -42,23 +50,31 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
   const { data: productTaxTypes, refetch: refetchProductTaxTypes } = useProductTaxTypes(product?.id || '');
   const { mutate: addProductTaxType } = useAddProductTaxType();
   const { mutate: removeProductTaxType } = useRemoveProductTaxType();
+  const { units: unitsOfMeasure, refetch: refetchUnitsOfMeasure } = useUnitsOfMeasure();
 
   useEffect(() => {
-    if (product) {
-      setName(product.name || "");
-      setDescription(product.description || "");
-      setCostPrice(product.cost_price || "");
-      setCategory(product.category || "");
-      setBrandId(product.brand_id || "");
-      setBarcode(product.barcode || "");
-      setSku(product.sku || "");
-      if (productTaxTypes) {
-        setSelectedTaxTypeIds(productTaxTypes.map(pt => pt.tax_type_id));
+    // Solo poblar o resetear el formulario cuando el diálogo se abre.
+    if (open) {
+      refetchUnitsOfMeasure(); // Aprovechamos para recargar las UoM
+      if (product) {
+        setName(product.name || "");
+        setDescription(product.description || "");
+        setCostPrice(product.cost_price || "");
+        setCategory(product.category || "");
+        setBrandId(product.brand_id || "");
+        setBarcode(product.barcode || "");
+        setSku(product.sku || "");
+        setUnitOfMeasureId(product.unit_of_measure_id || "");
+        setPackageContentQuantity(product.package_content_quantity || 1);
+        setAllowDecimalSale(product.allow_decimal_sale || false);
+        if (productTaxTypes) {
+          setSelectedTaxTypeIds(productTaxTypes.map(pt => pt.tax_type_id));
+        }
+      } else {
+        resetForm();
       }
-    } else {
-      resetForm();
     }
-  }, [product, productTaxTypes]);
+  }, [open, product, productTaxTypes, refetchUnitsOfMeasure]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +91,9 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
       brand_id: brandId || undefined,
       barcode: barcode || undefined,
       sku: sku || undefined,
+      unit_of_measure_id: unitOfMeasureId || undefined,
+      package_content_quantity: Number(packageContentQuantity) || 1,
+      allow_decimal_sale: allowDecimalSale,
     };
 
     let productId: string | undefined;
@@ -147,6 +166,9 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
     setBarcode("");
     setSku("");
     setSelectedTaxTypeIds([]);
+    setUnitOfMeasureId("");
+    setPackageContentQuantity(1);
+    setAllowDecimalSale(false);
   };
 
   const taxTypeOptions = useMemo(() => {
@@ -154,81 +176,107 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
   }, [taxTypes]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{product ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre del Producto</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sku">SKU</Label>
-              <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoría</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {productCategories?.map((cat) => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="brand">Marca</Label>
-              <Select value={brandId} onValueChange={setBrandId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {brands?.map((brand) => <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="taxTypes">Tipos de Impuesto</Label>
-            <MultiSelect
-              options={taxTypeOptions}
-              selected={selectedTaxTypeIds}
-              onSelectedChange={setSelectedTaxTypeIds}
-              placeholder="Seleccionar tipos de impuesto"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-              <Label htmlFor="cost_price">Precio de Costo</Label>
-              <Input id="cost_price" type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="barcode">Código de Barras</Label>
-              <Input id="barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={isCreating || isUpdating}>
-              {product ? "Actualizar" : "Crear"}
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
             </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{product ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre del Producto</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sku">SKU</Label>
+                <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoría</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {productCategories?.map((cat) => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="brand">Marca</Label>
+                <Select value={brandId} onValueChange={setBrandId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {brands?.map((brand) => <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Unidad de Medida</Label>
+              <div className="flex items-center gap-2">
+                <Select value={unitOfMeasureId} onValueChange={setUnitOfMeasureId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {unitsOfMeasure?.map((uom) => <SelectItem key={uom.id} value={uom.id}>{uom.name} ({uom.abbreviation})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="packageContentQuantity">Contenido del Envase (en UoM)</Label>
+                <Input id="packageContentQuantity" type="number" value={packageContentQuantity} onChange={(e) => setPackageContentQuantity(e.target.value)} />
+              </div>
+              <div className="space-y-2 flex flex-col justify-center">
+                <Label htmlFor="allowDecimalSale" className="mb-2">Permitir Venta Decimal</Label>
+                <Switch id="allowDecimalSale" checked={allowDecimalSale} onCheckedChange={setAllowDecimalSale} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="taxTypes">Tipos de Impuesto</Label>
+              <MultiSelect
+                options={taxTypeOptions}
+                selected={selectedTaxTypeIds}
+                onSelectedChange={setSelectedTaxTypeIds}
+                placeholder="Seleccionar tipos de impuesto"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                <Label htmlFor="cost_price">Precio de Costo</Label>
+                <Input id="cost_price" type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="barcode">Código de Barras</Label>
+                <Input id="barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={isCreating || isUpdating}>
+                {product ? "Actualizar" : "Crear"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
