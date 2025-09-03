@@ -193,11 +193,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     });
 
     if (error) {
+      // This will now only catch network errors, as the function itself always returns 200.
       console.error("Error invoking user-actions function:", error);
-      throw new Error(error.message || "Error en la comunicación con el servidor.");
+      throw new Error("Error en la comunicación con el servidor. Por favor, intenta de nuevo.");
     }
+    
     if (!data.success) {
-      console.error("Login failed, data.success is false:", data);
+      // This will now correctly catch business logic errors (e.g., invalid credentials).
+      console.error("Login failed:", data.message);
       throw new Error(data.message || "Error desconocido durante el inicio de sesión.");
     }
 
@@ -206,7 +209,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       await processSession(data.session);
       navigate('/');
     } else {
-      console.warn("La función Edge no devolvió datos de sesión.");
+      console.warn("La función Edge no devolvió datos de sesión válidos.");
+      throw new Error("No se recibieron datos de sesión válidos del servidor.");
     }
   };
 
