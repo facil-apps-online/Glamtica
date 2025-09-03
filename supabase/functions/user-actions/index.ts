@@ -453,14 +453,17 @@ Deno.serve(async (req) => {
         const synthetic_email = `${platformId}_${email}`;
         let userToAssign;
 
-        // 1. Find or create the user in auth.users
-        const { data: existingUsers, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
-        if (findError) throw new Error(`Error al buscar usuario: ${findError.message}`);
+        // 1. Find or create the user in auth.users using a strict search
+        const { data: { users: allUsers }, error: findError } = await supabaseAdmin.auth.admin.listUsers();
+        if (findError) throw new Error(`Error al obtener la lista de usuarios: ${findError.message}`);
 
-        if (existingUsers && existingUsers.users.length > 0) {
-          userToAssign = existingUsers.users[0];
-          console.log(`[invite_or_assign_user_to_tenant] Usuario existente encontrado:`, userToAssign.id);
+        const strictlyFoundUser = allUsers.find(user => user.email === synthetic_email);
+
+        if (strictlyFoundUser) {
+          userToAssign = strictlyFoundUser;
+          console.log(`[invite_or_assign_user_to_tenant] Usuario existente encontrado con búsqueda estricta:`, userToAssign.id);
         } else {
+          console.log(`[invite_or_assign_user_to_tenant] Usuario no encontrado con búsqueda estricta. Creando uno nuevo...`);
           const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: synthetic_email,
             password: password || crypto.randomUUID(), // Create with a random password if not provided
@@ -473,6 +476,8 @@ Deno.serve(async (req) => {
           });
 
           if (authError) throw new Error(`Error al crear el usuario: ${authError.message}`);
+          if (!authData.user) throw new Error('La creación del usuario no devolvió un objeto de usuario.');
+          
           userToAssign = authData.user;
           console.log(`[invite_or_assign_user_to_tenant] Usuario nuevo creado:`, userToAssign.id);
         }
@@ -481,16 +486,25 @@ Deno.serve(async (req) => {
           throw new Error('No se pudo obtener el usuario para asignar.');
         }
 
-        // 2. Check if an assignment already exists in the user_assignments table
+        // 2. Check if the specific assignment already exists to prevent duplicates.
         const { data: existingAssignment, error: checkError } = await supabaseAdmin
           .from('user_assignments')
           .select('id')
           .eq('user_id', userToAssign.id)
           .eq('tenant_id', tenantId)
+          .eq('role_id', roleId)
+          .eq('branch_id', branchId || null)
           .maybeSingle();
 
-        if (checkError) throw new Error(`Error al verificar asignaciones existentes: ${checkError.message}`);
-        if (existingAssignment) throw new Error('Este usuario ya es miembro de este negocio.');
+        if (checkError) {
+          // This could fail if there are multiple identical assignments, which indicates a data integrity issue.
+          console.error("Error al verificar la asignación específica:", checkError.message);
+          throw new Error(`Error al verificar asignaciones existentes: ${checkError.message}`);
+        }
+        
+        if (existingAssignment) {
+          throw new Error('Este usuario ya tiene esta asignación específica (mismo rol y sucursal) en este negocio.');
+        }
 
         // 3. Insert the new assignment into the user_assignments table
         const { error: insertError } = await supabaseAdmin
@@ -500,8 +514,7 @@ Deno.serve(async (req) => {
             user_id: userToAssign.id,
             role_id: roleId,
             branch_id: branchId || null,
-            status: 'active',
-            platform_id: platformId
+            status: 'active'
           });
 
         if (insertError) {
@@ -611,6 +624,69 @@ Deno.serve(async (req) => {
         }));
 
         responseData = { success: true, assignments: mappedAssignments };
+        break;
+      }
+
+      case 'refresh-user-metadata': {
+        console.log('Iniciando acción: refresh-user-metadata');
+        const { userId, platformId } = payload;
+        if (!userId || !platformId) {
+          throw new Error('El userId y el platformId son obligatorios.');
+        }
+
+        // 1. Obtener las asignaciones activas del usuario desde la fuente de verdad.
+        const { data: assignments, error: queryError } = await supabaseAdmin
+          .from('user_assignments')
+          .select(`
+            assignment_id:id,
+            tenant_id,
+            role_id,
+            branch_id,
+            status,
+            tenants!inner ( name, platform_id ),
+            roles ( name, display_name ),
+            branches ( name )
+          `)
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .eq('tenants.platform_id', platformId);
+
+        if (queryError) {
+          console.error('Error al obtener las asignaciones activas para rehidratación:', queryError.message);
+          throw new Error(`Error al consultar las asignaciones: ${queryError.message}`);
+        }
+
+        // 2. Mapear las asignaciones al formato esperado en el app_metadata.
+        const mappedAssignments = assignments.map((a: any) => ({
+          assignment_id: a.assignment_id,
+          tenant_id: a.tenant_id,
+          tenant_name: a.tenants.name || 'N/A',
+          platform_id: platformId,
+          role_id: a.role_id,
+          role_name: a.roles.name || 'N/A',
+          role_display_name: a.roles.display_name || 'N/A',
+          branch_id: a.branch_id || null,
+          branch_name: a.branches?.name || null,
+          status: a.status,
+        }));
+
+        // 3. Construir el objeto de metadatos final.
+        const newAppMetadata = {
+          assignments: mappedAssignments,
+        };
+
+        // 4. Actualizar el usuario en auth.users con los nuevos metadatos.
+        const { data: updatedUser, error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { app_metadata: newAppMetadata }
+        );
+
+        if (updateUserError) {
+          console.error('Error al actualizar los metadatos del usuario:', updateUserError.message);
+          throw new Error(`Error al actualizar el usuario: ${updateUserError.message}`);
+        }
+
+        responseData = { success: true, message: 'Metadatos de usuario actualizados exitosamente.' };
         break;
       }
 

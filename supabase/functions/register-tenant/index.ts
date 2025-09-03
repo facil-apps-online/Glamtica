@@ -37,7 +37,10 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('--- Invocación de register-tenant ---');
+  
   if (req.method === 'OPTIONS') {
+    console.log('Respondiendo a solicitud OPTIONS (preflight).');
     return new Response('ok', { headers: corsHeaders });
   }
 
@@ -50,9 +53,16 @@ serve(async (req) => {
   let isNewUser = false;
 
   try {
-    const { recaptcha_token, platform_id, admin_email, admin_password, ...tenant_data }: FormData = await req.json();
+    const payload: FormData = await req.json();
+    console.log('--- PAYLOAD COMPLETO RECIBIDO ---');
+    console.log(JSON.stringify(payload, null, 2));
+    console.log('---------------------------------');
+
+    const { recaptcha_token, platform_id, admin_email, admin_password, ...tenant_data } = payload;
+    console.log('Datos clave extraídos:', { platform_id, admin_email, tenant_data: Object.keys(tenant_data) });
 
     // 1. Validación de reCAPTCHA
+    console.log('Paso 1: Validando reCAPTCHA...');
     if (!RECAPTCHA_SECRET_KEY) throw new Error('El secreto de reCAPTCHA no está configurado.');
     const recaptchaUrl = 'https://www.google.com/recaptcha/api/siteverify';
     const response = await fetch(recaptchaUrl, {
@@ -61,98 +71,139 @@ serve(async (req) => {
       body: `secret=${RECAPTCHA_SECRET_KEY}&response=${recaptcha_token}`,
     });
     const recaptchaData = await response.json();
-    if (!recaptchaData.success) throw new Error('La verificación de reCAPTCHA ha fallado.');
+    if (!recaptchaData.success) {
+      console.error('Error de reCAPTCHA:', recaptchaData['error-codes']);
+      throw new Error('La verificación de reCAPTCHA ha fallado.');
+    }
+    console.log('reCAPTCHA validado exitosamente.');
 
     // 2. Buscar o crear el usuario en auth.users
+    console.log('Paso 2: Buscando o creando usuario en auth.users...');
     const synthetic_email = `${platform_id}_${admin_email}`;
-    let targetUser: User;
+    let targetUser: User | null = null;
 
-    const { data: { users: existingUsers }, error: findError } = await supabaseAdmin.auth.admin.listUsers({ email: synthetic_email });
+    console.log(`Buscando usuario con email sintético: ${synthetic_email}`);
+    const { data: { users: existingUsers }, error: findError } = await supabaseAdmin.auth.admin.listUsers();
+    
     if (findError) throw new Error(`Error al buscar usuario: ${findError.message}`);
 
-    if (existingUsers && existingUsers.length > 0) {
-      targetUser = existingUsers[0];
+    // Verificación manual estricta para evitar falsos positivos de la búsqueda de Supabase
+    const strictlyFoundUser = existingUsers.find(user => user.email === synthetic_email);
+
+    if (strictlyFoundUser) {
+      targetUser = strictlyFoundUser;
       isNewUser = false;
+      console.log(`Usuario encontrado con coincidencia estricta. ID: ${targetUser.id}`);
     } else {
+      console.log('Usuario no encontrado con coincidencia estricta. Procediendo a crear uno nuevo.');
       if (!admin_password) throw new Error('La contraseña es obligatoria para un nuevo usuario.');
+      
+      console.log('Intentando crear usuario en Supabase Auth...');
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: synthetic_email,
         password: admin_password,
         email_confirm: true,
         user_metadata: { real_email: admin_email },
       });
-      if (authError) throw new Error(`Error al crear el usuario: ${authError.message}`);
+
+      if (authError) {
+        console.error('--- ERROR DETALLADO DE SUPABASE AUTH ---');
+        console.error(JSON.stringify(authError, null, 2));
+        console.error('-----------------------------------------');
+        throw new Error(`Error al crear el usuario: ${authError.message}`);
+      }
+      
+      if (!authData.user) {
+        throw new Error('La creación del usuario no devolvió un objeto de usuario.');
+      }
+      
       targetUser = authData.user;
       createdUserId = targetUser.id;
       isNewUser = true;
+      console.log(`Nuevo usuario creado exitosamente con ID: ${createdUserId}`);
+    }
+
+    if (!targetUser) {
+      throw new Error('No se pudo determinar el usuario objetivo para la asignación.');
     }
 
     // 3. Crear el Tenant
+    console.log('Paso 3: Creando el tenant...');
     const { data: newTenant, error: tenantError } = await supabaseAdmin
       .from('tenants')
       .insert({ ...tenant_data, platform_id })
       .select()
       .single();
     if (tenantError) throw new Error(`Error al crear el tenant: ${tenantError.message}`);
+    console.log(`Tenant creado con ID: ${newTenant.id}`);
 
-    // 4. Find the default trial plan for the platform
+    // 4. Buscar el plan de prueba
+    console.log('Paso 4: Buscando el plan de prueba...');
     const { data: trialPlan, error: trialPlanError } = await supabaseAdmin
       .from('subscription_plans')
       .select('id, duration_days')
       .eq('platform_id', platform_id)
       .eq('is_default_trial', true)
       .single();
+    if (trialPlanError || !trialPlan) throw new Error(`No se encontró un plan de prueba predeterminado: ${trialPlanError?.message || 'Plan no encontrado'}`);
+    console.log(`Plan de prueba encontrado con ID: ${trialPlan.id}`);
 
-    if (trialPlanError || !trialPlan) {
-      throw new Error(`No se encontró un plan de prueba predeterminado para esta plataforma: ${trialPlanError?.message || 'Plan no encontrado'}`);
-    }
-
-    // 5. Create the trial subscription for the new tenant
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + trialPlan.duration_days);
-
+    // 5. Crear la suscripción de prueba
+    console.log('Paso 5: Creando la suscripción de prueba...');
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(startDate.getDate() + trialPlan.duration_days);
     const { error: subscriptionError } = await supabaseAdmin
       .from('tenant_subscriptions')
       .insert({
         tenant_id: newTenant.id,
-        plan_id: trialPlan.id,
-        status: 'trialing',
-        trial_ends_at: trialEndsAt.toISOString(),
-        current_period_starts_at: new Date().toISOString(),
-        current_period_ends_at: trialEndsAt.toISOString(),
+        subscription_plan_id: trialPlan.id,
+        active_plan_id: trialPlan.id,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        is_trial: true,
+        is_active: true,
       });
-
-    if (subscriptionError) {
-      throw new Error(`Error al crear la suscripción de prueba: ${subscriptionError.message}`);
-    }
+    if (subscriptionError) throw new Error(`Error al crear la suscripción de prueba: ${subscriptionError.message}`);
+    console.log('Suscripción de prueba creada.');
 
     // 6. Crear la Sucursal Principal
+    console.log('Paso 6: Creando la sucursal principal...');
+    const fullAddress = [
+      newTenant.physical_address_line1,
+      newTenant.physical_address_line2
+    ].filter(Boolean).join(', ');
     const { data: newBranch, error: branchError } = await supabaseAdmin
       .from('branches')
       .insert({
         tenant_id: newTenant.id,
         name: 'Sucursal Principal',
-        is_active: true,
+        status: 'active',
+        is_main_branch: true,
         timezone: newTenant.default_timezone,
-        address_line1: newTenant.physical_address_line1 || 'N/A',
-        city: newTenant.physical_city || 'N/A',
-        state: newTenant.physical_state || 'N/A',
-        postal_code: newTenant.physical_postal_code || 'N/A',
-        country_id: newTenant.country_id,
-        phone: newTenant.contact_phone || null,
-        email: newTenant.commercial_email || null,
+        address: fullAddress,
+        physical_address_line1: newTenant.physical_address_line1 || 'N/A',
+        physical_city: newTenant.physical_city || 'N/A',
+        physical_state: newTenant.physical_state || 'N/A',
+        physical_postal_code: newTenant.physical_postal_code || 'N/A',
+        contact_phone: newTenant.contact_phone || null,
+        commercial_email: newTenant.commercial_email || null,
         latitude: newTenant.latitude,
         longitude: newTenant.longitude
       })
       .select('id')
       .single();
     if (branchError) throw new Error(`Error al crear la sucursal principal: ${branchError.message}`);
+    console.log(`Sucursal principal creada con ID: ${newBranch.id}`);
 
     // 7. Obtener el rol de Super Administrador
+    console.log('Paso 7: Obteniendo el rol de Super Administrador...');
     const { data: roleData, error: roleError } = await supabaseAdmin.from('roles').select('id').eq('name', 'tenant_super_admin').single();
     if (roleError || !roleData) throw new Error('No se pudo encontrar el rol de tenant_super_admin.');
+    console.log(`Rol de Super Administrador encontrado con ID: ${roleData.id}`);
 
-    // 8. Insertar la asignación en la tabla user_assignments
+    // 8. Insertar la asignación
+    console.log('Paso 8: Insertando la asignación del usuario...');
     const { error: assignmentError } = await supabaseAdmin
       .from('user_assignments')
       .insert({
@@ -162,8 +213,15 @@ serve(async (req) => {
         role_id: roleData.id,
         status: 'active',
       });
-    if (assignmentError) throw new Error(`Error al crear la asignación del usuario: ${assignmentError.message}`);
+    if (assignmentError) {
+      console.error('--- ERROR DETALLADO DEL INSERT EN user_assignments ---');
+      console.error(JSON.stringify(assignmentError, null, 2));
+      console.error('----------------------------------------------------');
+      throw new Error(`Error al crear la asignación del usuario: ${assignmentError.message}`);
+    }
+    console.log('Asignación de usuario creada exitosamente.');
 
+    console.log('--- Proceso de registro finalizado exitosamente ---');
     return new Response(JSON.stringify({ 
         success: true, 
         message: '¡Registro completado exitosamente!',
@@ -177,14 +235,15 @@ serve(async (req) => {
   } catch (error) {
     console.error('--- ERROR EN register-tenant ---');
     console.error('Error:', error.message);
-
+    
     if (isNewUser && createdUserId) {
-      console.log(`Realizando rollback: eliminando usuario huérfano con ID ${createdUserId}`);
+      console.log(`Intentando revertir la creación del usuario con ID: ${createdUserId}`);
       await supabaseAdmin.auth.admin.deleteUser(createdUserId);
+      console.log('Reversión de usuario completada.');
     }
-
+    
     return new Response(JSON.stringify({ success: false, message: error.message }), {
-      status: 400,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

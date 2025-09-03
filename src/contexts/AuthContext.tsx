@@ -71,14 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       setUser(sessionData?.user ?? null);
 
       if (sessionData?.user) {
-        
         const { app_metadata, user_metadata, id, email } = sessionData.user;
-        
         
         const userProfile: UserProfile = {
           id: id,
           email: email || '',
-          realEmail: user_metadata.email, // <-- Añadido
+          realEmail: user_metadata.real_email,
           firstName: user_metadata.first_name,
           lastName: user_metadata.last_name,
           avatarUrl: user_metadata.avatar_url,
@@ -89,81 +87,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         };
         setProfile(userProfile);
 
-        try {
+        // --- LÓGICA DE REHIDRATACIÓN DEL JWT ---
+        // Si el JWT no tiene la metadata de asignaciones, significa que es un login "fresco"
+        // o que los metadatos están desactualizados.
+        if (!app_metadata?.assignments) {
+          console.log('JWT no hidratado. Llamando a refresh-user-metadata...');
           const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
-          if (!platformId) {
-            console.error("VITE_GLAMTICA_PLATFORM_ID no está definido.");
-            throw new Error("Platform ID not configured.");
-          }
+          if (!platformId) throw new Error("Platform ID no configurado.");
 
-          // 1. Fetch active assignments from the Edge Function
-          const { data: functionResponse, error: functionError } = await supabaseClient.functions.invoke('user-actions', {
+          const { error: refreshError } = await supabaseClient.functions.invoke('user-actions', {
             body: {
-              action: 'get-active-assignments',
+              action: 'refresh-user-metadata',
               payload: { userId: id, platformId: platformId }
             }
           });
 
-          if (functionError) {
-            console.error("Error invoking get-active-assignments function:", functionError);
-            throw new Error(functionError.message || "Error en la comunicación con el servidor.");
-          }
-          
-          if (!functionResponse.success) {
-            console.error("Edge function returned an error:", functionResponse.message);
-            throw new Error(functionResponse.message || "Error desconocido al obtener asignaciones.");
+          if (refreshError) {
+            throw new Error(`Error al rehidratar metadatos: ${refreshError.message}`);
           }
 
-          const allAssignments: UserAssignment[] = functionResponse.assignments;
-          setAssignments(allAssignments);
+          // Forzar un refresco de la sesión para obtener el nuevo JWT con los metadatos actualizados.
+          // El listener onAuthStateChange se encargará del resto en el siguiente ciclo.
+          console.log('Metadatos actualizados en DB. Refrescando sesión para obtener nuevo JWT...');
+          await supabaseClient.auth.refreshSession();
+          return; // Detener la ejecución actual, el nuevo evento de auth se encargará.
+        }
+        // --- FIN DE LA LÓGICA DE REHIDRATACIÓN ---
 
-          // If there are no active assignments, log out the user
-          if (!allAssignments || allAssignments.length === 0) {
-            console.warn('Usuario autenticado sin asignaciones activas para esta plataforma. Cerrando sesión.');
-            await supabaseClient.auth.signOut();
-            navigate('/auth');
-            return;
-          }
+        const allAssignments: UserAssignment[] = app_metadata.assignments || [];
+        setAssignments(allAssignments);
 
-          // 2. Determine the current assignment (this logic remains the same)
-          let selectedAssignment: UserAssignment | null = null;
-          const lastSelectedAssignmentId = localStorage.getItem('lastSelectedAssignmentId');
-
-          if (lastSelectedAssignmentId) {
-            selectedAssignment = allAssignments.find(a => a.assignment_id === lastSelectedAssignmentId) || null;
-          }
-
-          if (!selectedAssignment) {
-            const rolePriority = ['tenant_super_admin', 'tenant_admin', 'tenant_user'];
-            for (const roleName of rolePriority) {
-              const foundAssignment = allAssignments.find(a => a.role_name === roleName);
-              if (foundAssignment) {
-                selectedAssignment = foundAssignment;
-                break;
-              }
-            }
-          }
-          
-          if (!selectedAssignment) {
-            selectedAssignment = allAssignments[0];
-          }
-
-          setCurrentAssignment(selectedAssignment);
-
-        } catch (error) {
-          console.error("Error processing user session and assignments:", error);
-          setAssignments([]);
-          setCurrentAssignment(null);
+        if (allAssignments.length === 0) {
+          console.warn('Usuario autenticado pero sin asignaciones activas. Cerrando sesión.');
           await supabaseClient.auth.signOut();
           navigate('/auth');
           return;
         }
+
+        let selectedAssignment: UserAssignment | null = null;
+        const lastSelectedAssignmentId = localStorage.getItem('lastSelectedAssignmentId');
+
+        if (lastSelectedAssignmentId) {
+          selectedAssignment = allAssignments.find(a => a.assignment_id === lastSelectedAssignmentId) || null;
+        }
+
+        if (!selectedAssignment) {
+          const rolePriority = ['tenant_super_admin', 'tenant_admin', 'tenant_user'];
+          for (const roleName of rolePriority) {
+            const foundAssignment = allAssignments.find(a => a.role_name === roleName);
+            if (foundAssignment) {
+              selectedAssignment = foundAssignment;
+              break;
+            }
+          }
+        }
+        
+        if (!selectedAssignment) {
+          selectedAssignment = allAssignments[0];
+        }
+
+        setCurrentAssignment(selectedAssignment);
+
       } else {
-        // Si no hay sessionData.user, asegurar que todo esté limpio.
         setProfile(null);
         setAssignments([]);
         setCurrentAssignment(null);
       }
+    } catch (error) {
+      console.error("Error procesando la sesión:", error);
+      setAssignments([]);
+      setCurrentAssignment(null);
+      await supabaseClient.auth.signOut();
+      navigate('/auth');
     } finally {
       setLoading(false);
     }
