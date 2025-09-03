@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { AssignmentManagerDialog } from '@/components/AssignmentManagerDialog';
 import { UserScheduleDialog } from '@/components/UserScheduleDialog'; // Importar UserScheduleDialog
@@ -61,6 +62,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
   const { toast } = useToast();
   const screenSize = useScreenSize();
   const { currentAssignment } = useAuth();
+  const { formatPrice } = usePriceFormat(); // Usar el hook
   
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAssignmentManagerOpen, setIsAssignmentManagerOpen] = useState(false);
@@ -189,20 +191,20 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
 
               {screenSize !== 'mobile' && (
                 <>
-                  <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm font-medium text-muted-foreground mb-2">
+                  <div className="grid grid-cols-5 gap-x-4 gap-y-2 text-sm font-medium text-muted-foreground mb-2">
                     <div>Rol</div>
                     <div>Sucursal</div>
-                    <div className="text-center">Estado</div>
+                    <div className="text-right">Salario Base</div>
+                    <div className="text-right">Com. Prod. (%)</div>
+                    <div className="text-right">Com. Serv. (%)</div>
                   </div>
                   {user.assignments.map(assignment => (
-                    <div key={assignment.assignment_id} className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm items-center py-2 hover:bg-gray-50 rounded">
+                    <div key={assignment.assignment_id} className="grid grid-cols-5 gap-x-4 gap-y-2 text-sm items-center py-2 hover:bg-gray-50 rounded">
                       <div>{assignment.role_display_name || <span className="text-muted-foreground italic">N/A</span>}</div>
                       <div>{assignment.branch_name || <span className="text-muted-foreground italic">N/A</span>}</div>
-                      <div className="text-center">
-                        <Badge variant={assignment.status === 'active' ? 'default' : 'outline'}>
-                          {assignment.status === 'active' ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </div>
+                      <div className="text-right">{formatPrice(assignment.base_salary)}</div>
+                      <div className="text-right">{assignment.default_product_commission_rate?.toFixed(2) ?? 'N/A'}</div>
+                      <div className="text-right">{assignment.default_service_commission_rate?.toFixed(2) ?? 'N/A'}</div>
                     </div>
                   ))}
                 </>
@@ -225,6 +227,18 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
                         <Badge variant={assignment.status === 'active' ? 'default' : 'outline'}>
                           {assignment.status === 'active' ? 'Activo' : 'Inactivo'}
                         </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-muted-foreground">Salario Base</span>
+                        <span>{formatPrice(assignment.base_salary)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-muted-foreground">Com. Prod. (%)</span>
+                        <span>{assignment.default_product_commission_rate?.toFixed(2) ?? 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-muted-foreground">Com. Serv. (%)</span>
+                        <span>{assignment.default_service_commission_rate?.toFixed(2) ?? 'N/A'}</span>
                       </div>
                     </div>
                   ))}

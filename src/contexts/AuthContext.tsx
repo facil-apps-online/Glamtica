@@ -29,6 +29,9 @@ export interface UserAssignment {
   branch_id: string | null;
   branch_name: string | null;
   status: 'active' | 'inactive';
+  base_salary?: number;
+  default_product_commission_rate?: number;
+  default_service_commission_rate?: number;
 }
 
 interface AuthContextType {

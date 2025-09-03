@@ -15,6 +15,9 @@ export interface TenantUserAssignment {
   branch_name: string | null;
   status: string;
   avatar_url: string | null;
+  base_salary: number | null;
+  default_product_commission_rate: number | null;
+  default_service_commission_rate: number | null;
 }
 
 // Helper function to invoke the superadmin-actions Edge Function
