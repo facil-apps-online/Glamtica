@@ -187,13 +187,13 @@ export default function RegisterTenant() {
     }
   }, [form]);
 
-  const debouncedCheckUser = useCallback(useDebounce(checkUserExists, 500), [checkUserExists]);
+  const debouncedAdminEmail = useDebounce(adminEmail, 500);
 
   useEffect(() => {
-    if (adminEmail) {
-      debouncedCheckUser(adminEmail);
-    }
-  }, [adminEmail, debouncedCheckUser]);
+    // Llama a checkUserExists solo cuando el email "debounceado" cambia.
+    // La propia función checkUserExists ya valida si el email es válido.
+    checkUserExists(debouncedAdminEmail);
+  }, [debouncedAdminEmail, checkUserExists]);
 
   useEffect(() => {
     if (usePhysicalAsBilling) {
