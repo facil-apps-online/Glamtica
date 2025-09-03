@@ -13,7 +13,7 @@ export const useTenantSettings = () => {
 
       const { data, error } = await supabase
         .from("tenant_settings")
-        .select("commercial_name")
+        .select("settings_data")
         .eq("tenant_id", tenantId)
         .single();
 
@@ -22,7 +22,7 @@ export const useTenantSettings = () => {
         throw error;
       }
 
-      return data;
+      return data?.settings_data || null;
     },
     enabled: !!tenantId,
   });
