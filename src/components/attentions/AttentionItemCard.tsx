@@ -11,8 +11,7 @@ import {
 import { useStartService, useFinishService, useCallClient } from "@/hooks/useAttentionServiceActions";
 import { ServiceTimer } from "../ServiceTimer";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { EvidenceUpload } from "../EvidenceUpload";
+import { EvidenceUploadDialog } from "../EvidenceUpload";
 
 type ItemStatus = 'Pendiente' | 'Llamado' | 'En Proceso' | 'Finalizado' | 'Cancelada';
 
@@ -179,17 +178,12 @@ export const AttentionItemCard = ({
             </div>
         )}
     </div>
-    <Dialog open={isEvidenceDialogOpen} onOpenChange={setIsEvidenceDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Cargar Evidencia para {name}</DialogTitle>
-            </DialogHeader>
-            <EvidenceUpload
-                attentionServiceId={id}
-                onUploadComplete={() => setIsEvidenceDialogOpen(false)}
-            />
-        </DialogContent>
-    </Dialog>
+    <EvidenceUploadDialog
+      isOpen={isEvidenceDialogOpen}
+      onOpenChange={setIsEvidenceDialogOpen}
+      attentionServiceId={id}
+      onUploadComplete={() => setIsEvidenceDialogOpen(false)}
+    />
   </>
   );
 };

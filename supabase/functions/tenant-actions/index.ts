@@ -942,6 +942,10 @@ serve(async (req) => {
 
       case 'get_service_tax_types': {
         const { service_id } = payload;
+        if (!service_id) {
+          responseData = [];
+          break;
+        }
         const { data, error } = await supabaseAdmin
           .from('service_tax_types')
           .select('*, tax_types(name, rate, is_percentage)')

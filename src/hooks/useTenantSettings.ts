@@ -18,6 +18,11 @@ export const useTenantSettings = () => {
         .single();
 
       if (error) {
+        // It's okay if no settings row is found, just return null.
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        // For other errors, re-throw.
         console.error("Error fetching tenant settings:", error);
         throw error;
       }

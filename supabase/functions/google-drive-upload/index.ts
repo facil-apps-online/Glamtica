@@ -192,10 +192,14 @@ serve(async (req) => {
     // 9. Post-upload processing based on context
     switch (uploadContext) {
       case 'ServiceEvidence': {
-        const { branchId, userId } = body;
+        const { branchId, userId } = await req.json(); // Leer de la petición original
         if (!branchId || !userId) {
           throw new Error('Missing branchId or userId for ServiceEvidence context.');
         }
+        
+        const fileBuffer = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
+        const fileSize = fileBuffer.length;
+
         const { error: dbError } = await supabaseAdmin
           .from('attention_service_evidences')
           .insert({
@@ -203,6 +207,7 @@ serve(async (req) => {
             google_drive_file_id: fileId,
             file_name: newFileName,
             mime_type: mimeType,
+            file_size: fileSize, // Añadido
             tenant_id: tenantId,
             branch_id: branchId,
             user_id: userId,

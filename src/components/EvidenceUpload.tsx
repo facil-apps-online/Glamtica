@@ -1,32 +1,46 @@
 import { useState, useRef } from "react";
+import imageCompression from 'browser-image-compression';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, Upload, X, Eye } from "lucide-react";
-import { useUploadEvidence, useAppointmentEvidence, getEvidenceUrl } from "@/hooks/useAppointmentEvidence";
+import { Upload, X } from "lucide-react";
+import { useUploadEvidence, useAppointmentEvidence } from "@/hooks/useAppointmentEvidence";
 import { useAuth } from "@/hooks/useAuth";
-import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { ProductImage } from './ProductImage';
+import { ImagePreviewDialog } from './ImagePreviewDialog';
+import { useToast } from "@/hooks/use-toast";
 
-interface EvidenceUploadProps {
+interface EvidenceUploadDialogProps {
   attentionServiceId: string;
+  branchId: string; // <-- Prop requerida
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
   onUploadComplete?: () => void;
-  trigger?: React.ReactNode;
 }
 
-export const EvidenceUpload = ({ 
+export const EvidenceUploadDialog = ({ 
   attentionServiceId,
+  branchId, // <-- Prop requerida
+  isOpen,
+  onOpenChange,
   onUploadComplete,
-  trigger 
-}: EvidenceUploadProps) => {
-  const [open, setOpen] = useState(false);
+}: EvidenceUploadDialogProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const { tenantId } = useAuth();
-  const { selectedBranchId } = useBranchFilterStore();
   
-  const uploadMutation = useUploadEvidence();
-  const { data: existingEvidence = [] } = useAppointmentEvidence(attentionServiceId);
+  const { mutate: uploadEvidence, isPending: isUploading } = useUploadEvidence();
+  const { data: existingEvidence = [], isLoading, isError, refetch: refetchEvidence } = useAppointmentEvidence(attentionServiceId);
+
+  const [isPreviewOpen, setPreviewOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+
+  const handleOpenPreview = (imageUrl: string) => {
+    setSelectedImageUrl(imageUrl);
+    setPreviewOpen(true);
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -39,139 +53,150 @@ export const EvidenceUpload = ({
   };
 
   const handleUpload = async () => {
-    if (selectedFiles.length === 0 || !tenantId || selectedBranchId === 'all') return;
+    if (selectedFiles.length === 0 || !tenantId || !branchId) return;
+
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+    };
 
     try {
-      for (const file of selectedFiles) {
-        await uploadMutation.mutateAsync({
-          file,
-          attentionServiceId,
-          tenantId,
-          branchId: selectedBranchId,
+      await Promise.all(selectedFiles.map(async (file) => {
+        const compressedFile = await imageCompression(file, options);
+        await new Promise<void>((resolve, reject) => {
+          uploadEvidence({
+            file: compressedFile,
+            attentionServiceId,
+            tenantId,
+            branchId: branchId, // <-- Usar la prop
+          }, {
+            onSuccess: () => resolve(),
+            onError: (error) => reject(error),
+          });
         });
-      }
+      }));
+      
+      toast({ title: "Éxito", description: "Todas las evidencias han sido subidas." });
       setSelectedFiles([]);
-      setOpen(false);
+      refetchEvidence();
       if (onUploadComplete) onUploadComplete();
+
     } catch (error) {
       console.error('Error uploading files:', error);
+      toast({ title: "Error", description: "Ocurrió un error al subir una o más imágenes.", variant: "destructive" });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" className="gap-2">
-            <Camera className="w-4 h-4" />
-            Agregar Evidencia
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Evidencia Fotográfica del Servicio</DialogTitle>
-          <p className="text-sm text-slate-600">
-            Carga fotos del antes, durante o después del servicio realizado.
-          </p>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Evidencia Fotográfica del Servicio</DialogTitle>
+            <p className="text-sm text-slate-600">
+              Carga fotos del antes, durante o después del servicio realizado.
+            </p>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {existingEvidence.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-medium">Evidencias existentes:</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {existingEvidence.map((evidence) => (
-                  <Card key={evidence.id} className="overflow-hidden">
-                    <CardContent className="p-2">
-                      <div className="relative">
-                        <img
-                          src={getEvidenceUrl(evidence.google_drive_file_id)}
-                          alt={evidence.file_name}
-                          className="w-full h-32 object-cover rounded"
+          <div className="space-y-6">
+            {isLoading && <div>Cargando evidencias...</div>}
+            {isError && <div>Error al cargar las evidencias.</div>}
+
+            {existingEvidence.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium">Evidencias existentes:</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {existingEvidence.map((evidence) => (
+                    <Card key={evidence.id} className="overflow-hidden cursor-pointer" onClick={() => handleOpenPreview(evidence.google_drive_file_id)}>
+                      <CardContent className="p-0">
+                        <ProductImage 
+                          imageUrl={evidence.google_drive_file_id} 
+                          altText={evidence.file_name}
+                          className="w-full h-32 object-cover"
                         />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="absolute top-1 right-1 h-7 w-7"
-                          onClick={() => window.open(getEvidenceUrl(evidence.google_drive_file_id), '_blank')}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
+            )}
+
+            <div className="space-y-4">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="w-full gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Seleccionar Fotos
+              </Button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-medium">Nuevas para subir:</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {selectedFiles.map((file, index) => (
+                      <Card key={index} className="relative overflow-hidden">
+                        <CardContent className="p-2">
+                          <div className="relative">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              className="w-full h-32 object-cover rounded"
+                            />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-7 w-7"
+                              onClick={() => removeFile(index)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedFiles.length > 0 && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setSelectedFiles([])}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleUpload}
+                    disabled={isUploading || !branchId} // <-- Usar la prop
+                    className="gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {isUploading ? "Subiendo..." : `Confirmar y Subir ${selectedFiles.length} archivo(s)`}
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
-
-          <div className="space-y-4">
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              className="w-full gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              Seleccionar Fotos
-            </Button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {selectedFiles.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {selectedFiles.map((file, index) => (
-                  <Card key={index} className="relative overflow-hidden">
-                    <CardContent className="p-2">
-                      <div className="relative">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={file.name}
-                          className="w-full h-32 object-cover rounded"
-                        />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-7 w-7"
-                          onClick={() => removeFile(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {selectedFiles.length > 0 && (
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button
-                  variant="ghost"
-                  onClick={() => setSelectedFiles([])}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleUpload}
-                  disabled={uploadMutation.isPending || selectedBranchId === 'all'}
-                  className="gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  {uploadMutation.isPending ? "Subiendo..." : `Subir ${selectedFiles.length} archivo(s)`}
-                </Button>
-              </div>
-            )}
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <ImagePreviewDialog
+        isOpen={isPreviewOpen}
+        onClose={() => setPreviewOpen(false)}
+        imageUrl={selectedImageUrl}
+      />
+    </>
   );
 };

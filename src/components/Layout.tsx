@@ -5,7 +5,6 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionStatus } from "@/hooks/useActiveSubscription";
-import { useTenantSettings } from "@/hooks/useTenantSettings"; // Importar el nuevo hook
 import { ReadOnlyProvider } from "@/contexts/ReadOnlyContext";
 import { ReadOnlyBanner } from "./ReadOnlyBanner";
 import { GracePeriodBanner } from "./GracePeriodBanner";
@@ -15,7 +14,6 @@ import { tenantNavigationConfig } from "@/config/tenantNavigation"; // Importar 
 export function Layout() {
   const { currentAssignment } = useAuth();
   const { data: subscription, isLoading: isSubscriptionLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
-  const { data: settings, isLoading: areSettingsLoading } = useTenantSettings(); // Usar el nuevo hook
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,9 +28,7 @@ export function Layout() {
     }
   }, [status, isSubscriptionLoading, location.pathname, navigate]);
 
-  const isLoading = isSubscriptionLoading || areSettingsLoading;
-
-  if (isLoading) {
+  if (isSubscriptionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         Cargando...
@@ -47,7 +43,7 @@ export function Layout() {
           <AppSidebar 
             menuConfig={tenantNavigationConfig}
             homeUrl="/"
-            title={settings?.commercial_name || currentAssignment?.tenant_name || "Panel de Tenant"}
+            title={currentAssignment?.tenant_name || "Panel de Tenant"}
             subtitle="Glamtica.app"
           />
           <div className="flex-1 flex flex-col">

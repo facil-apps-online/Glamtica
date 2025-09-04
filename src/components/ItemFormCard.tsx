@@ -16,7 +16,7 @@ import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { format, setHours, setMinutes } from "date-fns";
 import { useStartService, useFinishService, useCallClient } from "@/hooks/useAttentionServiceActions";
 import { ServiceTimer } from "./ServiceTimer";
-import { EvidenceUpload } from "./EvidenceUpload";
+import { EvidenceUploadDialog } from "./EvidenceUpload";
 
 export interface ItemForm {
   id: string;
@@ -525,17 +525,13 @@ const ItemFormCard = ({
             </Button>
         )}
     </Card>
-    <Dialog open={!!evidenceDialogService} onOpenChange={(isOpen) => !isOpen && setEvidenceDialogService(null)}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Cargar Evidencia para {evidenceDialogService?.item_name}</DialogTitle>
-            </DialogHeader>
-            <EvidenceUpload
-                attentionServiceId={evidenceDialogService?.id || ''}
-                onUploadComplete={() => setEvidenceDialogService(null)}
-            />
-        </DialogContent>
-    </Dialog>
+    <EvidenceUploadDialog
+      isOpen={!!evidenceDialogService}
+      onOpenChange={(isOpen) => !isOpen && setEvidenceDialogService(null)}
+      attentionServiceId={evidenceDialogService?.id || ''}
+      branchId={branchId || ''}
+      onUploadComplete={() => setEvidenceDialogService(null)}
+    />
   </>
   );
 };

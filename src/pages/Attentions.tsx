@@ -416,7 +416,7 @@ export default function Attentions() {
           ) : (
             <div className="space-y-4">
               {attentions.length > 0 ? (
-                attentions.map((attention) => (
+                                attentions.map((attention) => (
                   <AttentionCard key={attention.id} attention={attention} formatPrice={formatPrice} onEdit={handleEditAttention} screenSize={screenSize} />
                 ))
               ) : (
