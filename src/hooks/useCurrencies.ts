@@ -38,7 +38,7 @@ export const useCreateCurrency = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currencies'] });
-      toast({ title: 'Éxito', description: 'Moneda creada correctamente.' });
+      toast({ title: 'Éxito', description: 'Moneda creada correctamente.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -58,7 +58,7 @@ export const useUpdateCurrency = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currencies'] });
-      toast({ title: 'Éxito', description: 'Moneda actualizada correctamente.' });
+      toast({ title: 'Éxito', description: 'Moneda actualizada correctamente.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -77,7 +77,7 @@ export const useDeleteCurrency = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currencies'] });
-      toast({ title: 'Éxito', description: 'Moneda eliminada correctamente.' });
+      toast({ title: 'Éxito', description: 'Moneda eliminada correctamente.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: "No se puede eliminar una moneda que está en uso.", variant: 'destructive' });

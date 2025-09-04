@@ -40,7 +40,7 @@ export const useUpsertIntegrationCategory = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      toast({ title: `Categoría ${variables.id ? 'actualizada' : 'creada'} con éxito.` });
+      toast({ title: `Categoría ${variables.id ? 'actualizada' : 'creada'} con éxito.`, variant: 'success' });
       queryClient.invalidateQueries({ queryKey: ['integrationCategories'] });
     },
     onError: (error) => {
@@ -64,7 +64,7 @@ export const useDeleteIntegrationCategory = () => {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast({ title: 'Categoría eliminada con éxito.' });
+      toast({ title: 'Categoría eliminada con éxito.', variant: 'success' });
       queryClient.invalidateQueries({ queryKey: ['integrationCategories'] });
     },
     onError: (error) => {

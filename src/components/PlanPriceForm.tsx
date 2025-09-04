@@ -52,7 +52,7 @@ export function PlanPriceForm({ planId, onPriceScheduled }: PlanPriceFormProps) 
 
       if (error) throw error;
 
-      toast({ title: 'Éxito', description: 'Nuevo precio programado correctamente.' });
+      toast({ title: 'Éxito', description: 'Nuevo precio programado correctamente.', variant: 'success' });
       form.reset();
       onPriceScheduled(); // Trigger refresh
     } catch (err: any) {

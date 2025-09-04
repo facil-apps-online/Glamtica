@@ -38,6 +38,7 @@ export const useUpdateCommission = () => {
       toast({
         title: "Comisión Actualizada",
         description: "La comisión se ha guardado correctamente.",
+        variant: "success",
       });
     },
     onError: (error) => {

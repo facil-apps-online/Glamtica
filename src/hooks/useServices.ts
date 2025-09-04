@@ -109,7 +109,7 @@ export const useCreateMasterService = () => {
       callTenantAction('create_master_service', { serviceData }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_services'] });
-      toast({ title: "Servicio Maestro Creado", description: "El servicio ha sido añadido al catálogo general." });
+      toast({ title: "Servicio Maestro Creado", description: "El servicio ha sido añadido al catálogo general.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -128,7 +128,7 @@ export const useUpdateMasterService = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_services'] });
       queryClient.invalidateQueries({ queryKey: ['branch_services'] });
-      toast({ title: "Servicio Maestro Actualizado", description: "La información del servicio ha sido actualizada." });
+      toast({ title: "Servicio Maestro Actualizado", description: "La información del servicio ha sido actualizada.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -147,7 +147,7 @@ export const useAssignServiceToBranch = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['branch_services'] });
       queryClient.invalidateQueries({ queryKey: ['service_branch_prices', variables.service_id] });
-      toast({ title: "Asignación Exitosa", description: "El servicio ha sido asignado a la(s) sucursal(es)." });
+      toast({ title: "Asignación Exitosa", description: "El servicio ha sido asignado a la(s) sucursal(es).", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
@@ -165,7 +165,7 @@ export const useUpdateBranchService = () => {
       callTenantAction('update_branch_service', { id, updates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_services'] });
-      toast({ title: "Servicio Actualizado", description: "El precio, duración o estado ha sido actualizado para esta sucursal." });
+      toast({ title: "Servicio Actualizado", description: "El precio, duración o estado ha sido actualizado para esta sucursal.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -183,7 +183,7 @@ export const useRemoveServiceFromBranch = () => {
       callTenantAction('remove_service_from_branch', { branch_service_id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_services'] });
-      toast({ title: "Servicio Desvinculado", description: "El servicio ha sido removido de esta sucursal." });
+      toast({ title: "Servicio Desvinculado", description: "El servicio ha sido removido de esta sucursal.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -201,7 +201,7 @@ export const useAssignComboToBranch = () => {
       callTenantAction('assign_combo_to_branch', { combo_id, branch_id, selling_price, is_active }),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos'] });
-      toast({ title: "Asignación Exitosa", description: "El combo ha sido asignado a la sucursal." });
+      toast({ title: "Asignación Exitosa", description: "El combo ha sido asignado a la sucursal.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
@@ -219,7 +219,7 @@ export const useUpdateBranchCombo = () => {
       callTenantAction('update_branch_combo_status', { combo_id: id, branch_id: branchId, is_active: updates.is_active_in_branch }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', variables.branchId] });
-      toast({ title: "Combo Actualizado", description: "El precio o estado ha sido actualizado para esta sucursal." });
+      toast({ title: "Combo Actualizado", description: "El precio o estado ha sido actualizado para esta sucursal.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -237,7 +237,7 @@ export const useBulkUpdateBranchComboPrices = () => {
       callTenantAction('bulk_update_branch_combo_prices', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos'] });
-      toast({ title: "Precios de Combos Actualizados", description: "Los precios de los combos han sido actualizados masivamente." });
+      toast({ title: "Precios de Combos Actualizados", description: "Los precios de los combos han sido actualizados masivamente.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

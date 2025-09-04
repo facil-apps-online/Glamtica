@@ -38,7 +38,7 @@ export const useAddServiceProduct = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['service-products', data.attention_service_id] });
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      toast({ title: "Producto agregado", description: "El producto ha sido agregado al servicio." });
+      toast({ title: "Producto agregado", description: "El producto ha sido agregado al servicio.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error al agregar producto", description: error.message, variant: "destructive" });

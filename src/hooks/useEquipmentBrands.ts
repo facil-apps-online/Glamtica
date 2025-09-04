@@ -84,6 +84,7 @@ export const useEquipmentBrands = () => {
       toast({
         title: 'Éxito',
         description: 'Marca de equipo eliminada correctamente.',
+        variant: 'success',
       });
     },
     onError: (error: any) => {

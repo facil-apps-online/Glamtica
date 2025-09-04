@@ -35,7 +35,7 @@ export function NewPriceScheduler({ plans, isLoading }) {
   const onAddNewPrice = (values: z.infer<typeof newPriceSchema>) => {
     createPlanPriceMutation.mutate({ ...values, effective_date: format(values.effective_date, 'yyyy-MM-dd') }, {
       onSuccess: () => {
-        toast({ title: 'Éxito', description: 'Nuevo precio programado correctamente.' });
+        toast({ title: 'Éxito', description: 'Nuevo precio programado correctamente.', variant: 'success' });
         form.reset();
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),

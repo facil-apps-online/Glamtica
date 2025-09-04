@@ -92,7 +92,7 @@ export const ManageProductInBranchDialog = ({ product, trigger }: ManageProductI
           id: productInSelectedBranch.branch_product_id,
           updates: commonData,
         });
-        toast({ title: "Producto Actualizado", description: "El producto ha sido actualizado en la sucursal." });
+        toast({ title: "Producto Actualizado", description: "El producto ha sido actualizado en la sucursal.", variant: "success" });
       } else {
         // Asignar nuevo producto a la(s) sucursal(es)
         const targetBranchIds = assignToAll ? (branches?.map(b => b.id) || []) : [selectedBranchId];
@@ -107,7 +107,7 @@ export const ManageProductInBranchDialog = ({ product, trigger }: ManageProductI
           branch_ids: targetBranchIds,
           defaults: commonData,
         });
-        toast({ title: "Producto Asignado", description: `El producto ha sido asignado a ${targetBranchIds.length} sucursal(es).` });
+        toast({ title: "Producto Asignado", description: `El producto ha sido asignado a ${targetBranchIds.length} sucursal(es).`, variant: "success" });
       }
       setOpen(false);
     } catch (error: any) {
@@ -119,7 +119,7 @@ export const ManageProductInBranchDialog = ({ product, trigger }: ManageProductI
     if (productInSelectedBranch && confirm(`¿Estás seguro de que quieres desvincular ${product.name} de esta sucursal?`)) {
       try {
         await removeProductFromBranch(productInSelectedBranch.branch_product_id);
-        toast({ title: "Producto Desvinculado", description: "El producto ha sido desvinculado de la sucursal." });
+        toast({ title: "Producto Desvinculado", description: "El producto ha sido desvinculado de la sucursal.", variant: "success" });
         setOpen(false);
       } catch (error: any) {
         toast({ title: "Error", description: error.message || "No se pudo desvincular el producto.", variant: "destructive" });

@@ -116,6 +116,7 @@ export const ManageServiceCommissionsDialog = ({ serviceId, serviceName, isOpen,
         toast({
           title: "Comisiones actualizadas",
           description: `Las comisiones para la sucursal ${branch.branch_name} se han guardado correctamente.`,
+          variant: "success",
         });
         refetch(); // Refrescar los datos para obtener el estado más reciente
         onSuccess?.();

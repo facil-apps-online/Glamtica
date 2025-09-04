@@ -62,7 +62,7 @@ export const ProductImageGallery = ({ productId }: ProductImageGalleryProps) => 
 
       await Promise.all(uploadPromises);
       
-      toast({ title: "Éxito", description: "Todas las imágenes han sido subidas." });
+      toast({ title: "Éxito", description: "Todas las imágenes han sido subidas.", variant: "success" });
       setSelectedFiles([]); // Limpiar aquí, después del éxito
       refetchImages(); // Refrescar la lista de imágenes existentes
 

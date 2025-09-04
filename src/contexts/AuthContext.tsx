@@ -258,7 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       toast({
         title: "Contexto cambiado",
         description: `Ahora estás en el contexto de ${newAssignment.tenant_name}${newAssignment.branch_name ? ' (' + newAssignment.branch_name + ')' : ''}.`,
-        variant: "default",
+        variant: "success",
       });
 
     } catch (error) {

@@ -210,7 +210,7 @@ export const useDeleteCombo = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['combos', tenantId] });
-      toast({ title: "Combo Eliminado", description: "El combo ha sido eliminado exitosamente." });
+      toast({ title: "Combo Eliminado", description: "El combo ha sido eliminado exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error al Eliminar", description: error.message || "No se pudo eliminar el combo.", variant: "destructive" });
@@ -261,7 +261,7 @@ export const useGetComboAssignments = (comboId: string) => {
       },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['combo_assignments', variables.combo_id] });
-        toast({ title: "Asignación Actualizada" });
+        toast({ title: "Asignación Actualizada", variant: "success" });
       },
       onError: (error) => {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -288,7 +288,7 @@ export const useGetComboAssignments = (comboId: string) => {
       },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['combo_assignments', variables.combo_id] });
-        toast({ title: "Asignación Actualizada" });
+        toast({ title: "Asignación Actualizada", variant: "success" });
       },
       onError: (error) => {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -335,7 +335,7 @@ export const useGetComboAssignments = (comboId: string) => {
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['combo_branch_details', variables.combo_id, variables.branch_id] });
         queryClient.invalidateQueries({ queryKey: ['branch_combos', variables.branch_id] });
-        toast({ title: "Precios Actualizados", description: "Los precios para la sucursal han sido guardados." });
+        toast({ title: "Precios Actualizados", description: "Los precios para la sucursal han sido guardados.", variant: "success" });
       },
       onError: (error) => {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -381,7 +381,7 @@ export const useGetComboAssignments = (comboId: string) => {
       },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['branch_combos', variables.branch_id] });
-        toast({ title: "Estado Actualizado", description: "El estado del combo en la sucursal ha sido actualizado." });
+        toast({ title: "Estado Actualizado", description: "El estado del combo en la sucursal ha sido actualizado.", variant: "success" });
       },
       onError: (error) => {
         toast({ title: "Error", description: error.message, variant: "destructive" });

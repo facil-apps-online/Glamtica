@@ -80,7 +80,7 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
       return invokeUserAction('update-assignments', { userId, tenantId, assignments });
     },
     onSuccess: async () => {
-      toast({ title: 'Éxito', description: 'Asignaciones actualizadas correctamente.' });
+      toast({ title: 'Éxito', description: 'Asignaciones actualizadas correctamente.', variant: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['tenantUsers', tenantId] });
       onOpenChange(false);
       await refreshUser(); // Refresh user session to reflect changes

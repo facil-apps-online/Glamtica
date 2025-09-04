@@ -10,7 +10,7 @@ export const useApproveProductTransfer = () => {
     mutationFn: (payload) => callTenantAction('approve_product_transfer', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product_transfers"] });
-      toast({ title: "Traslado Aprobado", description: "El traslado ha sido aprobado." });
+      toast({ title: "Traslado Aprobado", description: "El traslado ha sido aprobado.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

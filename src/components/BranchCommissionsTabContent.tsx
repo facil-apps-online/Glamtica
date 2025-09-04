@@ -121,6 +121,7 @@ export default function BranchCommissionsTabContent({ branchId }: BranchCommissi
       toast({
         title: "Comisiones actualizadas",
         description: `Las comisiones para ${itemType === 'product' ? 'el producto' : 'el servicio'} se han guardado correctamente.`, 
+        variant: "success",
       });
       setDirtyItems(prev => {
         const newSet = new Set(prev);

@@ -10,7 +10,7 @@ export const useCreateProductTransfer = () => {
     mutationFn: (transferData) => callTenantAction('create_product_transfer', transferData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product_transfers'] });
-      toast({ title: "Traslado Creado", description: "El traslado ha sido registrado exitosamente." });
+      toast({ title: "Traslado Creado", description: "El traslado ha sido registrado exitosamente.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

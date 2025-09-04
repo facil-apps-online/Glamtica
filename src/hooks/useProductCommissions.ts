@@ -62,7 +62,7 @@ export const useCreateProductCommission = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['product-commissions-by-product', data.product_id] });
-      toast({ title: "Comisión asignada" });
+      toast({ title: "Comisión asignada", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo asignar la comisión: ${error.message}`, variant: "destructive" });
@@ -81,7 +81,7 @@ export const useUpdateProductCommission = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['product-commissions-by-product', data.product_id] });
-      toast({ title: "Comisión actualizada" });
+      toast({ title: "Comisión actualizada", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo actualizar la comisión: ${error.message}`, variant: "destructive" });
@@ -100,7 +100,7 @@ export const useDeleteProductCommission = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['product-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['product-commissions-by-product', variables.product_id] });
-      toast({ title: "Comisión eliminada" });
+      toast({ title: "Comisión eliminada", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo eliminar la comisión: ${error.message}`, variant: "destructive" });

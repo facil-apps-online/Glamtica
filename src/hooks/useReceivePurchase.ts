@@ -34,7 +34,7 @@ export const useReceivePurchase = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchases', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Compra Recibida", description: "El stock ha sido actualizado exitosamente." });
+      toast({ title: "Compra Recibida", description: "El stock ha sido actualizado exitosamente.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error al Recibir", description: error.message, variant: "destructive" });

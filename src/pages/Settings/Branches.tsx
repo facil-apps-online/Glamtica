@@ -46,7 +46,7 @@ export default function BranchesPage() {
     if (!branchToDelete) return;
     try {
       await deleteBranchMutation.mutateAsync(branchToDelete.id);
-      toast({ title: 'Éxito', description: 'Sucursal eliminada correctamente.' });
+      toast({ title: 'Éxito', description: 'Sucursal eliminada correctamente.', variant: 'success' });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {

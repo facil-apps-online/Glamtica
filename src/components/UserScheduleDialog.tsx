@@ -161,6 +161,7 @@ export const UserScheduleDialog = ({ userId, userName, trigger, targetUserAssign
       toast({
         title: "Horarios guardados",
         description: "Los horarios han sido actualizados exitosamente.",
+        variant: "success",
       });
       
       setOpen(false);

@@ -31,6 +31,7 @@ export const useUpdateAttentionStatus = () => {
       toast({
         title: "Atención Actualizada",
         description: `La atención ha sido marcada como "${variables.newStatus}".`,
+        variant: "success",
       });
     },
     onError: (error) => {

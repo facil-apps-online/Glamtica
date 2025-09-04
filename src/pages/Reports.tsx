@@ -43,7 +43,7 @@ export default function Reports() {
       return;
     }
     exportToXlsx(stockReport, "Reporte de Stock", "reporte_stock.xlsx");
-    toast({ title: "Exportación Exitosa" });
+    toast({ title: "Exportación Exitosa", variant: "success" });
   };
 
   return (

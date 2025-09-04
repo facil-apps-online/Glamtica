@@ -47,7 +47,7 @@ export const useCreateLocalization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['localizations'] });
-      toast({ title: 'Éxito', description: 'Localización creada.' });
+      toast({ title: 'Éxito', description: 'Localización creada.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -67,7 +67,7 @@ export const useUpdateLocalization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['localizations'] });
-      toast({ title: 'Éxito', description: 'Localización actualizada.' });
+      toast({ title: 'Éxito', description: 'Localización actualizada.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -107,7 +107,7 @@ export const useCreateCountry = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['countries'] });
-      toast({ title: 'Éxito', description: 'País creado.' });
+      toast({ title: 'Éxito', description: 'País creado.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -126,7 +126,7 @@ export const useUpdateCountry = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['countries'] });
-      toast({ title: 'Éxito', description: 'País actualizado.' });
+      toast({ title: 'Éxito', description: 'País actualizado.', variant: 'success' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

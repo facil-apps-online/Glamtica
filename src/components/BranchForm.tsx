@@ -130,7 +130,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
           p_latitude: values.latitude,
           p_longitude: values.longitude,
         });
-        toast({ title: 'Éxito', description: 'Sucursal actualizada correctamente.' });
+        toast({ title: 'Éxito', description: 'Sucursal actualizada correctamente.', variant: 'success' });
       } else {
         await createBranchMutation.mutateAsync({
           p_name: values.name,
@@ -148,7 +148,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
           p_latitude: values.latitude,
           p_longitude: values.longitude,
         });
-        toast({ title: 'Éxito', description: 'Sucursal creada correctamente.' });
+        toast({ title: 'Éxito', description: 'Sucursal creada correctamente.', variant: 'success' });
       }
       onSuccess();
     } catch (error: any) {

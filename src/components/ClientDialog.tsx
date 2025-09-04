@@ -182,7 +182,7 @@ export const ClientDialog = ({
         { clientId: client.id, updates: updatesToSend },
         {
           onSuccess: () => {
-            toast({ title: "Éxito", description: "Cliente actualizado correctamente." });
+            toast({ title: "Éxito", description: "Cliente actualizado correctamente.", variant: "success" });
             // No cerramos el dialogo en modo edicion para poder cambiar de pestaña
           },
           onError: (error: any) => toast({ title: "Error", description: `Error al actualizar cliente: ${error.message}`, variant: "destructive" })
@@ -195,7 +195,7 @@ export const ClientDialog = ({
       }
       createMutation.mutate({ clientData: data, branchIds: selectedBranchIds }, {
         onSuccess: (newClient) => {
-          toast({ title: "Éxito", description: "Cliente creado correctamente." });
+          toast({ title: "Éxito", description: "Cliente creado correctamente.", variant: "success" });
           setOpen(false);
           if (onClientCreated && newClient?.id) {
             onClientCreated(newClient.id);
@@ -216,7 +216,7 @@ export const ClientDialog = ({
           ? [...selectedBranchIds, branchId]
           : selectedBranchIds.filter(id => id !== branchId);
         setSelectedBranchIds(newSelectedBranchIds);
-        toast({ title: "Éxito", description: `Asociación con la sucursal actualizada.` });
+        toast({ title: "Éxito", description: `Asociación con la sucursal actualizada.`, variant: "success" });
       },
       onError: (error: any) => {
         toast({ title: "Error", description: `No se pudo actualizar la asociación: ${error.message}`, variant: "destructive" });
@@ -524,7 +524,7 @@ export const ClientDialog = ({
                 data: formData,
               }, {
                 onSuccess: () => {
-                  toast({ title: "Éxito", description: "Formulario de admisión guardado." });
+                  toast({ title: "Éxito", description: "Formulario de admisión guardado.", variant: "success" });
                   setIsIntakeFormOpen(false); // Cerrar el modal al guardar
                 },
                 onError: (error: any) => toast({ title: "Error", description: `Error al guardar formulario: ${error.message}`, variant: "destructive" }),

@@ -142,6 +142,7 @@ export const useToggleSupplierProductStatus = () => {
       toast({
         title: `Producto de proveedor ${data.is_active ? 'activado' : 'desactivado'}`,
         description: "El estado del producto de proveedor se ha actualizado.",
+        variant: "success",
       });
     },
     onError: (error) => {

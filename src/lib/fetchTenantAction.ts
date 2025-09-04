@@ -10,9 +10,11 @@ export async function fetchTenantAction(action: string, payload: any = {}) {
     throw new Error(error.message);
   }
 
-  if (data.error) {
-    console.error(`Error from tenant-actions function for action ${action}:`, data.error);
-    throw new Error(data.error);
+  // Si no hay datos o hay un error en los datos, lanzar una excepción
+  if (!data || data.error) {
+    const errorMessage = data?.error || `La acción '${action}' no devolvió datos.`;
+    console.error(`Error from tenant-actions function for action ${action}:`, errorMessage);
+    throw new Error(errorMessage);
   }
 
   return data;

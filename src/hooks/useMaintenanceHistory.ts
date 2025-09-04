@@ -66,6 +66,7 @@ export const useMaintenanceHistory = (equipmentId: string) => {
       toast({
         title: 'Éxito',
         description: 'Registro añadido correctamente.',
+        variant: 'success',
       });
       await fetchHistory();
       return data as MaintenanceEvent;
@@ -99,6 +100,7 @@ export const useMaintenanceHistory = (equipmentId: string) => {
       toast({
         title: 'Éxito',
         description: 'Registro actualizado.',
+        variant: 'success',
       });
       await fetchHistory();
       return data as MaintenanceEvent;
@@ -129,6 +131,7 @@ export const useMaintenanceHistory = (equipmentId: string) => {
       toast({
         title: 'Éxito',
         description: 'Registro eliminado.',
+        variant: 'success',
       });
       await fetchHistory();
       return true;

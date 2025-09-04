@@ -60,10 +60,10 @@ export const EquipmentBrandDialog: React.FC<EquipmentBrandDialogProps> = ({ bran
     try {
       if (brand) {
         await updateBrand({ id: brand.id, updates: data });
-        toast({ title: "Éxito", description: "Marca de equipo actualizada correctamente." });
+        toast({ title: "Éxito", description: "Marca de equipo actualizada correctamente.", variant: "success" });
       } else {
         await addBrand(data);
-        toast({ title: "Éxito", description: "Marca de equipo creada correctamente." });
+        toast({ title: "Éxito", description: "Marca de equipo creada correctamente.", variant: "success" });
       }
       setOpen(false);
       onSuccess?.();

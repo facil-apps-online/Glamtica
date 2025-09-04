@@ -119,7 +119,7 @@ export const useUpsertIntegrationProvider = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      toast({ title: `Proveedor ${variables.id ? 'actualizado' : 'creado'} con éxito.` });
+      toast({ title: `Proveedor ${variables.id ? 'actualizado' : 'creado'} con éxito.`, variant: 'success' });
       queryClient.invalidateQueries({ queryKey: ['integrationProviders'] });
       queryClient.invalidateQueries({ queryKey: ['integrationProvider', data.id] });
     },

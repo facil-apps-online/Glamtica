@@ -41,6 +41,7 @@ export const useTenantAction = (options: UseTenantActionOptions = {}) => {
         toast({
           title: 'Éxito',
           description: options.successMessage,
+          variant: 'success',
         });
       }
       if (options.onSuccess) {

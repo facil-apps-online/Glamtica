@@ -10,7 +10,7 @@ export const useUpdateProductTransferStatus = () => {
     mutationFn: (transferData) => callTenantAction('update_product_transfer_status', transferData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product_transfers'] });
-      toast({ title: "Estado de Traslado Actualizado", description: "El estado del traslado ha sido actualizado exitosamente." });
+      toast({ title: "Estado de Traslado Actualizado", description: "El estado del traslado ha sido actualizado exitosamente.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

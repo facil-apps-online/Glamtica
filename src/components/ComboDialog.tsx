@@ -106,7 +106,7 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
   };
 
   const handleSuccess = () => {
-    toast({ title: "Éxito", description: `Combo ${combo ? 'actualizado' : 'creado'} correctamente.` });
+    toast({ title: "Éxito", description: `Combo ${combo ? 'actualizado' : 'creado'} correctamente.`, variant: "success" });
     onSuccess?.();
     onOpenChange(false);
     resetForm();

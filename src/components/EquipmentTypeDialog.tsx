@@ -60,10 +60,10 @@ export const EquipmentTypeDialog: React.FC<EquipmentTypeDialogProps> = ({ type, 
     try {
       if (type) {
         await updateType({ id: type.id, updates: data });
-        toast({ title: "Éxito", description: "Tipo de equipo actualizado correctamente." });
+        toast({ title: "Éxito", description: "Tipo de equipo actualizado correctamente.", variant: "success" });
       } else {
         await addType({ name: data.name, description: data.description, is_active: data.is_active });
-        toast({ title: "Éxito", description: "Tipo de equipo creado correctamente." });
+        toast({ title: "Éxito", description: "Tipo de equipo creado correctamente.", variant: "success" });
       }
       setOpen(false);
       onSuccess?.();

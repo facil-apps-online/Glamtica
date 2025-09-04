@@ -52,7 +52,7 @@ export const RegionalSettingsTab = () => {
 
   const onSubmit = (values: z.infer<typeof regionalSettingsFormSchema>) => {
     regionalSettingsMutation.mutate(values, {
-      onSuccess: () => toast({ title: 'Éxito', description: 'Configuración regional actualizada.' }),
+      onSuccess: () => toast({ title: 'Éxito', description: 'Configuración regional actualizada.', variant: 'success' }),
       onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
     });
   };

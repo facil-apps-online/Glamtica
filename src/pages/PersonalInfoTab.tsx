@@ -56,7 +56,7 @@ export const PersonalInfoTab = () => {
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
 
-      toast({ title: 'Éxito', description: 'Perfil actualizado.' });
+      toast({ title: 'Éxito', description: 'Perfil actualizado.', variant: 'success' });
       await refreshUser();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

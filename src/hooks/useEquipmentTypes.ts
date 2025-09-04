@@ -83,6 +83,7 @@ export const useEquipmentTypes = () => {
       toast({
         title: 'Éxito',
         description: 'Tipo de equipo eliminado correctamente.',
+        variant: 'success',
       });
     },
     onError: (error: any) => {

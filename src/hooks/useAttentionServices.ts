@@ -18,7 +18,7 @@ export const useAddAttentionService = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
       queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
-      toast({ title: "Servicio agregado", description: "El nuevo servicio ha sido agregado a la atención." });
+      toast({ title: "Servicio agregado", description: "El nuevo servicio ha sido agregado a la atención.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error al agregar servicio", description: error.message, variant: "destructive" });

@@ -71,7 +71,7 @@ export const useCreateProductCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
-      toast({ title: "Categoría creada", description: "La categoría ha sido creada exitosamente." });
+      toast({ title: "Categoría creada", description: "La categoría ha sido creada exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: "No se pudo crear la categoría.", variant: "destructive" });
@@ -110,7 +110,7 @@ export const useUpdateProductCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
-      toast({ title: "Categoría actualizada", description: "La categoría ha sido actualizada exitosamente." });
+      toast({ title: "Categoría actualizada", description: "La categoría ha sido actualizada exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: "No se pudo actualizar la categoría.", variant: "destructive" });
@@ -149,7 +149,7 @@ export const useDeleteProductCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productCategories', tenantId] });
-      toast({ title: "Categoría eliminada", description: "La categoría ha sido eliminada exitosamente." });
+      toast({ title: "Categoría eliminada", description: "La categoría ha sido eliminada exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: "No se pudo eliminar la categoría.", variant: "destructive" });
@@ -191,6 +191,7 @@ export const useToggleProductCategoryStatus = () => {
       toast({
         title: data.is_active ? "Categoría activada" : "Categoría desactivada",
         description: `La categoría ha sido ${data.is_active ? 'activada' : 'desactivada'} exitosamente.`,
+        variant: "success"
       });
     },
     onError: (error) => {

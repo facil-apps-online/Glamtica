@@ -61,6 +61,7 @@ const AuthPage: React.FC = () => {
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo.",
+        variant: "success",
       });
     } catch (error: any) {
       toast({

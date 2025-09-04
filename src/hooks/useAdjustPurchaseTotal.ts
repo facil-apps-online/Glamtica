@@ -20,7 +20,7 @@ export const useAdjustPurchaseTotal = () => {
   return useMutation<any, Error, AdjustPurchaseTotalPayload>({
     mutationFn: (payload) => callTenantAction('adjust_purchase_total', payload),
     onSuccess: () => {
-      toast({ title: "Total de Compra Ajustado", description: "El monto total ha sido recalculado exitosamente." });
+      toast({ title: "Total de Compra Ajustado", description: "El monto total ha sido recalculado exitosamente.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error al Ajustar Total", description: error.message, variant: "destructive" });

@@ -10,7 +10,7 @@ export const useReceiveProductTransfer = () => {
     mutationFn: (payload) => callTenantAction('receive_product_transfer', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product_transfers"] });
-      toast({ title: "Traslado Recibido", description: "La recepción del traslado ha sido registrada." });
+      toast({ title: "Traslado Recibido", description: "La recepción del traslado ha sido registrada.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

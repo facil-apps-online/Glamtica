@@ -40,7 +40,7 @@ export const useUpdateAttentionItems = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
       queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
-      toast({ title: "Atención actualizada", description: "Los ítems de la atención han sido actualizados exitosamente." });
+      toast({ title: "Atención actualizada", description: "Los ítems de la atención han sido actualizados exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

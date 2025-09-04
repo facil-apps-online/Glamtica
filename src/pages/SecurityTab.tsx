@@ -51,6 +51,7 @@ export const SecurityTab = () => {
         toast({
           title: 'Éxito',
           description: 'Tu contraseña ha sido actualizada.',
+          variant: 'success',
         });
         passwordForm.reset();
       },

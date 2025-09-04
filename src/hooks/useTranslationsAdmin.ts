@@ -111,6 +111,7 @@ export const useTranslationsAdmin = () => {
       toast({
         title: "Traducción eliminada",
         description: "La traducción se ha eliminado correctamente.",
+        variant: "success",
       });
     },
     onError: (error) => {

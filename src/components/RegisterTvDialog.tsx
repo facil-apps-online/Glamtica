@@ -33,6 +33,7 @@ const RegisterTvDialog: React.FC<RegisterTvDialogProps> = ({ isOpen, onClose, on
       toast({
         title: "TV Registrada",
         description: "La TV ha sido registrada exitosamente. Ahora autorízala.",
+        variant: "success",
       });
     } catch (err: any) {
       toast({

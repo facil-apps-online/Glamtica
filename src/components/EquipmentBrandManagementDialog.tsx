@@ -31,7 +31,7 @@ export const EquipmentBrandManagementDialog: React.FC = () => {
   const handleToggleStatus = async (brand: EquipmentBrand) => {
     try {
       await updateBrand({ id: brand.id, updates: { is_active: !brand.is_active } });
-      toast({ title: "Éxito", description: "Estado actualizado correctamente." });
+      toast({ title: "Éxito", description: "Estado actualizado correctamente.", variant: "success" });
     } catch (error: any) {
       toast({ title: "Error", description: `Error al cambiar estado: ${error.message}`, variant: "destructive" });
     }

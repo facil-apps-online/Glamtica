@@ -48,7 +48,7 @@ export function ScheduledPrices({ isLoading, history }) {
 
     deleteMutation.mutate(deleteAlert.priceId, {
       onSuccess: () => {
-        toast({ title: 'Éxito', description: 'El precio programado ha sido eliminado.' });
+        toast({ title: 'Éxito', description: 'El precio programado ha sido eliminado.', variant: 'success' });
       },
       onError: (error) => {
         toast({ title: 'Error', description: `No se pudo eliminar: ${error.message}`, variant: 'destructive' });

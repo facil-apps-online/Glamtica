@@ -71,7 +71,7 @@ export function FormBuilderDialog({ open, onOpenChange, template }: FormBuilderD
     if (template) {
       updateTemplate({ id: template.id, updates: { name, description, schema } }, {
         onSuccess: () => {
-          toast({ title: 'Éxito', description: 'Plantilla actualizada.' });
+          toast({ title: 'Éxito', description: 'Plantilla actualizada.', variant: 'success' });
           onOpenChange(false);
         },
         onError: (error: any) => toast({ title: 'Error', description: error.message, variant: 'destructive' })
@@ -79,7 +79,7 @@ export function FormBuilderDialog({ open, onOpenChange, template }: FormBuilderD
     } else {
       createTemplate({ name, description, schema }, {
         onSuccess: () => {
-          toast({ title: 'Éxito', description: 'Plantilla creada.' });
+          toast({ title: 'Éxito', description: 'Plantilla creada.', variant: 'success' });
           onOpenChange(false);
         },
         onError: (error: any) => toast({ title: 'Error', description: error.message, variant: 'destructive' })

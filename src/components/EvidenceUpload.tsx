@@ -77,7 +77,7 @@ export const EvidenceUploadDialog = ({
         });
       }));
       
-      toast({ title: "Éxito", description: "Todas las evidencias han sido subidas." });
+      toast({ title: "Éxito", description: "Todas las evidencias han sido subidas.", variant: "success" });
       setSelectedFiles([]);
       refetchEvidence();
       if (onUploadComplete) onUploadComplete();

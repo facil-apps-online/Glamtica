@@ -76,6 +76,7 @@ export const useUpdateSetting = () => {
       toast({
         title: "Configuración actualizada",
         description: "Los cambios se han guardado correctamente.",
+        variant: "success",
       });
     },
     onError: (error) => {

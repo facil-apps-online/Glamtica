@@ -87,7 +87,7 @@ export const ConsentManagerDialog: React.FC<ConsentManagerDialogProps> = ({
           savedCount++;
           if (savedCount + errorCount === consentsToSave.length) {
             if (errorCount === 0) {
-              toast({ title: "Éxito", description: "Consentimientos guardados correctamente." });
+              toast({ title: "Éxito", description: "Consentimientos guardados correctamente.", variant: "success" });
               onOpenChange(false);
             } else {
               toast({ title: "Advertencia", description: `Se guardaron ${savedCount} de ${consentsToSave.length} consentimientos.`, variant: "warning" });

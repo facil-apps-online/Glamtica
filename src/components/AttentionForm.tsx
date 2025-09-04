@@ -455,7 +455,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
           p_product_ids_to_delete: deletedProductIds,
           p_combo_ids_to_delete: deletedComboIds,
         });
-        toast({ title: "Éxito", description: "Atención actualizada correctamente." });
+        toast({ title: "Éxito", description: "Atención actualizada correctamente.", variant: "success" });
         onFinished();
       } catch (error: any) {
         toast({ title: "Error al actualizar la atención", description: error.message, variant: "destructive" });
@@ -477,7 +477,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
 
       try {
         await createAttentionMutation.mutateAsync(payload);
-        toast({ title: "Éxito", description: "Atención creada correctamente." });
+        toast({ title: "Éxito", description: "Atención creada correctamente.", variant: "success" });
         onFinished();
       } catch (error: any) {
         toast({ title: "Error al crear atención", description: error.message, variant: "destructive" });

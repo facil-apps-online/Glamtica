@@ -111,6 +111,7 @@ export const useCreateBrand = () => {
       toast({
         title: "Marca creada",
         description: "La marca ha sido creada exitosamente.",
+        variant: "success"
       });
     },
     onError: (error) => {
@@ -157,6 +158,7 @@ export const useUpdateBrand = () => {
       toast({
         title: "Marca actualizada",
         description: "La marca ha sido actualizada exitosamente.",
+        variant: "success"
       });
     },
     onError: (error) => {
@@ -200,7 +202,7 @@ export const useDeleteBrand = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['brands', tenantId] });
-      toast({ title: "Marca eliminada", description: "La marca ha sido eliminada exitosamente." });
+      toast({ title: "Marca eliminada", description: "La marca ha sido eliminada exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: "No se pudo eliminar la marca.", variant: "destructive" });
@@ -242,6 +244,7 @@ export const useToggleBrandStatus = () => {
       toast({
         title: data.is_active ? "Marca activada" : "Marca desactivada",
         description: `La marca ha sido ${data.is_active ? 'activada' : 'desactivada'} exitosamente.`,
+        variant: "success"
       });
     },
     onError: (error) => {

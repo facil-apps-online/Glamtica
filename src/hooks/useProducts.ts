@@ -88,7 +88,7 @@ export const useCreateMasterProduct = () => {
       callTenantAction('create_master_product', { productData }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_products'] });
-      toast({ title: "Producto Maestro Creado", description: "El producto ha sido añadido al catálogo general." });
+      toast({ title: "Producto Maestro Creado", description: "El producto ha sido añadido al catálogo general.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -107,7 +107,7 @@ export const useUpdateMasterProduct = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master_products'] });
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Producto Maestro Actualizado", description: "La información del producto ha sido actualizada." });
+      toast({ title: "Producto Maestro Actualizado", description: "La información del producto ha sido actualizada.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -126,7 +126,7 @@ export const useAssignProductToBranch = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
       queryClient.invalidateQueries({ queryKey: ['product_branch_prices', variables.product_id] });
-      toast({ title: "Asignación Exitosa", description: "El producto ha sido asignado a la(s) sucursal(es)." });
+      toast({ title: "Asignación Exitosa", description: "El producto ha sido asignado a la(s) sucursal(es).", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error de Asignación", description: error.message, variant: "destructive" });
@@ -144,7 +144,7 @@ export const useUpdateBranchProduct = () => {
       callTenantAction('update_branch_product', { id, updates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Producto Actualizado", description: "El precio, stock o estado ha sido actualizado para esta sucursal." });
+      toast({ title: "Producto Actualizado", description: "El precio, stock o estado ha sido actualizado para esta sucursal.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -162,7 +162,7 @@ export const useRemoveProductFromBranch = () => {
       callTenantAction('remove_product_from_branch', { branch_product_id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_products'] });
-      toast({ title: "Producto Desvinculado", description: "El producto ha sido removido de esta sucursal." });
+      toast({ title: "Producto Desvinculado", description: "El producto ha sido removido de esta sucursal.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

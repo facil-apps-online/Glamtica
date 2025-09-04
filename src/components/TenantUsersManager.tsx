@@ -130,7 +130,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
 
     inviteOrAssignUserMutation.mutate(payload, {
       onSuccess: (data) => {
-        toast({ title: 'Éxito', description: data.message });
+        toast({ title: 'Éxito', description: data.message, variant: 'success' });
         setIsAddUserDialogOpen(false);
       },
       onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

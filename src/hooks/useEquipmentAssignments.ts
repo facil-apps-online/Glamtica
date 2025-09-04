@@ -106,6 +106,7 @@ export const useEquipmentAssignments = () => {
       toast({
         title: 'Éxito',
         description: 'Equipo devuelto correctamente.',
+        variant: 'success',
       });
       // Optionally refetch assignments if needed immediately after return
       // await fetchEquipmentAssignments();

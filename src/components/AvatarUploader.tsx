@@ -84,7 +84,7 @@ export const AvatarUploader = React.memo(({
       if (updateError) throw updateError;
       if (!updateData.success) throw new Error(updateData.message);
 
-      toast({ title: 'Éxito', description: 'Avatar actualizado correctamente.' });
+      toast({ title: 'Éxito', description: 'Avatar actualizado correctamente.', variant: 'success' });
       await refreshUser();
       setCroppedPreviewUrl(null);
       setCroppedImage(null);

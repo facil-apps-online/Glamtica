@@ -58,6 +58,7 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
         toast({
           title: "Playlist Actualizada",
           description: "La playlist ha sido actualizada exitosamente.",
+          variant: "success",
         });
       } else {
         // Create new playlist

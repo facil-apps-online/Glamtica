@@ -36,7 +36,7 @@ export function BranchCard({ branch, onSuccess, tenantId }) {
   const handleArchive = async () => {
     archiveBranchMutation.mutate(branch.id, {
       onSuccess: () => {
-        toast({ title: 'Éxito', description: 'La sucursal ha sido archivada.' });
+        toast({ title: 'Éxito', description: 'La sucursal ha sido archivada.', variant: 'success' });
         onSuccess();
       },
       onError: (error) => {

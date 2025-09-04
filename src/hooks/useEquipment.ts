@@ -79,6 +79,7 @@ export const useEquipment = (searchTerm?: string, showInactive?: boolean, typeId
       toast({
         title: 'Éxito',
         description: 'Equipo actualizado correctamente.',
+        variant: 'success',
       });
     },
     onError: (error: any) => {

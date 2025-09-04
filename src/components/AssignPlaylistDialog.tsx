@@ -68,6 +68,7 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
       toast({
         title: "Playlist Asignada",
         description: "La playlist ha sido asignada a la TV exitosamente.",
+        variant: "success",
       });
       onSuccess();
       onClose();

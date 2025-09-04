@@ -77,6 +77,7 @@ const ResetPasswordPage: React.FC = () => {
       toast({
         title: 'Éxito',
         description: 'Tu contraseña ha sido actualizada. Ahora puedes iniciar sesión.',
+        variant: 'success',
       });
       navigate('/auth');
 

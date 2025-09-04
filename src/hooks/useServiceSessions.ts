@@ -41,7 +41,7 @@ export const useStartServiceSession = () => {
     onSuccess: (_, { attentionServiceId }) => {
       queryClient.invalidateQueries({ queryKey: ['service-session', attentionServiceId] });
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      toast({ title: "Servicio iniciado", description: "La sesión de servicio ha comenzado." });
+      toast({ title: "Servicio iniciado", description: "La sesión de servicio ha comenzado.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error al iniciar", description: error.message, variant: "destructive" });
@@ -64,7 +64,7 @@ export const useEndServiceSession = () => {
     onSuccess: (_, { attentionServiceId }) => {
       queryClient.invalidateQueries({ queryKey: ['service-session', attentionServiceId] });
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
-      toast({ title: "Servicio finalizado", description: "La sesión de servicio ha terminado." });
+      toast({ title: "Servicio finalizado", description: "La sesión de servicio ha terminado.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error al finalizar", description: error.message, variant: "destructive" });

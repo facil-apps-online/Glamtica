@@ -129,7 +129,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     updateTenantMutation.mutate({ id: tenantId, ...values }, {
-      onSuccess: () => toast({ title: 'Información Actualizada', description: 'La información de tu negocio ha sido actualizada.' }),
+      onSuccess: () => toast({ title: 'Información Actualizada', description: 'La información de tu negocio ha sido actualizada.', variant: 'success' }),
       onError: (error) => toast({ title: 'Error', description: `Error al actualizar: ${error.message}`, variant: 'destructive' }),
     });
   };

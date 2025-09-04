@@ -88,6 +88,7 @@ export const useUploadEvidence = () => {
       toast({
         title: "Evidencia cargada",
         description: "La foto ha sido subida a Google Drive exitosamente.",
+        variant: "success",
       });
     },
     onError: (error) => {

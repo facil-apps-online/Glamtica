@@ -39,6 +39,7 @@ export const useCompletePurchase = () => {
       toast({
         title: "Compra Finalizada",
         description: "La compra ha sido marcada como completada y el inventario actualizado.",
+        variant: "success",
       });
     },
     onError: (error) => {

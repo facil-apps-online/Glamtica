@@ -1,83 +1,74 @@
-# Fase de Desarrollo: Galería de Imágenes de Productos
+# Listado de Toasts con Variante "default" (Implícita y Explícita)
 
-## Objetivo
-Mejorar la gestión de productos permitiendo a los usuarios asociar múltiples imágenes a cada producto, designar una imagen principal y, en fases posteriores, editar estas imágenes para eliminar el fondo.
+Este documento contiene una lista de todas las llamadas a la función `toast` que utilizan la variante "default", ya sea de forma explícita (`variant: "default"`) o implícita (omitiendo el parámetro `variant`).
 
----
+## Toasts con Variante Explícita "default"
 
-### **Fase 1: Base de Datos y Backend (CRUD Básico)**
+*   **Archivo:** `src\pages\RegisterTenant.tsx`
+    *   **Línea 227**
+*   **Archivo:** `src\components\ConsentManagerDialog.tsx`
+    *   **Línea 74**
+*   **Archivo:** `src\contexts\AuthContext.tsx`
+    *   **Línea 258**
 
-**1. Creación de la Tabla `product_images`**
-- **Objetivo:** Crear la estructura de la base de datos para almacenar las imágenes de los productos.
-- **Acciones:**
-    - Crear un nuevo archivo de migración SQL.
-    - Definir la tabla `product_images` con las siguientes columnas:
-        - `id`: `UUID`, Primary Key, default `uuid_generate_v4()`.
-        - `product_id`: `UUID`, Foreign Key a `products.id`, `ON DELETE CASCADE`.
-        - `tenant_id`: `UUID`, Foreign Key a `tenants.id`, `ON DELETE CASCADE`.
-        - `image_url`: `TEXT`, `NOT NULL`. Almacenará la URL de la imagen (inicialmente de Google Drive).
-        - `is_primary`: `BOOLEAN`, `DEFAULT FALSE`. Indica si es la imagen principal del producto.
-        - `sort_order`: `INTEGER`, `DEFAULT 0`. Para la ordenación manual de la galería.
-        - `created_at`: `TIMESTAMPTZ`, `DEFAULT NOW()`.
-        - `updated_at`: `TIMESTAMPTZ`, `DEFAULT NOW()`.
+## Toasts con Variante Implícita "default"
 
-**2. Implementación de Endpoints en Edge Function (`tenant-actions`)**
-- **Objetivo:** Crear la lógica de backend para gestionar las imágenes de los productos.
-- **Acciones:**
-    - Añadir los siguientes `case` al `switch` en `supabase/functions/tenant-actions/index.ts`:
-        - **`get_product_images`**:
-            - **Payload:** `{ productId: string }`
-            - **Lógica:** Devuelve todas las imágenes de un producto, ordenadas por `sort_order`.
-        - **`add_product_image`**:
-            - **Payload:** `{ productId: string, imageUrl: string }`
-            - **Lógica:** Añade una nueva imagen a un producto.
-        - **`delete_product_image`**:
-            - **Payload:** `{ imageId: string }`
-            - **Lógica:** Elimina una imagen por su ID.
-        - **`set_primary_product_image`**:
-            - **Payload:** `{ productId: string, imageId: string }`
-            - **Lógica:** Establece una imagen como principal. Debe asegurar que cualquier otra imagen para ese producto se marque como no principal (transacción).
+A continuación se listan los archivos y las líneas donde se llama a `toast({...})` sin especificar una variante, por lo que se asume "default".
 
----
+### Pages
 
-### **Fase 2: Interfaz de Usuario (Gestión Básica)**
+*   **`src\pages\UpdatePasswordPage.tsx`**: Líneas 53, 70, 78
+*   **`src\pages\SecurityTab.tsx`**: Línea 51
+*   **`src\pages\ResetPassword.tsx`**: Líneas 77, 85
+*   **`src\pages\RegisterTenant.tsx`**: Línea 309
+*   **`src\pages\Auth.tsx`**: Líneas 61, 66, 78, 97, 108, 133, 138
+*   **`src\pages\Settings\SubscriptionTab.tsx`**: Líneas 76, 117
+*   **`src\pages\Settings\InventorySettingsTab.tsx`**: Líneas 61, 68
+*   **`src\pages\Settings\ActivateBranchesBatchDialog.tsx`**: Línea 72
 
-**1. Modificación del Diálogo de Productos (`MasterProductDialog.tsx`)**
-- **Objetivo:** Integrar la gestión de imágenes en la interfaz de usuario.
-- **Acciones:**
-    - Añadir una nueva pestaña "Imágenes" al diálogo.
-    - Crear un componente `ProductImageGallery.tsx` que se renderizará en esta pestaña.
+### Contexts
 
-**2. Componente `ProductImageGallery.tsx`**
-- **Objetivo:** Permitir al usuario ver y gestionar las imágenes.
-- **Funcionalidades:**
-    - **Visualización:** Muestra una cuadrícula con las imágenes del producto. La imagen principal se destacará visualmente.
-    - **Añadir Imagen:** Un campo de texto para pegar la URL de Google Drive y un botón "Añadir".
-    - **Acciones por Imagen:** Cada imagen tendrá botones para "Eliminar" y "Marcar como Principal".
+*   **`src\contexts\AuthContext.tsx`**: Línea 270
 
----
+### Hooks
 
-### **Fase 3: Funcionalidad Avanzada (Editor de Imágenes)**
+*   **`src\hooks\useUpdateCommission.ts`**: Líneas 38, 44
+*   **`src\hooks\useUpdateAttentionStatus.ts`**: Líneas 31, 37
+*   **`src\hooks\useTranslationsAdmin.ts`**: Líneas 53, 59, 83, 89, 111, 117
+*   **`src\hooks\useTenantAction.ts`**: Líneas 41, 51
+*   **`src\hooks\useSuppliers.ts`**: Líneas 80, 102, 124
+*   **`src\hooks\useSupplierProducts.ts`**: Líneas 92, 117, 142
+*   **`src\hooks\useSettings.ts`**: Líneas 76, 82
+*   **`src\hooks\useServiceCategories.ts`**: Línea 191
+*   **`src\hooks\useSaveIntegration.ts`**: Líneas 83, 91
+*   **`src\hooks\useRenewSubscription.ts`**: Líneas 40, 52
+*   **`src\hooks\useProductCategories.ts`**: Línea 191
+*   **`src\hooks\useMaintenanceHistory.ts`**: Líneas 36, 66, 74, 99, 107, 129, 137
+*   **`src\hooks\useGenerateInvoice.ts`**: Líneas 28, 42
+*   **`src\hooks\useEquipmentTypes.ts`**: Líneas 43, 49, 63, 69, 83, 89
+*   **`src\hooks\useEquipmentBrands.ts`**: Líneas 44, 50, 64, 70, 84, 90
+*   **`src\hooks\useEquipmentAssignments.ts`**: Líneas 38, 68, 77, 106, 115
+*   **`src\hooks\useEquipment.ts`**: Líneas 59, 65, 79, 85
+*   **`src\hooks\useCompletePurchase.ts`**: Línea 39
+*   **`src\hooks\useCombos.ts`**: Líneas 127, 172
+*   **`src\hooks\useClients.ts`**: Líneas 89, 95, 118, 124, 146, 152, 175, 181, 204, 210
+*   **`src\hooks\useBrands.ts`**: Líneas 111, 118, 158, 165, 244
+*   **`src\hooks\useAuth.ts`**: Línea 16
+*   **`src\hooks\useAttentions.ts`**: Líneas 168, 175
+*   **`src\hooks\useAppointmentEvidence.ts`**: Líneas 88, 94
 
-**1. Investigación de Herramientas**
-- **Objetivo:** Seleccionar una biblioteca o servicio de React para la edición de imágenes, específicamente para la eliminación de fondos.
-- **Criterios:** Capa gratuita generosa, facilidad de integración, rendimiento.
+### Components
 
-**2. Integración del Editor**
-- **Objetivo:** Permitir a los usuarios editar las imágenes antes de guardarlas.
-- **Flujo de Usuario:**
-    1.  Usuario pega la URL de la imagen.
-    2.  La imagen se carga en un modal que contiene el editor.
-    3.  El usuario utiliza la herramienta para quitar el fondo.
-    4.  Al guardar, la imagen procesada se sube (posiblemente a un bucket de Supabase temporalmente) y la nueva URL se guarda en `product_images`.
-
----
-
-### **Fase 4: (Opcional) Integración con Google Drive API**
-
-**1. Autenticación y Subida**
-- **Objetivo:** Reemplazar el pegado manual de URLs con una subida de archivos directa.
-- **Acciones:**
-    - Implementar el flujo de autenticación OAuth 2.0 para que los usuarios conecten su cuenta de Google.
-    - Utilizar la API de Google Drive para subir los archivos directamente desde la aplicación.
-    - Gestionar los permisos de los archivos para que sean públicamente visibles.
+*   **`src\components\UserScheduleDialog.tsx`**: Líneas 161, 169
+*   **`src\components\TranslationAdmin.tsx`**: Líneas 42, 84
+*   **`src\components\TenantUsersManager.tsx`**: Línea 146
+*   **`src\components\RegisterTvDialog.tsx`**: Líneas 33, 38, 67, 74
+*   **`src\components\MediaPlaylistDialog.tsx`**: Líneas 58, 69, 77
+*   **`src\components\ManageServiceCommissionsDialog.tsx`**: Líneas 116, 124
+*   **`src\components\ManageProductCommissionsDialog.tsx`**: Líneas 61, 69
+*   **`src\components\MaintenanceRecordFormDialog.tsx`**: Línea 60
+*   **`src\components\EquipmentDialog.tsx`**: Líneas 90, 115
+*   **`src\components\BranchCommissionsTabContent.tsx`**: Líneas 121, 132
+*   **`src\components\AttentionForm.tsx`**: Línea 248
+*   **`src\components\AssignPlaylistDialog.tsx`**: Líneas 40, 68, 75
+*   **`src\components\AssignEquipmentDialog.tsx`**: Línea 49

@@ -23,9 +23,9 @@ export function ManageFormTemplatesDialog({ open, onOpenChange }: ManageFormTemp
   const [selectedTemplate, setSelectedTemplate] = useState<ClientDocumentTemplate | null>(null);
 
   const handleToggleStatus = (template: ClientDocumentTemplate) => {
-    toast({ title: 'Actualizando estado...', description: `Cambiando estado de ${template.name}.` });
+    toast({ title: 'Actualizando estado...', description: `Cambiando estado de ${template.name}.`, variant: "success" });
     toggleStatus({ id: template.id, is_active: !template.is_active }, {
-      onSuccess: () => toast({ title: 'Éxito', description: 'El estado de la plantilla ha sido actualizado.' }),
+      onSuccess: () => toast({ title: 'Éxito', description: 'El estado de la plantilla ha sido actualizado.', variant: "success" }),
       onError: (error: any) => toast({ title: 'Error', description: `No se pudo actualizar: ${error.message}`, variant: 'destructive' })
     });
   };

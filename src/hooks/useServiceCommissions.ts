@@ -64,7 +64,7 @@ export const useCreateServiceCommission = () => {
       callTenantAction('create_service_commission', { commissionData }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-commissions'] });
-      toast({ title: "Comisión agregada" });
+      toast({ title: "Comisión agregada", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo agregar la comisión: ${error.message}`, variant: "destructive" });
@@ -82,7 +82,7 @@ export const useUpdateServiceCommission = () => {
       callTenantAction('update_service_commission', { id, updates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-commissions'] });
-      toast({ title: "Comisión actualizada" });
+      toast({ title: "Comisión actualizada", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo actualizar la comisión: ${error.message}`, variant: "destructive" });
@@ -100,7 +100,7 @@ export const useDeleteServiceCommission = () => {
       callTenantAction('delete_service_commission', { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-commissions'] });
-      toast({ title: "Comisión eliminada" });
+      toast({ title: "Comisión eliminada", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo eliminar la comisión: ${error.message}`, variant: "destructive" });

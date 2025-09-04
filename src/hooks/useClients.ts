@@ -204,6 +204,7 @@ export const useUnassignClientFromBranch = () => {
       toast({
         title: "Desasignación exitosa",
         description: "Se ha quitado el cliente de la sucursal.",
+        variant: "success",
       });
     },
     onError: (error) => {

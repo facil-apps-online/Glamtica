@@ -83,6 +83,7 @@ export const useSaveIntegration = () => {
       toast({
         title: 'Éxito',
         description: `La integración con ${provider.name} se ha guardado correctamente.`,
+        variant: 'success',
       });
       // Invalidar la query para que la lista de integraciones se actualice
       queryClient.invalidateQueries(['tenantIntegrations', tenantId]);

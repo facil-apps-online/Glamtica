@@ -26,7 +26,7 @@ export const useUpdatePurchasePaymentStatus = () => {
     mutationFn: (payload) => callTenantAction('update_purchase_payment_status', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchases', tenantId] });
-      toast({ title: "Estado de Pago Actualizado" });
+      toast({ title: "Estado de Pago Actualizado", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error al actualizar pago", description: error.message, variant: "destructive" });

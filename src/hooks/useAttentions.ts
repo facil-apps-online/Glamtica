@@ -148,7 +148,7 @@ export const useCreateAttention = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
       queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
-      toast({ title: "Atención creada", description: "La atención ha sido creada exitosamente." });
+      toast({ title: "Atención creada", description: "La atención ha sido creada exitosamente.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -168,6 +168,7 @@ export const useCancelAttention = () => {
             toast({
                 title: 'Atención Cancelada',
                 description: 'La atención ha sido cancelada correctamente.',
+                variant: "success"
             });
         },
         onError: (error: Error) => {

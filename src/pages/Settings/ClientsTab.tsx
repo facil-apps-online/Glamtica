@@ -39,7 +39,7 @@ export function ClientsTab() {
     
     updateSettings({ ...formState, tenant_id: currentAssignment.tenant_id }, {
       onSuccess: () => {
-        toast({ title: "Éxito", description: "Configuración guardada correctamente." });
+        toast({ title: "Éxito", description: "Configuración guardada correctamente.", variant: "success" });
       },
       onError: (error: any) => {
         toast({ title: "Error", description: `No se pudo guardar la configuración: ${error.message}`, variant: "destructive" });

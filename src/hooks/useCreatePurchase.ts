@@ -18,7 +18,7 @@ export const useCreatePurchase = () => {
     mutationFn: (purchaseData) => callTenantAction('create_purchase', purchaseData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      toast({ title: "Compra Creada", description: "La compra ha sido registrada exitosamente." });
+      toast({ title: "Compra Creada", description: "La compra ha sido registrada exitosamente.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

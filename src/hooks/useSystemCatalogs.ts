@@ -48,7 +48,7 @@ export const useCreateCurrency = () => {
     mutationFn: createCurrency,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currencies'] });
-      toast({ title: 'Éxito', description: 'Moneda creada correctamente.' });
+      toast({ title: 'Éxito', description: 'Moneda creada correctamente.', variant: 'success' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -74,7 +74,7 @@ export const useUpdateCurrency = () => {
         mutationFn: updateCurrency,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
-            toast({ title: 'Éxito', description: 'Moneda actualizada correctamente.' });
+            toast({ title: 'Éxito', description: 'Moneda actualizada correctamente.', variant: 'success' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -100,7 +100,7 @@ export const useDeleteCurrency = () => {
         mutationFn: deleteCurrency,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
-            toast({ title: 'Éxito', description: 'Moneda eliminada correctamente.' });
+            toast({ title: 'Éxito', description: 'Moneda eliminada correctamente.', variant: 'success' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -153,7 +153,7 @@ export const useCreateCountry = () => {
     mutationFn: createCountry,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['countries'] });
-      toast({ title: 'Éxito', description: 'País creado correctamente.' });
+      toast({ title: 'Éxito', description: 'País creado correctamente.', variant: 'success' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -179,7 +179,7 @@ export const useUpdateCountry = () => {
         mutationFn: updateCountry,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['countries'] });
-            toast({ title: 'Éxito', description: 'País actualizado correctamente.' });
+            toast({ title: 'Éxito', description: 'País actualizado correctamente.', variant: 'success' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -205,7 +205,7 @@ export const useDeleteCountry = () => {
         mutationFn: deleteCountry,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['countries'] });
-            toast({ title: 'Éxito', description: 'País eliminado correctamente.' });
+            toast({ title: 'Éxito', description: 'País eliminado correctamente.', variant: 'success' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -258,7 +258,7 @@ export const useCreateLocalization = () => {
     mutationFn: createLocalization,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['localizations'] });
-      toast({ title: 'Éxito', description: 'Localización creada correctamente.' });
+      toast({ title: 'Éxito', description: 'Localización creada correctamente.', variant: 'success' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -284,7 +284,7 @@ export const useUpdateLocalization = () => {
         mutationFn: updateLocalization,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['localizations'] });
-            toast({ title: 'Éxito', description: 'Localización actualizada correctamente.' });
+            toast({ title: 'Éxito', description: 'Localización actualizada correctamente.', variant: 'success' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -310,7 +310,7 @@ export const useDeleteLocalization = () => {
         mutationFn: deleteLocalization,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['localizations'] });
-            toast({ title: 'Éxito', description: 'Localización eliminada correctamente.' });
+            toast({ title: 'Éxito', description: 'Localización eliminada correctamente.', variant: 'success' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Error', description: error.message });

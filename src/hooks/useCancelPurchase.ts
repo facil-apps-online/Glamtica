@@ -22,7 +22,7 @@ export const useCancelPurchase = () => {
     mutationFn: (payload) => callTenantAction('cancel_purchase', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      toast({ title: "Compra Cancelada", description: "La compra ha sido marcada como cancelada." });
+      toast({ title: "Compra Cancelada", description: "La compra ha sido marcada como cancelada.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error al Cancelar", description: error.message, variant: "destructive" });

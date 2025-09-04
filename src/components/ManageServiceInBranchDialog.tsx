@@ -83,7 +83,7 @@ export const ManageServiceInBranchDialog = ({ service, trigger }: ManageServiceI
           id: serviceInSelectedBranch.branch_service_id,
           updates: commonData,
         });
-        toast({ title: "Servicio Actualizado", description: "El servicio ha sido actualizado en la sucursal." });
+        toast({ title: "Servicio Actualizado", description: "El servicio ha sido actualizado en la sucursal.", variant: "success" });
       } else {
         // Asignar nuevo servicio a la(s) sucursal(es)
         const targetBranchIds = assignToAll ? (branches?.map(b => b.id) || []) : [selectedBranchId];
@@ -98,7 +98,7 @@ export const ManageServiceInBranchDialog = ({ service, trigger }: ManageServiceI
           branch_ids: targetBranchIds,
           defaults: commonData,
         });
-        toast({ title: "Servicio Asignado", description: `El servicio ha sido asignado a ${targetBranchIds.length} sucursal(es).` });
+        toast({ title: "Servicio Asignado", description: `El servicio ha sido asignado a ${targetBranchIds.length} sucursal(es).`, variant: "success" });
       }
       setOpen(false);
     } catch (error: any) {
@@ -110,7 +110,7 @@ export const ManageServiceInBranchDialog = ({ service, trigger }: ManageServiceI
     if (serviceInSelectedBranch && confirm(`¿Estás seguro de que quieres desvincular ${service.name} de esta sucursal?`)) {
       try {
         await removeServiceFromBranch(serviceInSelectedBranch.branch_service_id);
-        toast({ title: "Servicio Desvinculado", description: "El servicio ha sido desvinculado de la sucursal." });
+        toast({ title: "Servicio Desvinculado", description: "El servicio ha sido desvinculado de la sucursal.", variant: "success" });
         setOpen(false);
       } catch (error: any) {
         toast({ title: "Error", description: error.message || "No se pudo desvincular el servicio.", variant: "destructive" });

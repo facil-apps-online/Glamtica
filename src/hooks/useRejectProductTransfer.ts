@@ -10,7 +10,7 @@ export const useRejectProductTransfer = () => {
     mutationFn: (payload) => callTenantAction('reject_product_transfer', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product_transfers"] });
-      toast({ title: "Traslado Rechazado", description: "El traslado ha sido rechazado." });
+      toast({ title: "Traslado Rechazado", description: "El traslado ha sido rechazado.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

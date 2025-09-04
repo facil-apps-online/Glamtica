@@ -31,7 +31,7 @@ export const EquipmentTypeManagementDialog: React.FC = () => {
   const handleToggleStatus = async (type: EquipmentType) => {
     try {
       await updateType({ id: type.id, updates: { is_active: !type.is_active } });
-      toast({ title: "Éxito", description: "Estado actualizado correctamente." });
+      toast({ title: "Éxito", description: "Estado actualizado correctamente.", variant: "success" });
     } catch (error: any) {
       toast({ title: "Error", description: `Error al cambiar estado: ${error.message}`, variant: "destructive" });
     }
