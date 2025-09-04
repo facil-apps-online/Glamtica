@@ -17,12 +17,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { Switch } from "@/components/ui/switch";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProductImageGallery } from "./ProductImageGallery";
+
 interface MasterProductDialogProps {
   product?: MasterProduct;
   trigger?: React.ReactNode;
 }
 
 export const MasterProductDialog = ({ product, trigger }: MasterProductDialogProps) => {
+  // ... (hooks y estado existentes se mantienen igual)
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   
@@ -176,22 +180,28 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
   }, [taxTypes]);
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          {trigger || (
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Producto
-            </Button>
-          )}
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{product ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || (
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Producto
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>{product ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="details">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details">Detalles</TabsTrigger>
+            <TabsTrigger value="images" disabled={!product}>Imágenes</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">
+            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              {/* ... (contenido del formulario existente) ... */}
+              <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre del Producto</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -268,15 +278,19 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
                 <Input id="barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isCreating || isUpdating}>
-                {product ? "Actualizar" : "Crear"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={isCreating || isUpdating}>
+                  {product ? "Actualizar" : "Crear"}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+          <TabsContent value="images">
+            {product && <ProductImageGallery productId={product.id} />}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 };

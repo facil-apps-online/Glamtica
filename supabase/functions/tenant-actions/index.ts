@@ -1992,6 +1992,69 @@ serve(async (req) => {
       }
 
       // --- COMBO ACTIONS ---
+
+      // --- PRODUCT IMAGE ACTIONS ---
+      case 'get_product_images': {
+        const { productId } = payload;
+        if (!productId) throw new Error('Product ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('product_images')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('product_id', productId)
+          .order('sort_order');
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'add_product_image': {
+        const { productId, imageUrl } = payload;
+        if (!productId || !imageUrl) throw new Error('Product ID and Image URL are required.');
+        const { data, error } = await supabaseAdmin
+          .from('product_images')
+          .insert({
+            tenant_id: tenantId,
+            product_id: productId,
+            image_url: imageUrl,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_product_image': {
+        const { imageId } = payload;
+        if (!imageId) throw new Error('Image ID is required.');
+        const { error } = await supabaseAdmin
+          .from('product_images')
+          .delete()
+          .eq('id', imageId)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      case 'set_primary_product_image': {
+        const { productId, imageId } = payload;
+        if (!productId || !imageId) throw new Error('Product ID and Image ID are required.');
+
+        // Use a transaction to ensure atomicity
+        const { data, error } = await supabaseAdmin.rpc('set_primary_image_for_product', {
+          p_tenant_id: tenantId,
+          p_product_id: productId,
+          p_image_id: imageId,
+        });
+        
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+      // --- END PRODUCT IMAGE ACTIONS ---
+
       case 'create_combo': {
         const { comboData, items } = payload;
         if (!comboData || !items || items.length === 0) {

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import imageCompression from 'browser-image-compression';
 
 import {
   Dialog,
@@ -12,16 +13,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-import imageCompression from 'browser-image-compression';
-
-interface ImageCropDialogProps {
+interface ProductImageEditorDialogProps {
   isOpen: boolean;
   onClose: () => void;
   imageSrc: string | null;
-  onCropComplete: (croppedImageBlob: Blob) => void;
+  onEditComplete: (processedImageBlob: Blob) => void;
 }
 
-// ... (getCroppedImg se mantiene igual)
 function getCroppedImg(
   image: HTMLImageElement,
   crop: Crop
@@ -29,18 +27,14 @@ function getCroppedImg(
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
-  
-  // Usamos las dimensiones del recorte para el canvas
   canvas.width = crop.width;
   canvas.height = crop.height;
-  
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
     return Promise.reject(new Error('No se pudo obtener el contexto del canvas'));
   }
 
-  // Dibujamos la imagen recortada en el canvas
   ctx.drawImage(
     image,
     crop.x * scaleX,
@@ -53,7 +47,6 @@ function getCroppedImg(
     crop.height
   );
 
-  // Devolvemos el contenido del canvas como un Blob
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -63,18 +56,17 @@ function getCroppedImg(
         }
         resolve(blob);
       },
-      'image/png', // El formato de salida
-      1 // La calidad
+      'image/png',
+      1
     );
   });
 }
 
-
-export const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
+export const ProductImageEditorDialog: React.FC<ProductImageEditorDialogProps> = ({
   isOpen,
   onClose,
   imageSrc,
-  onCropComplete,
+  onEditComplete,
 }) => {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
@@ -84,14 +76,14 @@ export const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
     const newCrop = centerCrop(
-      makeAspectCrop({ unit: '%', width: 90 }, 1, width, height),
+      makeAspectCrop({ unit: '%', width: 90 }, 16 / 9, width, height), // Default aspect ratio
       width,
       height
     );
     setCrop(newCrop);
   }
 
-  const handleSaveCrop = async () => {
+  const handleSave = async () => {
     if (!completedCrop || !imgRef.current) {
       return;
     }
@@ -100,14 +92,14 @@ export const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
       const croppedImageBlob = await getCroppedImg(imgRef.current, completedCrop);
       
       const options = {
-        maxSizeMB: 1, // Tamaño máximo de 1MB
-        maxWidthOrHeight: 1024, // Redimensionar a 1024px en el lado más largo
-        useWebWorker: true, // Usar Web Worker para no bloquear el hilo principal
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
       };
 
       const compressedBlob = await imageCompression(croppedImageBlob as File, options);
       
-      onCropComplete(compressedBlob);
+      onEditComplete(compressedBlob);
       onClose();
     } catch (error) {
       console.error('Error al procesar la imagen:', error);
@@ -122,11 +114,11 @@ export const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Imagen</DialogTitle>
+          <DialogTitle>Editar Imagen del Producto</DialogTitle>
           <DialogDescription>
-            Ajusta el recorte y optimizaremos la imagen para la web.
+            Recorta y optimiza la imagen. Se guardará con una calidad reducida para mejorar la velocidad de carga.
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-center p-4 bg-muted rounded-md">
@@ -134,22 +126,21 @@ export const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
             onComplete={(c) => setCompletedCrop(c)}
-            aspect={1}
-            circularCrop
+            // Sin aspect ratio fijo ni recorte circular
           >
             <img
               ref={imgRef}
               src={imageSrc}
               onLoad={onImageLoad}
-              alt="Imagen para recortar"
+              alt="Imagen para editar"
               style={{ maxHeight: '70vh' }}
             />
           </ReactCrop>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancelar</Button>
-          <Button onClick={handleSaveCrop} disabled={isProcessing}>
-            {isProcessing ? 'Procesando...' : 'Guardar y Continuar'}
+          <Button onClick={handleSave} disabled={isProcessing}>
+            {isProcessing ? 'Procesando...' : 'Guardar Cambios'}
           </Button>
         </DialogFooter>
       </DialogContent>

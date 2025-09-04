@@ -213,6 +213,27 @@ serve(async (req) => {
         }
         break;
       }
+      case 'Products': { // Corregido de 'ProductImages' a 'Products' para coincidir con el frontend
+        const fileBuffer = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
+        const fileSize = fileBuffer.length;
+
+        const { error: dbError } = await supabaseAdmin
+          .from('product_images')
+          .insert({
+            product_id: contextId,
+            google_drive_file_id: fileId,
+            image_url: `https://drive.google.com/uc?id=${fileId}`,
+            file_name: newFileName,
+            mime_type: mimeType,
+            file_size: fileSize, // Añadido
+            tenant_id: tenantId,
+          });
+        if (dbError) {
+          // TODO: Consider deleting the file from Google Drive if DB insert fails
+          throw new Error(`Failed to save product image record to database: ${dbError.message}`);
+        }
+        break;
+      }
       // Add other cases for different upload contexts here in the future
       default:
         // No specific post-upload action required for this context
