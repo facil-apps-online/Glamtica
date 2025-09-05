@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "./useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Helper to convert file to base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -30,13 +30,15 @@ export const useAppointmentEvidence = (attentionServiceId?: string) => {
     queryFn: async (): Promise<AttentionServiceEvidence[]> => {
       if (!attentionServiceId) return [];
 
-      const { data, error } = await supabase
-        .from('attention_service_evidences')
-        .select('*')
-        .eq('attention_service_id', attentionServiceId)
-        .order('created_at', { ascending: false });
+      const { data: rpcData, error: rpcError } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'get_attention_service_evidences',
+          payload: { attentionServiceId },
+        },
+      });
 
-      if (error) throw new Error(error.message);
+      if (rpcError) throw new Error(rpcError.message);
+      const data = rpcData; // Changed from rpcData.data
       return data;
     },
     enabled: !!attentionServiceId,
@@ -103,7 +105,7 @@ export const useUploadEvidence = () => {
 };
 
 // Function to get the proxied Google Drive image URL
-export const getEvidenceUrl = (googleDriveFileId: string) => {
-  const functionUrl = `${supabase.functions.getURL('proxy-google-drive-image')}?fileId=${googleDriveFileId}`;
+export const getEvidenceUrl = (googleDriveFile_fileId: string) => {
+  const functionUrl = `${supabase.functions.getURL('proxy-google-drive-image')}?fileId=${googleDriveFile_fileId}`;
   return functionUrl;
 };

@@ -48,22 +48,26 @@ export const callTenantAction = async (action: string, payload: any) => {
 // --- HOOKS ---
 
 // Hook para obtener los productos disponibles en la sucursal seleccionada
-export const useBranchProducts = (branchIdParam?: string) => {
+export const useBranchProducts = (branchIdParam?: string, searchTerm?: string) => {
   const { selectedBranchId } = useBranchFilterStore();
   const branchIdToUse = branchIdParam || selectedBranchId;
 
   return useQuery({
-    queryKey: ['branch_products', branchIdToUse],
-    queryFn: () => callTenantAction('get_branch_products', { branchId: branchIdToUse }),
+    queryKey: ['branch_products', branchIdToUse, searchTerm],
+    queryFn: () => callTenantAction('get_branch_products', { branchId: branchIdToUse, searchTerm }),
     enabled: !!branchIdToUse && branchIdToUse !== 'all',
   });
 };
 
 // Hook para obtener todos los productos maestros (el catálogo general)
 export const useMasterProducts = (searchTerm?: string, showInactive?: boolean, category?: string, brandId?: string) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
   return useQuery({
-    queryKey: ['master_products', searchTerm, showInactive, category, brandId],
+    queryKey: ['master_products', tenantId, searchTerm, showInactive, category, brandId],
     queryFn: () => callTenantAction('get_master_products', { searchTerm, showInactive, category, brandId }),
+    enabled: !!tenantId,
   });
 };
 

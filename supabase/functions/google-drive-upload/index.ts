@@ -63,7 +63,7 @@ serve(async (req) => {
 
   try {
     // 1. Extract parameters from the request body
-    const { tenantId, fileBase64, mimeType, fileName, uploadContext, contextId } = await req.json();
+    const { tenantId, fileBase64, mimeType, fileName, uploadContext, contextId, branchId, userId } = await req.json();
     if (!tenantId || !fileBase64 || !mimeType || !fileName || !uploadContext || !contextId) {
       return new Response(JSON.stringify({ error: 'Missing required body parameters: tenantId, fileBase64, mimeType, fileName, uploadContext, contextId are required.' }), {
         status: 400,
@@ -192,7 +192,6 @@ serve(async (req) => {
     // 9. Post-upload processing based on context
     switch (uploadContext) {
       case 'ServiceEvidence': {
-        const { branchId, userId } = await req.json(); // Leer de la petición original
         if (!branchId || !userId) {
           throw new Error('Missing branchId or userId for ServiceEvidence context.');
         }

@@ -23,6 +23,7 @@ interface FilterableSelectProps {
   searchPlaceholder?: string;
   className?: string;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 export const FilterableSelect = ({
@@ -35,7 +36,8 @@ export const FilterableSelect = ({
   emptyText = "No se encontraron opciones",
   searchPlaceholder = "Buscar...",
   className,
-  disabled = false
+  disabled = false,
+  isLoading = false,
 }: FilterableSelectProps) => {
   const [open, setOpen] = useState(false);
 
@@ -74,7 +76,7 @@ export const FilterableSelect = ({
             placeholder={searchPlaceholder} 
             onValueChange={onSearch}
           />
-          <CommandEmpty>{emptyText}</CommandEmpty>
+          <CommandEmpty>{isLoading ? "Buscando..." : emptyText}</CommandEmpty>
           <CommandGroup>
             <CommandList className="max-h-[200px] overflow-y-auto">
               {options.map((option) => (

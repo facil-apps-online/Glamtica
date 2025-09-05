@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent } from "@/components/ui/card";
 import { Upload, X } from "lucide-react";
 import { useUploadEvidence, useAppointmentEvidence } from "@/hooks/useAppointmentEvidence";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { ProductImage } from './ProductImage';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +53,12 @@ export const EvidenceUploadDialog = ({
   };
 
   const handleUpload = async () => {
+    console.log('handleUpload triggered', { 
+      selectedFiles: selectedFiles.length,
+      tenantId,
+      branchId 
+    });
+
     if (selectedFiles.length === 0 || !tenantId || !branchId) return;
 
     const options = {

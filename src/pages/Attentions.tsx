@@ -345,7 +345,7 @@ export default function Attentions() {
       </PageHeader>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="w-[95%] max-h-[90vh] md:w-full md:max-h-fit flex flex-col">
+        <DialogContent className="w-[95%] max-h-[90vh] md:max-w-4xl flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingAttention ? 'Editar Atención' : 'Nueva Atención'}</DialogTitle>
           </DialogHeader>
@@ -375,6 +375,7 @@ export default function Attentions() {
                   formatPrice={formatPrice}
                   onEdit={handleEditFromDetailView}
                   screenSize={screenSize}
+                  branchId={viewingAttention.branch_id}
                 />
               </div>
               <DialogFooter className="pt-4 gap-2">
@@ -416,8 +417,8 @@ export default function Attentions() {
           ) : (
             <div className="space-y-4">
               {attentions.length > 0 ? (
-                                attentions.map((attention) => (
-                  <AttentionCard key={attention.id} attention={attention} formatPrice={formatPrice} onEdit={handleEditAttention} screenSize={screenSize} />
+                                                                attentions.map((attention) => (
+                  <AttentionCard key={attention.id} attention={attention} formatPrice={formatPrice} onEdit={handleEditAttention} screenSize={screenSize} branchId={attention.branch_id} />
                 ))
               ) : (
                 <Card>
@@ -458,9 +459,10 @@ interface AttentionCardProps {
   formatPrice: (price: number) => string;
   onEdit: (attention: Attention) => void;
   screenSize: 'mobile' | 'tablet' | 'desktop';
+  branchId: string;
 }
 
-const AttentionCard = ({ attention, formatPrice, onEdit, screenSize }: AttentionCardProps) => {
+const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }: AttentionCardProps) => {
   const updateStatusMutation = useUpdateAttentionStatus();
 
   const getStatusBadge = (status: string) => {
@@ -566,6 +568,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize }: Attention
                                     details={[]}
                                     status={combo.status as any}
                                     screenSize={screenSize}
+                                    branchId={branchId}
                                 />
                                 <div className="pl-8">
                                     {comboServices.map((service, serviceIndex) => (
@@ -583,6 +586,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize }: Attention
                                             attentionStatus={attention.status}
                                             is_parallel={service.is_parallel}
                                             screenSize={screenSize}
+                                            branchId={branchId}
                                         />
                                     ))}
                                     {comboProducts.map((product, productIndex) => (
@@ -597,6 +601,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize }: Attention
                                             isFirst={productIndex === 0 && comboServices.length === 0}
                                             attentionStatus={attention.status}
                                             screenSize={screenSize}
+                                            branchId={branchId}
                                         />
                                     ))}
                                 </div>
@@ -625,6 +630,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize }: Attention
                                 attentionStatus={attention.status}
                                 is_parallel={service.is_parallel}
                                 screenSize={screenSize}
+                                branchId={branchId}
                             />
                         );
                     })}
@@ -646,6 +652,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize }: Attention
                             attentionStatus={attention.status}
                             assignedTo={`${product.users?.first_name || ''} ${product.users?.last_name || ''}`.trim() || 'No asignado'}
                             screenSize={screenSize}
+                            branchId={branchId}
                         />
                     ))}
                 </div>

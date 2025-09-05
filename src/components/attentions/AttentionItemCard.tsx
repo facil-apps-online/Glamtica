@@ -30,6 +30,7 @@ interface AttentionItemCardProps {
   details?: string[];
   is_parallel?: boolean;
   screenSize: 'mobile' | 'tablet' | 'desktop';
+  branchId: string;
 }
 
 const getStatusBadge = (status: ItemStatus, attentionStatus: string) => {
@@ -66,6 +67,7 @@ export const AttentionItemCard = ({
   details,
   is_parallel = false,
   screenSize,
+  branchId,
 }: AttentionItemCardProps) => {
   const { formatPrice } = usePriceFormat();
   const callClientMutation = useCallClient();
@@ -97,7 +99,7 @@ export const AttentionItemCard = ({
                     {name}
                 </p>
                 <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center gap-4'} text-sm text-muted-foreground items-center`}>
-                    {assignedTo && (
+                    {assignedTo && type !== 'combo' && (
                         <div className="flex items-center gap-1">
                             <User className="w-4 h-4" />
                             {assignedTo}
@@ -182,7 +184,7 @@ export const AttentionItemCard = ({
       isOpen={isEvidenceDialogOpen}
       onOpenChange={setIsEvidenceDialogOpen}
       attentionServiceId={id}
-      onUploadComplete={() => setIsEvidenceDialogOpen(false)}
+      branchId={branchId}
     />
   </>
   );

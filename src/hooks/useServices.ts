@@ -18,21 +18,21 @@ const callTenantAction = async (action: string, payload: any) => {
 // --- HOOKS ---
 
 // Hook para obtener los servicios disponibles en la sucursal seleccionada
-export const useBranchServicesAndCombos = (branchIdParam?: string) => {
+export const useBranchServicesAndCombos = (branchIdParam?: string, searchTerm?: string) => {
   const { selectedBranchId } = useBranchFilterStore();
   const { currentAssignment } = useAuth();
   const branchIdToUse = branchIdParam || selectedBranchId;
 
   return useQuery<(BranchService & { type: 'service' | 'combo' })[], Error>({
-    queryKey: ['branch_services_and_combos', branchIdToUse, currentAssignment?.assignment_id],
+    queryKey: ['branch_services_and_combos', branchIdToUse, searchTerm, currentAssignment?.assignment_id],
     queryFn: async () => {
       if (!branchIdToUse || (branchIdToUse === 'all' && currentAssignment?.role_name === 'tenant_super_admin')) {
         return [];
       }
 
       const [services, combos] = await Promise.all([
-        callTenantAction('get_branch_services', { branchId: branchIdToUse }),
-        callTenantAction('get_combos_for_branch', { branchId: branchIdToUse })
+        callTenantAction('get_branch_services', { branchId: branchIdToUse, searchTerm }),
+        callTenantAction('get_combos_for_branch', { branchId: branchIdToUse, searchTerm })
       ]);
 
       const formattedServices = services.map((s: BranchService) => ({ ...s, type: 'service' }));
@@ -66,17 +66,26 @@ export const useBranchServicesAndCombos = (branchIdParam?: string) => {
         };
       });
 
-      return [...formattedServices, ...formattedCombos];
+      const combined = [...formattedServices, ...formattedCombos];
+      
+      combined.sort((a, b) => a.name.localeCompare(b.name));
+
+      return combined;
     },
     enabled: !!branchIdToUse && (branchIdToUse !== 'all' || currentAssignment?.role_name !== 'tenant_super_admin'),
+    keepPreviousData: true,
   });
 };
 
 // Hook para obtener todos los servicios maestros (el catálogo general)
 export const useMasterServices = (searchTerm?: string, showInactive?: boolean, filterCategory?: string) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
   return useQuery<MasterService[], Error>({
-    queryKey: ['master_services', searchTerm, showInactive, filterCategory],
+    queryKey: ['master_services', tenantId, searchTerm, showInactive, filterCategory],
     queryFn: () => callTenantAction('get_master_services', { searchTerm, showInactive, categoryId: filterCategory }),
+    enabled: !!tenantId,
   });
 };
 

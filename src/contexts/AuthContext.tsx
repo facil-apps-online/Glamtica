@@ -40,6 +40,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   assignments: UserAssignment[];
   currentAssignment: UserAssignment | null;
+  tenantId: string | undefined; // Añadido
   tenantBranches: any[]; // Añadido: Exponer las sucursales del tenant
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -281,6 +282,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     profile,
     assignments,
     currentAssignment,
+    tenantId: currentAssignment?.tenant_id,
     tenantBranches, // Añadido
     isAuthenticated: !!currentAssignment && currentAssignment.status === 'active',
     login,

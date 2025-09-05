@@ -1,18 +1,20 @@
-import { useState, useEffect, useMemo, ReactNode } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, ChevronsUpDown } from "lucide-react";
-import { useCreateCombo, useUpdateCombo, Combo, ComboItem } from "@/hooks/useCombos";
-import { useMasterProducts } from "@/hooks/useProducts";
-import { useMasterServices } from "@/hooks/useServices";
+import { Plus, X, ChevronsUpDown, Link } from "lucide-react";
+import { useCreateCombo, useUpdateCombo, Combo } from "@/hooks/useCombos";
+import { useMasterProducts, useBranchProducts } from "@/hooks/useProducts";
+import { useMasterServices, useBranchServicesAndCombos } from "@/hooks/useServices";
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { debounce } from "@/lib/utils";
 
-// Interfaz de props actualizada para un componente controlado
 interface ComboDialogProps {
   combo?: Combo | null;
   isOpen: boolean;
@@ -20,50 +22,57 @@ interface ComboDialogProps {
   onSuccess?: () => void;
 }
 
-// Tipo para un ítem seleccionable
 type SelectableItem = {
   value: string;
   label: string;
-  data: any; // Almacenará el objeto completo del producto o servicio
+  data: any;
   type: 'product' | 'service';
 };
 
 export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDialogProps) => {
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const { selectedBranchId } = useBranchFilterStore();
 
-  // Estado del formulario
+  const branchId = currentAssignment?.role_name === 'tenant_super_admin' 
+    ? selectedBranchId 
+    : currentAssignment?.branch_id;
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sku, setSku] = useState("");
-  const [items, setItems] = useState<any[]>([]); // Usamos 'any' para flexibilidad con el objeto completo
+  const [items, setItems] = useState<any[]>([]);
+  const [itemSearchTerm, setItemSearchTerm] = useState("");
 
-  // Hooks de mutación
+  const debouncedSetItemSearchTerm = useMemo(() => debounce(setItemSearchTerm, 300), []);
+
   const { mutate: createCombo, isPending: isCreating } = useCreateCombo();
   const { mutate: updateCombo, isPending: isUpdating } = useUpdateCombo();
 
-  // Hooks para obtener productos y servicios
-  const { data: products } = useMasterProducts("", true, "", "");
-  const { data: services } = useMasterServices("", true, "");
+  const { data: masterProducts, isLoading: isLoadingProducts } = useMasterProducts(itemSearchTerm, true, "", "");
+  const { data: masterServices, isLoading: isLoadingServices } = useMasterServices(itemSearchTerm, true, "");
+  const { data: branchProducts } = useBranchProducts(branchId !== 'all' ? branchId : undefined);
+  const { data: branchServices } = useBranchServicesAndCombos(branchId !== 'all' ? branchId : undefined);
 
-  // Lista combinada de ítems seleccionables
   const selectableItems = useMemo<SelectableItem[]>(() => {
-    const productItems = products?.map(p => ({ value: `product-${p.id}`, label: `[P] ${p.name}`, data: p, type: 'product' as const })) || [];
-    const serviceItems = services?.map(s => ({ value: `service-${s.id}`, label: `[S] ${s.name}`, data: s, type: 'service' as const })) || [];
-    return [...productItems, ...serviceItems];
-  }, [products, services]);
+    const productItems = masterProducts?.map(p => ({ value: `product-${p.id}`, label: `[P] ${p.name}`, data: p, type: 'product' as const })) || [];
+    const serviceItems = masterServices?.map(s => ({ value: `service-${s.id}`, label: `[S] ${s.name}`, data: s, type: 'service' as const })) || [];
+    const combined = [...productItems, ...serviceItems];
+    combined.sort((a, b) => a.label.localeCompare(b.label));
+    return combined;
+  }, [masterProducts, masterServices]);
 
-  // Efecto para popular el formulario
   useEffect(() => {
     if (combo && isOpen) {
       setName(combo.name || "");
       setDescription(combo.description || "");
       setSku(combo.sku || "");
-      // Aquí asumimos que combo.combo_items tiene la info completa. Si no, necesitaríamos un fetch.
       const initialItems = combo.combo_items.map(item => ({
         ...item,
         name: item.product?.name || item.service?.name || 'Ítem desconocido',
-        product: item.product, // Aseguramos que el objeto producto esté
-        service: item.service, // Aseguramos que el objeto servicio esté
+        product: item.product,
+        service: item.service,
+        duration: item.service?.duration_minutes || 0,
       }));
       setItems(initialItems);
     } else {
@@ -71,27 +80,62 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
     }
   }, [combo, isOpen]);
 
-  // Lógica de manejo de ítems
+  useEffect(() => {
+    const newItems = JSON.parse(JSON.stringify(items));
+    let cumulativeDuration = 0;
+    let lastSequentialOffset = 0;
+
+    for (let i = 0; i < newItems.length; i++) {
+      const item = newItems[i];
+      if (item.service_id) {
+        if (item.is_parallel) {
+          item.calculated_offset = lastSequentialOffset + (item.offset_minutes || 0);
+        } else {
+          item.offset_minutes = cumulativeDuration;
+          item.calculated_offset = cumulativeDuration;
+          lastSequentialOffset = cumulativeDuration;
+          cumulativeDuration += (item.duration || 0) * (item.quantity || 1);
+        }
+      }
+    }
+
+    if (JSON.stringify(newItems) !== JSON.stringify(items)) {
+      setItems(newItems);
+    }
+  }, [items]);
+
   const handleAddItem = (item: SelectableItem) => {
+    let price = 0;
+    if (branchId && branchId !== 'all') {
+      if (item.type === 'product' && branchProducts) {
+        const branchProduct = branchProducts.find(p => p.product_id === item.data.id);
+        price = branchProduct?.selling_price || 0;
+      } else if (item.type === 'service' && branchServices) {
+        const branchService = branchServices.find(s => s.id === item.data.id);
+        price = branchService?.selling_price || 0;
+      }
+    }
+
     const newItem = {
       product_id: item.type === 'product' ? item.data.id : null,
       service_id: item.type === 'service' ? item.data.id : null,
       quantity: 1,
-      price: 0,
+      price: price,
       name: item.label,
-      // Guardamos el objeto completo para acceder a sus propiedades
       product: item.type === 'product' ? item.data : null,
       service: item.type === 'service' ? item.data : null,
+      duration: item.type === 'service' ? item.data.duration_minutes : 0,
+      offset_minutes: 0,
+      is_parallel: false,
     };
     setItems(prev => [...prev, newItem]);
+    setItemSearchTerm(""); // Reset search term after selection
   };
 
-  const handleUpdateItem = (index: number, field: 'quantity' | 'price', value: number) => {
+  const handleUpdateItem = (index: number, field: 'quantity' | 'price' | 'offset_minutes' | 'is_parallel', value: number | boolean) => {
     const newItems = [...items];
-    if (value >= 0) {
-      newItems[index] = { ...newItems[index], [field]: value };
-      setItems(newItems);
-    }
+    newItems[index] = { ...newItems[index], [field]: value };
+    setItems(newItems);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -103,6 +147,7 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
     setDescription("");
     setSku("");
     setItems([]);
+    setItemSearchTerm("");
   };
 
   const handleSuccess = () => {
@@ -124,7 +169,14 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
     }
 
     const comboData = { name, description, sku, is_active: combo?.is_active ?? true };
-    const finalItems = items.map(({ product_id, service_id, quantity, price }) => ({ product_id, service_id, quantity, price: price || 0 }));
+    const finalItems = items.map(({ product_id, service_id, quantity, price, offset_minutes, is_parallel }) => ({ 
+      product_id, 
+      service_id, 
+      quantity, 
+      price: price || 0, 
+      offset_minutes: offset_minutes || 0,
+      is_parallel: is_parallel || false,
+    }));
 
     if (combo) {
       updateCombo({ id: combo.id, ...comboData, items: finalItems }, { onSuccess: handleSuccess });
@@ -157,27 +209,71 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command>
-                  <CommandInput placeholder="Buscar ítem..." />
+                  <CommandInput 
+                    placeholder="Buscar ítem..." 
+                    onValueChange={debouncedSetItemSearchTerm}
+                  />
                   <CommandList>
-                    <CommandEmpty>No se encontraron ítems.</CommandEmpty>
-                    <CommandGroup>
-                      {selectableItems.map((item) => (
-                        <CommandItem key={item.value} onSelect={() => { handleAddItem(item); }}>
-                          {item.label}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    {isLoadingProducts || isLoadingServices ? (
+                      <div className="p-2 text-center text-sm">Cargando...</div>
+                    ) : (
+                      <>
+                        <CommandEmpty>No se encontraron ítems.</CommandEmpty>
+                        <CommandGroup>
+                          {selectableItems.map((item) => (
+                            <CommandItem key={item.value} onSelect={() => { handleAddItem(item); }}>
+                              {item.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </>
+                    )}
                   </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>
 
+            {items.length > 0 && (
+              <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground font-medium">
+                <div className="w-10" /> {/* Spacer for link button */}
+                <div className="flex-grow">Ítem</div>
+                <div className="w-28 text-center">Desfase (min)</div>
+                <div className="w-20 text-center">Cantidad</div>
+                <div className="w-28 text-center">Precio</div>
+                <div className="w-10" /> {/* Spacer for remove button */}
+              </div>
+            )}
             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
               {items.map((item, index) => (
                 <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                  <div className="w-10">
+                    {item.service_id && (
+                      <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
+                        disabled={index === 0}
+                        title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
+                      >
+                        <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex-grow font-medium text-sm">{item.name}</div>
+                  <div className="w-28">
+                    {item.service_id && (
+                      <Input 
+                        type="number" 
+                        placeholder="Desfase" 
+                        value={item.offset_minutes || 0} 
+                        onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
+                        min={0}
+                        disabled={!item.is_parallel}
+                      />
+                    )}
+                  </div>
                   <div className="w-20">
-                    <Label className="sr-only">Cantidad</Label>
                     <Input 
                       type="number" 
                       placeholder="Cant." 
@@ -192,7 +288,9 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
                       disabled={item.service_id !== null}
                     />
                   </div>
-                  <div className="w-28"><Label className="sr-only">Precio</Label><Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" /></div>
+                  <div className="w-28">
+                    <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
+                  </div>
                   <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
                 </div>
               ))}

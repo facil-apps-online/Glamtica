@@ -1,11 +1,11 @@
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, Trash2, UploadCloud } from "lucide-react";
+import { Link, Trash2, UploadCloud, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FilterableSelect } from "./FilterableSelect";
@@ -13,10 +13,101 @@ import { useProductSellers } from "@/hooks/useProductSellers";
 import { useGetComboBranchDetails } from "@/hooks/useCombos";
 import { useAvailableUsers } from "@/hooks/useAvailableUsers";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
-import { format, setHours, setMinutes } from "date-fns";
+import { format, setHours, setMinutes, addMinutes } from "date-fns";
 import { useStartService, useFinishService, useCallClient } from "@/hooks/useAttentionServiceActions";
 import { ServiceTimer } from "./ServiceTimer";
 import { EvidenceUploadDialog } from "./EvidenceUpload";
+import { debounce } from "@/lib/utils";
+
+// --- SUB-COMPONENTE PARA ITEMS DENTRO DE UN COMBO ---
+
+interface ComboSubItemCardProps {
+  subItem: ItemForm;
+  subIndex: number;
+  attentionDateTime: Date | null;
+  branchId?: string;
+  isAttentionEditable: boolean;
+  onUpdate: (subIndex: number, updates: Partial<ItemForm>) => void;
+}
+
+const ComboSubItemCard = ({ subItem, subIndex, attentionDateTime, branchId, isAttentionEditable, onUpdate }: ComboSubItemCardProps) => {
+  const [professionalSearchTerm, setProfessionalSearchTerm] = useState("");
+  const debouncedSetProfessionalSearchTerm = useMemo(() => debounce(setProfessionalSearchTerm, 300), []);
+
+  // Hook para profesionales de servicios
+  const { data: availableUsers, isLoading: isLoadingAvailableUsers } = useAvailableUsers(
+    subItem.type === 'service' ? subItem.item_id : undefined,
+    'service',
+    attentionDateTime ? format(attentionDateTime, 'yyyy-MM-dd') : '',
+    subItem.start_time || (attentionDateTime ? format(attentionDateTime, 'HH:mm') : undefined),
+    subItem.duration,
+    branchId,
+    subItem.is_existing ? subItem.user_id : undefined,
+    subItem.is_existing ? subItem.id : undefined,
+    professionalSearchTerm
+  );
+
+  // Hook para vendedores de productos
+  const { data: productSellers, isLoading: isLoadingProductSellers } = useProductSellers(
+    subItem.type === 'product' ? subItem.item_id : undefined,
+    branchId
+  );
+
+  const availableUsersOptions = useMemo(() => {
+    if (!availableUsers) return [];
+    return availableUsers.map((user: any) => ({
+      value: user.user_id,
+      label: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+    }));
+  }, [availableUsers]);
+
+  const productSellersOptions = useMemo(() => {
+    if (!productSellers) return [];
+    return productSellers.map((seller: any) => ({
+      value: seller.user_id,
+      label: `${seller.first_name || ''} ${seller.last_name || ''}`.trim() || seller.email,
+    }));
+  }, [productSellers]);
+
+  return (
+    <div className="p-3 rounded-md bg-slate-50 space-y-2">
+      <div className="flex justify-between items-center">
+        <p className="text-sm font-medium">{subItem.quantity}x {subItem.item_name}</p>
+        {subItem.type === 'service' && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3" />
+            <span>{subItem.duration} min</span>
+            {subItem.offset_minutes > 0 && <span className="text-blue-500">(+{subItem.offset_minutes} min)</span>}
+          </div>
+        )}
+      </div>
+      
+      {subItem.type === 'service' && (
+        <FilterableSelect
+          placeholder="Asignar profesional..."
+          options={availableUsersOptions}
+          value={subItem.user_id}
+          onValueChange={(value) => onUpdate(subIndex, { user_id: value })}
+          disabled={!isAttentionEditable || isLoadingAvailableUsers}
+          searchPlaceholder={isLoadingAvailableUsers ? "Verificando..." : "Buscar profesional..."}
+          onSearch={debouncedSetProfessionalSearchTerm}
+        />
+      )}
+
+      {subItem.type === 'product' && (
+        <FilterableSelect
+          placeholder="Asignar vendedor..."
+          options={productSellersOptions}
+          value={subItem.commission_user_id}
+          onValueChange={(value) => onUpdate(subIndex, { commission_user_id: value })}
+          disabled={!isAttentionEditable || isLoadingProductSellers}
+          searchPlaceholder={isLoadingProductSellers ? "Cargando..." : "Buscar..."}
+        />
+      )}
+    </div>
+  );
+};
+
 
 export interface ItemForm {
   id: string;
@@ -48,6 +139,8 @@ export interface ItemFormCardProps {
   branchId?: string;
   onUpdate: (index: number, updates: Partial<ItemForm>) => void;
   onRemove: (index: number) => void;
+  onSearchItems?: (searchTerm: string) => void;
+  isLoadingItems?: boolean;
   canRemove: boolean;
   availableServicesAndCombos: any[];
   availableBranchProducts: any[];
@@ -63,12 +156,18 @@ const ItemFormCard = ({
   branchId,
   onUpdate,
   onRemove,
+  onSearchItems,
+  isLoadingItems,
   canRemove,
   availableServicesAndCombos,
   availableBranchProducts,
   isAttentionEditable,
 }: ItemFormCardProps) => {
   const [evidenceDialogService, setEvidenceDialogService] = useState<ItemForm | null>(null);
+  const [professionalSearchTerm, setProfessionalSearchTerm] = useState("");
+  const debouncedSetProfessionalSearchTerm = useMemo(() => debounce(setProfessionalSearchTerm, 300), []);
+  const [sellerSearchTerm, setSellerSearchTerm] = useState("");
+  const debouncedSetSellerSearchTerm = useMemo(() => debounce(setSellerSearchTerm, 300), []);
   const startServiceMutation = useStartService();
   const finishServiceMutation = useFinishService();
   const callClientMutation = useCallClient();
@@ -96,26 +195,28 @@ const ItemFormCard = ({
 
   const { data: productSellers, isLoading: isLoadingProductSellers } = useProductSellers(
     item.type === 'product' ? item.item_id : undefined,
-    branchId
+    branchId,
+    sellerSearchTerm
   );
 
   const totalItemDuration = (item.duration || 0) * item.quantity;
 
   const { data: availableUsers, isLoading: isLoadingAvailableUsers } = useAvailableUsers(
-    item.type === 'service' || item.type === 'combo' ? item.item_id : undefined,
-    item.type === 'service' || item.type === 'combo' ? item.type : undefined,
+    item.type === 'service' ? item.item_id : undefined, // Only for individual services
+    'service',
     attentionDateTime ? format(attentionDateTime, 'yyyy-MM-dd') : '',
-    item.start_time,
+    item.start_time || (attentionDateTime ? format(attentionDateTime, 'HH:mm') : undefined),
     totalItemDuration,
     branchId,
-    item.user_id,
-    item.is_existing ? item.id : undefined
+    item.is_existing ? item.user_id : undefined,
+    item.is_existing ? item.id : undefined,
+    professionalSearchTerm
   );
 
   useEffect(() => {
     if (item.type === 'combo' && !item.is_existing && comboDetails) {
       const newItems = comboDetails.items.map((ci: any) => ({
-        id: `temp-${ci.id}`,
+        id: `temp-${ci.item_id}`,
         type: ci.service_id ? 'service' : 'product',
         item_id: ci.service_id || ci.product_id,
         item_name: ci.name,
@@ -129,10 +230,16 @@ const ItemFormCard = ({
         end_time: '',
         is_parallel: false,
         parallel_group_id: null,
-        offset_minutes: 0,
+        offset_minutes: ci.offset_minutes || 0,
       }));
 
-      const baseDuration = newItems.reduce((acc, comboItem) => acc + (comboItem.duration || 0), 0);
+      const baseDuration = newItems.reduce((acc, comboItem) => {
+        if (comboItem.type === 'service') {
+          return acc + (comboItem.duration || 0);
+        }
+        return acc;
+      }, 0);
+      
       const basePrice = newItems.reduce((acc, comboItem) => acc + (comboItem.price || 0), 0);
 
       onUpdate(index, {
@@ -161,7 +268,6 @@ const ItemFormCard = ({
         .map(s => ({ value: s.id, label: s.name }));
     }
 
-    // Ensure the current item is in the list when editing
     if (item.is_existing && item.item_id && item.item_name) {
       const itemExists = options.some(opt => opt.value === item.item_id);
       if (!itemExists) {
@@ -199,20 +305,20 @@ const ItemFormCard = ({
     onUpdate(index, { quantity: Math.max(1, newQuantity) });
   };
 
+  const handleUpdateSubItem = useCallback((subIndex: number, updates: Partial<ItemForm>) => {
+    const newSubItems = [...(item.items || [])];
+    newSubItems[subIndex] = { ...newSubItems[subIndex], ...updates };
+    onUpdate(index, { items: newSubItems });
+  }, [item.items, index, onUpdate]);
+
   const isItemDisabled = !isAttentionEditable || (item.is_existing && item.status !== 'Pendiente');
   const typeLabel = item.type === 'service' ? 'Servicio' : item.type === 'product' ? 'Producto' : 'Combo';
 
   const canBeParallel = useMemo(() => {
     if (!isAttentionEditable) return false;
-    if (item.type === 'service') return true;
-    if (item.type === 'combo') {
-      const itemsToCheck = item.is_existing ? item.items : comboDetails?.items;
-      if (itemsToCheck) {
-        return itemsToCheck.some((comboItem: any) => comboItem.type === 'service' || comboItem.service_id);
-      }
-    }
+    if (item.type === 'service' || item.type === 'combo') return true;
     return false;
-  }, [isAttentionEditable, item.type, item.items, comboDetails]);
+  }, [isAttentionEditable, item.type]);
 
   if (item.type === 'product') {
     const productSellersOptions = productSellers?.map((seller: any) => ({
@@ -220,7 +326,6 @@ const ItemFormCard = ({
         label: `${seller.first_name || ''} ${seller.last_name || ''}`.trim() || seller.email,
     })) || [];
 
-    // Encontrar el producto actual para verificar si permite decimales
     const currentProduct = availableBranchProducts.find(p => p.id === item.item_id);
     const isDecimalAllowed = currentProduct?.allow_decimal_sale || false;
 
@@ -229,7 +334,7 @@ const ItemFormCard = ({
       if (!isNaN(newQuantity) && newQuantity > 0) {
         onUpdate(index, { quantity: newQuantity });
       } else if (value === "") {
-        onUpdate(index, { quantity: 0 }); // Permitir vaciar el campo temporalmente
+        onUpdate(index, { quantity: 0 });
       }
     };
 
@@ -243,6 +348,8 @@ const ItemFormCard = ({
                     value={item.item_id}
                     onValueChange={handleItemChange}
                     disabled={isItemDisabled}
+                    onSearch={onSearchItems}
+                    searchPlaceholder="Buscar..."
                 />
                 <FilterableSelect
                     label="Vendido por:"
@@ -251,6 +358,8 @@ const ItemFormCard = ({
                     value={item.commission_user_id}
                     onValueChange={(value) => onUpdate(index, { commission_user_id: value })}
                     disabled={isItemDisabled || isLoadingProductSellers || !item.item_id}
+                    onSearch={debouncedSetSellerSearchTerm}
+                    searchPlaceholder="Buscar vendedor..."
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <div className="w-full">
@@ -286,15 +395,44 @@ const ItemFormCard = ({
     );
   }
 
-  const comboItemsToDisplay = item.is_existing ? item.items : comboDetails?.items;
+  const comboItemsToDisplay = item.items || [];
 
   return (
     <>
       <Card className={`relative mb-4 w-full ${item.is_parallel ? 'border-l-4 border-l-blue-500' : ''}`}>
         <CardContent className="p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <Label>{`Item #${index + 1}: ${typeLabel}`}</Label>
-              {item.type === 'service' && getStatusBadge(item.status)}
+            <div className="flex justify-between items-start gap-2">
+              {/* Left Side: Title and Badge */}
+              <div className="flex-grow">
+                <Label>{`Item #${index + 1}: ${typeLabel}`}</Label>
+                {item.type === 'service' && <div className="mt-1">{getStatusBadge(item.status)}</div>}
+              </div>
+
+              {/* Right Side: Action Buttons */}
+              <div className="flex-shrink-0 flex items-center gap-1">
+                {canBeParallel && (
+                  <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => onUpdate(index, { is_parallel: !item.is_parallel })}
+                      disabled={index === 0 || item.is_existing}
+                      title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como ítem paralelo"}
+                  >
+                      <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
+                  </Button>
+                )}
+                {isAttentionEditable && (
+                  <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(index); }} 
+                      disabled={!canRemove}
+                  >
+                      <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             
             <FilterableSelect
@@ -303,35 +441,37 @@ const ItemFormCard = ({
                 value={item.item_id}
                 onValueChange={handleItemChange}
                 disabled={isItemDisabled || item.is_existing}
+                onSearch={onSearchItems}
+                searchPlaceholder="Buscar..."
             />
 
-            <div>
-                {item.is_existing ? (
-                    <div>
-                        <Label>Asignado A:</Label>
-                        <Input
-                            value={item.user_name || 'No asignado'}
-                            disabled
-                        />
-                    </div>
-                ) : (
-                    <FilterableSelect
-                        label="Asignado A:"
-                        placeholder="Asignar profesional"
-                        options={availableUsersOptions}
-                        value={item.user_id}
-                        onValueChange={(value) => onUpdate(index, { user_id: value })}
-                        disabled={isItemDisabled || isLoadingAvailableUsers || !item.item_id}
-                        searchPlaceholder={isLoadingAvailableUsers ? "Verificando disponibilidad..." : "Buscar profesional"}
-                    />
-                )}
-            </div>
-            {!item.is_existing && !isLoadingAvailableUsers && availableUsers?.length === 0 && item.item_id && (
-                <p className="text-xs text-red-500 mt-1">No hay personal disponible para este servicio en el horario seleccionado.</p>
+            {item.type === 'service' && (
+              <div>
+                  {item.is_existing ? (
+                      <div>
+                          <Label>Asignado A:</Label>
+                          <Input value={item.user_name || 'No asignado'} disabled />
+                      </div>
+                  ) : (
+                      <FilterableSelect
+                          label="Asignado A:"
+                          placeholder="Asignar profesional"
+                          options={availableUsersOptions}
+                          value={item.user_id}
+                          onValueChange={(value) => onUpdate(index, { user_id: value })}
+                          disabled={isItemDisabled || isLoadingAvailableUsers || !item.item_id}
+                          searchPlaceholder={isLoadingAvailableUsers ? "Verificando..." : "Buscar profesional..."}
+                          onSearch={debouncedSetProfessionalSearchTerm}
+                      />
+                  )}
+                  {!item.is_existing && !isLoadingAvailableUsers && availableUsers?.length === 0 && item.item_id && (
+                      <p className="text-xs text-red-500 mt-1">No hay personal disponible.</p>
+                  )}
+              </div>
             )}
 
-            {item.is_parallel && item.type === 'service' && (
-                <div className="mt-4">
+            {item.is_parallel && (
+                <div className="mt-2">
                     <Label htmlFor={`offset-minutes-${item.id}`}>Inicio después de (min)</Label>
                     <Input 
                         id={`offset-minutes-${item.id}`}
@@ -365,35 +505,16 @@ const ItemFormCard = ({
                         <p className="text-sm text-muted-foreground">Cargando detalles del combo...</p>
                     ) : (
                         <div className="space-y-3">
-                            {comboItemsToDisplay.map((comboItem: any, subIndex: number) => (
-                                <div key={`${comboItem.id}-${subIndex}`} className="flex items-center justify-between p-2 rounded-md bg-slate-50">
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium">{comboItem.quantity}x {comboItem.item_name || comboItem.name}</p>
-                                        <p className="text-xs text-muted-foreground">{comboItem.user_name || 'No asignado'}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {comboItem.type === 'service' && getStatusBadge(comboItem.status)}
-                                        
-                                        {isAttentionEditable && comboItem.type === 'service' && comboItem.status === 'En Proceso' && (
-                                            <Button size="xs" variant="destructive" onClick={() => finishServiceMutation.mutate(comboItem.id)}>Finalizar</Button>
-                                        )}
-                                        
-                                        {isAttentionEditable && comboItem.type === 'service' && (comboItem.status === 'Pendiente' || comboItem.status === 'Llamado') && (
-                                            <Button size="xs" onClick={() => startServiceMutation.mutate(comboItem.id)}>Iniciar</Button>
-                                        )}
-
-                                        {comboItem.type === 'service' && (
-                                            <Button
-                                                size="icon-xs"
-                                                variant="outline"
-                                                onClick={() => setEvidenceDialogService(comboItem)}
-                                                title="Cargar Evidencia"
-                                            >
-                                                <UploadCloud className="w-3 h-3" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
+                            {comboItemsToDisplay.map((comboItem, subIndex) => (
+                                <ComboSubItemCard
+                                  key={comboItem.id || subIndex}
+                                  subItem={comboItem}
+                                  subIndex={subIndex}
+                                  attentionDateTime={attentionDateTime}
+                                  branchId={branchId}
+                                  isAttentionEditable={isAttentionEditable}
+                                  onUpdate={handleUpdateSubItem}
+                                />
                             ))}
                         </div>
                     )}
@@ -431,63 +552,29 @@ const ItemFormCard = ({
               </div>
             )}
 
-            {/* Service Actions */}
             {item.is_existing && item.type === 'service' && (
                 <div className="mt-4 pt-4 border-t">
                     <h4 className="text-sm font-semibold mb-2">Acciones del Servicio</h4>
                     <div className="flex gap-2 flex-wrap items-center">
                         {item.status === 'Pendiente' && (
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => callClientMutation.mutate(item.id)}
-                                disabled={callClientMutation.isPending}
-                            >
+                            <Button type="button" size="sm" variant="outline" onClick={() => callClientMutation.mutate(item.id)} disabled={callClientMutation.isPending}>
                                 {callClientMutation.isPending ? 'Llamando...' : 'Llamar Cliente'}
                             </Button>
                         )}
                         {(item.status === 'Pendiente' || item.status === 'Llamado') && (
-                            <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => startServiceMutation.mutate(item.id)}
-                                disabled={startServiceMutation.isPending}
-                            >
+                            <Button type="button" size="sm" onClick={() => startServiceMutation.mutate(item.id)} disabled={startServiceMutation.isPending}>
                                 {startServiceMutation.isPending ? 'Iniciando...' : 'Empezar Servicio'}
                             </Button>
                         )}
                         {item.status === 'En Proceso' && (
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => finishServiceMutation.mutate(item.id)}
-                                disabled={finishServiceMutation.isPending}
-                            >
+                            <Button type="button" size="sm" variant="destructive" onClick={() => finishServiceMutation.mutate(item.id)} disabled={finishServiceMutation.isPending}>
                                 {finishServiceMutation.isPending ? 'Finalizando...' : 'Finalizar Servicio'}
                             </Button>
                         )}
-                        
-                        <ServiceTimer 
-                            startTime={item.start_time}
-                            endTime={item.end_time}
-                            status={item.status || 'Pendiente'}
-                        />
-
-                        {item.status === 'Finalizado' && (
-                            <p className="text-sm text-green-600 p-2 bg-green-50 rounded-md">Servicio finalizado.</p>
-                        )}
-                         {item.status === 'Llamado' && (
-                            <p className="text-sm text-blue-600 p-2 bg-blue-50 rounded-md">Profesional llamado.</p>
-                        )}
-                        
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEvidenceDialogService(item)}
-                        >
+                        <ServiceTimer startTime={item.start_time} endTime={item.end_time} status={item.status || 'Pendiente'} />
+                        {item.status === 'Finalizado' && <p className="text-sm text-green-600 p-2 bg-green-50 rounded-md">Servicio finalizado.</p>}
+                        {item.status === 'Llamado' && <p className="text-sm text-blue-600 p-2 bg-blue-50 rounded-md">Profesional llamado.</p>}
+                        <Button type="button" size="sm" variant="outline" onClick={() => setEvidenceDialogService(item)}>
                           <UploadCloud className="w-4 h-4 mr-2" />
                           Evidencia
                         </Button>
@@ -496,34 +583,6 @@ const ItemFormCard = ({
             )}
 
         </CardContent>
-        {canBeParallel && (
-            <Button 
-                variant="outline" 
-                size="icon" 
-                className="absolute top-2 right-12"
-                onClick={() => onUpdate(index, { is_parallel: !item.is_parallel })}
-                disabled={index === 0 || item.is_existing}
-                title={index === 0 ? "El primer servicio no puede ser paralelo" : "Marcar como servicio paralelo"}
-            >
-                <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
-            </Button>
-        )}
-        {isAttentionEditable && (
-            <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                className="absolute top-2 right-2" 
-                onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onRemove(index);
-                }} 
-                disabled={!canRemove}
-            >
-                <Trash2 className="h-4 w-4" />
-            </Button>
-        )}
     </Card>
     <EvidenceUploadDialog
       isOpen={!!evidenceDialogService}
@@ -537,3 +596,4 @@ const ItemFormCard = ({
 };
 
 export default ItemFormCard;
+
