@@ -1999,6 +1999,20 @@ serve(async (req) => {
         break;
       }
 
+      case 'reschedule_attention': {
+        const { p_attention_id, p_new_datetime, p_reason, p_fault } = payload;
+        const { data, error } = await supabaseAdmin.rpc('reschedule_attention', {
+          p_attention_id,
+          p_new_datetime,
+          p_reason,
+          p_fault,
+          p_user_id: userId,
+        });
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       case 'get_attention_service_evidences': {
         const { attentionServiceId } = payload;
         if (!attentionServiceId) throw new Error('Attention Service ID is required.');

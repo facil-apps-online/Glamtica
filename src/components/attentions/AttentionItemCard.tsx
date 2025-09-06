@@ -13,7 +13,7 @@ import { ServiceTimer } from "../ServiceTimer";
 import { useState } from "react";
 import { EvidenceUploadDialog } from "../EvidenceUpload";
 
-type ItemStatus = 'Pendiente' | 'Llamado' | 'En Proceso' | 'Finalizado' | 'Cancelada';
+type ItemStatus = 'Pendiente' | 'Llamado' | 'En Proceso' | 'Finalizado' | 'Cancelado';
 
 interface AttentionItemCardProps {
   id: string; // Service or Combo ID
@@ -49,6 +49,27 @@ const getStatusBadge = (status: ItemStatus, attentionStatus: string) => {
         return <Badge variant="default" className="bg-green-500">Finalizado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+};
+
+const getStatusColorClass = (status: ItemStatus | undefined, attentionStatus: string) => {
+    if (attentionStatus === 'Cancelada') {
+      return 'bg-red-500';
+    }
+
+    switch (status) {
+      case 'Pendiente':
+        return 'bg-gray-500';
+      case 'Llamado':
+        return 'bg-yellow-500';
+      case 'En Proceso':
+        return 'bg-blue-500';
+      case 'Finalizado':
+        return 'bg-green-500';
+      case 'Cancelado':
+        return 'bg-red-500';
+      default:
+        return 'bg-muted-foreground';
     }
 };
 
@@ -90,7 +111,7 @@ export const AttentionItemCard = ({
     <>
       <div className={`relative pl-8 ${!isFirst ? 'pt-2' : ''}`}>
         <div className="absolute left-4 top-0 bottom-0 w-px bg-border -translate-x-1/2"></div>
-        <div className={`absolute left-4 ${!isFirst ? 'top-4' : 'top-2.5'} w-3 h-3 bg-muted-foreground rounded-full -translate-x-1/2`}></div>
+        <div className={`absolute left-4 ${!isFirst ? 'top-4' : 'top-2.5'} w-3 h-3 ${getStatusColorClass(status, attentionStatus)} rounded-full -translate-x-1/2`}></div>
         <div className={`flex ${isMobile ? 'flex-col gap-2' : 'justify-between items-center'}`}>
             <div className="space-y-1 flex flex-col justify-center">
                 <p className="font-medium flex items-center gap-2">

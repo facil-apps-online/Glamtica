@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard } from "lucide-react";
+import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon } from "lucide-react";
 import { useUpdateAttentionStatus } from "@/hooks/useUpdateAttentionStatus";
 import { useAttentions, Attention, AttentionService } from "@/hooks/useAttentions";
 import { useUserTimeOff } from "@/hooks/useUserTimeOff";
@@ -10,6 +10,7 @@ import { useSchedulableUsers } from "@/hooks/useSchedulableUsers";
 import { AttentionForm } from "@/components/AttentionForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CancelAttentionDialog } from "@/components/CancelAttentionDialog";
+import { RescheduleAttentionDialog } from "@/components/RescheduleAttentionDialog";
 import { UserSelector } from "@/components/UserSelector";
 import { AttentionDateFilter } from "@/components/AttentionDateFilter";
 import { AttentionStatusFilter } from "@/components/AttentionStatusFilter";
@@ -496,6 +497,8 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }:
   const hasServices = standaloneServices.length > 0;
   const hasProducts = standaloneProducts.length > 0;
 
+  const hasAnyServices = standaloneServices.length > 0 || attention.attention_combos?.some(combo => combo.attention_services && combo.attention_services.length > 0);
+
   // Logic for action buttons
   const canCompleteAttention = useMemo(() => {
     if (attention.status !== 'En Proceso') return false;
@@ -504,7 +507,21 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }:
     return allServices.every(s => s.status === 'Finalizado');
   }, [attention.status, attention.attention_services]);
 
-  const canPayAttention = attention.status === 'Finalizada';
+  const canPayAttention = useMemo(() => {
+    // Always allow payment if attention is Finalizada
+    if (attention.status === 'Finalizada') {
+      return true;
+    }
+
+    // Allow payment if no services and status is Pendiente or Confirmada
+    if (!hasAnyServices && (attention.status === 'Pendiente' || attention.status === 'Confirmada')) {
+      return true;
+    }
+
+    return false;
+  }, [attention.status, hasAnyServices]);
+  const canBeModified = (attention.status === 'Pendiente' || attention.status === 'Confirmada') && hasAnyServices;
+  const canBeDeleted = attention.status === 'Pendiente' || attention.status === 'Confirmada';
 
   const handleUpdateStatus = (newStatus: 'Finalizada' | 'Pagada') => {
     updateStatusMutation.mutate({ attentionId: attention.id, newStatus });
@@ -536,11 +553,20 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }:
             <Button variant="ghost" size="icon" onClick={() => onEdit(attention)}>
               <Edit className="w-4 h-4" />
             </Button>
-            <CancelAttentionDialog attentionId={attention.id} clientName={attention.clients?.name || ''}>
+            {canBeModified && (
+              <RescheduleAttentionDialog attention={attention}>
                 <Button variant="ghost" size="icon">
-                    <Trash2 className="w-4 h-4 text-red-500" />
+                  <CalendarIcon className="w-4 h-4" />
                 </Button>
-            </CancelAttentionDialog>
+              </RescheduleAttentionDialog>
+            )}
+            {canBeDeleted && (
+              <CancelAttentionDialog attentionId={attention.id} clientName={attention.clients?.name || ''}>
+                <Button variant="ghost" size="icon">
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </Button>
+              </CancelAttentionDialog>
+            )}
           </div>
         </div>
       </CardHeader>
