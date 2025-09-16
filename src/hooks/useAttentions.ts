@@ -33,6 +33,7 @@ export type Attention = Tables<'attentions'> & {
     });
     users: Tables<'users'>;
   })[];
+  attention_payments: Tables<'attention_payments'>[];
 };
 
 interface CreateAttentionParams {

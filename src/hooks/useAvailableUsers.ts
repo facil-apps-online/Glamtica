@@ -13,7 +13,6 @@ export const useAvailableUsers = (
   attentionId?: string, // New parameter
   searchTerm?: string
 ) => {
-  console.log(`[useAvailableUsers hook] serviceId: ${serviceId}, itemType: ${itemType}, date: ${appointmentDate}, time: ${appointmentTime}, duration: ${duration}, branchId: ${branchId}`);
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 

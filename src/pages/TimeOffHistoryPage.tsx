@@ -44,9 +44,6 @@ const TimeOffHistoryPage: React.FC = () => {
   // userIdToFetch will be handled by useUserTimeOff based on filterSearchTerm
   const userIdToFetch = (isSuperAdmin || currentAssignment?.role_name === 'tenant_admin') ? undefined : currentAssignment?.user_id;
 
-  console.log("TimeOffHistoryPage - currentAssignment:", currentAssignment);
-  console.log("TimeOffHistoryPage - tenantId:", currentAssignment?.tenant_id);
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

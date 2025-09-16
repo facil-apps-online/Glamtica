@@ -59,7 +59,6 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
   }, [currentDate]);
 
   const handleDatesSet = (dateInfo: any) => {
-    console.log('handleDatesSet called. isProgrammaticNavigation.current:', isProgrammaticNavigation.current, 'dateInfo.start:', dateInfo.start);
     if (isProgrammaticNavigation.current) {
       isProgrammaticNavigation.current = false; // Reset flag after programmatic navigation
       // We still want to update the view state if it changed due to programmatic navigation

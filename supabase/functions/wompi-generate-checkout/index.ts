@@ -36,23 +36,21 @@ serve(async (req) => {
     const body = await req.json();
     const { tenantId, redirectUrl, userId, amountInCents, currency, actions_on_success } = validateRequest(body);
 
-    // --- CORRECTED: Get Wompi Credentials from the System Owner Tenant ---
-    const { data: systemOwnerTenant, error: ownerError } = await supabaseAdmin
-      .from('tenants')
-      .select('id')
-      .eq('is_system_owner', true)
-      .single();
-    if (ownerError) throw new Error(`Error al buscar el tenant propietario: ${ownerError.message}`);
-    if (!systemOwnerTenant) throw new Error('No se ha configurado un tenant como propietario del sistema.');
-
+    // --- Get Wompi Credentials for the specific tenant ---
     const { data: integration, error: integrationError } = await supabaseAdmin
       .from('tenant_integrations')
       .select('encrypted_credentials, nonce, environment')
-      .eq('tenant_id', systemOwnerTenant.id)
+      .eq('tenant_id', tenantId) // Use the tenantId from the request body
       .eq('provider', 'wompi-co')
       .eq('is_active', true)
       .single();
-    if (integrationError) throw new Error('No se encontró una configuración de Wompi activa para el tenant propietario.');
+
+    if (integrationError) {
+      throw new Error(`Error fetching Wompi integration: ${integrationError.message}`);
+    }
+    if (!integration) {
+      throw new Error(`No active Wompi integration found for tenant ${tenantId}.`);
+    }
 
     const { environment } = integration;
 

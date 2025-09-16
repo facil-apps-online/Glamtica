@@ -56,7 +56,6 @@ export function CountrySelector() {
 
   const handleCountryChange = (value: string) => {
     setSelectedCountry(value);
-    console.log('País seleccionado:', value);
   };
 
   return (

@@ -1,0 +1,1 @@
+ALTER TABLE payment_methods ADD COLUMN requires_evidence BOOLEAN NOT NULL DEFAULT FALSE;

@@ -43,8 +43,6 @@ export const TimeOffRequestsList = ({
   }
 
   const { data: requests, isLoading } = useUserTimeOff(userId, statusFilter, typeFilter, dateRange, branchIdToUse, searchTerm);
-  console.log("TimeOffRequestsList - requests:", requests);
-  console.log("TimeOffRequestsList - isLoading:", isLoading);
   const updateRequestMutation = useUpdateTimeOffRequest();
 
   const handleApproval = async (requestId: string, status: 'approved' | 'rejected') => {

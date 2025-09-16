@@ -47,11 +47,11 @@ serve(async (req) => {
   const startTime = performance.now();
 
   try {
-    if (!supabaseAdmin) {
-      throw new Error('Supabase Admin client failed to initialize.');
-    }
-    console.log("Inside try block");
-    const authHeader = req.headers.get('Authorization');
+      if (!supabaseAdmin) {
+        throw new Error('Supabase Admin client failed to initialize.');
+      }
+
+      console.log("Inside try block");
     if (!authHeader) {
       throw new Error('Missing Authorization Header');
     }
@@ -81,6 +81,29 @@ serve(async (req) => {
 
     switch (action) {
       // --- CLIENT ACTIONS ---
+      case 'UPDATE_TV_PLAYBACK_STATE': {
+        // This action is called by the TV display page, which may be running anonymously.
+        // We bypass the standard user/tenant JWT check for this specific action,
+        // as the operation is considered trusted when originating from the TV display logic.
+        const { branch_id, current_playlist_item_id, video_started_at } = payload;
+        if (!branch_id || !current_playlist_item_id || !video_started_at) {
+          throw new Error('branch_id, current_playlist_item_id, and video_started_at are required for UPDATE_TV_PLAYBACK_STATE.');
+        }
+  
+        const { data, error } = await supabaseAdmin
+          .from('branch_playback_state')
+          .upsert({
+            branch_id: branch_id,
+            current_playlist_item_id: current_playlist_item_id,
+            video_started_at: video_started_at,
+          }, { onConflict: 'branch_id' })
+          .select()
+          .single();
+  
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
       case 'get_clients_by_branch': {
         const { branchId, searchTerm, showInactive } = payload;
         if (!branchId) throw new Error('Branch ID is required.');
@@ -1999,17 +2022,53 @@ serve(async (req) => {
         break;
       }
 
-      case 'reschedule_attention': {
-        const { p_attention_id, p_new_datetime, p_reason, p_fault } = payload;
-        const { data, error } = await supabaseAdmin.rpc('reschedule_attention', {
-          p_attention_id,
-          p_new_datetime,
-          p_reason,
-          p_fault,
-          p_user_id: userId,
-        });
+      // --- PAYMENT METHODS ACTIONS ---
+      case 'get_payment_methods': {
+        const { data, error } = await supabaseAdmin
+          .from('payment_methods')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('name');
         if (error) throw error;
         responseData = data;
+        break;
+      }
+
+      case 'create_payment_method': {
+        const { name, is_active, requires_evidence } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('payment_methods')
+          .insert([{ tenant_id: tenantId, name, is_active, requires_evidence }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_payment_method': {
+        const { id, ...updates } = payload;
+        const { data, error } = await supabaseAdmin
+          .from('payment_methods')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_payment_method': {
+        const { id } = payload;
+        const { error } = await supabaseAdmin
+          .from('payment_methods')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
         break;
       }
 
@@ -2026,6 +2085,26 @@ serve(async (req) => {
 
         if (error) throw error;
         responseData = data;
+        break;
+      }
+
+      case 'get_payment_evidences': {
+        const { attentionPaymentIds } = payload;
+        if (!attentionPaymentIds || !Array.isArray(attentionPaymentIds) || attentionPaymentIds.length === 0) {
+          throw new Error('attentionPaymentIds must be a non-empty array.');
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('attention_payment_evidences')
+          .select('id, file_name, google_drive_file_id')
+          .in('attention_payment_id', attentionPaymentIds)
+          .eq('tenant_id', tenantId);
+
+        if (error) {
+          throw new Error(`Error fetching payment evidence: ${error.message}`);
+        }
+
+        responseData = data || [];
         break;
       }
 
@@ -2477,6 +2556,147 @@ serve(async (req) => {
           .eq('id', attentionId);
         if (error) throw error;
         responseData = { success: true };
+        break;
+      }
+
+      case 'reschedule_attention': {
+        const { p_attention_id, p_new_datetime, p_reason, p_fault } = payload;
+        if (!p_attention_id || !p_new_datetime || !p_reason || !p_fault) {
+          throw new Error('Attention ID, new datetime, reason, and fault are required.');
+        }
+
+        // 1. Get the current attention details
+        const { data: currentAttention, error: fetchError } = await supabaseAdmin
+          .from('attentions')
+          .select('attention_datetime, client_id')
+          .eq('id', p_attention_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        // 2. Update the attention datetime
+        const { error: updateError } = await supabaseAdmin
+          .from('attentions')
+          .update({ attention_datetime: p_new_datetime })
+          .eq('id', p_attention_id);
+
+        if (updateError) throw updateError;
+
+        // 3. Log the reschedule event
+        const { error: logError } = await supabaseAdmin
+          .from('rescheduled_attentions')
+          .insert({
+            attention_id: p_attention_id,
+            client_id: currentAttention.client_id,
+            original_date: currentAttention.attention_datetime,
+            new_date: p_new_datetime,
+            reason: p_reason,
+            user_id: userId,
+            fault: p_fault,
+          });
+
+        if (logError) {
+          // If logging fails, we should ideally roll back the attention update.
+          // For now, we'll just log the error and continue.
+          console.error('Failed to log reschedule event:', logError);
+        }
+
+        responseData = { success: true };
+        break;
+      }
+
+      case 'process_attention_payment': {
+        const { attention, paymentOptions } = payload;
+        if (!attention || !paymentOptions) {
+          throw new Error('Attention and paymentOptions are required.');
+        }
+
+        // Validar montos
+        const totalPaid = paymentOptions.payment_methods.reduce((sum, p) => sum + p.amount, 0);
+        const discountAmount = paymentOptions.discount || 0;
+        const totalWithDiscount = attention.total_amount - discountAmount;
+
+        if (Math.abs(totalPaid - totalWithDiscount) > 0.01) {
+          throw new Error(`El monto pagado (${totalPaid}) no coincide con el total con descuento (${totalWithDiscount}).`);
+        }
+
+        const wompiPaymentMethod = paymentOptions.payment_methods.find(p => p.method.toLowerCase() === 'wompi');
+        let useWompi = false;
+
+        if (wompiPaymentMethod) {
+          // Si se incluye 'wompi', verificar si el tenant tiene la integración activa
+          const { data: wompiIntegration, error: integrationError } = await supabaseAdmin
+            .from('tenant_integrations')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .eq('provider', 'wompi-co')
+            .eq('is_active', true)
+            .single();
+          
+          if (integrationError && integrationError.code !== 'PGRST116') { // PGRST116 = no rows
+            throw new Error(`Error al verificar la integración de Wompi: ${integrationError.message}`);
+          }
+
+          if (wompiIntegration) {
+            useWompi = true;
+          }
+        }
+
+        // Insertar los registros de pago
+        const createdPayments = [];
+        for (const payment of paymentOptions.payment_methods) {
+          const { data, error } = await supabaseAdmin.from('attention_payments').insert({
+            attention_id: attention.id,
+            payment_method_id: payment.method_id,
+            amount: payment.amount,
+            // Marcar como 'pending' si es Wompi, si no 'completed'
+            status: (payment.method.toLowerCase() === 'wompi' && useWompi) ? 'pending' : 'completed',
+            tenant_id: tenantId,
+          }).select();
+
+          if (error) {
+            throw new Error(`Error al registrar el pago: ${error.message}`);
+          }
+          if (data) {
+            createdPayments.push(...data);
+          }
+        }
+
+        if (useWompi && wompiPaymentMethod) {
+          // Invocar la función de Wompi
+          const { data: wompiData, error: wompiError } = await supabaseAdmin.functions.invoke('wompi-generate-checkout', {
+            body: {
+              tenantId, // La función ahora es tenant-specific
+              redirectUrl: `${Deno.env.get('SUPABASE_URL').replace('/supabase', '')}/payment-success?attention_id=${attention.id}`,
+              userId,
+              amountInCents: wompiPaymentMethod.amount * 100,
+              currency: 'COP',
+              // Pasamos los IDs de los pagos creados para poder actualizarlos en el webhook de Wompi
+              actions_on_success: createdPayments.map(p => ({ action: 'update_attention_payment_status', payload: { payment_id: p.id, new_status: 'completed' } })),
+            },
+          });
+
+          if (wompiError) {
+            throw new Error(`Error al generar el checkout de Wompi: ${wompiError.message}`);
+          }
+
+          if (wompiData.success) {
+            responseData = { wompiCheckout: true, checkoutData: wompiData.checkoutData, createdPayments };
+          } else {
+            throw new Error(wompiData.error || 'Error desconocido al iniciar el pago con Wompi.');
+          }
+        } else {
+          // Flujo normal sin Wompi
+          const { error: updateError } = await supabaseAdmin
+            .from('attentions')
+            .update({ status: 'Pagada' })
+            .eq('id', attention.id);
+
+          if (updateError) {
+            throw new Error(`Error al actualizar el estado de la atención: ${updateError.message}`);
+          }
+          responseData = { wompiCheckout: false, createdPayments };
+        }
         break;
       }
 

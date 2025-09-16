@@ -74,8 +74,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       if (sessionData?.user) {
         const { app_metadata, user_metadata, id, email } = sessionData.user;
         
-        console.log('AuthContext: Procesando sesión. app_metadata:', JSON.stringify(app_metadata, null, 2));
-        
         const userProfile: UserProfile = {
           id: id,
           email: email || '',
@@ -94,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         // Forzar la rehidratación si las asignaciones no existen, están vacías,
         // o si son incompletas (no tienen los nombres necesarios).
         if (!app_metadata?.assignments || app_metadata.assignments.length === 0 || !app_metadata.assignments[0].tenant_name) {
-          console.log('JWT no hidratado o con datos incompletos. Llamando a refresh-user-metadata...');
           const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
           if (!platformId) throw new Error("Platform ID no configurado.");
 
@@ -109,7 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
             throw new Error(`Error al rehidratar metadatos: ${refreshError.message}`);
           }
 
-          console.log('Metadatos actualizados en DB. Refrescando sesión para obtener nuevo JWT...');
           await supabaseClient.auth.refreshSession();
           return;
         }
@@ -119,7 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         setAssignments(allAssignments);
 
         if (allAssignments.length === 0) {
-          console.warn('Usuario autenticado pero sin asignaciones activas. Cerrando sesión.');
           await supabaseClient.auth.signOut();
           navigate('/auth');
           return;
@@ -200,14 +195,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       throw new Error(data.message || "Error desconocido durante el inicio de sesión.");
     }
 
-    console.log('AuthContext: Respuesta exitosa de la función de login. Sesión recibida:', JSON.stringify(data.session, null, 2));
-
     if (data.session) {
       await supabaseClient.auth.setSession(data.session);
       await processSession(data.session);
       navigate('/');
     } else {
-      console.warn("La función Edge no devolvió datos de sesión válidos.");
       throw new Error("No se recibieron datos de sesión válidos del servidor.");
     }
   };

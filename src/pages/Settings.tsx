@@ -5,20 +5,30 @@ import { GeneralSettingsTab } from "./Settings/GeneralSettingsTab";
 
 import { UsersTab } from "./Settings/UsersTab";
 import { TributarioTab } from "./Settings/TributarioTab";
+import { SalesTab } from "./Settings/SalesTab";
 import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
 import { SubscriptionTab } from "./Settings/SubscriptionTab";
 import { ClientsTab } from "./Settings/ClientsTab";
-import { Building, Users, Store, CreditCard, FileText, Box, Users2 } from 'lucide-react';
+import { Building, Users, Store, CreditCard, FileText, Box, Users2, Loader2 } from 'lucide-react';
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "general";
 
-  const { currentAssignment } = useAuth();
+  const { currentAssignment, loading } = useAuth();
   const userRole = currentAssignment?.role_name;
 
   const isSuperAdmin = userRole === 'tenant_super_admin';
   const isAdmin = userRole === 'tenant_admin';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground">Cargando configuración...</p>
+      </div>
+    );
+  }
 
   const renderTrigger = (value: string, icon: React.ReactNode, label: string) => (
     <TabsTrigger value={value} className="flex items-center gap-2">
@@ -45,6 +55,7 @@ export default function Settings() {
           {(isSuperAdmin || isAdmin) && renderTrigger("users", <Users className="h-4 w-4" />, "Usuarios")}
           {(isSuperAdmin || isAdmin) && renderTrigger("clients", <Users2 className="h-4 w-4" />, "Clientes")}
           {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
+          {(isSuperAdmin || isAdmin) && renderTrigger("sales", <CreditCard className="h-4 w-4" />, "Ventas")}
           {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
           {isSuperAdmin && renderTrigger("subscription", <CreditCard className="h-4 w-4" />, "Suscripción")}
         </TabsList>
@@ -70,6 +81,12 @@ export default function Settings() {
         {(isSuperAdmin || isAdmin) && (
           <TabsContent value="inventory">
             <InventorySettingsTab />
+          </TabsContent>
+        )}
+
+        {(isSuperAdmin || isAdmin) && (
+          <TabsContent value="sales">
+            <SalesTab />
           </TabsContent>
         )}
 

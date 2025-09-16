@@ -48,13 +48,6 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
     
     const branchIdToUse = selectedBranchId === 'all' ? null : selectedBranchId;
 
-    console.log({
-      startDate,
-      endDate,
-      type,
-      branchIdToUse,
-    });
-
     if (!startDate || !endDate || !type || !branchIdToUse) return;
 
     let finalStartDate = startDate;

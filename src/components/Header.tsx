@@ -18,7 +18,6 @@ interface HeaderProps {
 
 export function Header({ panelTitle = "" }: HeaderProps) {
   const { profile, logout, currentAssignment } = useAuth();
-  console.log('[Header Render] currentAssignment:', currentAssignment);
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
   const navigate = useNavigate();

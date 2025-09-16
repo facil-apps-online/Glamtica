@@ -72,9 +72,6 @@ export const UserScheduleDialog = ({ userId, userName, trigger, targetUserAssign
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  console.log("UserScheduleDialog - targetUserAssignments:", targetUserAssignments);
-  console.log("UserScheduleDialog - tenantId:", tenantId);
-
   const activeBranches = useMemo(() => {
     const branchesMap = new Map<string, { id: string; name: string }>();
     targetUserAssignments.forEach(assignment => {
@@ -82,7 +79,6 @@ export const UserScheduleDialog = ({ userId, userName, trigger, targetUserAssign
         branchesMap.set(assignment.branch_id, { id: assignment.branch_id, name: assignment.branch_name });
       }
     });
-    console.log("UserScheduleDialog - activeBranches (inside useMemo):", Array.from(branchesMap.values()));
     return Array.from(branchesMap.values());
   }, [targetUserAssignments, tenantId]);
 

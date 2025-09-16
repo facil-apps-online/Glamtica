@@ -14,10 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 export function ClientsTab() {
   const { toast } = useToast();
   const { currentAssignment, loading: authLoading } = useAuth();
-  console.log("Current Tenant ID in ClientsTab:", currentAssignment?.tenant_id);
   const { data: settings, isLoading: isLoadingSettings, isError: isErrorSettings } = useTenantClientSettings();
   const { data: templates, isLoading: isLoadingTemplates } = useClientDocumentTemplates();
-  console.log("Loaded templates:", templates);
   const { mutate: updateSettings, isLoading: isUpdating } = useUpdateTenantClientSettings();
 
   const [formState, setFormState] = useState<Partial<Omit<TenantClientSettings, 'id' | 'created_at' | 'updated_at'>>>({});

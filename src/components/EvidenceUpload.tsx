@@ -53,11 +53,6 @@ export const EvidenceUploadDialog = ({
   };
 
   const handleUpload = async () => {
-    console.log('handleUpload triggered', { 
-      selectedFiles: selectedFiles.length,
-      tenantId,
-      branchId 
-    });
 
     if (selectedFiles.length === 0 || !tenantId || !branchId) return;
 

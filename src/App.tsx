@@ -44,6 +44,7 @@ import GoogleCallbackPage from "@/pages/integrations/google/Callback";
 import UpdatePasswordPage from "@/pages/UpdatePasswordPage";
 import TvManagementPage from "@/pages/TvManagementPage";
 import TvDisplayPage from "@/pages/TvDisplayPage";
+import RegisterTvPage from "@/pages/RegisterTvPage";
 
 function App() {
   return (
@@ -53,13 +54,17 @@ function App() {
           <AppInitializer>
             <Toaster position="bottom-right" />
             <Routes>
+              {/* Rutas Públicas */}
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/register-tenant" element={<RegisterTenant />} />
               <Route path="/update-password" element={<UpdatePasswordPage />} />
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
-              <Route path="/tv-display/:registrationCode" element={<TvDisplayPage />} />
+              <Route path="/tv" element={<TvDisplayPage />} />
+              <Route path="/tv/:registrationCode" element={<TvDisplayPage />} />
 
+              {/* Rutas Protegidas */}
               <Route element={<ProtectedRoute />}>
+                <Route path="/register-tv/:registrationCode" element={<RegisterTvPage />} />
                 
                 {/* RUTA PADRE CON LAYOUT */}
                 <Route path="/" element={<Layout />}>

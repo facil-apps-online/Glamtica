@@ -10,7 +10,7 @@ import { useBranchProducts } from "@/hooks/useProducts";
 import { useCreateAttention } from "@/hooks/useAttentions";
 import { useUpdateAttentionItems } from "@/hooks/useUpdateAttentionItems";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { FilterableSelect } from "./FilterableSelect";
 import { debounce } from "@/lib/utils";
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -23,8 +23,11 @@ import ItemFormCard, { ItemForm } from "./ItemFormCard";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
-
 import { useScreenSize } from "@/hooks/useScreenSize";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { usePaymentEvidence } from "@/hooks/usePaymentEvidence";
+import { ImagePreviewDialog } from "./ImagePreviewDialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 registerLocale("es", es);
 
@@ -35,6 +38,44 @@ interface AttentionFormProps {
   attention?: any | null;
   screenSize: 'mobile' | 'tablet' | 'desktop';
 }
+
+// MODIFICACIÓN: Componente interno para manejar la lógica de la vista previa
+const EvidencePreview: React.FC<{ paymentIds: string[]; isOpen: boolean; onClose: () => void; }> = ({ paymentIds, isOpen, onClose }) => {
+  const { data: evidences, isLoading } = usePaymentEvidence(paymentIds);
+
+  const imageUrls = evidences?.map(e => e.google_drive_file_id) || [];
+
+  if (isLoading) return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded">Cargando evidencias...</div>
+      </div>
+  );
+
+  if (!isLoading && isOpen && imageUrls.length === 0) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sin Evidencia</DialogTitle>
+          </DialogHeader>
+          <p>No se encontró evidencia de pago para esta transacción.</p>
+          <DialogFooter>
+            <Button onClick={onClose}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <ImagePreviewDialog
+      isOpen={isOpen && imageUrls.length > 0}
+      onClose={onClose}
+      imageUrls={imageUrls}
+    />
+  );
+};
+
 
 export const AttentionForm = ({ branchId, onFinished, initialDate, attention = null, screenSize }: AttentionFormProps) => {
   const { toast } = useToast();
@@ -55,6 +96,8 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
   const [deletedServiceIds, setDeletedServiceIds] = useState<string[]>([]);
   const [deletedProductIds, setDeletedProductIds] = useState<string[]>([]);
   const [deletedComboIds, setDeletedComboIds] = useState<string[]>([]);
+  const [viewingPaymentIds, setViewingPaymentIds] = useState<string[] | null>(null);
+
 
   // --- Debounced Search Term Setters ---
   const debouncedSetClientSearchTerm = useMemo(() => debounce(setClientSearchTerm, 300), []);
@@ -66,6 +109,8 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
   const { data: branchProducts } = useBranchProducts(branchId, itemSearchTerm);
   const createAttentionMutation = useCreateAttention();
   const updateAttentionItemsMutation = useUpdateAttentionItems();
+  const { data: availablePaymentMethods } = usePaymentMethods(attention?.tenant_id);
+
   
   // --- Context and Other Hooks ---
   const { tenantId } = useAuth();
@@ -179,7 +224,6 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
       }
 
       const allItems = [...combos, ...standaloneItems];
-      console.log('Final items structure:', JSON.stringify(allItems, null, 2));
       setItems(allItems);
       setInitialItems(JSON.parse(JSON.stringify(allItems))); // Deep copy
     }
@@ -635,6 +679,41 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
           </div>
         </div>
 
+        {isEditMode && attention?.attention_payments && attention.attention_payments.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pagos Registrados</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {attention.attention_payments.map((payment: any) => {
+                const paymentMethod = availablePaymentMethods?.find(p => p.id === payment.payment_method_id);
+                const methodName = paymentMethod?.name || 'Método desconocido';
+                const requiresEvidence = paymentMethod?.requires_evidence || false;
+
+                return (
+                  <div key={payment.id} className="flex items-center justify-between p-2 border rounded-md">
+                    <div>
+                      <p className="font-semibold">{methodName}</p>
+                      <p className="text-sm text-gray-600">{formatPrice(payment.amount)}</p>
+                    </div>
+                    {requiresEvidence && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setViewingPaymentIds([payment.id])}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver Evidencia
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="notes">Notas de la Atención</Label>
           <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={!isAttentionEditable} />
@@ -646,6 +725,14 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
           {isEditMode ? 'Guardar Cambios' : 'Crear Atención'}
         </Button>
       </DialogFooter>
+
+      {viewingPaymentIds && (
+        <EvidencePreview
+          paymentIds={viewingPaymentIds}
+          isOpen={!!viewingPaymentIds}
+          onClose={() => setViewingPaymentIds(null)}
+        />
+      )}
     </form>
   );
 };

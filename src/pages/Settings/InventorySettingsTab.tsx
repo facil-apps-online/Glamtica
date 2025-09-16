@@ -17,7 +17,6 @@ interface InventorySettingsForm {
 export function InventorySettingsTab() {
   const { session, currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-  console.log("Tenant ID in InventorySettingsTab:", tenantId);
 
   const { data: settings, isLoading } = useSettings({ enabled: !!tenantId });
   const updateMutation = useUpdateSetting();
@@ -52,8 +51,6 @@ export function InventorySettingsTab() {
     reset(defaultFormValues);
   }, [defaultFormValues, reset]);
 
-  console.log("isDirty:", isDirty);
-
   const onSubmit = async (data: InventorySettingsForm) => {
     setIsSaving(true);
     try {
@@ -77,7 +74,6 @@ export function InventorySettingsTab() {
 
   const handleSelectChange = (key: keyof InventorySettingsForm, value: string) => {
     setValue(key, value, { shouldDirty: true });
-    console.log(`setValue called for ${key} with value ${value}. Form isDirty:`, isDirty);
   };
 
   if (isLoading || !tenantId) {

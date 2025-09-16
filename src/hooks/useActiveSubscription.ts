@@ -16,8 +16,6 @@ const fetchSubscriptionStatus = async (): Promise<SubscriptionInfo | null> => {
     body: { action: 'GET_SUBSCRIPTION_STATUS' },
   });
 
-  console.log("[Hook] Raw response from Edge Function:", { data, error });
-
   if (error) {
     console.error('[Hook] Error fetching subscription status from Edge Function:', error);
     throw new Error(error.message);
@@ -37,8 +35,6 @@ export const useSubscriptionStatus = (tenantId: string | null | undefined) => {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
-
-  console.log("[Hook] useSubscriptionStatus result:", { data: queryResult.data, isLoading: queryResult.isLoading, isError: queryResult.isError, error: queryResult.error });
 
   return queryResult;
 };

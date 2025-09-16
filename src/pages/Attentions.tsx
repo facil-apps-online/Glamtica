@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye } from "lucide-react";
 import { useUpdateAttentionStatus } from "@/hooks/useUpdateAttentionStatus";
 import { useAttentions, Attention, AttentionService } from "@/hooks/useAttentions";
 import { useUserTimeOff } from "@/hooks/useUserTimeOff";
@@ -27,6 +27,63 @@ import { AttentionItemCard } from "@/components/attentions/AttentionItemCard";
 import { useScreenSize } from "@/hooks/useScreenSize";
 import { PageHeader } from "@/components/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AttentionPaymentDialog } from "@/components/AttentionPaymentDialog";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { usePaymentEvidence } from "@/hooks/usePaymentEvidence";
+import { ImagePreviewDialog } from "@/components/ImagePreviewDialog";
+
+interface PaymentDetailsDialogProps {
+  attention: Attention | null;
+  isOpen: boolean;
+  onClose: () => void;
+  paymentMethods: any[];
+  onOpenEvidence: (paymentIds: string[]) => void;
+}
+
+// MODIFICACIÓN: Componente para el diálogo de detalles de pago
+const PaymentDetailsDialog: React.FC<PaymentDetailsDialogProps> = ({ attention, isOpen, onClose, paymentMethods, onOpenEvidence }) => {
+  if (!isOpen || !attention) return null;
+
+  const { formatPrice } = usePriceFormat();
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Detalles del Pago</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p>Mostrando los pagos registrados para la atención de <strong>{attention.clients?.name}</strong>.</p>
+          <div className="space-y-2">
+            {attention.attention_payments?.map((payment) => {
+              const paymentMethod = paymentMethods?.find(p => p.id === payment.payment_method_id);
+              const methodName = paymentMethod?.name || 'Desconocido';
+              const requiresEvidence = paymentMethod?.requires_evidence || false;
+
+              return (
+                <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                  <div>
+                    <p className="font-semibold">{methodName}</p>
+                    <p className="text-lg font-bold">{formatPrice(payment.amount)}</p>
+                  </div>
+                  {requiresEvidence && (
+                    <Button variant="outline" size="sm" onClick={() => onOpenEvidence([payment.id])}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      Ver Evidencia
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const generateColorPalette = (count: number) => {
   const colors = [
@@ -86,10 +143,15 @@ export default function Attentions() {
   const [editingAttention, setEditingAttention] = useState<Attention | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [viewingAttention, setViewingAttention] = useState<Attention | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [payingAttention, setPayingAttention] = useState<Attention | null>(null);
+  const [viewingPaymentsFor, setViewingPaymentsFor] = useState<Attention | null>(null);
+  const [viewingEvidenceForPaymentIds, setViewingEvidenceForPaymentIds] = useState<string[] | null>(null);
+
 
   const [initialDate, setInitialDate] = useState<Date | undefined>(undefined);
   const { selectedBranchId } = useBranchFilterStore();
-  const { currentAssignment } = useAuth();
+  const { currentAssignment, tenantId } = useAuth();
   const { formatPrice } = usePriceFormat();
   const { toast } = useToast();
 
@@ -126,6 +188,7 @@ export default function Attentions() {
     undefined,
     view === 'calendar'
   );
+  const { data: paymentMethods } = usePaymentMethods(tenantId);
 
   const userColorMap = useMemo(() => {
     const palette = generateColorPalette(users.length);
@@ -177,7 +240,25 @@ export default function Attentions() {
         };
       });
 
-      if (itemsToSchedule.length === 0) return [];
+      if (itemsToSchedule.length === 0) {
+        // If there are no services, create a single event for the attention
+        if (att.attention_products && att.attention_products.length > 0) {
+          const user = users.find(u => u.id === att.attention_products[0].user_id);
+          const title = `${att.clients?.name} (Productos)`;
+          return [{
+            id: `${att.id}-products`,
+            groupId: att.id,
+            title: title,
+            start: attentionStartTime,
+            end: addMinutes(attentionStartTime, 30), // Default duration of 30 minutes
+            allDay: false,
+            backgroundColor: '#71717a',
+            borderColor: '#71717a',
+            extendedProps: { ...att, type: 'attention' },
+          }];
+        }
+        return [];
+      }
 
       let timelineEndTime = new Date(attentionStartTime);
       let lastSequentialItemStartTime = new Date(attentionStartTime);
@@ -309,6 +390,15 @@ export default function Attentions() {
     }
   };
 
+  const handleOpenPaymentDialog = (attention: Attention) => {
+    setPayingAttention(attention);
+    setIsPaymentDialogOpen(true);
+  };
+  
+  const handleOpenPaymentDetails = (attention: Attention) => {
+    setViewingPaymentsFor(attention);
+  };
+
   const isMobile = screenSize === 'mobile';
 
   const NewAttentionButton = (
@@ -375,6 +465,8 @@ export default function Attentions() {
                   attention={viewingAttention}
                   formatPrice={formatPrice}
                   onEdit={handleEditFromDetailView}
+                  onOpenPaymentDialog={handleOpenPaymentDialog}
+                  onOpenPaymentDetails={handleOpenPaymentDetails}
                   screenSize={screenSize}
                   branchId={viewingAttention.branch_id}
                 />
@@ -387,6 +479,24 @@ export default function Attentions() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AttentionPaymentDialog
+        isOpen={isPaymentDialogOpen}
+        onClose={() => setIsPaymentDialogOpen(false)}
+        attention={payingAttention}
+      />
+
+      <PaymentDetailsDialog 
+        attention={viewingPaymentsFor}
+        isOpen={!!viewingPaymentsFor}
+        onClose={() => setViewingPaymentsFor(null)}
+        paymentMethods={paymentMethods}
+        onOpenEvidence={(paymentIds) => setViewingEvidenceForPaymentIds(paymentIds)}
+      />
+
+      {viewingEvidenceForPaymentIds && (
+          <EvidencePreview paymentIds={viewingEvidenceForPaymentIds} onClose={() => setViewingEvidenceForPaymentIds(null)} />
+      )}
 
       <Card>
         <CardContent className="p-4">
@@ -418,8 +528,17 @@ export default function Attentions() {
           ) : (
             <div className="space-y-4">
               {attentions.length > 0 ? (
-                                                                attentions.map((attention) => (
-                  <AttentionCard key={attention.id} attention={attention} formatPrice={formatPrice} onEdit={handleEditAttention} screenSize={screenSize} branchId={attention.branch_id} />
+                attentions.map((attention) => (
+                  <AttentionCard 
+                    key={attention.id} 
+                    attention={attention} 
+                    formatPrice={formatPrice} 
+                    onEdit={handleEditAttention} 
+                    onOpenPaymentDialog={handleOpenPaymentDialog}
+                    onOpenPaymentDetails={handleOpenPaymentDetails}
+                    screenSize={screenSize} 
+                    branchId={attention.branch_id} 
+                  />
                 ))
               ) : (
                 <Card>
@@ -455,15 +574,60 @@ export default function Attentions() {
   );
 }
 
+// MODIFICACIÓN: Componente para previsualizar la evidencia de un pago
+const EvidencePreview: React.FC<{ paymentIds: string[]; onClose: () => void; }> = ({ paymentIds, onClose }) => {
+    const { data: evidences, isLoading } = usePaymentEvidence(paymentIds);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(true);
+
+    const handleClose = () => {
+        setIsPreviewOpen(false);
+        onClose();
+    };
+
+    if (isLoading) {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-4 rounded">Cargando evidencia...</div>
+            </div>
+        );
+    }
+
+    if (!evidences || evidences.length === 0) {
+        return (
+          <Dialog open={true} onOpenChange={handleClose}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Sin Evidencia</DialogTitle>
+              </DialogHeader>
+              <p>No se encontró evidencia de pago para esta transacción.</p>
+              <DialogFooter>
+                <Button onClick={handleClose}>Cerrar</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+    }
+
+    return (
+        <ImagePreviewDialog
+            isOpen={isPreviewOpen}
+            onClose={handleClose}
+            imageUrls={evidences.map(e => e.google_drive_file_id)}
+        />
+    );
+};
+
 interface AttentionCardProps {
   attention: Attention;
   formatPrice: (price: number) => string;
   onEdit: (attention: Attention) => void;
+  onOpenPaymentDialog: (attention: Attention) => void;
+  onOpenPaymentDetails: (attention: Attention) => void; // MODIFICACIÓN
   screenSize: 'mobile' | 'tablet' | 'desktop';
   branchId: string;
 }
 
-const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }: AttentionCardProps) => {
+const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, onOpenPaymentDetails, screenSize, branchId }: AttentionCardProps) => {
   const updateStatusMutation = useUpdateAttentionStatus();
 
   const getStatusBadge = (status: string) => {
@@ -550,9 +714,35 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }:
           </div>
           <div className={`flex items-center gap-2 ${isMobile ? 'self-end' : ''}`}>
             {getStatusBadge(attention.status)}
-            <Button variant="ghost" size="icon" onClick={() => onEdit(attention)}>
-              <Edit className="w-4 h-4" />
-            </Button>
+
+            {attention.status === 'Pagada' && (
+              <TooltipProvider>
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => onOpenPaymentDetails(attention)}>
+                              <Receipt className="w-4 h-4 text-purple-500" />
+                          </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                          <p>Ver Detalles del Pago</p>
+                      </TooltipContent>
+                  </Tooltip>
+              </TooltipProvider>
+            )}
+
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(attention)}>
+                            <Edit className="w-4 h-4" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Ver / Editar Detalles</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+
             {canBeModified && (
               <RescheduleAttentionDialog attention={attention}>
                 <Button variant="ghost" size="icon">
@@ -700,7 +890,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, screenSize, branchId }:
             )}
             {canPayAttention && (
               <Button 
-                onClick={() => handleUpdateStatus('Pagada')}
+                onClick={() => onOpenPaymentDialog({ ...attention, total_amount: grandTotal })}
                 disabled={updateStatusMutation.isPending}
                 size="sm"
               >

@@ -44,7 +44,6 @@ export const useUserTimeOff = (userId?: string, statusFilter?: TimeOffRequest['s
         branchId,
         searchTerm,
       };
-      console.log("Calling tenant-actions with action: 'get_user_time_off_history' and payload:", payload);
 
       const { data, error } = await supabaseClient.functions.invoke('tenant-actions', {
         body: {

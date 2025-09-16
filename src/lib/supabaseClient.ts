@@ -13,8 +13,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
-console.log('Supabase Client URL:', SUPABASE_URL); // Añade esta línea
-
 // Asegurar que supabase.global y supabase.global.headers existan
 if (!supabase.global) {
   supabase.global = {};

@@ -95,11 +95,9 @@ export function PurchaseDialog({ trigger }: { trigger: React.ReactNode }) {
   }, [branches, purchaseIndependenceMode, form]);
 
   const onSubmit = async (values: PurchaseFormValues) => {
-    console.log("onSubmit called with values:", values); // Add this
     // Calculate total_amount before submitting
     const calculatedTotalAmount = values.items.reduce((sum, item) => sum + (item.quantity * item.cost_price), 0);
     const dataToSubmit = { ...values, total_amount: calculatedTotalAmount };
-    console.log("Data to submit:", dataToSubmit); // Add this
 
     createPurchaseMutation.mutate(dataToSubmit, {
       onSuccess: () => {
@@ -131,7 +129,6 @@ export function PurchaseDialog({ trigger }: { trigger: React.ReactNode }) {
           </div>
         ) : (
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-            {console.log("Form errors:", form.formState.errors)} {/* Add this */}
             {/* Branch Selection */}
             {(purchaseIndependenceMode === "independent" || purchaseIndependenceMode === "mixed") && (
               <div className="grid grid-cols-4 items-center gap-4">

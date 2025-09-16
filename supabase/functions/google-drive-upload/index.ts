@@ -217,6 +217,32 @@ serve(async (req) => {
         }
         break;
       }
+      case 'PaymentEvidence': {
+        if (!branchId || !userId) {
+          throw new Error('Missing branchId or userId for PaymentEvidence context.');
+        }
+        
+        const fileBuffer = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
+        const fileSize = fileBuffer.length;
+
+        const { error: dbError } = await supabaseAdmin
+          .from('attention_payment_evidences')
+          .insert({
+            attention_payment_id: contextId,
+            google_drive_file_id: fileId,
+            file_name: newFileName,
+            mime_type: mimeType,
+            file_size: fileSize,
+            tenant_id: tenantId,
+            branch_id: branchId,
+            user_id: userId,
+          });
+        if (dbError) {
+          // TODO: Consider deleting the file from Google Drive if DB insert fails
+          throw new Error(`Failed to save payment evidence record to database: ${dbError.message}`);
+        }
+        break;
+      }
       case 'Products': { // Corregido de 'ProductImages' a 'Products' para coincidir con el frontend
         const fileBuffer = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
         const fileSize = fileBuffer.length;

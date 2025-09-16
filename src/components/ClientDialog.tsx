@@ -456,7 +456,6 @@ export const ClientDialog = ({
                         size="sm"
                         onClick={() => {
                           setSelectedFormSchema(instance.template?.schema || {});
-                          console.log("Schema passed to FormViewerDialog:", instance.template?.schema);
                           setSelectedFormData(instance.data);
                           setSelectedFormName(instance.template?.name);
                           setSelectedFormVersion(instance.template?.version);

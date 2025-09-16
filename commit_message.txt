@@ -1,0 +1,23 @@
+feat: Implement attention rescheduling and status improvements
+
+This commit introduces the functionality to reschedule attentions, track rescheduling reasons and responsibles, and refines attention status management.
+
+Key changes include:
+- **Attention Rescheduling Feature:**
+  - Added `RescheduleAttentionDialog` component for selecting new date/time and providing a reason/fault.
+  - Implemented `useRescheduleAttention` hook to handle rescheduling logic.
+  - Created `rescheduled_attentions` table to log rescheduling events, including `original_date`, `new_date`, `reason`, `user_id`, and `fault`.
+  - Developed `reschedule_attention` Supabase function to update attention datetime and record rescheduling.
+  - Integrated "Reschedule" button into `AttentionCard` (visible only for `Pendiente` or `Confirmada` statuses with services).
+- **Attention Status Management:**
+  - Modified `create_full_attention` Supabase function to set initial attention status to `Pendiente`.
+  - Updated `attentions_status_check` constraint to include `Pendiente` as a valid status.
+  - Refined "Registrar Pago" button visibility in `AttentionCard`: now available for attentions with only products (if not `Pagada` or `Cancelada`), regardless of `Pendiente` or `Confirmada` status.
+  - Separated "Delete" button visibility logic in `AttentionCard` to allow deletion for `Pendiente` or `Confirmada` statuses, even for product-only attentions.
+- **UI/UX Improvements:**
+  - Adjusted layout of date/time pickers in `RescheduleAttentionDialog` for better alignment.
+  - Corrected `ItemStatus` type and `getStatusColorClass` in `AttentionItemCard.tsx` to use 'Cancelado' for consistency and proper dot coloring based on service status.
+- **Bug Fixes & Refinements:**
+  - Corrected foreign key types (`UUID` instead of `BIGINT`) in `rescheduled_attentions` table migration.
+  - Ensured `user_id` is correctly passed to `reschedule_attention` function from `tenant-actions` edge function.
+  - Fixed import path for `callTenantAction` in `useRescheduleAttention.ts`.
