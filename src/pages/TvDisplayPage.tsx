@@ -4,7 +4,13 @@ import { supabase } from '@/lib/supabaseClient';
 import { QRCodeSVG } from 'qrcode.react';
 import YouTube from 'react-youtube';
 import type { YouTubeProps } from 'react-youtube';
-import { Button } from '@/components/ui/button'; // Import Button component
+import { Button } from '@/components/ui/button';
+import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage';
+
+interface Tenant {
+  id: string;
+  logo_url: string | null;
+}
 
 interface TvDisplay {
   id: string;
@@ -43,17 +49,11 @@ interface PlaylistItem {
   duration_seconds?: number;
 }
 
-interface BranchPlaybackState {
-  branch_id: string;
-  current_playlist_item_id: string | null;
-  video_started_at: string;
-  updated_at: string;
-}
-
 const TvDisplayPage: React.FC = () => {
   const { registrationCode } = useParams<{ registrationCode: string }>();
   const navigate = useNavigate();
   const [tvDisplay, setTvDisplay] = useState<TvDisplay | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [playlistItems, setPlaylistItems] = useState<PlaylistItem[]>([]);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -63,7 +63,10 @@ const TvDisplayPage: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevTurnsRef = useRef<Turn[]>([]);
   const playerRef = useRef<any>(null);
-  const isSeekingRef = useRef(false); // To prevent onStateChange from triggering sync during seek
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  const { displayUrl: tenantLogoUrl } = useGoogleDriveImage(tenant?.logo_url);
+  const finalLogoUrl = tenantLogoUrl || '/glamtica.app.png';
 
   useEffect(() => {
     const initializeTv = async () => {
@@ -87,6 +90,24 @@ const TvDisplayPage: React.FC = () => {
     initializeTv();
   }, [registrationCode, navigate]);
 
+  useEffect(() => {
+    if (tvDisplay?.tenant_id) {
+      const fetchTenant = async () => {
+        const { data, error } = await supabase
+          .from('tenants')
+          .select('id, logo_url')
+          .eq('id', tvDisplay.tenant_id)
+          .single();
+        if (error) {
+          console.error('Error fetching tenant:', error);
+        } else {
+          setTenant(data);
+        }
+      };
+      fetchTenant();
+    }
+  }, [tvDisplay]);
+
   const fetchTurns = useCallback(async (branchId: string) => {
     try {
       const { data, error } = await supabase.rpc('get_current_turns_for_branch', { p_branch_id: branchId });
@@ -98,10 +119,8 @@ const TvDisplayPage: React.FC = () => {
   }, []);
 
   const fetchPlaylistItems = useCallback(async (playlistId: string) => {
-    console.log('fetchPlaylistItems called with playlistId:', playlistId);
     try {
       const { data, error } = await supabase.rpc('get_playlist_items', { p_playlist_id: playlistId });
-      console.log('fetchPlaylistItems RPC result:', data, error);
       if (error) throw error;
       setPlaylistItems(data as PlaylistItem[]);
     } catch (err: any) {
@@ -109,22 +128,20 @@ const TvDisplayPage: React.FC = () => {
     }
   }, []);
 
-  // Main useEffect for tvDisplay and initial fetches
   useEffect(() => {
     if (tvDisplay && tvDisplay.is_registered && tvDisplay.branch_id) {
-      fetchTurns(tvDisplay.branch_id);
-
       const turnsSubscription = supabase
         .channel('public:turns')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'turns', filter: `branch_id=eq.${tvDisplay.branch_id}` },
-          () => { fetchTurns(tvDisplay.branch_id!); }
+          () => {
+            setLastUpdate(new Date());
+          }
         )
         .subscribe();
 
       if (tvDisplay.media_playlist_id) {
-        console.log('Attempting to fetch playlist items for media_playlist_id:', tvDisplay.media_playlist_id);
         fetchPlaylistItems(tvDisplay.media_playlist_id);
       }
 
@@ -132,30 +149,13 @@ const TvDisplayPage: React.FC = () => {
         supabase.removeChannel(turnsSubscription);
       };
     }
-  }, [tvDisplay, fetchTurns, fetchPlaylistItems]);
-
-
-
-
+  }, [tvDisplay, fetchPlaylistItems]);
 
   useEffect(() => {
     if (tvDisplay && tvDisplay.is_registered && tvDisplay.branch_id) {
       fetchTurns(tvDisplay.branch_id);
-
-      const turnsSubscription = supabase
-        .channel('public:turns')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'turns', filter: `branch_id=eq.${tvDisplay.branch_id}` },
-          () => { fetchTurns(tvDisplay.branch_id!); }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(turnsSubscription);
-      };
     }
-  }, [tvDisplay, fetchTurns]);
+  }, [lastUpdate, tvDisplay]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -173,7 +173,6 @@ const TvDisplayPage: React.FC = () => {
   }, [turns]);
 
   const handleNextVideo = () => {
-    console.log('handleNextVideo (local): Advancing to next video.');
     setCurrentMediaIndex(prevIndex => (prevIndex + 1) % playlistItems.length);
   };
 
@@ -184,7 +183,7 @@ const TvDisplayPage: React.FC = () => {
     } else {
       event.target.unMute();
     }
-    event.target.playVideo(); // Force autoplay
+    event.target.playVideo();
   }
 
   const handleActivateSound = () => {
@@ -195,9 +194,12 @@ const TvDisplayPage: React.FC = () => {
   };
 
   const renderMedia = () => {
-    console.log('renderMedia called. Items available:', playlistItems.length, playlistItems);
     if (playlistItems.length === 0) {
-      return <div className="text-center text-gray-400">No hay contenido multimedia asignado.</div>;
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <img src={finalLogoUrl} alt="Logo" className="w-1/2 max-w-xs opacity-80" />
+        </div>
+      );
     }
 
     const currentMedia = playlistItems[currentMediaIndex];
@@ -205,11 +207,9 @@ const TvDisplayPage: React.FC = () => {
 
     if (currentMedia.media_type === 'youtube') {
       let videoId = '';
-      let playlistId = '';
       try {
         const url = new URL(currentMedia.media_url);
         videoId = url.searchParams.get('v') || '';
-        playlistId = url.searchParams.get('list') || '';
       } catch (e) {
         console.error('Invalid media URL:', currentMedia.media_url);
         return <div className="text-center text-red-400">URL de video inválida.</div>;
@@ -230,13 +230,22 @@ const TvDisplayPage: React.FC = () => {
       };
 
       return (
-        <YouTube
-          videoId={videoId}
-          opts={opts}
-          className="w-full aspect-video shadow-2xl rounded-lg overflow-hidden"
-          onReady={onPlayerReady}
-          onEnd={handleNextVideo}
-        />
+        <div className="w-full aspect-video relative shadow-2xl rounded-lg overflow-hidden">
+          {tenantLogoUrl && (
+            <img 
+              src={tenantLogoUrl} 
+              alt="Salon Logo" 
+              className="absolute top-4 right-4 w-24 h-auto z-10 bg-black/20 p-2 rounded-md"
+            />
+          )}
+          <YouTube
+            videoId={videoId}
+            opts={opts}
+            className="w-full h-full"
+            onReady={onPlayerReady}
+            onEnd={handleNextVideo}
+          />
+        </div>
       );
     } else if (currentMedia.media_type === 'spotify') {
       const spotifyId = currentMedia.media_url.split('/').pop();
@@ -297,9 +306,8 @@ const TvDisplayPage: React.FC = () => {
 
   return (
       <div className="flex h-screen bg-gradient-to-br from-blue-700 to-purple-700 text-white">
-      {/* Sección de Turnos */}
       <div className="w-1/2 p-8 flex flex-col items-center bg-black/10">
-        <img src="/glamtica.app.png" alt="Glamtica Logo" className="w-40 mb-8" />
+        <img src={finalLogoUrl} alt="Logo" className="w-40 mb-8" />
         <h1 className="text-5xl font-bold mb-8">Turnos</h1>
         {turns.length === 0 ? (
           <div className="flex-grow flex items-center justify-center">
@@ -327,7 +335,6 @@ const TvDisplayPage: React.FC = () => {
         )}
       </div>
 
-      {/* Sección de Medios */}
       <div className="w-1/2 bg-black/20 flex items-center justify-center relative">
         {renderMedia()}
         {!isSoundActivated && playlistItems.length > 0 && (

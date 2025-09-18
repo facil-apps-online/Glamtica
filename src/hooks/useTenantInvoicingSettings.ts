@@ -5,6 +5,7 @@ interface TenantSettings {
   settings_data: {
     invoice_products_enabled?: boolean;
     invoice_services_enabled?: boolean;
+    automatic_invoicing_enabled?: boolean;
     [key: string]: any; // Para permitir otras propiedades existentes
   };
 }
@@ -14,6 +15,8 @@ interface UpdateTenantSettingsPayload {
   newSettings: {
     invoice_products_enabled?: boolean;
     invoice_services_enabled?: boolean;
+    automatic_invoicing_enabled?: boolean;
+    [key: string]: any;
   };
 }
 

@@ -9,7 +9,11 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { PaymentEvidenceUploadDialog } from './PaymentEvidenceUploadDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInvoiceDetails } from '@/hooks/useInvoiceDetails';
+import { ReceiptDialog } from './ReceiptDialog';
+import { CheckCircle2 } from 'lucide-react';
 
+// Interfaces...
 interface AttentionData {
   id: string;
   total_amount: number;
@@ -33,6 +37,16 @@ interface AttentionPaymentRecord {
     payment_method_id: string;
 }
 
+// Invoice data type for the receipt
+interface InvoiceData {
+  id: string; invoice_number: string; created_at: string; subtotal_amount: number;
+  total_tax_amount: number; total_amount: number;
+  client: { name: string; identification_number?: string; address?: string; phone?: string; };
+  branch: { name: string; address?: string; };
+  items: { id: string; item_type: 'SERVICE' | 'PRODUCT'; description: string; quantity: number; unit_price: number; total_price: number; }[];
+  eInvoicingConfig: { enabled: boolean; mode: 'automatic' | 'manual'; };
+}
+
 export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ isOpen, onClose, attention }) => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodItem[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -41,22 +55,35 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
   const { tenantId } = useAuth();
   const { data: availablePaymentMethods = [] } = usePaymentMethods(tenantId);
   const { formatPrice } = usePriceFormat();
-  const [isEvidenceDialogOpen, setIsEvidenceDialogOpen] = useState(false);
+  
+  const [paymentState, setPaymentState] = useState<'paying' | 'uploading_evidence' | 'completed'>('paying');
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+
   const [paymentsRequiringEvidence, setPaymentsRequiringEvidence] = useState<AttentionPaymentRecord[]>([]);
   const [currentEvidencePayment, setCurrentEvidencePayment] = useState<AttentionPaymentRecord | null>(null);
 
   const paymentMutation = useAttentionPayment();
+  const invoiceMutation = useInvoiceDetails();
+
+  const resetState = () => {
+    setPaymentState('paying');
+    setPaymentMethods([]);
+    setDiscount(0);
+    setDiscountType('value');
+    setPaymentsRequiringEvidence([]);
+    setCurrentEvidencePayment(null);
+    setInvoiceData(null);
+  };
 
   useEffect(() => {
     if (attention) {
+      resetState();
       setRemainingAmount(attention.total_amount);
-      setPaymentMethods([]);
-      setDiscount(0);
-      setDiscountType('value');
-      setPaymentsRequiringEvidence([]);
-      setCurrentEvidencePayment(null);
+    } else {
+      resetState();
     }
-  }, [attention]);
+  }, [attention, isOpen]);
 
   useEffect(() => {
     if (attention) {
@@ -69,7 +96,7 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
     const newPaymentMethod: PaymentMethodItem = {
       id: new Date().toISOString(),
       method_id: availablePaymentMethods[0].id,
-      amount: remainingAmount,
+      amount: remainingAmount > 0 ? remainingAmount : 0,
     };
     const updatedMethods = [...paymentMethods, newPaymentMethod];
     setPaymentMethods(updatedMethods);
@@ -101,25 +128,24 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
       discount: discountAmount,
     };
 
-    paymentMutation.mutate({ 
-      attention, 
-      paymentOptions
-    }, {
-        onSuccess: (createdPayments) => {
-            const requiringEvidence = createdPayments.filter(p => 
-                availablePaymentMethods.find(apm => apm.id === p.payment_method_id)?.requires_evidence
-            );
-
-            if (requiringEvidence.length > 0) {
-                setPaymentsRequiringEvidence(requiringEvidence);
-                setCurrentEvidencePayment(requiringEvidence[0]);
-                setIsEvidenceDialogOpen(true);
-            } else {
-                onClose();
+        paymentMutation.mutate({ 
+          attention, 
+          paymentOptions
+        }, {
+            onSuccess: (createdPayments) => {
+                const requiringEvidence = createdPayments.filter(p => 
+                    availablePaymentMethods.find(apm => apm.id === p.payment_method_id)?.requires_evidence
+                );
+    
+                if (requiringEvidence.length > 0) {
+                    setPaymentsRequiringEvidence(requiringEvidence);
+                    setCurrentEvidencePayment(requiringEvidence[0]);
+                    setPaymentState('uploading_evidence');
+                } else {
+                    setPaymentState('completed');
+                }
             }
-        }
-    });
-  };
+        });  };
 
   const handleUploadComplete = () => {
     const currentIndex = paymentsRequiringEvidence.findIndex(p => p.id === currentEvidencePayment?.id);
@@ -128,114 +154,163 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
     if (nextIndex < paymentsRequiringEvidence.length) {
         setCurrentEvidencePayment(paymentsRequiringEvidence[nextIndex]);
     } else {
-        setIsEvidenceDialogOpen(false);
-        setCurrentEvidencePayment(null);
-        setPaymentsRequiringEvidence([]);
-        onClose();
+        setPaymentState('completed');
     }
+  }
+
+  const handleViewReceipt = () => {
+    if (!attention) return;
+    invoiceMutation.mutate(attention.id, {
+      onSuccess: (data) => {
+        setInvoiceData(data as InvoiceData);
+        setIsReceiptDialogOpen(true);
+      }
+    });
+  };
+
+  const handleCloseDialog = () => {
+    resetState();
+    onClose();
   }
 
   if (!attention) return null;
 
+  const totalPaid = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+  const totalWithDiscount = attention.total_amount - (discountType === 'percentage' ? (attention.total_amount * discount) / 100 : discount);
+  const change = totalPaid - totalWithDiscount;
+
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Registrar Pago de Atención</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="text-center">
-            <p className="text-lg font-semibold">Total a Pagar</p>
-            <p className="text-3xl font-bold">{formatPrice(attention.total_amount)}</p>
-          </div>
+      <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {paymentState === 'completed' ? 'Pago Completado' : 'Registrar Pago de Atención'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {paymentState === 'paying' && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-lg font-semibold">Total a Pagar</p>
+                <p className="text-3xl font-bold">{formatPrice(totalWithDiscount)}</p>
+              </div>
 
-          <div className="flex items-center space-x-2">
-            <div className="w-2/3">
-              <Label htmlFor="discount">Descuento</Label>
-              <Input
-                id="discount"
-                type="number"
-                value={discount}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                className="w-full"
-              />
+              <div className="flex items-center space-x-2">
+                <div className="w-2/3">
+                  <Label htmlFor="discount">Descuento</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="w-1/3">
+                  <Label>&nbsp;</Label>
+                  <Select value={discountType} onValueChange={(value) => setDiscountType(value as 'value' | 'percentage')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="value">Valor</SelectItem>
+                      <SelectItem value="percentage">Porcentaje</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {paymentMethods.map((payment) => (
+                <div key={payment.id} className="flex items-center space-x-2">
+                  <Select
+                    value={payment.method_id}
+                    onValueChange={(value) => handlePaymentMethodChange(payment.id, 'method_id', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Método de pago" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePaymentMethods.map(method => (
+                        <SelectItem key={method.id} value={method.id}>{method.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    value={payment.amount}
+                    onChange={(e) => handlePaymentMethodChange(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                  <Button variant="destructive" size="sm" onClick={() => {
+                    const updatedMethods = paymentMethods.filter(p => p.id !== payment.id);
+                    setPaymentMethods(updatedMethods);
+                  }}>X</Button>
+                </div>
+              ))}
+
+              {remainingAmount > 0 && (
+                <Button onClick={handleAddPaymentMethod} variant="outline" className="w-full">
+                  Agregar Medio de Pago
+                </Button>
+              )}
+
+              <div className="text-center">
+                <p className={`text-lg font-semibold ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {change >= 0 ? 'Cambio' : 'Restante'}
+                </p>
+                <p className={`text-2xl font-bold ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {formatPrice(Math.abs(change))}
+                </p>
+              </div>
             </div>
-            <div className="w-1/3">
-              <Label>&nbsp;</Label>
-              <Select value={discountType} onValueChange={(value) => setDiscountType(value as 'value' | 'percentage')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="value">Valor</SelectItem>
-                  <SelectItem value="percentage">Porcentaje</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <p className="text-lg font-semibold">Total con Descuento</p>
-            <p className="text-3xl font-bold">{formatPrice(attention.total_amount - (discountType === 'percentage' ? (attention.total_amount * discount) / 100 : discount))}</p>
-          </div>
-
-          {paymentMethods.map((payment) => (
-            <div key={payment.id} className="flex items-center space-x-2">
-              <Select
-                value={payment.method_id}
-                onValueChange={(value) => handlePaymentMethodChange(payment.id, 'method_id', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Método de pago" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availablePaymentMethods.map(method => (
-                    <SelectItem key={method.id} value={method.id}>{method.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                value={payment.amount}
-                onChange={(e) => handlePaymentMethodChange(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                className="w-full"
-              />
-              <Button variant="destructive" size="sm" onClick={() => {
-                const updatedMethods = paymentMethods.filter(p => p.id !== payment.id);
-                setPaymentMethods(updatedMethods);
-              }}>X</Button>
-            </div>
-          ))}
-
-          {remainingAmount > 0 && (
-            <Button onClick={handleAddPaymentMethod} variant="outline" className="w-full">
-              Agregar Medio de Pago
-            </Button>
           )}
 
-          <div className="text-center">
-            <p className="text-lg font-semibold">Restante</p>
-            <p className="text-2xl font-bold text-red-500">{formatPrice(remainingAmount)}</p>
-          </div>
+          {paymentState === 'completed' && (
+            <div className="text-center py-8 space-y-4">
+                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+                <h2 className="text-2xl font-bold">¡Pago registrado con éxito!</h2>
+                <p className="text-muted-foreground">La venta ha sido generada y el inventario actualizado.</p>
+            </div>
+          )}
 
-        </div>
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline">Cancelar</Button>
-          <Button onClick={handlePay} disabled={remainingAmount !== 0 || paymentMutation.isPending}>
-            {paymentMutation.isPending ? 'Procesando...' : 'Pagar'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+          <DialogFooter>
+            {paymentState === 'paying' && (
+              <>
+                <Button onClick={handleCloseDialog} variant="outline">Cancelar</Button>
+                <Button onClick={handlePay} disabled={change < 0 || paymentMutation.isPending}>
+                  {paymentMutation.isPending ? 'Procesando...' : 'Pagar'}
+                </Button>
+              </>
+            )}
+            {paymentState === 'completed' && (
+              <>
+                <Button onClick={handleCloseDialog} variant="outline">Finalizar</Button>
+                <Button onClick={handleViewReceipt} disabled={invoiceMutation.isPending}>
+                  {invoiceMutation.isPending ? 'Cargando...' : 'Ver Recibo'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
-      {currentEvidencePayment && (
+
+      {paymentState === 'uploading_evidence' && currentEvidencePayment && (
         <PaymentEvidenceUploadDialog
-          isOpen={isEvidenceDialogOpen}
-          onOpenChange={setIsEvidenceDialogOpen}
+          isOpen={true}
+          onOpenChange={() => setPaymentState('completed')} // Or handle close differently
           attentionPaymentId={currentEvidencePayment.id}
           branchId={attention.branch_id}
           onUploadComplete={handleUploadComplete}
         />
+      )}
+
+      {invoiceData && (
+          <ReceiptDialog 
+            isOpen={isReceiptDialogOpen} 
+            onClose={() => setIsReceiptDialogOpen(false)} 
+            invoiceData={invoiceData} 
+          />
       )}
     </>
   );

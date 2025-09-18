@@ -9,7 +9,9 @@ import { SalesTab } from "./Settings/SalesTab";
 import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
 import { SubscriptionTab } from "./Settings/SubscriptionTab";
 import { ClientsTab } from "./Settings/ClientsTab";
-import { Building, Users, Store, CreditCard, FileText, Box, Users2, Loader2 } from 'lucide-react';
+import { IdentitySettingsTab } from "./Settings/IdentitySettingsTab";
+import { Building, Users, Store, CreditCard, FileText, Box, Users2, Loader2, Palette, Hash } from 'lucide-react';
+import NumberingSequencesPage from "./Settings/NumberingSequencesPage";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -51,11 +53,12 @@ export default function Settings() {
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full flex-nowrap overflow-x-auto justify-start">
           {renderTrigger("general", <Building className="h-4 w-4" />, "General")}
-          
+          {(isSuperAdmin || isAdmin) && renderTrigger("identity", <Palette className="h-4 w-4" />, "Identidad")}
           {(isSuperAdmin || isAdmin) && renderTrigger("users", <Users className="h-4 w-4" />, "Usuarios")}
           {(isSuperAdmin || isAdmin) && renderTrigger("clients", <Users2 className="h-4 w-4" />, "Clientes")}
           {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
           {(isSuperAdmin || isAdmin) && renderTrigger("sales", <CreditCard className="h-4 w-4" />, "Ventas")}
+          {(isSuperAdmin || isAdmin) && renderTrigger("numbering", <Hash className="h-4 w-4" />, "Numeración")}
           {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
           {isSuperAdmin && renderTrigger("subscription", <CreditCard className="h-4 w-4" />, "Suscripción")}
         </TabsList>
@@ -64,7 +67,11 @@ export default function Settings() {
           <GeneralSettingsTab />
         </TabsContent>
 
-        
+        {(isSuperAdmin || isAdmin) && (
+          <TabsContent value="identity">
+            <IdentitySettingsTab />
+          </TabsContent>
+        )}
 
         {(isSuperAdmin || isAdmin) && (
           <TabsContent value="users">
@@ -87,6 +94,12 @@ export default function Settings() {
         {(isSuperAdmin || isAdmin) && (
           <TabsContent value="sales">
             <SalesTab />
+          </TabsContent>
+        )}
+
+        {(isSuperAdmin || isAdmin) && (
+          <TabsContent value="numbering">
+            <NumberingSequencesPage />
           </TabsContent>
         )}
 

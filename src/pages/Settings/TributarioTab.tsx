@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTenantInvoicingSettings, useUpdateTenantInvoicingSettings } from "@/hooks/useTenantInvoicingSettings";
 import { useToast } from "@/hooks/use-toast";
 import { TaxTypesManagement } from "@/components/TaxTypesManagement";
@@ -14,7 +14,7 @@ export function TributarioTab() {
   const { data: tenantSettings, isLoading: isLoadingSettings } = useTenantInvoicingSettings(tenantId || '');
   const { mutate: updateSettings, isPending: isUpdatingSettings } = useUpdateTenantInvoicingSettings();
 
-  const handleToggle = (settingKey: 'invoice_products_enabled' | 'invoice_services_enabled', checked: boolean) => {
+  const handleToggle = (settingKey: 'invoice_products_enabled' | 'invoice_services_enabled' | 'automatic_invoicing_enabled', checked: boolean) => {
     if (!tenantId) {
       toast({ title: "Error", description: "Tenant ID no disponible.", variant: "destructive" });
       return;
@@ -83,6 +83,19 @@ export function TributarioTab() {
               disabled={isUpdatingSettings}
             />
           </div>
+          {(tenantSettings?.settings_data?.invoice_products_enabled || tenantSettings?.settings_data?.invoice_services_enabled) && (
+            <div className="flex items-center justify-between border-t pt-4 mt-4">
+              <Label htmlFor="automatic-invoicing" className="text-base">
+                Facturación Automática
+              </Label>
+              <Switch
+                id="automatic-invoicing"
+                checked={tenantSettings?.settings_data?.automatic_invoicing_enabled || false}
+                onCheckedChange={(checked) => handleToggle('automatic_invoicing_enabled', checked)}
+                disabled={isUpdatingSettings}
+              />
+            </div>
+          )}
         </div>
         <TaxTypesManagement />
       </CardContent>

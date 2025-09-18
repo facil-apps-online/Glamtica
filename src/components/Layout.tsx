@@ -9,7 +9,7 @@ import { ReadOnlyProvider } from "@/contexts/ReadOnlyContext";
 import { ReadOnlyBanner } from "./ReadOnlyBanner";
 import { GracePeriodBanner } from "./GracePeriodBanner";
 import { CancelledBanner } from "./CancelledBanner";
-import { tenantNavigationConfig } from "@/config/tenantNavigation"; // Importar la config del menú
+import { tenantNavigationConfig } from "@/config/tenantNavigation";
 
 export function Layout() {
   const { currentAssignment } = useAuth();
@@ -39,7 +39,7 @@ export function Layout() {
   return (
     <ReadOnlyProvider isReadOnly={isReadOnly}>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="min-h-screen flex w-full bg-background">
           <AppSidebar 
             menuConfig={tenantNavigationConfig}
             homeUrl="/"

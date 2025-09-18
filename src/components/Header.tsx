@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
 import { ContextSwitcher } from './ContextSwitcher';
 import { BranchSelector } from './BranchSelector';
+import { ThemeToggle } from "./ThemeToggle";
 
 interface HeaderProps {
   panelTitle?: string;
@@ -45,10 +46,10 @@ export function Header({ panelTitle = "" }: HeaderProps) {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
+    <header className="h-16 border-b border-border/60 bg-background/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
       {/* Left Section */}
       <div className="flex items-center gap-2 sm:gap-4">
-        <SidebarTrigger className="p-2 hover:bg-slate-100 rounded-lg transition-colors" />
+        <SidebarTrigger className="p-2 hover:bg-accent rounded-lg transition-colors" />
         { currentAssignment?.role_name === 'super_admin' 
             ? <h1 className="text-lg sm:text-2xl font-bold truncate">{panelTitle}</h1>
             : (
@@ -61,11 +62,12 @@ export function Header({ panelTitle = "" }: HeaderProps) {
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
         {!isMobile && (
           <div className="text-sm text-right">
-            <p className="font-semibold text-slate-700 truncate max-w-xs">{displayName}</p>
-                        <p className="text-xs text-slate-500 capitalize">{currentAssignment?.role_display_name}</p>
+            <p className="font-semibold text-foreground truncate max-w-xs">{displayName}</p>
+            <p className="text-xs text-muted-foreground capitalize">{currentAssignment?.role_display_name}</p>
           </div>
         )}
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -88,14 +90,14 @@ export function Header({ panelTitle = "" }: HeaderProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="truncate">
-                <p className="text-sm font-medium text-slate-900 truncate">{displayName}</p>
-                            <p className="text-xs text-slate-500 capitalize">{currentAssignment?.role_display_name}</p>
+                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground capitalize">{currentAssignment?.role_display_name}</p>
               </div>
             </div>
             <Separator className="my-2" />
             <div 
               onClick={handleProfileClick} 
-              className="flex items-center p-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-md cursor-pointer"
+              className="flex items-center p-2 text-sm font-medium text-foreground hover:bg-accent rounded-md cursor-pointer"
             >
               <Settings className="h-4 w-4 mr-2" />
               <span>Mi Perfil</span>
@@ -104,7 +106,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
             <Button 
               onClick={handleLogout} 
               variant="ghost" 
-              className="w-full justify-start text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="w-full justify-start text-sm font-medium text-destructive hover:bg-red-50 hover:text-destructive/90 dark:hover:bg-destructive/10"
             >
               <LogOut className="h-4 w-4 mr-2" />
               <span>Cerrar Sesión</span>

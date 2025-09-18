@@ -52,24 +52,35 @@ serve(async (req) => {
       }
 
       console.log("Inside try block");
-    if (!authHeader) {
-      throw new Error('Missing Authorization Header');
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const decodedToken: any = jwtDecode(token);
 
-    const userId = decodedToken.sub;
-    const tenantId = decodedToken.app_metadata?.assignments?.[0]?.tenant_id;
+    // Declarar variables de autenticación para que estén en el scope correcto
+    let userId: string | null = null;
+    let tenantId: string | null = null;
+    let decodedToken: any = null;
+    let token: string | null = null;
 
-    console.log("Decoded Token:", JSON.stringify(decodedToken, null, 2));
-    console.log("UserId:", userId, "TenantId:", tenantId);
+    // La acción UPDATE_TV_PLAYBACK_STATE es anónima, se salta la validación de JWT
+    if (action !== 'UPDATE_TV_PLAYBACK_STATE') {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('Missing Authorization Header');
+      }
+      token = authHeader.replace('Bearer ', '');
+      decodedToken = jwtDecode(token);
 
-    if (!userId) {
-      throw new Error('User ID not found in JWT.');
-    }
+      userId = decodedToken.sub;
+      tenantId = decodedToken.app_metadata?.assignments?.[0]?.tenant_id;
 
-    if (!tenantId) {
-      throw new Error('Tenant ID not found in JWT app_metadata.assignments[0].tenant_id.');
+      console.log("Decoded Token:", JSON.stringify(decodedToken, null, 2));
+      console.log("UserId:", userId, "TenantId:", tenantId);
+
+      if (!userId) {
+        throw new Error('User ID not found in JWT.');
+      }
+
+      if (!tenantId) {
+        throw new Error('Tenant ID not found in JWT app_metadata.assignments[0].tenant_id.');
+      }
     }
 
     const supabaseClient = createClient(
@@ -2060,19 +2071,138 @@ serve(async (req) => {
         break;
       }
 
-      case 'delete_payment_method': {
-        const { id } = payload;
-        const { error } = await supabaseAdmin
-          .from('payment_methods')
-          .delete()
-          .eq('id', id)
-          .eq('tenant_id', tenantId);
-        if (error) throw error;
-        responseData = { success: true };
-        break;
-      }
+                case 'delete_payment_method': {
+                  const { id } = payload;
+                  const { error } = await supabaseAdmin
+                    .from('payment_methods')
+                    .delete()
+                    .eq('id', id)
+                    .eq('tenant_id', tenantId);
+                  if (error) throw error;
+                  responseData = { success: true };
+                  break;
+                }
+      
+                                    case 'get_document_sequences': {
+                                      if (!tenantId) {
+                                        throw new Error('Tenant ID is required.');
+                                      }
+                                      const { data, error } = await supabaseAdmin
+                                        .from('document_sequences')
+                                        .select('*')
+                                        .eq('tenant_id', tenantId)
+                                        .order('name');
+                              
+                                      if (error) throw error;
+                                      responseData = data;
+                                      break;
+                                    }
+                          
+                                    case 'create_document_sequence': {
+                                      const { sequenceData } = payload;
+                                      if (!sequenceData) {
+                                        throw new Error('Sequence data is required.');
+                                      }
+                                      const { data, error } = await supabaseAdmin
+                                        .from('document_sequences')
+                                        .insert({ ...sequenceData, tenant_id: tenantId })
+                                        .select()
+                                        .single();
+                                      
+                                      if (error) throw error;
+                                      responseData = data;
+                                      break;
+                                    }
+                          
+                                    case 'update_document_sequence': {
+                                      const { sequenceId, updates } = payload;
+                                      if (!sequenceId || !updates) {
+                                        throw new Error('Sequence ID and updates are required.');
+                                      }
+                                      const { data, error } = await supabaseAdmin
+                                        .from('document_sequences')
+                                        .update(updates)
+                                        .eq('id', sequenceId)
+                                        .eq('tenant_id', tenantId)
+                                        .select()
+                                        .single();
+                          
+                                      if (error) throw error;
+                                      responseData = data;
+                                      break;
+                                    }
+                          
+                                    case 'delete_document_sequence': {
+                                      const { sequenceId } = payload;
+                                      if (!sequenceId) {
+                                        throw new Error('Sequence ID is required.');
+                                      }
+                                      const { error } = await supabaseAdmin
+                                        .from('document_sequences')
+                                        .delete()
+                                        .eq('id', sequenceId)
+                                        .eq('tenant_id', tenantId);
+                          
+                                      if (error) throw error;
+                                      responseData = { success: true };
+                                      break;
+                                    }                
+                          case 'get_stock_by_date': {
+                            const { branchId, reportDate } = payload;
+                            if (!branchId || !reportDate) {
+                              throw new Error('Branch ID and Report Date are required.');
+                            }
+                            const { data, error } = await supabaseAdmin.rpc('get_stock_snapshot', {
+                              p_tenant_id: tenantId,
+                              p_branch_id: branchId,
+                              p_report_date: reportDate,
+                            });
+                
+                            if (error) throw error;
+                            responseData = data;
+                            break;
+                          }
+                
+              case 'get_product_kardex': {
+                const { productId, branchId } = payload;
+                if (!productId || !branchId) {
+                  throw new Error('Product ID and Branch ID are required.');
+                }
+                const { data, error } = await supabaseAdmin
+                  .from('product_movements')
+                  .select('*, products(name, sku)')
+                  .eq('tenant_id', tenantId)
+                  .eq('branch_id', branchId)
+                  .eq('product_id', productId)
+                  .order('movement_date', { ascending: false });
+    
+                if (error) throw error;
+                responseData = data;
+                break;
+              }
 
-      case 'get_attention_service_evidences': {
+              case 'get_sale_details': {
+                const { saleId } = payload;
+                if (!saleId) {
+                  throw new Error('Sale ID is required.');
+                }
+                const { data, error } = await supabaseAdmin
+                  .from('sales')
+                  .select(`
+                    *,
+                    client:client_id (*),
+                    branch:branch_id (*),
+                    items:sales_items!inner(*)
+                  `)
+                  .eq('id', saleId)
+                  .eq('tenant_id', tenantId)
+                  .order('created_at', { foreignTable: 'sales_items', ascending: true })
+                  .single();
+    
+                if (error) throw error;
+                responseData = data;
+                break;
+              }      case 'get_attention_service_evidences': {
         const { attentionServiceId } = payload;
         if (!attentionServiceId) throw new Error('Attention Service ID is required.');
 
@@ -2616,8 +2746,8 @@ serve(async (req) => {
         const discountAmount = paymentOptions.discount || 0;
         const totalWithDiscount = attention.total_amount - discountAmount;
 
-        if (Math.abs(totalPaid - totalWithDiscount) > 0.01) {
-          throw new Error(`El monto pagado (${totalPaid}) no coincide con el total con descuento (${totalWithDiscount}).`);
+        if (totalPaid < totalWithDiscount) {
+          throw new Error(`El monto pagado (${totalPaid}) es menor al total con descuento (${totalWithDiscount}).`);
         }
 
         const wompiPaymentMethod = paymentOptions.payment_methods.find(p => p.method.toLowerCase() === 'wompi');
@@ -2649,29 +2779,52 @@ serve(async (req) => {
             attention_id: attention.id,
             payment_method_id: payment.method_id,
             amount: payment.amount,
-            // Marcar como 'pending' si es Wompi, si no 'completed'
             status: (payment.method.toLowerCase() === 'wompi' && useWompi) ? 'pending' : 'completed',
             tenant_id: tenantId,
-          }).select();
+          }).select().single(); // Use single() to get a single object
 
           if (error) {
             throw new Error(`Error al registrar el pago: ${error.message}`);
           }
           if (data) {
-            createdPayments.push(...data);
+            createdPayments.push(data);
           }
         }
 
+        const hasPendingPayments = createdPayments.some(p => p.status === 'pending');
+
+        // Si no hay pagos pendientes, la transacción se considera completa en nuestro sistema.
+        // Ejecutamos la lógica de negocio de inmediato.
+        if (!hasPendingPayments) {
+          const { error: updateError } = await supabaseAdmin
+            .from('attentions')
+            .update({ status: 'Pagada' })
+            .eq('id', attention.id);
+
+          if (updateError) {
+            throw new Error(`Error al actualizar el estado de la atención: ${updateError.message}`);
+          }
+
+          // The new function handles sale creation, item creation, and inventory deduction.
+          const { error: saleError } = await supabaseAdmin.rpc('process_sale_from_attention', { 
+            p_attention_id: attention.id 
+          });
+
+          if (saleError) {
+            // For now, just throw the error. A more robust implementation could try to roll back the attention status update.
+            throw new Error(`Error al procesar la venta desde la atención: ${saleError.message}`);
+          }
+        }
+
+        // Ahora, manejamos la redirección a la pasarela de pago si es necesario.
         if (useWompi && wompiPaymentMethod) {
-          // Invocar la función de Wompi
           const { data: wompiData, error: wompiError } = await supabaseAdmin.functions.invoke('wompi-generate-checkout', {
             body: {
-              tenantId, // La función ahora es tenant-specific
+              tenantId,
               redirectUrl: `${Deno.env.get('SUPABASE_URL').replace('/supabase', '')}/payment-success?attention_id=${attention.id}`,
               userId,
               amountInCents: wompiPaymentMethod.amount * 100,
               currency: 'COP',
-              // Pasamos los IDs de los pagos creados para poder actualizarlos en el webhook de Wompi
               actions_on_success: createdPayments.map(p => ({ action: 'update_attention_payment_status', payload: { payment_id: p.id, new_status: 'completed' } })),
             },
           });
@@ -2686,17 +2839,55 @@ serve(async (req) => {
             throw new Error(wompiData.error || 'Error desconocido al iniciar el pago con Wompi.');
           }
         } else {
-          // Flujo normal sin Wompi
-          const { error: updateError } = await supabaseAdmin
-            .from('attentions')
-            .update({ status: 'Pagada' })
-            .eq('id', attention.id);
-
-          if (updateError) {
-            throw new Error(`Error al actualizar el estado de la atención: ${updateError.message}`);
-          }
+          // Si no se usó Wompi (o ninguna otra pasarela que requiera redirección),
+          // simplemente devolvemos la respuesta estándar.
           responseData = { wompiCheckout: false, createdPayments };
         }
+        break;
+      }
+
+      case 'get_invoice_details_for_attention': {
+        const { attention_id } = payload;
+        if (!attention_id) {
+          throw new Error('Attention ID is required.');
+        }
+
+        // 1. Asegurarse de que la factura exista, si no, la crea.
+        const { data: invoiceId, error: rpcError } = await supabaseAdmin.rpc('generate_invoice_for_attention', { 
+          p_attention_id: attention_id 
+        });
+
+        if (rpcError) {
+          throw new Error(`Error ensuring invoice exists: ${rpcError.message}`);
+        }
+
+        // 2. Obtener los detalles completos de la factura.
+        const { data: invoiceDetails, error: queryError } = await supabaseAdmin
+          .from('invoices')
+          .select(`
+            *,
+            client:billed_to_client_id (*),
+            branch:attentions!inner(branch_id(name, address)),
+            items:invoice_items(*)
+          `)
+          .eq('id', invoiceId)
+          .single();
+
+        if (queryError) {
+          throw new Error(`Error fetching invoice details: ${queryError.message}`);
+        }
+        
+        // 3. (Platzhalter für die Zukunft) Überprüfen Sie die E-Invoicing-Konfiguration
+        const { data: tenantSettings } = await supabaseAdmin
+            .from('tenant_settings')
+            .select('settings_data')
+            .eq('tenant_id', tenantId)
+            .single();
+
+        const eInvoicingConfig = tenantSettings?.settings_data?.electronic_invoicing || { enabled: false, mode: 'manual' };
+
+
+        responseData = { ...invoiceDetails, eInvoicingConfig };
         break;
       }
 
@@ -2714,24 +2905,24 @@ serve(async (req) => {
 
       case 'get_available_users': {
         const { serviceId, itemType, appointmentDate, appointmentTime, duration, branchId, assignedUserId } = payload;
-        
-        // Combine date and time into a single ISO string for the RPC
-        const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
 
-        if (!serviceId || !itemType || !appointmentDateTime || !duration || !branchId || !tenantId) {
+        if (!serviceId || !itemType || !appointmentDate || !appointmentTime || !duration || !branchId || !tenantId) {
           responseData = [];
           break;
         }
 
-        const { data, error } = await supabaseAdmin.rpc('check_user_availability', {
+        const rpcParams = {
           p_item_id: serviceId,
           p_item_type: itemType,
           p_branch_id: branchId,
           p_tenant_id: tenantId,
-          p_appointment_datetime: appointmentDateTime.toISOString(),
+          p_appointment_date: appointmentDate,
+          p_appointment_time: appointmentTime,
           p_duration_minutes: duration,
           p_assigned_user_id: assignedUserId || null
-        });
+        };
+
+        const { data, error } = await supabaseAdmin.rpc('check_user_availability', rpcParams);
 
         if (error) {
           console.error('Error calling check_user_availability RPC:', error);
@@ -3074,6 +3265,7 @@ serve(async (req) => {
           .from('attention_services')
           .select(`
             user_id,
+            attention_id,
             attentions (
               branch_id,
               client_id
@@ -3085,7 +3277,7 @@ serve(async (req) => {
         if (serviceError) throw new Error(`Error fetching attention details: ${serviceError.message}`);
         if (!attentionService) throw new Error(`Attention service with ID ${serviceId} not found.`);
 
-        const { user_id: stylist_id, attentions } = attentionService;
+        const { user_id: stylist_id, attention_id, attentions } = attentionService;
         const { branch_id, client_id } = attentions;
 
         if (!stylist_id || !branch_id || !client_id) {
@@ -3100,6 +3292,7 @@ serve(async (req) => {
             branch_id,
             client_id,
             stylist_id,
+            attention_id,
             status: 'called', // Assuming 'called' is a valid status
             called_at: new Date().toISOString()
           });

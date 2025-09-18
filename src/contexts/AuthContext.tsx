@@ -5,10 +5,16 @@ import { useToast } from '@/hooks/use-toast';
 import { useBranchFilterStore } from '@/stores/branchFilterStore';
 
 // --- INTERFACES ---
+interface Tenant {
+  id: string;
+  logo_url: string | null;
+  // ... otros campos del tenant que puedan ser útiles
+}
+
 interface UserProfile {
   id: string;
-  email: string; // Correo sintético, usado como ID
-  realEmail?: string; // Correo real para visualización
+  email: string;
+  realEmail?: string;
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
@@ -22,7 +28,7 @@ export interface UserAssignment {
   assignment_id: string;
   tenant_id: string;
   tenant_name: string;
-  platform_id: string; // Added platform_id
+  platform_id: string;
   role_id: string;
   role_name: string;
   role_display_name: string;
@@ -38,17 +44,18 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: UserProfile | null;
+  tenant: Tenant | null; // Objeto tenant completo
   assignments: UserAssignment[];
   currentAssignment: UserAssignment | null;
-  tenantId: string | undefined; // Añadido
-  tenantBranches: any[]; // Añadido: Exponer las sucursales del tenant
+  tenantId: string | undefined;
+  tenantBranches: any[];
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   switchAssignment: (assignmentId: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   loading: boolean;
-  supabaseClient: any; // Añadido: Exponer el cliente de Supabase
+  supabaseClient: any;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,9 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null); // Estado para el tenant
   const [assignments, setAssignments] = useState<UserAssignment[]>([]);
   const [currentAssignment, setCurrentAssignment] = useState<UserAssignment | null>(null);
-  const [tenantBranches, setTenantBranches] = useState<any[]>([]); // Añadido
+  const [tenantBranches, setTenantBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -88,9 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         };
         setProfile(userProfile);
 
-        // --- LÓGICA DE REHIDRATACIÓN DEL JWT ---
-        // Forzar la rehidratación si las asignaciones no existen, están vacías,
-        // o si son incompletas (no tienen los nombres necesarios).
         if (!app_metadata?.assignments || app_metadata.assignments.length === 0 || !app_metadata.assignments[0].tenant_name) {
           const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
           if (!platformId) throw new Error("Platform ID no configurado.");
@@ -109,7 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
           await supabaseClient.auth.refreshSession();
           return;
         }
-        // --- FIN DE LA LÓGICA DE REHIDRATACIÓN ---
 
         const allAssignments: UserAssignment[] = app_metadata.assignments || [];
         setAssignments(allAssignments);
@@ -148,17 +152,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         setProfile(null);
         setAssignments([]);
         setCurrentAssignment(null);
+        setTenant(null); // Limpiar tenant al cerrar sesión
       }
     } catch (error) {
       console.error("Error procesando la sesión:", error);
       setAssignments([]);
       setCurrentAssignment(null);
+      setTenant(null); // Limpiar tenant en caso de error
       await supabaseClient.auth.signOut();
       navigate('/auth');
     } finally {
       setLoading(false);
     }
   }, [supabaseClient, navigate]);
+
+  // Efecto para buscar los datos del tenant cuando cambia el currentAssignment
+  useEffect(() => {
+    const fetchTenantData = async () => {
+      if (currentAssignment?.tenant_id) {
+        const { data, error } = await supabaseClient
+          .from('tenants')
+          .select('*') // Seleccionar todos los campos del tenant
+          .eq('id', currentAssignment.tenant_id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching tenant data:", error);
+          setTenant(null);
+        } else {
+          setTenant(data);
+        }
+      } else {
+        setTenant(null);
+      }
+    };
+
+    fetchTenantData();
+  }, [currentAssignment, supabaseClient]);
+
 
   useEffect(() => {
     setLoading(true);
@@ -184,13 +215,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     });
 
     if (error) {
-      // This will now only catch network errors, as the function itself always returns 200.
       console.error("Error invoking user-actions function:", error);
       throw new Error("Error en la comunicación con el servidor. Por favor, intenta de nuevo.");
     }
     
     if (!data.success) {
-      // This will now correctly catch business logic errors (e.g., invalid credentials).
       console.error("Login failed:", data.message);
       throw new Error(data.message || "Error desconocido durante el inicio de sesión.");
     }
@@ -210,10 +239,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   };
   
   const refreshUser = useCallback(async () => {
-    await supabaseClient.auth.refreshSession();
-    // La actualización de la sesión será manejada automáticamente 
-    // por el listener onAuthStateChange.
-  }, [supabaseClient]);
+    const { data, error } = await supabaseClient.auth.refreshSession();
+    if (data.session) {
+      processSession(data.session);
+    }
+    if(error) {
+      console.error("Error refreshing session:", error);
+      logout();
+    }
+  }, [supabaseClient, processSession]);
 
   const switchAssignment = async (assignmentId: string) => {
     if (!user) throw new Error("Usuario no autenticado para cambiar de asignación.");
@@ -224,17 +258,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       return;
     }
 
-    // Guardar el currentAssignment actual antes de intentar el cambio
     previousAssignmentRef.current = currentAssignment;
-
-    // 1. Actualizar el estado local inmediatamente para una respuesta de UI rápida.
     setCurrentAssignment(newAssignment);
     setBranchId(newAssignment.branch_id || 'all');
-    
-    // Guardar la asignación seleccionada en localStorage
     localStorage.setItem('lastSelectedAssignmentId', assignmentId);
 
-    // 2. Notificar al backend del cambio en segundo plano.
     try {
       const { data, error } = await supabaseClient.functions.invoke('user-actions', {
         body: {
@@ -246,7 +274,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       if (error) throw error;
       if (!data.success) throw new Error(data.message || "Error al cambiar de asignación en el backend.");
 
-      // 3. Refrescar la sesión de Supabase en segundo plano para mantener la consistencia.
       await refreshUser();
       toast({
         title: "Contexto cambiado",
@@ -256,7 +283,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
 
     } catch (error) {
       console.error("Fallo al notificar al backend o refrescar la sesión después del cambio de contexto:", error);
-      // Revertir el currentAssignment si el backend falla
       setCurrentAssignment(previousAssignmentRef.current);
       localStorage.setItem('lastSelectedAssignmentId', previousAssignmentRef.current?.assignment_id || '');
 
@@ -272,10 +298,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     session,
     user,
     profile,
+    tenant, // Exponer el objeto tenant
     assignments,
     currentAssignment,
     tenantId: currentAssignment?.tenant_id,
-    tenantBranches, // Añadido
+    tenantBranches,
     isAuthenticated: !!currentAssignment && currentAssignment.status === 'active',
     login,
     logout,
@@ -283,7 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     refreshUser,
     loading,
     supabaseClient,
-  }), [session, user, profile, assignments, currentAssignment, tenantBranches, loading, refreshUser, supabaseClient]);
+  }), [session, user, profile, tenant, assignments, currentAssignment, tenantBranches, loading, refreshUser, supabaseClient]);
 
   return (
     <AuthContext.Provider value={contextValue}>

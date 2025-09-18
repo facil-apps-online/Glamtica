@@ -1,74 +1,142 @@
-# Listado de Toasts con Variante "default" (Implícita y Explícita)
+# Plan de Refactorización: Módulos de Ventas, Inventario y Numeración
 
-Este documento contiene una lista de todas las llamadas a la función `toast` que utilizan la variante "default", ya sea de forma explícita (`variant: "default"`) o implícita (omitiendo el parámetro `variant`).
+## Objetivo
 
-## Toasts con Variante Explícita "default"
+Re-arquitecturizar el sistema de registro de transacciones para desacoplar el concepto de "Venta" del de "Factura", establecer un sistema de control de inventario robusto basado en movimientos, y crear un sistema de numeración de documentos flexible y configurable por el tenant.
 
-*   **Archivo:** `src\pages\RegisterTenant.tsx`
-    *   **Línea 227**
-*   **Archivo:** `src\components\ConsentManagerDialog.tsx`
-    *   **Línea 74**
-*   **Archivo:** `src\contexts\AuthContext.tsx`
-    *   **Línea 258**
+---
 
-## Toasts con Variante Implícita "default"
+## Fase 1: Diseño y Creación de Esquema de Base de Datos
 
-A continuación se listan los archivos y las líneas donde se llama a `toast({...})` sin especificar una variante, por lo que se asume "default".
+Esta fase establece la nueva estructura fundamental en la base de datos. Se crearán todas las tablas necesarias a través de migraciones de Supabase.
 
-### Pages
+### Tarea 1.1: Crear Tabla `product_movements`
 
-*   **`src\pages\UpdatePasswordPage.tsx`**: Líneas 53, 70, 78
-*   **`src\pages\SecurityTab.tsx`**: Línea 51
-*   **`src\pages\ResetPassword.tsx`**: Líneas 77, 85
-*   **`src\pages\RegisterTenant.tsx`**: Línea 309
-*   **`src\pages\Auth.tsx`**: Líneas 61, 66, 78, 97, 108, 133, 138
-*   **`src\pages\Settings\SubscriptionTab.tsx`**: Líneas 76, 117
-*   **`src\pages\Settings\InventorySettingsTab.tsx`**: Líneas 61, 68
-*   **`src\pages\Settings\ActivateBranchesBatchDialog.tsx`**: Línea 72
+Esta tabla será la única fuente de verdad para cualquier cambio en el stock de un producto, permitiendo auditorías completas y reconstrucción del stock a cualquier fecha.
 
-### Contexts
+**Estructura Propuesta:**
+```sql
+CREATE TABLE public.product_movements (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id uuid NOT NULL REFERENCES tenants(id),
+    branch_id uuid NOT NULL REFERENCES branches(id),
+    product_id uuid NOT NULL REFERENCES products(id),
+    movement_date timestamptz NOT NULL DEFAULT now(),
+    movement_type text NOT NULL, -- 'SALE', 'PURCHASE', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT'
+    quantity_change numeric NOT NULL,
+    cost_of_change numeric NOT NULL,
+    stock_after_movement numeric NOT NULL,
+    cost_after_movement numeric NOT NULL, -- Costo promedio ponderado
+    reference_id uuid,
+    reference_type text,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+```
 
-*   **`src\contexts\AuthContext.tsx`**: Línea 270
+### Tarea 1.2: Crear Tabla `document_sequences`
 
-### Hooks
+Gestionará de forma centralizada y segura la numeración de todos los documentos del sistema, con flexibilidad para normativas locales.
 
-*   **`src\hooks\useUpdateCommission.ts`**: Líneas 38, 44
-*   **`src\hooks\useUpdateAttentionStatus.ts`**: Líneas 31, 37
-*   **`src\hooks\useTranslationsAdmin.ts`**: Líneas 53, 59, 83, 89, 111, 117
-*   **`src\hooks\useTenantAction.ts`**: Líneas 41, 51
-*   **`src\hooks\useSuppliers.ts`**: Líneas 80, 102, 124
-*   **`src\hooks\useSupplierProducts.ts`**: Líneas 92, 117, 142
-*   **`src\hooks\useSettings.ts`**: Líneas 76, 82
-*   **`src\hooks\useServiceCategories.ts`**: Línea 191
-*   **`src\hooks\useSaveIntegration.ts`**: Líneas 83, 91
-*   **`src\hooks\useRenewSubscription.ts`**: Líneas 40, 52
-*   **`src\hooks\useProductCategories.ts`**: Línea 191
-*   **`src\hooks\useMaintenanceHistory.ts`**: Líneas 36, 66, 74, 99, 107, 129, 137
-*   **`src\hooks\useGenerateInvoice.ts`**: Líneas 28, 42
-*   **`src\hooks\useEquipmentTypes.ts`**: Líneas 43, 49, 63, 69, 83, 89
-*   **`src\hooks\useEquipmentBrands.ts`**: Líneas 44, 50, 64, 70, 84, 90
-*   **`src\hooks\useEquipmentAssignments.ts`**: Líneas 38, 68, 77, 106, 115
-*   **`src\hooks\useEquipment.ts`**: Líneas 59, 65, 79, 85
-*   **`src\hooks\useCompletePurchase.ts`**: Línea 39
-*   **`src\hooks\useCombos.ts`**: Líneas 127, 172
-*   **`src\hooks\useClients.ts`**: Líneas 89, 95, 118, 124, 146, 152, 175, 181, 204, 210
-*   **`src\hooks\useBrands.ts`**: Líneas 111, 118, 158, 165, 244
-*   **`src\hooks\useAuth.ts`**: Línea 16
-*   **`src\hooks\useAttentions.ts`**: Líneas 168, 175
-*   **`src\hooks\useAppointmentEvidence.ts`**: Líneas 88, 94
+**Estructura Propuesta:**
+```sql
+CREATE TABLE public.document_sequences (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id uuid NOT NULL REFERENCES tenants(id),
+    branch_id uuid REFERENCES branches(id), -- Nulo si es para todo el tenant
+    name text NOT NULL,
+    document_type text NOT NULL, -- 'SALE', 'INVOICE', 'CREDIT_NOTE', 'TRANSFER'
+    prefix text,
+    current_number integer NOT NULL DEFAULT 1,
+    padding integer NOT NULL DEFAULT 7, -- Ceros a la izquierda
+    is_active boolean NOT NULL DEFAULT true,
+    country_specific_data jsonb,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+```
 
-### Components
+### Tarea 1.3: Crear Tablas `sales` y `sales_items`
 
-*   **`src\components\UserScheduleDialog.tsx`**: Líneas 161, 169
-*   **`src\components\TranslationAdmin.tsx`**: Líneas 42, 84
-*   **`src\components\TenantUsersManager.tsx`**: Línea 146
-*   **`src\components\RegisterTvDialog.tsx`**: Líneas 33, 38, 67, 74
-*   **`src\components\MediaPlaylistDialog.tsx`**: Líneas 58, 69, 77
-*   **`src\components\ManageServiceCommissionsDialog.tsx`**: Líneas 116, 124
-*   **`src\components\ManageProductCommissionsDialog.tsx`**: Líneas 61, 69
-*   **`src\components\MaintenanceRecordFormDialog.tsx`**: Línea 60
-*   **`src\components\EquipmentDialog.tsx`**: Líneas 90, 115
-*   **`src\components\BranchCommissionsTabContent.tsx`**: Líneas 121, 132
-*   **`src\components\AttentionForm.tsx`**: Línea 248
-*   **`src\components\AssignPlaylistDialog.tsx`**: Líneas 40, 68, 75
-*   **`src\components\AssignEquipmentDialog.tsx`**: Línea 49
+Serán el nuevo corazón del registro de transacciones, separadas de la lógica de facturación electrónica.
+
+**Estructura Propuesta para `sales`:**
+```sql
+CREATE TABLE public.sales (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id uuid NOT NULL REFERENCES tenants(id),
+    branch_id uuid NOT NULL REFERENCES branches(id),
+    client_id uuid REFERENCES clients(id),
+    attention_id uuid REFERENCES attentions(id),
+    sale_number text NOT NULL,
+    sale_date timestamptz NOT NULL DEFAULT now(),
+    subtotal_amount numeric(12, 2) NOT NULL,
+    total_tax_amount numeric(12, 2) NOT NULL,
+    total_amount numeric(12, 2) NOT NULL,
+    status text NOT NULL DEFAULT 'COMPLETED', -- 'COMPLETED', 'RETURNED', 'CANCELLED'
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+**Estructura Propuesta para `sales_items`:**
+```sql
+CREATE TABLE public.sales_items (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    sale_id uuid NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    parent_item_id uuid REFERENCES sales_items(id) ON DELETE CASCADE, -- Para jerarquía de combos
+    item_type text NOT NULL, -- 'PRODUCT', 'SERVICE', 'COMBO'
+    product_id uuid REFERENCES products(id),
+    service_id uuid REFERENCES services(id),
+    description text NOT NULL,
+    quantity numeric NOT NULL,
+    unit_price numeric(12, 2) NOT NULL,
+    subtotal_price numeric(12, 2) NOT NULL,
+    tax_details jsonb, -- [{"name": "IVA", "rate": 0.19, "amount": 19.00}]
+    total_tax_amount numeric(12, 2) NOT NULL,
+    total_price numeric(12, 2) NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+---
+
+## Fase 2: Implementación de Lógica de Backend (RPCs)
+
+Con las tablas ya creadas, se desarrollará la lógica de negocio en funciones de base de datos para garantizar la atomicidad y consistencia de los datos.
+
+### Tarea 2.1: Crear Función `get_next_document_number`
+*   **Propósito:** Obtener el siguiente número para un tipo de documento de forma segura, evitando duplicados (race conditions) mediante el bloqueo de fila (`SELECT FOR UPDATE`).
+*   **Entrada:** `p_document_type text`, `p_branch_id uuid` (opcional).
+*   **Salida:** El número de documento formateado (ej: `FE-0000001`).
+
+### Tarea 2.2: Crear Función `create_product_movement`
+*   **Propósito:** Centralizar la creación de registros en la tabla `product_movements`. Será llamada por otras funciones (ventas, compras, etc.).
+*   **Entrada:** Todos los datos necesarios para un registro de movimiento.
+*   **Lógica:** Inserta el registro y actualiza el stock en la tabla `branch_products` para consistencia.
+
+### Tarea 2.3: Refactorizar `generate_invoice_for_attention` a `process_sale_from_attention`
+*   **Propósito:** Será la función principal que se ejecute después de un pago. Orquestará todo el proceso de registro de la venta.
+*   **Lógica Principal:**
+    1.  Leer la configuración de facturación del tenant.
+    2.  Llamar a `get_next_document_number('SALE')` para obtener el número de venta.
+    3.  Crear el registro en la tabla `sales`.
+    4.  Recorrer los items de la atención y, respetando la configuración del tenant, crear la lista de `sales_items` con su jerarquía de combos y cálculo de impuestos por línea.
+    5.  Insertar todos los `sales_items`.
+    6.  Por cada producto en `sales_items`, llamar a `create_product_movement` para registrar la salida del inventario.
+    7.  Devolver el `id` de la nueva venta.
+
+---
+
+## Fase 3: Integración y Frontend
+
+Ajustes finales para conectar la nueva lógica de backend con la interfaz de usuario.
+
+### Tarea 3.1: Modificar Edge Function `tenant-actions`
+*   El `case 'process_attention_payment'` deberá ser modificado para llamar a la nueva RPC `process_sale_from_attention` en lugar de la antigua.
+
+### Tarea 3.2: Crear UI para Gestión de `document_sequences`
+*   Desarrollar una nueva sección en la configuración del tenant para que pueda gestionar sus secuencias de numeración.
+
+### Tarea 3.3: Construir Informes de Inventario
+*   Crear las vistas de frontend para el "Informe de Stock a Fecha" y el "Kardex de Producto", consumiendo los datos de la tabla `product_movements`.
+
+### Tarea 3.4: Ajustar el Recibo/Factura Visual
+*   El componente `ReceiptDialog` deberá ser modificado para leer los datos de las tablas `sales` y `sales_items` y ser capaz de renderizar la jerarquía de combos.

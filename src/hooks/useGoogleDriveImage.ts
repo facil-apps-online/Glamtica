@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useImageStore } from '@/lib/imageStore';
+import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 
 export const useGoogleDriveImage = (src?: string) => {
   const [displayUrl, setDisplayUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const { imageUrls, addUrl } = useImageStore();
+  const { session } = useAuth(); // Obtener la sesión del AuthContext
 
   useEffect(() => {
     const fetchAndSetUrl = async () => {
@@ -45,7 +47,9 @@ export const useGoogleDriveImage = (src?: string) => {
         setIsLoading(true);
         try {
           const proxyUrl = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/proxy-google-drive-image?fileId=${fileId}`;
-          const token = localStorage.getItem('supabase.auth.token');
+          
+          // Usar el access_token de la sesión actual
+          const token = session?.access_token; 
           const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
           const response = await fetch(proxyUrl, { headers });
@@ -71,7 +75,7 @@ export const useGoogleDriveImage = (src?: string) => {
 
     fetchAndSetUrl();
 
-  }, [src, imageUrls, addUrl]);
+  }, [src, imageUrls, addUrl, session]); // Añadir 'session' a las dependencias
 
   return { displayUrl, isLoading };
 };

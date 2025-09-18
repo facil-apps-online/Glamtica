@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', 
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -13,9 +13,12 @@ async function findOrCreateFolder(
   parentFolderId: string | null,
   accessToken: string
 ): Promise<string> {
-  const q = `'${parentFolderId || 'root'}' in parents and name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const q = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const parentQuery = parentFolderId ? ` and '${parentFolderId}' in parents` : " and 'root' in parents";
+  const finalQuery = q + parentQuery;
+
   const searchResponse = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(finalQuery)}&fields=files(id)`,
     {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -191,6 +194,18 @@ serve(async (req) => {
 
     // 9. Post-upload processing based on context
     switch (uploadContext) {
+      case 'TenantLogo': {
+        const { error: tenantUpdateError } = await supabaseAdmin
+          .from('tenants')
+          .update({ logo_url: fileId })
+          .eq('id', contextId); // contextId is the tenantId
+
+        if (tenantUpdateError) {
+          // TODO: Consider deleting the file from Google Drive if DB insert fails
+          throw new Error(`Failed to update tenant logo_url: ${tenantUpdateError.message}`);
+        }
+        break;
+      }
       case 'ServiceEvidence': {
         if (!branchId || !userId) {
           throw new Error('Missing branchId or userId for ServiceEvidence context.');

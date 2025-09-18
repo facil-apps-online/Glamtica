@@ -12,12 +12,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Building2, Scissors, Settings } from "lucide-react";
+import { Building2, Scissors } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranches } from "@/hooks/useBranches";
 import { Skeleton } from "./ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabaseClient";
+import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
 
 // --- TIPOS (sin cambios) ---
 interface NavItem {
@@ -78,10 +77,10 @@ const BranchFooter: React.FC = () => {
 // --- COMPONENTE PRINCIPAL (Corregido y Unificado) ---
 export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", subtitle = "Panel", ...props }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
-  const { user, logout, currentAssignment } = useAuth();
+  const { user, tenant, currentAssignment } = useAuth();
   const userRole = currentAssignment?.role_name;
-  const { toast } = useToast();
-  const [isRepairing, setIsRepairing] = React.useState(false);
+
+  const { displayUrl: tenantLogoUrl } = useGoogleDriveImage(tenant?.logo_url);
 
   const handleLinkClick = () => {
     setOpenMobile(false);
@@ -94,9 +93,17 @@ export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", 
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to={homeUrl} onClick={handleLinkClick}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Scissors className="size-4" />
-                </div>
+                {tenantLogoUrl ? (
+                  <img 
+                    src={tenantLogoUrl} 
+                    alt="Logo del Tenant" 
+                    className="aspect-square size-8 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <Scissors className="size-4" />
+                  </div>
+                )}
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{title}</span>
                   <span className="truncate text-xs">{subtitle}</span>
