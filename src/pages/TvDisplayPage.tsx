@@ -77,13 +77,31 @@ const TvDisplayPage: React.FC = () => {
           if (error) throw error;
           if (data && data.length > 0) {
             tvData = data[0] as TvDisplay;
+            setTvDisplay(tvData);
+          } else {
+            // Si no se encuentra el código, podría ser un código antiguo o inválido.
+            // Opcionalmente, podríamos redirigir a la página de creación.
+            navigate('/tv');
+          }
+        } else {
+          // No hay código de registro, así que creamos uno nuevo.
+          const { data, error } = await supabase.rpc('create_unregistered_tv');
+          if (error) throw error;
+          
+          const newTv = data as TvDisplay;
+          if (newTv && newTv.registration_code) {
+            navigate(`/tv/${newTv.registration_code}`, { replace: true });
+          } else {
+            throw new Error('No se pudo crear un nuevo registro de TV.');
           }
         }
-        setTvDisplay(tvData);
       } catch (err: any) {
         setError("Error al inicializar la TV: " + err.message);
       } finally {
-        setLoading(false);
+        // Solo dejamos de cargar si no estamos redirigiendo
+        if (registrationCode) {
+          setLoading(false);
+        }
       }
     };
 
@@ -172,8 +190,14 @@ const TvDisplayPage: React.FC = () => {
     }
   }, [turns]);
 
+  const [isHovering, setIsHovering] = useState(false);
+
   const handleNextVideo = () => {
     setCurrentMediaIndex(prevIndex => (prevIndex + 1) % playlistItems.length);
+  };
+
+  const handlePrevVideo = () => {
+    setCurrentMediaIndex(prevIndex => (prevIndex - 1 + playlistItems.length) % playlistItems.length);
   };
 
   const onPlayerReady: YouTubeProps['onReady'] = (event) => {
@@ -205,63 +229,65 @@ const TvDisplayPage: React.FC = () => {
     const currentMedia = playlistItems[currentMediaIndex];
     if (!currentMedia) return null;
 
-    if (currentMedia.media_type === 'youtube') {
-      let videoId = '';
-      try {
-        const url = new URL(currentMedia.media_url);
-        videoId = url.searchParams.get('v') || '';
-      } catch (e) {
-        console.error('Invalid media URL:', currentMedia.media_url);
-        return <div className="text-center text-red-400">URL de video inválida.</div>;
-      }
-
-      const opts: YouTubeProps['opts'] = {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          autoplay: 1,
-          controls: 1,
-          rel: 0,
-          showinfo: 0,
-          modestbranding: 1,
-          loop: playlistItems.length === 1 ? 1 : 0,
-          playlist: playlistItems.length === 1 ? videoId : undefined,
-        },
-      };
-
-      return (
-        <div className="w-full aspect-video relative shadow-2xl rounded-lg overflow-hidden">
-          {tenantLogoUrl && (
-            <img 
-              src={tenantLogoUrl} 
-              alt="Salon Logo" 
-              className="absolute top-4 right-4 w-24 h-auto z-10 bg-black/20 p-2 rounded-md"
-            />
-          )}
+    const mediaContainer = (
+      <div 
+        className="w-full aspect-video relative shadow-2xl rounded-lg overflow-hidden group"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {tenantLogoUrl && (
+          <img 
+            src={tenantLogoUrl} 
+            alt="Salon Logo" 
+            className="absolute top-4 right-4 w-24 h-auto z-10 bg-black/20 p-2 rounded-md"
+          />
+        )}
+        {/* Media content goes here */}
+        {currentMedia.media_type === 'youtube' ? (
           <YouTube
-            videoId={videoId}
-            opts={opts}
+            videoId={new URL(currentMedia.media_url).searchParams.get('v') || ''}
+            opts={{
+              height: '100%',
+              width: '100%',
+              playerVars: {
+                autoplay: 1,
+                controls: 1,
+                rel: 0,
+                showinfo: 0,
+                modestbranding: 1,
+                loop: playlistItems.length === 1 ? 1 : 0,
+                playlist: playlistItems.length === 1 ? new URL(currentMedia.media_url).searchParams.get('v') || '' : undefined,
+              },
+            }}
             className="w-full h-full"
             onReady={onPlayerReady}
             onEnd={handleNextVideo}
           />
-        </div>
-      );
-    } else if (currentMedia.media_type === 'spotify') {
-      const spotifyId = currentMedia.media_url.split('/').pop();
-      const embedType = currentMedia.media_url.includes('track') ? 'track' : currentMedia.media_url.includes('album') ? 'album' : 'playlist';
-      return (
-        <iframe
-          src={`https://open.spotify.com/embed/${embedType}/${spotifyId}`}
-          width="100%"
-          height="100%"
-          frameBorder="0"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"
-        ></iframe>
-      );
-    }
-    return null;
+        ) : currentMedia.media_type === 'spotify' ? (
+          <iframe
+            src={`https://open.spotify.com/embed/${currentMedia.media_url.includes('track') ? 'track' : currentMedia.media_url.includes('album') ? 'album' : 'playlist'}/${currentMedia.media_url.split('/').pop()}`}
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          ></iframe>
+        ) : null}
+
+        {playlistItems.length > 1 && (
+        <div className={`absolute inset-0 flex items-center justify-between px-4 transition-opacity duration-300 ${isHovering ? 'opacity-100' : 'opacity-0'}`}>
+            <Button onClick={handlePrevVideo} className="bg-black/30 hover:bg-black/50 text-white rounded-full p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </Button>
+            <Button onClick={handleNextVideo} className="bg-black/30 hover:bg-black/50 text-white rounded-full p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+
+    return mediaContainer;
   };
 
   if (loading) {
