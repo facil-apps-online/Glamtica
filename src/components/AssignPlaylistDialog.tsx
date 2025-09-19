@@ -28,7 +28,7 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
 }) => {
   console.log("AssignPlaylistDialog - currentPlaylistId received:", currentPlaylistId);
   const [playlists, setPlaylists] = useState<MediaPlaylist[]>([]);
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>(currentPlaylistId === null ? "" : currentPlaylistId);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(currentPlaylistId);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -54,7 +54,7 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
   }, [isOpen, toast]);
 
   useEffect(() => {
-    setSelectedPlaylistId(currentPlaylistId === null ? undefined : currentPlaylistId);
+    setSelectedPlaylistId(currentPlaylistId);
   }, [currentPlaylistId]);
 
   const handleAssign = async () => {
@@ -96,13 +96,14 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
           <div className="grid gap-2">
             <Label htmlFor="playlist">Seleccionar Playlist</Label>
             <Select
-              value={selectedPlaylistId}
-              onValueChange={(value) => setSelectedPlaylistId(value === '' ? undefined : value)}
+              value={selectedPlaylistId || ''}
+              onValueChange={(value) => setSelectedPlaylistId(value === 'none' ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona una playlist" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">Ninguna</SelectItem>
                 {playlists.map((playlist) => {
                     console.log("AssignPlaylistDialog - Renderizando SelectItem para:", playlist.id, playlist.name);
                     return (

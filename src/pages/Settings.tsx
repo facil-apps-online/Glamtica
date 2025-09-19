@@ -10,8 +10,9 @@ import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
 import { SubscriptionTab } from "./Settings/SubscriptionTab";
 import { ClientsTab } from "./Settings/ClientsTab";
 import { IdentitySettingsTab } from "./Settings/IdentitySettingsTab";
-import { Building, Users, Store, CreditCard, FileText, Box, Users2, Loader2, Palette, Hash } from 'lucide-react';
+import { Building, Users, Store, CreditCard, FileText, Box, Users2, Loader2, Palette, Hash, Tv } from 'lucide-react';
 import NumberingSequencesPage from "./Settings/NumberingSequencesPage";
+import TvManagementPage from "./TvManagementPage";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -59,6 +60,7 @@ export default function Settings() {
           {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
           {(isSuperAdmin || isAdmin) && renderTrigger("sales", <CreditCard className="h-4 w-4" />, "Ventas")}
           {(isSuperAdmin || isAdmin) && renderTrigger("numbering", <Hash className="h-4 w-4" />, "Numeración")}
+          {(isSuperAdmin || isAdmin) && renderTrigger("tv", <Tv className="h-4 w-4" />, "TV y Playlist")}
           {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
           {isSuperAdmin && renderTrigger("subscription", <CreditCard className="h-4 w-4" />, "Suscripción")}
         </TabsList>
@@ -100,6 +102,12 @@ export default function Settings() {
         {(isSuperAdmin || isAdmin) && (
           <TabsContent value="numbering">
             <NumberingSequencesPage />
+          </TabsContent>
+        )}
+
+        {(isSuperAdmin || isAdmin) && (
+          <TabsContent value="tv">
+            <TvManagementPage />
           </TabsContent>
         )}
 
