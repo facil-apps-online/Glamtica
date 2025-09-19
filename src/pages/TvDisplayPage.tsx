@@ -231,7 +231,7 @@ const TvDisplayPage: React.FC = () => {
 
     const mediaContainer = (
       <div 
-        className="w-full h-[70vh] relative shadow-2xl rounded-lg overflow-hidden group"
+        className="w-full aspect-video relative shadow-2xl rounded-lg overflow-hidden group"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -332,7 +332,7 @@ const TvDisplayPage: React.FC = () => {
 
   return (
       <div className="flex h-screen bg-gradient-to-br from-blue-700 to-purple-700 text-white">
-      <div className="w-1/2 p-8 flex flex-col items-center bg-black/10">
+      <div className="w-2/3 p-8 flex flex-col items-center bg-black/10">
         <img src={finalLogoUrl} alt="Logo" className="w-40 mb-8" />
         <h1 className="text-5xl font-bold mb-8">Turnos</h1>
         {turns.length === 0 ? (
@@ -361,7 +361,7 @@ const TvDisplayPage: React.FC = () => {
         )}
       </div>
 
-      <div className="w-1/2 bg-black/20 flex items-center justify-center relative">
+      <div className="w-1/3 bg-black/20 flex items-center justify-center relative">
         {renderMedia()}
         {!isSoundActivated && playlistItems.length > 0 && (
           <Button 
