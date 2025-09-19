@@ -78,7 +78,6 @@ const RegisterTvPage: React.FC = () => {
                 <SelectValue placeholder="Selecciona una sucursal" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Selecciona una sucursal</SelectItem>
                 {userBranches.map(branch => {
                   console.log("RegisterTvPage - SelectItem branch:", branch);
                   return (
