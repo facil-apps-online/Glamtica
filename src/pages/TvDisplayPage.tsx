@@ -231,7 +231,7 @@ const TvDisplayPage: React.FC = () => {
 
     const mediaContainer = (
       <div 
-        className="w-full aspect-video relative shadow-2xl rounded-lg overflow-hidden group"
+        className="w-full h-[70vh] relative shadow-2xl rounded-lg overflow-hidden group"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
