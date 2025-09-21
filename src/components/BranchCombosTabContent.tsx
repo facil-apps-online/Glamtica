@@ -12,7 +12,57 @@ import { ComboBranchPriceDialog } from "@/components/ComboBranchPriceDialog";
 import { Badge } from "@/components/ui/badge";
 // Importar los nuevos diálogos
 import AddCombosToBranchDialog from "@/components/AddCombosToBranchDialog";
-import BulkEditBranchComboPricesDialog from "@/components/BulkEditBranchComboPricesDialog";
+import { BulkEditBranchComboPricesDialog } from "@/components/BulkEditBranchComboPricesDialog";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+const BranchComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenPriceDialog, calculateBasePrice, calculateBranchTotalPrice, branchId }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{combo.name}</CardTitle>
+          {combo.sku && <p className="text-sm text-muted-foreground">SKU: {combo.sku}</p>}
+        </div>
+        <Switch
+          checked={combo.is_branch_active}
+          onCheckedChange={() => handleToggleStatus(combo, branchId)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Nº de Ítems</span>
+        <span><Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge></span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Precio Base</span>
+        <span>{formatPrice(calculateBasePrice(combo))}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Precio en Sucursal</span>
+        <span>{formatPrice(calculateBranchTotalPrice(combo))}</span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleOpenPriceDialog(combo)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Editar Precios
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 interface BranchCombosTabContentProps {
   branchId: string;
@@ -33,6 +83,8 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
   const { mutate: updateBranchCombo } = useUpdateBranchCombo();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = (combo: any, currentBranchId: string) => { // Usar any temporalmente
     updateBranchCombo({ 
@@ -95,46 +147,63 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Combo</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Nº de Ítems</TableHead>
-              <TableHead>Precio Base</TableHead>
-              <TableHead>Precio en Sucursal</TableHead>
-              <TableHead>Activo en Sucursal</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {branchCombos?.map((combo: any) => ( // Usar any temporalmente
-              <TableRow key={combo.id}>
-                <TableCell>
-                  <div className="font-medium">{combo.name}</div>
-                  {combo.description && <div className="text-sm text-muted-foreground">{combo.description}</div>}
-                </TableCell>
-                <TableCell>{combo.sku || 'N/A'}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge>
-                </TableCell>
-                <TableCell>{formatPrice(calculateBasePrice(combo))}</TableCell>
-                <TableCell>{formatPrice(calculateBranchTotalPrice(combo))}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={combo.is_branch_active}
-                    onCheckedChange={() => handleToggleStatus(combo, branchId)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Button variant="outline" size="sm" onClick={() => handleOpenPriceDialog(combo)}>
-                    <Edit className="mr-2 h-4 w-4" /> Editar Precios
-                  </Button>
-                </TableCell>
-              </TableRow>
+        {isMobile ? (
+          <div className="space-y-4 p-4">
+            {branchCombos?.map((combo: any) => (
+              <BranchComboCard 
+                key={combo.id} 
+                combo={combo} 
+                formatPrice={formatPrice} 
+                handleToggleStatus={handleToggleStatus} 
+                handleOpenPriceDialog={handleOpenPriceDialog}
+                calculateBasePrice={calculateBasePrice}
+                calculateBranchTotalPrice={calculateBranchTotalPrice}
+                branchId={branchId}
+              />
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Combo</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>Nº de Ítems</TableHead>
+                <TableHead>Precio Base</TableHead>
+                <TableHead>Precio en Sucursal</TableHead>
+                <TableHead>Activo en Sucursal</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {branchCombos?.map((combo: any) => ( // Usar any temporalmente
+                <TableRow key={combo.id}>
+                  <TableCell>
+                    <div className="font-medium">{combo.name}</div>
+                    {combo.description && <div className="text-sm text-muted-foreground">{combo.description}</div>}
+                  </TableCell>
+                  <TableCell>{combo.sku || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge>
+                  </TableCell>
+                  <TableCell>{formatPrice(calculateBasePrice(combo))}</TableCell>
+                  <TableCell>{formatPrice(calculateBranchTotalPrice(combo))}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={combo.is_branch_active}
+                      onCheckedChange={() => handleToggleStatus(combo, branchId)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" onClick={() => handleOpenPriceDialog(combo)}>
+                      <Edit className="mr-2 h-4 w-4" /> Editar Precios
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
         {branchCombos?.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">

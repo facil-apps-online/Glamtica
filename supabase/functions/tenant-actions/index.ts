@@ -59,8 +59,8 @@ serve(async (req) => {
     let decodedToken: any = null;
     let token: string | null = null;
 
-    // La acción UPDATE_TV_PLAYBACK_STATE es anónima, se salta la validación de JWT
-    if (action !== 'UPDATE_TV_PLAYBACK_STATE') {
+    // Las acciones UPDATE_TV_PLAYBACK_STATE y GET_PUBLIC_SUBSCRIPTION_PLANS son anónimas, se salta la validación de JWT
+    if (action !== 'UPDATE_TV_PLAYBACK_STATE' && action !== 'GET_PUBLIC_SUBSCRIPTION_PLANS') {
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
         throw new Error('Missing Authorization Header');
@@ -3500,6 +3500,26 @@ serve(async (req) => {
 
         if (error) {
           console.error('Error calling get_subscription_plans_for_tenant RPC:', error);
+          throw error;
+        }
+        
+        responseData = data;
+        break;
+      }
+
+      case 'GET_PUBLIC_SUBSCRIPTION_PLANS': {
+        const { countryId, platformId } = payload;
+        if (!countryId || !platformId) {
+          throw new Error('countryId and platformId are required for GET_PUBLIC_SUBSCRIPTION_PLANS.');
+        }
+
+        const { data, error } = await supabaseAdmin.rpc('get_public_subscription_plans', {
+          p_country_id: countryId,
+          p_platform_id: platformId
+        });
+
+        if (error) {
+          console.error('Error calling get_public_subscription_plans RPC:', error);
           throw error;
         }
         

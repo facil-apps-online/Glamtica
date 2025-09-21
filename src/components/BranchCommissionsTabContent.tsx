@@ -10,6 +10,73 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import { useScreenSize } from "@/hooks/useScreenSize";
+
+const BranchCommissionProductCard = ({ product, handleCommissionChange, handleSaveItemCommissions, dirtyItems }) => (
+  <Card className="mb-4">
+    <CardHeader>
+      <CardTitle className="text-lg">{product.product_name}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      {product.users.map(user => (
+        <div key={user.user_id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+          <span>{user.user_name}</span>
+          <Input
+            type="number"
+            value={user.commission_rate !== null ? user.commission_rate : ''}
+            onChange={(e) => handleCommissionChange(product.product_id, user.user_id, 'product', e.target.value)}
+            className="w-24"
+          />
+        </div>
+      ))}
+      <Button
+        onClick={() => handleSaveItemCommissions(product.product_id, 'product')}
+        disabled={!dirtyItems.has(product.product_id)}
+        className="mt-4 w-full"
+      >
+        Guardar Cambios
+      </Button>
+    </CardContent>
+  </Card>
+);
+
+const BranchCommissionServiceCard = ({ service, handleCommissionChange, handleCanPerformChange, handleSaveItemCommissions, dirtyItems }) => (
+  <Card className="mb-4">
+    <CardHeader>
+      <CardTitle className="text-lg">{service.service_name}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      {service.users.map(user => (
+        <div key={user.user_id} className="py-2 border-b last:border-b-0">
+          <div className="flex justify-between items-center">
+            <span>{user.user_name}</span>
+            <Input
+              type="number"
+              value={user.commission_rate !== null ? user.commission_rate : ''}
+              onChange={(e) => handleCommissionChange(service.service_id, user.user_id, 'service', e.target.value)}
+              className="w-24"
+            />
+          </div>
+          <div className="flex items-center space-x-2 mt-2">
+            <Switch
+              id={`can-perform-${service.service_id}-${user.user_id}`}
+              checked={user.can_perform || false}
+              onCheckedChange={(checked) => handleCanPerformChange(service.service_id, user.user_id, checked)}
+            />
+            <Label htmlFor={`can-perform-${service.service_id}-${user.user_id}`}>Puede Realizar</Label>
+          </div>
+        </div>
+      ))}
+      <Button
+        onClick={() => handleSaveItemCommissions(service.service_id, 'service')}
+        disabled={!dirtyItems.has(service.service_id)}
+        className="mt-4 w-full"
+      >
+        Guardar Cambios
+      </Button>
+    </CardContent>
+  </Card>
+);
 
 interface BranchCommissionsTabContentProps {
   branchId: string;
@@ -21,6 +88,8 @@ export default function BranchCommissionsTabContent({ branchId }: BranchCommissi
 
   const [commissionData, setCommissionData] = useState<BranchCommissionData | undefined>(undefined);
   const [dirtyItems, setDirtyItems] = useState<Set<string>>(new Set()); // To track which product/service items have unsaved changes
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   useEffect(() => {
     if (data) {
@@ -164,101 +233,130 @@ export default function BranchCommissionsTabContent({ branchId }: BranchCommissi
         {commissionData.products.length > 0 && (
           <div className="mb-8">
             <h3 className="text-md font-semibold mb-4">Comisiones de Productos</h3>
-            <Accordion type="multiple" className="w-full">
-              {commissionData.products.map(product => (
-                <AccordionItem value={product.product_id} key={product.product_id}>
-                  <AccordionTrigger>{product.product_name}</AccordionTrigger>
-                  <AccordionContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Usuario</TableHead>
-                          <TableHead>Comisión (%)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {product.users.map(user => (
-                          <TableRow key={user.user_id}>
-                            <TableCell>{user.user_name}</TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={user.commission_rate !== null ? user.commission_rate : ''}
-                                onChange={(e) => handleCommissionChange(product.product_id, user.user_id, 'product', e.target.value)}
-                                className="w-24"
-                              />
-                            </TableCell>
+            {isMobile ? (
+              <div className="space-y-4">
+                {commissionData.products.map(product => (
+                  <BranchCommissionProductCard
+                    key={product.product_id}
+                    product={product}
+                    handleCommissionChange={handleCommissionChange}
+                    handleSaveItemCommissions={handleSaveItemCommissions}
+                    dirtyItems={dirtyItems}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Accordion type="multiple" className="w-full">
+                {commissionData.products.map(product => (
+                  <AccordionItem value={product.product_id} key={product.product_id}>
+                    <AccordionTrigger>{product.product_name}</AccordionTrigger>
+                    <AccordionContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Usuario</TableHead>
+                            <TableHead>Comisión (%)</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      onClick={() => handleSaveItemCommissions(product.product_id, 'product')}
-                      disabled={!dirtyItems.has(product.product_id)}
-                      className="mt-4"
-                    >
-                      Guardar Cambios
-                    </Button>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                        </TableHeader>
+                        <TableBody>
+                          {product.users.map(user => (
+                            <TableRow key={user.user_id}>
+                              <TableCell>{user.user_name}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={user.commission_rate !== null ? user.commission_rate : ''}
+                                  onChange={(e) => handleCommissionChange(product.product_id, user.user_id, 'product', e.target.value)}
+                                  className="w-24"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <Button
+                        onClick={() => handleSaveItemCommissions(product.product_id, 'product')}
+                        disabled={!dirtyItems.has(product.product_id)}
+                        className="mt-4"
+                      >
+                        Guardar Cambios
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
           </div>
         )}
 
         {commissionData.services.length > 0 && (
           <div>
             <h3 className="text-md font-semibold mb-4">Comisiones de Servicios</h3>
-            <Accordion type="multiple" className="w-full">
-              {commissionData.services.map(service => (
-                <AccordionItem value={service.service_id} key={service.service_id}>
-                  <AccordionTrigger>{service.service_name}</AccordionTrigger>
-                  <AccordionContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Usuario</TableHead>
-                          <TableHead>Comisión (%)</TableHead>
-                          <TableHead>Puede Realizar</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {service.users.map(user => (
-                          <TableRow key={user.user_id}>
-                            <TableCell>{user.user_name}</TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={user.commission_rate !== null ? user.commission_rate : ''}
-                                onChange={(e) => handleCommissionChange(service.service_id, user.user_id, 'service', e.target.value)}
-                                className="w-24"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id={`can-perform-${service.service_id}-${user.user_id}`}
-                                  checked={user.can_perform || false}
-                                  onCheckedChange={(checked) => handleCanPerformChange(service.service_id, user.user_id, checked)}
-                                />
-                                <Label htmlFor={`can-perform-${service.service_id}-${user.user_id}`}>Sí</Label>
-                              </div>
-                            </TableCell>
+            {isMobile ? (
+              <div className="space-y-4">
+                {commissionData.services.map(service => (
+                  <BranchCommissionServiceCard
+                    key={service.service_id}
+                    service={service}
+                    handleCommissionChange={handleCommissionChange}
+                    handleCanPerformChange={handleCanPerformChange}
+                    handleSaveItemCommissions={handleSaveItemCommissions}
+                    dirtyItems={dirtyItems}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Accordion type="multiple" className="w-full">
+                {commissionData.services.map(service => (
+                  <AccordionItem value={service.service_id} key={service.service_id}>
+                    <AccordionTrigger>{service.service_name}</AccordionTrigger>
+                    <AccordionContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Usuario</TableHead>
+                            <TableHead>Comisión (%)</TableHead>
+                            <TableHead>Puede Realizar</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      onClick={() => handleSaveItemCommissions(service.service_id, 'service')}
-                      disabled={!dirtyItems.has(service.service_id)}
-                      className="mt-4"
-                    >
-                      Guardar Cambios
-                    </Button>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                        </TableHeader>
+                        <TableBody>
+                          {service.users.map(user => (
+                            <TableRow key={user.user_id}>
+                              <TableCell>{user.user_name}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={user.commission_rate !== null ? user.commission_rate : ''}
+                                  onChange={(e) => handleCommissionChange(service.service_id, user.user_id, 'service', e.target.value)}
+                                  className="w-24"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    id={`can-perform-${service.service_id}-${user.user_id}`}
+                                    checked={user.can_perform || false}
+                                    onCheckedChange={(checked) => handleCanPerformChange(service.service_id, user.user_id, checked)}
+                                  />
+                                  <Label htmlFor={`can-perform-${service.service_id}-${user.user_id}`}>Sí</Label>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <Button
+                        onClick={() => handleSaveItemCommissions(service.service_id, 'service')}
+                        disabled={!dirtyItems.has(service.service_id)}
+                        className="mt-4"
+                      >
+                        Guardar Cambios
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
           </div>
         )}
       </CardContent>

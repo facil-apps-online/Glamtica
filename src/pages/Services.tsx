@@ -21,6 +21,69 @@ import AssignServicesToBranchDialog from "@/components/AssignServicesToBranchDia
 import ManageServicePricesDialog from "@/components/ManageServicePricesDialog";
 import { useState } from "react";
 import { ManageServiceCommissionsDialog } from "@/components/ManageServiceCommissionsDialog"; // NEW IMPORT
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+const ServiceCard = ({ service, category, formatPrice, handleToggleStatus, handleOpenAssignServiceDialog, handleOpenManagePricesDialog, handleOpenServiceCommissionsDialog }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{service.name}</CardTitle>
+          {service.description && <p className="text-sm text-muted-foreground">{service.description}</p>}
+        </div>
+        <Switch
+          checked={service.is_active || false}
+          onCheckedChange={() => handleToggleStatus(service)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Categoría</span>
+        <span>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Duración</span>
+        <span>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 h-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleOpenAssignServiceDialog(service)}>
+              <Share2 className="w-4 h-4 mr-2" />
+              Asignar a Sucursales
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(service)}>
+              <DollarSign className="w-4 h-4 mr-2" />
+              Gestionar Precios
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleOpenServiceCommissionsDialog(service)}>
+              <Users className="w-4 h-4 mr-2" />
+              Gestionar Comisiones
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <MasterServiceDialog service={service} trigger={
+                <div className="flex items-center w-full">
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Editar</span>
+                </div>
+              } />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
+
 
 export default function Services() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,7 +92,8 @@ export default function Services() {
   const [showInactive, setShowInactive] = useState(false);
 
   const { data: categories } = useServiceCategories();
-  const { data: services, isLoading } = useMasterServices(confirmedSearchTerm, showInactive, filterCategory);
+  const { data: services, isLoading, refetch } = useMasterServices(confirmedSearchTerm, showInactive, filterCategory);
+  const { mutate: updateService } = useUpdateMasterService();
   const { data: allServices, isLoading: isLoadingAllServices } = useMasterServices();
   const [isAssignServiceDialogOpen, setIsAssignServiceDialogOpen] = useState(false);
   const [selectedServiceForAssignment, setSelectedServiceForAssignment] = useState<MasterService | null>(null);
@@ -40,7 +104,16 @@ export default function Services() {
   const [isServiceCommissionsDialogOpen, setIsServiceCommissionsDialogOpen] = useState(false);
   const [selectedServiceForCommissions, setSelectedServiceForCommissions] = useState<MasterService | null>(null);
 
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
+
   const filteredServices = services;
+
+  const handleToggleStatus = (service: MasterService) => {
+    updateService({ id: service.id, updates: { is_active: !service.is_active } }, {
+      onSuccess: () => refetch(),
+    });
+  };
 
   const handleOpenAssignServiceDialog = (service: MasterService) => {
     setSelectedServiceForAssignment(service);
@@ -150,57 +223,76 @@ export default function Services() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead colSpan={2}>Servicio</TableHead>
-                <TableHead className="w-px">Categoría</TableHead>
-                <TableHead className="w-px">Duración</TableHead>
-                
-                <TableHead className="w-px">Activo</TableHead>
-                <TableHead className="w-px">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          {isMobile ? (
+            <div className="space-y-4 p-4">
               {filteredServices?.map((service) => {
                 const category = categories?.find(cat => cat.id === service.category_id);
-                
                 return (
-                  <TableRow key={service.id}>
-                    <TableCell colSpan={2}>
-                      <div className="font-medium">{service.name}</div>
-                      {service.description && <div className="text-sm text-muted-foreground">{service.description}</div>}
-                    </TableCell>
-                    <TableCell>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</TableCell>
-                    <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={service.is_active || false}
-                        onCheckedChange={() => toggleStatusMutation.mutate({ id: service.id, updates: { is_active: !service.is_active } })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <MasterServiceDialog service={service} trigger={
-                          <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
-                        } />
-                        <Button variant="outline" size="sm" onClick={() => handleOpenAssignServiceDialog(service)}>
-                          <Share2 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleOpenManagePricesDialog(service)}>
-                          <DollarSign className="w-4 h-4" />
-                        </Button>
-                        {/* OLD ServiceCommissionsDialog REMOVED */}
-                        <Button variant="outline" size="sm" onClick={() => handleOpenServiceCommissionsDialog(service)}>
-                          <Users className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    category={category}
+                    handleToggleStatus={handleToggleStatus}
+                    handleOpenAssignServiceDialog={handleOpenAssignServiceDialog}
+                    handleOpenManagePricesDialog={handleOpenManagePricesDialog}
+                    handleOpenServiceCommissionsDialog={handleOpenServiceCommissionsDialog}
+                  />
                 );
               })}
-            </TableBody>
-          </Table>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead colSpan={2}>Servicio</TableHead>
+                  <TableHead className="w-px">Categoría</TableHead>
+                  <TableHead className="w-px">Duración</TableHead>
+                  
+                  <TableHead className="w-px">Activo</TableHead>
+                  <TableHead className="w-px">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredServices?.map((service) => {
+                  const category = categories?.find(cat => cat.id === service.category_id);
+                  
+                  return (
+                    <TableRow key={service.id}>
+                      <TableCell colSpan={2}>
+                        <div className="font-medium">{service.name}</div>
+                        {service.description && <div className="text-sm text-muted-foreground">{service.description}</div>}
+                      </TableCell>
+                      <TableCell>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</TableCell>
+                      <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={service.is_active || false}
+                          onCheckedChange={() => handleToggleStatus(service)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <MasterServiceDialog service={service} trigger={
+                            <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
+                          } />
+                          <Button variant="outline" size="sm" onClick={() => handleOpenAssignServiceDialog(service)}>
+                            <Share2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleOpenManagePricesDialog(service)}>
+                            <DollarSign className="w-4 h-4" />
+                          </Button>
+                          {/* OLD ServiceCommissionsDialog REMOVED */}
+                          <Button variant="outline" size="sm" onClick={() => handleOpenServiceCommissionsDialog(service)}>
+                            <Users className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
           
           {filteredServices?.length === 0 && (
             <div className="text-center py-12">
@@ -208,7 +300,7 @@ export default function Services() {
               <h3 className="text-lg font-bold text-primary mb-2">No hay servicios</h3>
               <p className="text-slate-600 mb-4">
                 {filterCategory === "" 
-                  ? "No tienes servicios creados aún o no coinciden con los filtros aplicados." 
+                  ? "No tienes servicios creados aún o no coinciden con los filtros aplicados."
                   : `No hay servicios en la categoría seleccionada que coincidan con los filtros.`
                 }
               </p>

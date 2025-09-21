@@ -21,6 +21,11 @@ export interface PublicCurrency {
   id: string;
   name: string;
   symbol: string;
+  code: string;
+  decimal_places: number;
+  symbol_position: string;
+  decimal_separator: string;
+  thousands_separator: string;
 }
 
 export interface PublicTimezone {

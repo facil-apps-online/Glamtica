@@ -10,6 +10,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+const BranchServiceCard = ({ service, formatPrice, handleToggleStatus }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{service.name}</CardTitle>
+          {service.description && <p className="text-sm text-muted-foreground">{service.description}</p>}
+        </div>
+        <Switch
+          checked={service.is_branch_active}
+          onCheckedChange={() => handleToggleStatus(service)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Duración</span>
+        <span>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Precio de Venta</span>
+        <span>{formatPrice(service.selling_price)}</span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <ManageServiceInBranchDialog service={service} trigger={
+                <div className="flex items-center w-full">
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Gestionar</span>
+                </div>
+              } />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 interface BranchServicesTabContentProps {
   branchId: string;
@@ -23,6 +73,8 @@ const BranchServicesTabContent: React.FC<BranchServicesTabContentProps> = ({ bra
   const { mutate: updateBranchService } = useUpdateBranchService();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = (service: BranchService) => {
     updateBranchService({
@@ -69,36 +121,49 @@ const BranchServicesTabContent: React.FC<BranchServicesTabContentProps> = ({ bra
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Servicio</TableHead>
-              <TableHead>Duración (min)</TableHead>
-              <TableHead>Precio de Venta</TableHead>
-              <TableHead>Estado en Sucursal</TableHead>
-              
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        {isMobile ? (
+          <div className="space-y-4 p-4">
             {branchServices?.map((service: BranchService) => (
-              <TableRow key={service.branch_service_id}>
-                <TableCell>
-                  <div className="font-medium">{service.name}</div>
-                  {service.description && <div className="text-sm text-muted-foreground">{service.description}</div>}
-                </TableCell>
-                <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
-                <TableCell>{formatPrice(service.selling_price)}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={service.is_branch_active}
-                    onCheckedChange={() => handleToggleStatus(service)}
-                  />
-                </TableCell>
+              <BranchServiceCard 
+                key={service.branch_service_id} 
+                service={service} 
+                formatPrice={formatPrice} 
+                handleToggleStatus={handleToggleStatus} 
+              />
+            ))}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Servicio</TableHead>
+                <TableHead>Duración (min)</TableHead>
+                <TableHead>Precio de Venta</TableHead>
+                <TableHead>Estado en Sucursal</TableHead>
                 
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {branchServices?.map((service: BranchService) => (
+                <TableRow key={service.branch_service_id}>
+                  <TableCell>
+                    <div className="font-medium">{service.name}</div>
+                    {service.description && <div className="text-sm text-muted-foreground">{service.description}</div>}
+                  </TableCell>
+                  <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
+                  <TableCell>{formatPrice(service.selling_price)}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={service.is_branch_active}
+                      onCheckedChange={() => handleToggleStatus(service)}
+                    />
+                  </TableCell>
+                  
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
         {branchServices?.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">

@@ -45,6 +45,10 @@ import UpdatePasswordPage from "@/pages/UpdatePasswordPage";
 import TvManagementPage from "@/pages/TvManagementPage";
 import TvDisplayPage from "@/pages/TvDisplayPage";
 import RegisterTvPage from "@/pages/RegisterTvPage";
+import LandingPage from "@/pages/LandingPage";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import FeaturesPage from "@/pages/FeaturesPage";
 
 function App() {
   return (
@@ -55,6 +59,10 @@ function App() {
             <Toaster position="bottom-right" />
             <Routes>
               {/* Rutas Públicas */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/features" element={<FeaturesPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/register-tenant" element={<RegisterTenant />} />
               <Route path="/update-password" element={<UpdatePasswordPage />} />
@@ -67,7 +75,7 @@ function App() {
                 <Route path="/register-tv/:registrationCode" element={<RegisterTvPage />} />
                 
                 {/* RUTA PADRE CON LAYOUT */}
-                <Route path="/" element={<Layout />}>
+                <Route path="/app" element={<Layout />}>
                   <Route index element={<Index />} /> {/* RUTA INDEX PARA LA PÁGINA DE INICIO */}
                   <Route path="profile-settings" element={<ProfileSettings />} />
                   <Route path="attentions" element={<Attentions />} />

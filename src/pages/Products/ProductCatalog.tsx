@@ -38,6 +38,75 @@ import { ManageProductCommissionsDialog } from "@/components/ManageProductCommis
 
 import { UnitOfMeasureManagementDialog } from "@/components/UnitOfMeasureManagementDialog";
 import { SlidersHorizontal } from "lucide-react";
+import { useScreenSize } from "@/hooks/useScreenSize";
+
+
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+
+const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{product.name}</CardTitle>
+          {product.sku && <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>}
+        </div>
+        <Switch
+          checked={product.is_active || false}
+          onCheckedChange={() => handleToggleStatus(product)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Marca</span>
+        <span>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Categoría</span>
+        <span>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Costo</span>
+        <span>{product.cost_price ? formatPrice(product.cost_price) : "N/A"}</span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+         <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
+              <Share2 className="w-4 h-4 mr-2" />
+              Asignar a Sucursales
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(product)}>
+              <DollarSign className="w-4 h-4 mr-2" />
+              Gestionar Precios
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleOpenProductCommissionsDialog(product)}>
+              <Percent className="w-4 h-4 mr-2" />
+              Gestionar Comisiones
+            </DropdownMenuItem>
+             <DropdownMenuItem>
+               <MasterProductDialog product={product} trigger={
+                <div className="flex items-center w-full">
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Editar</span>
+                </div>
+              } />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const ProductCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +128,8 @@ const ProductCatalog = () => {
   const { data: productCategories } = useProductCategories();
   const { mutate: updateProduct } = useUpdateMasterProduct();
   const { formatPrice } = usePriceFormat();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const filteredProducts = products;
 
@@ -89,7 +160,7 @@ const ProductCatalog = () => {
   // NEW HANDLERS FOR COMMISSIONS DIALOG
   const handleOpenProductCommissionsDialog = (product: MasterProduct) => {
     setSelectedProductForCommissions(product);
-    setIsProductCommissionsDialogOpen(true);
+setIsProductCommissionsDialogOpen(true);
   };
 
   const handleProductCommissionsSuccess = () => {
@@ -173,6 +244,27 @@ const ProductCatalog = () => {
         {/* Tabla de productos */}
         <Card className="mt-8">
           <CardContent className="p-0">
+           {isMobile ? (
+              <div className="space-y-4 p-4">
+                {filteredProducts?.map((product: MasterProduct) => {
+                  const brand = brands?.find(b => b.id === product.brand_id);
+                  const category = productCategories?.find(c => c.id === product.category_id);
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      brand={brand}
+                      category={category}
+                      formatPrice={formatPrice}
+                      handleToggleStatus={handleToggleStatus}
+                      handleOpenAssignProductDialog={handleOpenAssignProductDialog}
+                      handleOpenManagePricesDialog={handleOpenManagePricesDialog}
+                      handleOpenProductCommissionsDialog={handleOpenProductCommissionsDialog}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -225,6 +317,7 @@ const ProductCatalog = () => {
                 })}
               </TableBody>
             </Table>
+            )}
             
             {filteredProducts?.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
@@ -265,5 +358,6 @@ const ProductCatalog = () => {
     </div>
   );
 };
+
 
 export default ProductCatalog;

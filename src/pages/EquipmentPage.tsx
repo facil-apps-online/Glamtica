@@ -26,7 +26,92 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from '@/components/ui/badge';
+
+const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{item.name}</CardTitle>
+          <p className="text-sm text-muted-foreground">{item.type_name} - {item.brand_name}</p>
+        </div>
+        <Switch
+          checked={item.is_active}
+          onCheckedChange={() => handleToggleStatus(item)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Asignado a</span>
+        <span>
+          {item.assigned_user_name ? (
+            <Badge variant="secondary">{item.assigned_user_name}</Badge>
+          ) : (
+            <Badge variant="outline">Sin asignar</Badge>
+          )}
+        </span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Sucursal</span>
+        <span>
+          {item.assigned_branch_name ? (
+            <Badge variant="secondary">{item.assigned_branch_name}</Badge>
+          ) : (
+            <Badge variant="outline">N/A</Badge>
+          )}
+        </span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="w-4 h-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <EquipmentDialog
+                equipment={item}
+                trigger={
+                  <div className="flex items-center w-full">
+                    <Edit className="w-4 h-4 mr-2" />
+                    <span>Editar</span>
+                  </div>
+                }
+                onSuccess={refreshEquipment}
+              />
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <MaintenanceHistoryDialog 
+                equipmentId={item.id} 
+                trigger={
+                  <div className="flex items-center w-full">
+                    <History className="w-4 h-4 mr-2" />
+                    <span>Historial de Mantenimiento</span>
+                  </div>
+                }
+              />
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <AssignEquipmentDialog 
+                equipmentId={item.id} 
+                onAssignmentSuccess={refreshEquipment}
+                trigger={
+                  <div className="flex items-center w-full">
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    <span>Asignar</span>
+                  </div>
+                }
+              />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const EquipmentPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,6 +125,8 @@ const EquipmentPage: React.FC = () => {
   const { equipment, loading, refreshEquipment, updateEquipment } = useEquipment(confirmedSearchTerm, showInactive, confirmedFilterType, confirmedFilterBrand);
   const { types: equipmentTypes } = useEquipmentTypes();
   const { brands: equipmentBrands } = useEquipmentBrands();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = async (item: Equipment) => {
     try {
@@ -141,6 +228,17 @@ const EquipmentPage: React.FC = () => {
                   <p className="mt-2 text-muted-foreground">Cargando equipos...</p>
                 </div>
               </div>
+            ) : isMobile ? (
+              <div className="space-y-4 p-4">
+                {equipment.map((item) => (
+                  <EquipmentCard 
+                    key={item.id} 
+                    item={item} 
+                    handleToggleStatus={handleToggleStatus}
+                    refreshEquipment={refreshEquipment}
+                  />
+                ))}
+              </div>
             ) : (
               <Table>
                 <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Tipo</TableHead><TableHead>Marca</TableHead><TableHead>Asignado a</TableHead><TableHead>Sucursal</TableHead><TableHead>Activo</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
@@ -171,7 +269,7 @@ const EquipmentPage: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex items-center gap-2"> 
                           <EquipmentDialog
                             equipment={item}
                             trigger={

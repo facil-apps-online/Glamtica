@@ -10,6 +10,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+const BranchProductCard = ({ product, formatPrice, handleToggleStatus }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{product.name}</CardTitle>
+          {product.sku && <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>}
+        </div>
+        <Switch
+          checked={product.is_branch_active}
+          onCheckedChange={() => handleToggleStatus(product)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Precio de Venta</span>
+        <span>{formatPrice(product.selling_price)}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Stock</span>
+        <span>{product.stock_quantity}</span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <ManageProductInBranchDialog product={product} trigger={
+                <div className="flex items-center w-full">
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Gestionar</span>
+                </div>
+              } />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 interface BranchProductsTabContentProps {
   branchId: string;
@@ -22,6 +72,8 @@ const BranchProductsTabContent: React.FC<BranchProductsTabContentProps> = ({ bra
   const { mutate: updateBranchProduct } = useUpdateBranchProduct();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = (product: BranchProduct) => {
     updateBranchProduct({ 
@@ -68,36 +120,49 @@ const BranchProductsTabContent: React.FC<BranchProductsTabContentProps> = ({ bra
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Producto</TableHead>
-              <TableHead>Precio de Venta</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Estado en Sucursal</TableHead>
-              
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        {isMobile ? (
+          <div className="space-y-4 p-4">
             {branchProducts?.map((product: BranchProduct) => (
-              <TableRow key={product.branch_product_id}>
-                <TableCell>
-                  <div className="font-medium">{product.name}</div>
-                  {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}
-                </TableCell>
-                <TableCell>{formatPrice(product.selling_price)}</TableCell>
-                <TableCell>{product.stock_quantity}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={product.is_branch_active}
-                    onCheckedChange={() => handleToggleStatus(product)}
-                  />
-                </TableCell>
+              <BranchProductCard 
+                key={product.branch_product_id} 
+                product={product} 
+                formatPrice={formatPrice} 
+                handleToggleStatus={handleToggleStatus} 
+              />
+            ))}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Producto</TableHead>
+                <TableHead>Precio de Venta</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Estado en Sucursal</TableHead>
                 
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {branchProducts?.map((product: BranchProduct) => (
+                <TableRow key={product.branch_product_id}>
+                  <TableCell>
+                    <div className="font-medium">{product.name}</div>
+                    {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}
+                  </TableCell>
+                  <TableCell>{formatPrice(product.selling_price)}</TableCell>
+                  <TableCell>{product.stock_quantity}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={product.is_branch_active}
+                      onCheckedChange={() => handleToggleStatus(product)}
+                    />
+                  </TableCell>
+                  
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
         {branchProducts?.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
@@ -125,5 +190,6 @@ const BranchProductsTabContent: React.FC<BranchProductsTabContentProps> = ({ bra
     </Card>
   );
 };
+
 
 export default BranchProductsTabContent;

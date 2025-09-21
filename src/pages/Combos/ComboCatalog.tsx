@@ -25,6 +25,76 @@ import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { ComboDialog } from "@/components/ComboDialog";
 import { ManageComboInBranchesDialog } from "@/components/ManageComboInBranchesDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDialog, handleOpenAssignDialog, handleDelete, calculateBasePrice }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <CardTitle>{combo.name}</CardTitle>
+          {combo.sku && <p className="text-sm text-muted-foreground">SKU: {combo.sku}</p>}
+        </div>
+        <Switch
+          checked={combo.is_active || false}
+          onCheckedChange={() => handleToggleStatus(combo)}
+        />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Nº de Ítems</span>
+        <span><Badge variant="secondary">{combo.combo_items?.length || 0} Ítems</Badge></span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Precio Base</span>
+        <span>{formatPrice(calculateBasePrice(combo))}</span>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="ml-2">Acciones</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleOpenComboDialog(combo)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleOpenAssignDialog(combo)}>
+              <Share2 className="w-4 h-4 mr-2" />
+              Asignar a Sucursales
+            </DropdownMenuItem>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </DropdownMenuItem>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Se eliminará el combo permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleDelete(combo.id)}>Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const ComboCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +107,8 @@ const ComboCatalog = () => {
   const { mutate: updateCombo } = useUpdateCombo();
   const { mutate: deleteCombo } = useDeleteCombo();
   const { formatPrice } = usePriceFormat();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = (combo: Combo) => {
     updateCombo({ id: combo.id, is_active: !combo.is_active });
@@ -108,69 +180,86 @@ const ComboCatalog = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Nº de Ítems</TableHead>
-                <TableHead>Precio Base</TableHead>
-                <TableHead>Activo</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6} className="text-center">Cargando...</TableCell></TableRow>}
-              {!isLoading && filteredCombos?.map((combo: Combo) => (
-                <TableRow key={combo.id}>
-                  <TableCell className="font-medium">{combo.name}</TableCell>
-                  <TableCell>{combo.sku || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{combo.combo_items?.length || 0} Ítems</Badge>
-                  </TableCell>
-                  <TableCell>{formatPrice(calculateBasePrice(combo))}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={combo.is_active || false}
-                      onCheckedChange={() => handleToggleStatus(combo)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleOpenComboDialog(combo)}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => handleOpenAssignDialog(combo)}><Share2 className="w-4 h-4" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm"><Trash2 className="w-4 h-4" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer. Se eliminará el combo permanentemente.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(combo.id)}>Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
+          {isMobile ? (
+            <div className="space-y-4 p-4">
+              {filteredCombos?.map((combo: Combo) => (
+                <ComboCard
+                  key={combo.id}
+                  combo={combo}
+                  formatPrice={formatPrice}
+                  handleToggleStatus={handleToggleStatus}
+                  handleOpenComboDialog={handleOpenComboDialog}
+                  handleOpenAssignDialog={handleOpenAssignDialog}
+                  handleDelete={handleDelete}
+                  calculateBasePrice={calculateBasePrice}
+                />
               ))}
-              {!isLoading && filteredCombos?.length === 0 && (
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    <Combine className="mx-auto h-12 w-12 mb-4" />
-                    <h3 className="text-lg font-semibold">No se encontraron combos</h3>
-                    <p>Intenta cambiar los filtros o crea un nuevo combo.</p>
-                  </TableCell>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Nº de Ítems</TableHead>
+                  <TableHead>Precio Base</TableHead>
+                  <TableHead>Activo</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading && <TableRow><TableCell colSpan={6} className="text-center">Cargando...</TableCell></TableRow>}
+                {!isLoading && filteredCombos?.map((combo: Combo) => (
+                  <TableRow key={combo.id}>
+                    <TableCell className="font-medium">{combo.name}</TableCell>
+                    <TableCell>{combo.sku || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{combo.combo_items?.length || 0} Ítems</Badge>
+                    </TableCell>
+                    <TableCell>{formatPrice(calculateBasePrice(combo))}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={combo.is_active || false}
+                        onCheckedChange={() => handleToggleStatus(combo)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenComboDialog(combo)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleOpenAssignDialog(combo)}><Share2 className="w-4 h-4" /></Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm"><Trash2 className="w-4 h-4" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará el combo permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(combo.id)}>Eliminar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!isLoading && filteredCombos?.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <Combine className="mx-auto h-12 w-12 mb-4" />
+                      <h3 className="text-lg font-semibold">No se encontraron combos</h3>
+                      <p>Intenta cambiar los filtros o crea un nuevo combo.</p>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
       
@@ -189,5 +278,6 @@ const ComboCatalog = () => {
     </div>
   );
 };
+
 
 export default ComboCatalog;

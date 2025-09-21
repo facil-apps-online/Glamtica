@@ -33,7 +33,8 @@ export const ManageServiceInBranchDialog = ({ service, trigger }: ManageServiceI
   const [assignToAll, setAssignToAll] = useState(false);
 
   const { data: branches, isLoading: isLoadingBranches } = useBranches();
-  const { data: branchServices, isLoading: isLoadingBranchServices, refetch: refetchBranchServices } = useBranchServices();
+  const { data: branchServicesAndCombos, isLoading: isLoadingBranchServices, refetch: refetchBranchServices } = useBranchServicesAndCombos();
+  const branchServices = branchServicesAndCombos?.filter(item => item.type === 'service') || [];
   const { mutate: assignService, isPending: isAssigning } = useAssignServiceToBranch();
   const { mutate: updateBranchService, isPending: isUpdatingBranchService } = useUpdateBranchService();
   const { mutate: removeServiceFromBranch, isPending: isRemoving } = useRemoveServiceFromBranch();
