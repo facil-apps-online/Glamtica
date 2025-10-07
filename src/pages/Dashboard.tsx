@@ -17,6 +17,23 @@ export default function Dashboard() {
   const { data: topServices, isLoading: servicesLoading } = useTopServices();
   const { formatPrice } = usePriceFormat();
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Confirmada':
+        return 'bg-blue-100 text-blue-700';
+      case 'En Proceso':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'Finalizada':
+        return 'bg-green-100 text-green-700';
+      case 'Pagada':
+        return 'bg-emerald-100 text-emerald-700';
+      case 'Cancelada':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
   // La lógica del gráfico de comparación mensual se ha movido a la función RPC
   // por lo que ya no es necesario calcularla aquí.
 

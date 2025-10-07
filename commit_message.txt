@@ -1,18 +1,8 @@
-feat: Refactorización de UI y corrección de flujo de ventas
+feat(attentions): Unifica recibo y detalles de pago
 
-Este commit introduce una refactorización masiva de la interfaz de usuario para estandarizarla y hacerla más robusta, además de corregir errores críticos en el flujo de pago y numeración de documentos.
+Refactoriza la visualización de transacciones para mejorar la experiencia de usuario y la claridad de la interfaz.
 
-**Principales Cambios de UI:**
-- Se introduce el componente `PageHeader` para unificar los títulos de las páginas.
-- Se implementa un patrón de `Skeleton` y `EmptyState` para los estados de carga y vacío.
-- Se rediseñan las vistas de Catálogo de Productos, Servicios, Combos, Equipo y Clientes a un layout basado en tarjetas responsivas.
-- Se estandarizan los diálogos de gestión (Marcas, Categorías, etc.).
-- Se mejora la responsividad general de la aplicación.
-
-**Correcciones de Flujo de Venta:**
-- Se corrige el flujo de pago para obtener el `saleId` desde el backend y poder mostrar el recibo.
-- Se soluciona un error de "función no única" en la base de datos para `get_next_document_number` eliminando definiciones conflictivas.
-- Se mejora el manejo de errores cuando no se encuentra una secuencia de numeración.
-
-**Ajustes de Estilo:**
-- Se estandariza el espaciado y los íconos en las pestañas de Configuración según el nuevo `MANUAL_DE_ESTILOS.md`.
+- **Nuevo Diálogo Unificado:** Se crea el componente `TransactionReceiptDialog` que combina la información de la venta (items, totales) y los pagos realizados en una sola vista.
+- **Botón Único:** Se reemplazan los dos botones anteriores ("Ver Recibo" y "Ver Detalles de Pago") en la tarjeta de atención por un único botón con un ícono claro.
+- **Lógica Encapsulada:** Se crea el componente `ViewTransactionButton` que maneja toda la lógica de obtención de datos para el nuevo diálogo, manteniendo el resto de los componentes limpios.
+- **Backend Optimizado:** Se mejora la acción `get_sale_details` en la Edge Function para que devuelva toda la información necesaria (venta, items y pagos) en una sola llamada.
