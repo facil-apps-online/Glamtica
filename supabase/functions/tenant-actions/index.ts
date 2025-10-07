@@ -2181,26 +2181,59 @@ serve(async (req) => {
                 break;
               }
 
+              case 'get_sale_by_attention_id': {
+                const { attentionId } = payload;
+                if (!attentionId) {
+                  throw new Error('Attention ID is required.');
+                }
+                const { data, error } = await supabaseAdmin
+                  .from('sales')
+                  .select('id')
+                  .eq('attention_id', attentionId)
+                  .eq('tenant_id', tenantId)
+                  .single();
+
+                if (error) {
+                  throw new Error(`Error fetching sale by attention ID: ${error.message}`);
+                }
+                responseData = data;
+                break;
+              }
+
               case 'get_sale_details': {
                 const { saleId } = payload;
                 if (!saleId) {
                   throw new Error('Sale ID is required.');
                 }
-                const { data, error } = await supabaseAdmin
+
+                // 1. Get Sale Details
+                const { data: saleData, error: saleError } = await supabaseAdmin
                   .from('sales')
                   .select(`
                     *,
                     client:client_id (*),
                     branch:branch_id (*),
-                    items:sales_items!inner(*)
+                    items:sales_items!left(*)
                   `)
                   .eq('id', saleId)
                   .eq('tenant_id', tenantId)
                   .order('created_at', { foreignTable: 'sales_items', ascending: true })
                   .single();
-    
-                if (error) throw error;
-                responseData = data;
+
+                if (saleError) throw new Error(`Error fetching sale details: ${saleError.message}`);
+                if (!saleData) throw new Error('Sale not found.');
+
+                // 2. Get Associated Payments
+                const { data: payments, error: paymentsError } = await supabaseAdmin
+                  .from('attention_payments')
+                  .select('*')
+                  .eq('attention_id', saleData.attention_id)
+                  .eq('tenant_id', tenantId);
+
+                if (paymentsError) throw new Error(`Error fetching payments: ${paymentsError.message}`);
+
+                // 3. Combine and return
+                responseData = { ...saleData, payments: payments || [] };
                 break;
               }      case 'get_attention_service_evidences': {
         const { attentionServiceId } = payload;
@@ -2791,6 +2824,7 @@ serve(async (req) => {
           }
         }
 
+        let saleId = null;
         const hasPendingPayments = createdPayments.some(p => p.status === 'pending');
 
         // Si no hay pagos pendientes, la transacción se considera completa en nuestro sistema.
@@ -2806,7 +2840,6 @@ serve(async (req) => {
           }
 
           // The new function handles sale creation, item creation, and inventory deduction.
-          let saleId;
           try {
             const { data, error } = await supabaseAdmin.rpc('process_sale_from_attention', { 
               p_attention_id: attention.id 

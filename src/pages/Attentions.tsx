@@ -1,8 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye } from "lucide-react";
+import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye, Loader2 } from "lucide-react";
+import { callTenantAction } from '@/lib/tenantActions';
+import { TransactionReceiptDialog } from '@/components/TransactionReceiptDialog';
+import { useSaleDetails } from '@/hooks/useSaleDetails';
 import { useUpdateAttentionStatus } from "@/hooks/useUpdateAttentionStatus";
 import { useAttentions, Attention, AttentionService } from "@/hooks/useAttentions";
 import { useUserTimeOff } from "@/hooks/useUserTimeOff";
@@ -32,58 +36,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { usePaymentEvidence } from "@/hooks/usePaymentEvidence";
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog";
 
-interface PaymentDetailsDialogProps {
-  attention: Attention | null;
-  isOpen: boolean;
-  onClose: () => void;
-  paymentMethods: any[];
-  onOpenEvidence: (paymentIds: string[]) => void;
-}
 
-// MODIFICACIÓN: Componente para el diálogo de detalles de pago
-const PaymentDetailsDialog: React.FC<PaymentDetailsDialogProps> = ({ attention, isOpen, onClose, paymentMethods, onOpenEvidence }) => {
-  if (!isOpen || !attention) return null;
-
-  const { formatPrice } = usePriceFormat();
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Detalles del Pago</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <p>Mostrando los pagos registrados para la atención de <strong>{attention.clients?.name}</strong>.</p>
-          <div className="space-y-2">
-            {attention.attention_payments?.map((payment) => {
-              const paymentMethod = paymentMethods?.find(p => p.id === payment.payment_method_id);
-              const methodName = paymentMethod?.name || 'Desconocido';
-              const requiresEvidence = paymentMethod?.requires_evidence || false;
-
-              return (
-                <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-semibold">{methodName}</p>
-                    <p className="text-lg font-bold">{formatPrice(payment.amount)}</p>
-                  </div>
-                  {requiresEvidence && (
-                    <Button variant="outline" size="sm" onClick={() => onOpenEvidence([payment.id])}>
-                      <Eye className="w-4 h-4 mr-2" />
-                      Ver Evidencia
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cerrar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 const generateColorPalette = (count: number) => {
   const colors = [
@@ -145,7 +98,6 @@ export default function Attentions() {
   const [viewingAttention, setViewingAttention] = useState<Attention | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [payingAttention, setPayingAttention] = useState<Attention | null>(null);
-  const [viewingPaymentsFor, setViewingPaymentsFor] = useState<Attention | null>(null);
   const [viewingEvidenceForPaymentIds, setViewingEvidenceForPaymentIds] = useState<string[] | null>(null);
 
 
@@ -467,7 +419,6 @@ export default function Attentions() {
                     formatPrice={formatPrice}
                     onEdit={handleEditFromDetailView}
                     onOpenPaymentDialog={handleOpenPaymentDialog}
-                    onOpenPaymentDetails={handleOpenPaymentDetails}
                     screenSize={screenSize}
                     branchId={viewingAttention.branch_id}
                   />
@@ -488,13 +439,7 @@ export default function Attentions() {
         attention={payingAttention}
       />
 
-      <PaymentDetailsDialog 
-        attention={viewingPaymentsFor}
-        isOpen={!!viewingPaymentsFor}
-        onClose={() => setViewingPaymentsFor(null)}
-        paymentMethods={paymentMethods}
-        onOpenEvidence={(paymentIds) => setViewingEvidenceForPaymentIds(paymentIds)}
-      />
+
 
       {viewingEvidenceForPaymentIds && (
           <EvidencePreview paymentIds={viewingEvidenceForPaymentIds} onClose={() => setViewingEvidenceForPaymentIds(null)} />
@@ -537,7 +482,6 @@ export default function Attentions() {
                     formatPrice={formatPrice} 
                     onEdit={handleEditAttention} 
                     onOpenPaymentDialog={handleOpenPaymentDialog}
-                    onOpenPaymentDetails={handleOpenPaymentDetails}
                     screenSize={screenSize} 
                     branchId={attention.branch_id} 
                   />
@@ -619,17 +563,61 @@ const EvidencePreview: React.FC<{ paymentIds: string[]; onClose: () => void; }> 
     );
 };
 
+const ViewTransactionButton = ({ attentionId }: { attentionId: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+
+  const { data: sale, isLoading: isLoadingSaleId } = useQuery({
+    queryKey: ['sale_by_attention', attentionId],
+    queryFn: async () => {
+      const data = await callTenantAction('get_sale_by_attention_id', { attentionId });
+      return data as { id: string };
+    },
+    enabled: enabled,
+  });
+
+  const saleId = sale?.id;
+
+  const { data: saleData, isLoading: isLoadingSaleDetails } = useSaleDetails(saleId || null);
+
+  const handleClick = () => {
+    setEnabled(true);
+    setIsOpen(true);
+  };
+
+  const isLoading = isLoadingSaleId || isLoadingSaleDetails;
+
+  return (
+    <>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" onClick={handleClick} disabled={isLoading}>
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4 text-green-500" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Ver Recibo y Pagos</p>
+        </TooltipContent>
+      </Tooltip>
+      <TransactionReceiptDialog
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        saleData={saleData}
+      />
+    </>
+  );
+};
+
 interface AttentionCardProps {
   attention: Attention;
   formatPrice: (price: number) => string;
   onEdit: (attention: Attention) => void;
   onOpenPaymentDialog: (attention: Attention) => void;
-  onOpenPaymentDetails: (attention: Attention) => void; // MODIFICACIÓN
   screenSize: 'mobile' | 'tablet' | 'desktop';
   branchId: string;
 }
 
-const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, onOpenPaymentDetails, screenSize, branchId }: AttentionCardProps) => {
+const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, screenSize, branchId }: Omit<AttentionCardProps, 'onOpenPaymentDetails'>) => {
   const updateStatusMutation = useUpdateAttentionStatus();
 
   const getStatusBadge = (status: string) => {
@@ -718,16 +706,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
             {getStatusBadge(attention.status)}
 
             {attention.status === 'Pagada' && (
-                              <Tooltip delayDuration={0}>
-                                  <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" onClick={() => onOpenPaymentDetails(attention)}>
-                                          <Receipt className="w-4 h-4 text-purple-500" />
-                                      </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                      <p>Ver Detalles del Pago</p>
-                                  </TooltipContent>
-                              </Tooltip>
+              <ViewTransactionButton attentionId={attention.id} />
             )}
 
                 <Tooltip delayDuration={0}>

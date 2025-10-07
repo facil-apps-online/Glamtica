@@ -11,6 +11,7 @@ export type SaleDetails = Tables<'sales'> & {
   client: Client;
   branch: Branch;
   items: SaleItem[];
+  payments: Tables<'attention_payments'>[];
 };
 
 export const useSaleDetails = (saleId: string | null) => {

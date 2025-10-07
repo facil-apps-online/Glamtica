@@ -1,0 +1,18 @@
+feat: Refactorización de UI y corrección de flujo de ventas
+
+Este commit introduce una refactorización masiva de la interfaz de usuario para estandarizarla y hacerla más robusta, además de corregir errores críticos en el flujo de pago y numeración de documentos.
+
+**Principales Cambios de UI:**
+- Se introduce el componente `PageHeader` para unificar los títulos de las páginas.
+- Se implementa un patrón de `Skeleton` y `EmptyState` para los estados de carga y vacío.
+- Se rediseñan las vistas de Catálogo de Productos, Servicios, Combos, Equipo y Clientes a un layout basado en tarjetas responsivas.
+- Se estandarizan los diálogos de gestión (Marcas, Categorías, etc.).
+- Se mejora la responsividad general de la aplicación.
+
+**Correcciones de Flujo de Venta:**
+- Se corrige el flujo de pago para obtener el `saleId` desde el backend y poder mostrar el recibo.
+- Se soluciona un error de "función no única" en la base de datos para `get_next_document_number` eliminando definiciones conflictivas.
+- Se mejora el manejo de errores cuando no se encuentra una secuencia de numeración.
+
+**Ajustes de Estilo:**
+- Se estandariza el espaciado y los íconos en las pestañas de Configuración según el nuevo `MANUAL_DE_ESTILOS.md`.
