@@ -42,7 +42,7 @@ export function Layout() {
         <div className="min-h-screen flex w-full bg-background">
           <AppSidebar 
             menuConfig={tenantNavigationConfig}
-            homeUrl="/"
+            homeUrl="/app"
             title={currentAssignment?.tenant_name || "Panel de Tenant"}
             subtitle="Glamtica.app"
           />

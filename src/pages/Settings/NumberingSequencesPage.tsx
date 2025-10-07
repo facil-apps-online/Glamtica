@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from '@/components/PageHeader';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, FileDigit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BranchSelector } from '@/components/BranchSelector';
 
@@ -279,13 +279,16 @@ export default function NumberingSequencesPage() {
   }
 
   return (
-    <>
+    <div className="mt-4">
       <div className="space-y-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-start justify-between">
             <div>
-                <CardTitle>Secuencias Definidas</CardTitle>
-                <p className="text-sm text-muted-foreground">Define los formatos y contadores para tus documentos.</p>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <FileDigit className="h-5 w-5" />
+                  Secuencias de Numeración
+                </CardTitle>
+                <CardDescription>Define los formatos y contadores para tus documentos.</CardDescription>
             </div>
             <Button onClick={() => handleOpenForm()}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -350,6 +353,6 @@ export default function NumberingSequencesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

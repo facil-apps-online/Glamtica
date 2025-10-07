@@ -18,6 +18,7 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { Save, Building } from 'lucide-react';
 import { TenantAdminGeneralView } from './TenantAdminGeneralView';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   name: z.string().min(2, "El nombre comercial es requerido."),
@@ -41,6 +42,37 @@ const formSchema = z.object({
   latitude: z.number().min(-90).max(90).nullable(),
   longitude: z.number().min(-180).max(180).nullable(),
 });
+
+const SettingsFormSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <Skeleton className="h-7 w-1/3" />
+      <Skeleton className="h-4 w-2/3 mt-1" />
+    </CardHeader>
+    <CardContent className="space-y-8">
+      {[...Array(5)].map((_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-4 w-1/2 mt-1" />
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </CardContent>
+  </Card>
+);
 
 const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
   const { toast } = useToast();
@@ -134,10 +166,10 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
     });
   };
 
-  if (isLoadingTenant) return <div className="mt-4">Cargando...</div>;
+  if (isLoadingTenant) return <SettingsFormSkeleton />;
 
   return (
-    <Card className="mt-4">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-primary">
           <Building className="h-5 w-5" />
@@ -151,6 +183,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Información Principal</CardTitle>
+                <CardDescription>Nombre comercial que verán tus clientes.</CardDescription>
               </CardHeader>
               <CardContent>
                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
@@ -160,6 +193,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Configuración Regional</CardTitle>
+                <CardDescription>Define el país, idioma y moneda por defecto para tu negocio.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -174,6 +208,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Información de Contacto</CardTitle>
+                <CardDescription>Datos de contacto públicos y para notificaciones.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -187,6 +222,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Información Fiscal</CardTitle>
+                <CardDescription>Datos legales para facturación y documentos tributarios.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -203,6 +239,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Dirección Física</CardTitle>
+                <CardDescription>Ubicación principal de tu negocio para mapas y búsquedas locales.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

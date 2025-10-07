@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, User, Phone, Mail, Edit, Trash2, Search } from "lucide-react";
+import { Plus, User, Phone, Mail, Edit, Trash2, Search, MoreHorizontal } from "lucide-react";
 import { ClientDialog } from "@/components/ClientDialog";
-import { useClients, useDeleteClient } from "@/hooks/useClients";
+import { useClients, useDeleteClient, useUpdateClient } from "@/hooks/useClients";
 import { useTranslation } from "@/hooks/useTranslations";
 import {
   AlertDialog,
@@ -17,9 +17,119 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
-import { useDebounce } from "@/hooks/useDebounce";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { PageHeader } from "@/components/PageHeader";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+const ClientCardSkeleton = () => (
+  <Card>
+    <CardHeader className="pb-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="w-12 h-12 rounded-full" />
+        <Skeleton className="h-8 w-8" />
+      </div>
+      <Skeleton className="h-6 w-3/4 mt-2" />
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      </div>
+      <div className="h-10 w-full mt-4 rounded-md border flex items-center justify-between p-3">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-6 w-12" />
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
+  const isAssociatedWithSelectedBranch = true; // Placeholder
+  const cardStyle = {}; // Placeholder
+
+  return (
+    <Card style={cardStyle} className="backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <CardTitle>{client.name}</CardTitle>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <ClientDialog client={client} isEdit initialBranchIds={client.branches?.map(b => b.id) || []}>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+              </ClientDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      ¿Estás seguro de que quieres eliminar a <strong>{client.name}</strong>? Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(client.id)} className="bg-red-600 hover:bg-red-700">
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {client.parent_client_id && client.parent_client?.name && (
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <User className="w-4 h-4" />
+            <span>Hijo de: {client.parent_client.name}</span>
+          </div>
+        )}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-slate-500" />
+            <span className="text-sm">{client.phone}</span>
+          </div>
+          {client.email && (
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-slate-500" />
+              <span className="text-sm">{client.email}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between rounded-md border p-3 mt-4">
+          <label className="text-sm font-medium">Activo</label>
+          <Switch
+            checked={client.is_active}
+            onCheckedChange={() => handleToggleStatus(client)}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,10 +139,15 @@ export default function Clients() {
   const { data: clients, isLoading } = useClients(confirmedSearchTerm, showInactive);
   const { t } = useTranslation();
   const deleteMutation = useDeleteClient();
+  const updateMutation = useUpdateClient();
   const { selectedBranchId } = useBranchFilterStore();
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
+  };
+
+  const handleToggleStatus = (client) => {
+    updateMutation.mutate({ id: client.id, is_active: !client.is_active });
   };
 
   const sortedClients = useMemo(() => {
@@ -55,9 +170,9 @@ export default function Clients() {
     const initialIds = selectedBranchId === 'all' ? [] : [selectedBranchId];
     return (
       <ClientDialog initialBranchIds={initialIds}>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Cliente
+        <Button size="sm">
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline ml-2">Nuevo Cliente</span>
         </Button>
       </ClientDialog>
     );
@@ -65,17 +180,9 @@ export default function Clients() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">
-            Clientes
-          </h1>
-          <p className="text-slate-600 mt-2">
-            Gestiona la información de tus clientes
-          </p>
-        </div>
+      <PageHeader title="Clientes" subtitle="Gestiona la información de tus clientes">
         <AddClientButton />
-      </div>
+      </PageHeader>
 
       <Card className="mt-4">
         <CardContent className="py-4">
@@ -104,100 +211,26 @@ export default function Clients() {
         </CardContent>
       </Card>
 
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
-        {sortedClients.map((client) => {
-          const isAssociatedWithSelectedBranch = client.branches?.some(b => b.id === selectedBranchId);
-          const cardStyle = selectedBranchId !== 'all' && !isAssociatedWithSelectedBranch
-            ? { opacity: 0.6, borderStyle: 'dashed' as const }
-            : {};
-
-          return (
-            <Card key={client.id} style={cardStyle} className="bg-white/80 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-300">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-                <CardTitle className="text-xl text-primary">{client.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {client.parent_client_id && client.parent_client?.name && (
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <User className="w-4 h-4" />
-                    <span>Hijo de: {client.parent_client.name}</span>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm">{client.phone}</span>
-                  </div>
-                  {client.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-slate-500" />
-                      <span className="text-sm">{client.email}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <ClientDialog 
-                    client={client} 
-                    isEdit 
-                    initialBranchIds={client.branches?.map(b => b.id) || []}
-                  >
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Edit className="w-4 h-4 mr-1" />
-                      Editar
-                    </Button>
-                  </ClientDialog>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="w-[95vw] sm:max-w-md">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          ¿Estás seguro de que quieres eliminar a <strong>{client.name}</strong>? 
-                          Esta acción no se puede deshacer.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => handleDelete(client.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {isLoading
+          ? [...Array(6)].map((_, i) => <ClientCardSkeleton key={i} />)
+          : sortedClients.map((client) => (
+              <ClientCard 
+                key={client.id} 
+                client={client} 
+                handleDelete={handleDelete} 
+                handleToggleStatus={handleToggleStatus} 
+              />
+            ))}
       </div>
 
-      {clients?.length === 0 && (
-        <div className="text-center py-12">
-          <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">No hay clientes</h3>
-          <p className="text-slate-600 mb-4">Comienza agregando tu primer cliente</p>
-          <AddClientButton />
-        </div>
+      {clients?.length === 0 && !isLoading && (
+        <EmptyState
+          Icon={User}
+          title="No hay clientes"
+          description="Comienza agregando tu primer cliente"
+          action={<AddClientButton />}
+        />
       )}
     </div>
   );

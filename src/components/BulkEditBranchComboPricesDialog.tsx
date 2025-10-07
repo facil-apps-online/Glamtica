@@ -143,10 +143,10 @@ const BulkEditBranchComboPricesDialog: React.FC<BulkEditBranchComboPricesDialogP
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Combo</TableHead> {/* Encabezado */}
-                  <TableHead>Precio Actual</TableHead>
-                  <TableHead>Nuevo Precio</TableHead>
+                <TableRow key="header-row">
+                  <TableHead key="th-combo">Combo</TableHead>
+                  <TableHead key="th-precio-actual">Precio Actual</TableHead>
+                  <TableHead key="th-nuevo-precio">Nuevo Precio</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

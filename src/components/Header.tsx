@@ -42,7 +42,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
 
   const handleProfileClick = () => {
     setIsPopoverOpen(false);
-    navigate("/profile-settings");
+    navigate("/app/profile-settings");
   };
 
   return (

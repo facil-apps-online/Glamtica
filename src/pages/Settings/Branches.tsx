@@ -3,9 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranches, useDeleteBranch, Branch } from '@/hooks/useBranches';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import BranchDialog from '@/components/BranchDialog';
 import { useToast } from '@/hooks/use-toast';
+import { BranchCard } from "@/components/BranchCard";
+
+
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -70,35 +72,15 @@ export default function BranchesPage() {
       {isLoading ? (
         <p>Cargando sucursales...</p>
       ) : (
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Dirección</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {branches?.map(branch => (
-                <TableRow key={branch.id}>
-                  <TableCell className="font-medium">
-                    {branch.name}
-                    {branch.is_main_branch && <span className="ml-2 text-xs text-muted-foreground">(Principal)</span>}
-                  </TableCell>
-                  <TableCell>{branch.address_line_1 || 'N/A'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(branch)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteRequest(branch)} disabled={branch.is_main_branch}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {branches?.map(branch => (
+            <BranchCard
+              key={branch.id}
+              branch={branch}
+              handleEdit={handleEdit}
+              handleDeleteRequest={handleDeleteRequest}
+            />
+          ))}
         </div>
       )}
 

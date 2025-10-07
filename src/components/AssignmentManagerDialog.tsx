@@ -31,6 +31,7 @@ interface AssignmentFormValue {
   branch_id: string | null;
   role_id: string | null;
   status: 'active' | 'inactive' | 'pending_configuration';
+  is_schedulable: boolean;
   base_salary?: number;
   default_product_commission_rate?: number;
   default_service_commission_rate?: number;
@@ -106,6 +107,7 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
         branch_id: a.branch_id,
         role_id: a.role_id,
         status: a.status === 'pending_configuration' ? 'inactive' : a.status,
+        is_schedulable: a.is_schedulable ?? false,
         base_salary: a.base_salary ?? 0,
         default_product_commission_rate: a.default_product_commission_rate ?? 0,
         default_service_commission_rate: a.default_service_commission_rate ?? 0,
@@ -248,6 +250,17 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
                       className="text-right"
                   />
               </div>
+          </div>
+
+          {/* Fila para Agendable */}
+          <div className="flex items-center justify-between pt-2">
+            <Label htmlFor={`schedulable-${index}`} className="font-medium">Agendable</Label>
+            <div className="flex items-center space-x-2">
+              <Switch id={`schedulable-${index}`} checked={!!assignment.is_schedulable} onCheckedChange={(checked) => handleAssignmentChange(index, 'is_schedulable', checked)} />
+              <Label htmlFor={`schedulable-${index}`} className={assignment.is_schedulable ? 'text-blue-600' : 'text-gray-500'}>
+                {assignment.is_schedulable ? 'Sí' : 'No'}
+              </Label>
+            </div>
           </div>
 
           {/* Fila para el Estado */}

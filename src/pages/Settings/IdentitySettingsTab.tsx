@@ -10,12 +10,31 @@ import { LogoUploader } from '@/components/LogoUploader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { Palette } from 'lucide-react';
 
 const identitySchema = z.object({
   logo_url: z.string().optional(),
 });
 
 type IdentityFormValues = z.infer<typeof identitySchema>;
+
+const IdentitySkeleton = () => (
+  <Card>
+    <CardHeader>
+      <Skeleton className="h-7 w-1/3" />
+      <Skeleton className="h-4 w-2/3 mt-1" />
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-1/4" />
+        <Skeleton className="h-32 w-32 rounded-full" />
+      </div>
+      <div className="flex justify-end mt-8">
+        <Skeleton className="h-9 w-28" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export function IdentitySettingsTab() {
   const { data: settings, isLoading } = useTenantSettings();
@@ -31,7 +50,6 @@ export function IdentitySettingsTab() {
   });
 
   useEffect(() => {
-    console.log('IdentitySettingsTab: useEffect - settings changed', settings);
     if (settings) {
       form.reset({
         logo_url: settings.logo_url || '',
@@ -40,30 +58,28 @@ export function IdentitySettingsTab() {
   }, [settings, form]);
 
   const onSubmit = (values: IdentityFormValues) => {
-    console.log('IdentitySettingsTab: onSubmit - values', values);
     updateSettings(values, {
       onSuccess: () => {
         toast({ title: 'Éxito', description: 'Configuración de identidad guardada correctamente.', variant: 'success' });
-        console.log('IdentitySettingsTab: onSubmit - onSuccess');
         refreshUser();
       },
       onError: (error) => {
         toast({ title: 'Error', description: `No se pudo guardar la configuración de identidad: ${error.message}`, variant: 'destructive' });
-        console.error('IdentitySettingsTab: onSubmit - onError', error);
       },
     });
   };
 
-  console.log('IdentitySettingsTab: Render - settings:', settings, 'isLoading:', isLoading);
-
   if (isLoading) {
-    return <Skeleton className="h-96 w-full" />;
+    return <IdentitySkeleton />;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Identidad Visual</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-primary">
+          <Palette className="h-5 w-5" />
+          Identidad Visual
+        </CardTitle>
         <CardDescription>
           Gestiona el logo de tu marca. Este logo aparecerá en diferentes partes de la aplicación.
         </CardDescription>
@@ -74,24 +90,20 @@ export function IdentitySettingsTab() {
             <FormField
               control={form.control}
               name="logo_url"
-              render={({ field }) => {
-                console.log('LogoUploader: field.value:', field.value);
-                return (
-                  <FormItem>
-                    <FormLabel>Logo de la Empresa</FormLabel>
-                    <FormControl>
-                      <LogoUploader 
-                        initialLogoUrl={field.value}
-                        onUploadSuccess={(newFileId) => {
-                          console.log('LogoUploader: onUploadSuccess - newFileId:', newFileId);
-                          form.setValue('logo_url', newFileId, { shouldDirty: true, shouldValidate: true });
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Logo de la Empresa</FormLabel>
+                  <FormControl>
+                    <LogoUploader 
+                      initialLogoUrl={field.value}
+                      onUploadSuccess={(newFileId) => {
+                        form.setValue('logo_url', newFileId, { shouldDirty: true, shouldValidate: true });
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
             <div className="flex justify-end">

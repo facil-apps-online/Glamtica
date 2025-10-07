@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { MapDisplay } from '@/components/MapDisplay';
 import { ShieldAlert } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
@@ -13,12 +14,40 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
+const TenantAdminViewSkeleton = () => (
+  <div className="space-y-6">
+    <Skeleton className="h-12 w-full" />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader><Skeleton className="h-7 w-1/2" /></CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-2/3" /></div>
+              <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-2/3" /></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="lg:col-span-1">
+        <Card>
+          <CardHeader><Skeleton className="h-7 w-1/2" /></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-2/3" /></div>
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
 export function TenantAdminGeneralView() {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   if (!tenantId) {
-    return <div className="p-4 mt-4">ID de Tenant no encontrado.</div>;
+    return <div className="p-4">ID de Tenant no encontrado.</div>;
   }
   
   return <TenantAdminGeneralViewContent tenantId={tenantId} />;
@@ -28,15 +57,15 @@ const TenantAdminGeneralViewContent = ({ tenantId }: { tenantId: string }) => {
   const { data: tenant, isLoading, isError, error } = useTenantById(tenantId);
 
   if (isLoading) {
-    return <div className="p-4 mt-4">Cargando información del negocio...</div>;
+    return <TenantAdminViewSkeleton />;
   }
 
   if (isError) {
-    return <div className="p-4 mt-4">Error al cargar los datos: {error.message}</div>;
+    return <div className="p-4">Error al cargar los datos: {error.message}</div>;
   }
 
   return (
-    <div className="space-y-6 mt-4">
+    <div className="space-y-6">
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
         <ShieldAlert className="w-5 h-5 text-yellow-700" />
         <p className="text-sm text-yellow-800">

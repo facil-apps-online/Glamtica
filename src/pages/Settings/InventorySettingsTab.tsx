@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -88,48 +88,58 @@ export function InventorySettingsTab() {
             Configuración de Inventario
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="costing_method">Método de Costeo</Label>
-            <Select 
-              value={watch("costing_method") || "average"} 
-              onValueChange={(value) => handleSelectChange("costing_method", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona método" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="average">Promedio</SelectItem>
-                <SelectItem value="last_purchase">Última Compra</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="text-sm text-slate-600">
-            <p><strong>Promedio:</strong> Calcula el costo promediando el costo anterior con el nuevo costo de compra.</p>
-            <p><strong>Última Compra:</strong> Usa el costo de la última compra realizada como costo del producto.</p>
-          </div>
+        <CardContent className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Método de Costeo</CardTitle>
+              <CardDescription>Define cómo se calcula el costo de tus productos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select 
+                value={watch("costing_method") || "average"} 
+                onValueChange={(value) => handleSelectChange("costing_method", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="average">Promedio</SelectItem>
+                  <SelectItem value="last_purchase">Última Compra</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                <p><strong>Promedio:</strong> Calcula el costo promediando el costo anterior con el nuevo costo de compra.</p>
+                <p><strong>Última Compra:</strong> Usa el costo de la última compra realizada como costo del producto.</p>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="space-y-2">
-            <Label htmlFor="purchase_independence_method">Independencia de Compras</Label>
-            <Select 
-              value={watch("purchase_independence_method") || "centralized"} 
-              onValueChange={(value) => handleSelectChange("purchase_independence_method", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona método" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="centralized">Centralizada</SelectItem>
-                <SelectItem value="independent">Independiente</SelectItem>
-                <SelectItem value="mixed">Mixta</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="text-sm text-slate-600">
-            <p><strong>Centralizada:</strong> Todas las compras se gestionan desde una única ubicación central.</p>
-            <p><strong>Independiente:</strong> Cada sucursal gestiona sus propias compras de forma autónoma.</p>
-            <p><strong>Mixta:</strong> Algunas compras son centralizadas y otras son gestionadas por cada sucursal.</p>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Independencia de Compras</CardTitle>
+              <CardDescription>Define si las compras se gestionan de forma central o por sucursal.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select 
+                value={watch("purchase_independence_method") || "centralized"} 
+                onValueChange={(value) => handleSelectChange("purchase_independence_method", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="centralized">Centralizada</SelectItem>
+                  <SelectItem value="independent">Independiente</SelectItem>
+                  <SelectItem value="mixed">Mixta</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                <p><strong>Centralizada:</strong> Todas las compras se gestionan desde una única ubicación central.</p>
+                <p><strong>Independiente:</strong> Cada sucursal gestiona sus propias compras de forma autónoma.</p>
+                <p><strong>Mixta:</strong> Algunas compras son centralizadas y otras son gestionadas por cada sucursal.</p>
+              </div>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
       <div className="flex justify-end">

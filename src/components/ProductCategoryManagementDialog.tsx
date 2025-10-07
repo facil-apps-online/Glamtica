@@ -17,7 +17,7 @@ import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { useProductCategories, useCreateProductCategory, useUpdateProductCategory, useDeleteProductCategory, useToggleProductCategoryStatus, ProductCategory } from "@/hooks/useProductCategories";
 import { ProductCategoryDialog } from "./ProductCategoryDialog";
 
-export function ProductCategoryManagementDialog() {
+export function ProductCategoryManagementDialog({ trigger }: { trigger: React.ReactNode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: categories, isLoading } = useProductCategories();
   const toggleStatusMutation = useToggleProductCategoryStatus();
@@ -50,10 +50,7 @@ export function ProductCategoryManagementDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <ListFilter className="w-4 h-4 mr-2" />
-          Categorías
-        </Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>

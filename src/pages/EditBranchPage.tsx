@@ -35,18 +35,24 @@ export default function EditBranchPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-3xl font-bold text-primary">Editar Sucursal</h1>
-      </div>
-      <BranchForm
-        branchToEdit={branchToEdit}
-        onSuccess={() => navigate('/branches')}
-        tenantId={tenantId}
-        countryRestriction={countryRestriction}
+      <PageHeader
+        title="Editar Sucursal"
+        backButton={
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        }
       />
+      <Card>
+        <CardContent className="pt-6">
+          <BranchForm
+            branchToEdit={branchToEdit}
+            onSuccess={() => navigate('/branches')}
+            tenantId={tenantId}
+            countryRestriction={countryRestriction}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

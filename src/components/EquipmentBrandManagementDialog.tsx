@@ -11,7 +11,11 @@ import { EquipmentBrandDialog } from '@/components/EquipmentBrandDialog';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import { useToast } from '@/hooks/use-toast';
 
-export const EquipmentBrandManagementDialog: React.FC = () => {
+interface EquipmentBrandManagementDialogProps {
+  trigger: React.ReactNode;
+}
+
+export const EquipmentBrandManagementDialog: React.FC<EquipmentBrandManagementDialogProps> = ({ trigger }) => {
   const { brands, loading, deleteBrand, updateBrand } = useEquipmentBrands();
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
@@ -40,10 +44,7 @@ export const EquipmentBrandManagementDialog: React.FC = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Tag className="w-4 h-4 mr-2" />
-          Marcas
-        </Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>

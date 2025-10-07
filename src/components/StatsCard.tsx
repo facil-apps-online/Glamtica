@@ -1,22 +1,21 @@
-import { Card, CardContent } from "@/components/ui/card";
-// import { LucideIcon } from "lucide-react"; // REMOVED
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface StatsCardProps {
   title: string;
   value: string | number;
   change?: string;
-  icon?: React.ElementType; // Changed to React.ElementType
+  icon?: React.ElementType;
   trend?: "up" | "down";
 }
 
 export function StatsCard({ title, value, change, icon: Icon, trend }: StatsCardProps) {
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex items-center justify-between">
+    <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <CardHeader>
+        <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-600 truncate">{title}</p>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 truncate">{value}</p>
+            <CardDescription>{title}</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl mt-1">{value}</CardTitle>
             {change && trend && (
               <p className={`text-xs sm:text-sm mt-2 truncate ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                 {change}
@@ -29,7 +28,7 @@ export function StatsCard({ title, value, change, icon: Icon, trend }: StatsCard
             </div>
           )}
         </div>
-      </CardContent>
+      </CardHeader>
     </Card>
   );
 }

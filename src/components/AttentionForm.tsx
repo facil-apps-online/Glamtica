@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
-import { DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { useBranchProducts } from "@/hooks/useProducts";
 import { useCreateAttention } from "@/hooks/useAttentions";
 import { useUpdateAttentionItems } from "@/hooks/useUpdateAttentionItems";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, Plus } from "lucide-react";
+import { Eye, Plus, Clock } from "lucide-react";
 import { FilterableSelect } from "./FilterableSelect";
 import { debounce } from "@/lib/utils";
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -18,6 +18,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import es from "date-fns/locale/es";
 import { format, addMinutes, setHours, setMinutes, differenceInMinutes } from "date-fns";
 import DatePickerButtonInput from "./DatePickerButtonInput";
+import TimePickerButtonInput from "./TimePickerButtonInput";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
 import ItemFormCard, { ItemForm } from "./ItemFormCard";
 import { v4 as uuidv4 } from "uuid";
@@ -75,6 +76,31 @@ const EvidencePreview: React.FC<{ paymentIds: string[]; isOpen: boolean; onClose
     />
   );
 };
+
+const TimePickerButton = forwardRef<
+  HTMLButtonElement,
+  {
+    value?: string;
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    disabled?: boolean;
+  }
+>(({ value, onClick, disabled }, ref) => {
+  const displayValue = value || "Seleccionar hora";
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={onClick}
+      ref={ref}
+      className="w-full justify-between h-10 flex items-center"
+      disabled={disabled}
+    >
+      {displayValue}
+      <Clock className="ml-2 h-4 w-4 opacity-50" />
+    </Button>
+  );
+});
+TimePickerButton.displayName = "TimePickerButton";
 
 
 export const AttentionForm = ({ branchId, onFinished, initialDate, attention = null, screenSize }: AttentionFormProps) => {
@@ -244,15 +270,16 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
     });
   };
 
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const timeValue = e.target.value;
+  const handleTimeChange = (date: Date | null) => {
     setAttentionDateTime(currentDateTime => {
-      const datePart = currentDateTime || new Date();
-      const [hours, minutes] = timeValue.split(':').map(Number);
-      if (isNaN(hours) || isNaN(minutes)) {
-        return currentDateTime;
+      if (!date) return null;
+      const newDateTime = new Date(date);
+      if (currentDateTime) {
+        newDateTime.setDate(currentDateTime.getDate());
+        newDateTime.setMonth(currentDateTime.getMonth());
+        newDateTime.setFullYear(currentDateTime.getFullYear());
       }
-      return setHours(setMinutes(datePart, minutes), hours);
+      return newDateTime;
     });
   };
 
@@ -291,6 +318,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
       is_parallel: false,
       parallel_group_id: null,
       offset_minutes: 0,
+      items: [],
     }]);
   };
 
@@ -589,7 +617,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
 
   return (
     <form id="attention-form" onSubmit={handleSubmit} className="relative">
-      <div className="space-y-4 pb-20">
+      <div className="space-y-4 pb-32">
         <div className="space-y-2">
           <FilterableSelect
             label="Cliente"
@@ -602,8 +630,8 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
             disabled={isEditMode}
           />
         </div>
-        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4 items-end`}>
-          <div className="flex flex-col space-y-2 h-20">
+        <div className={`grid ${isMobile ? 'grid-cols-1 gap-y-4' : 'grid-cols-2 gap-x-4'} items-end`}>
+          <div className="flex flex-col space-y-2">
             <Label htmlFor="date">Fecha</Label>
             <DatePicker
               selected={attentionDateTime}
@@ -617,16 +645,18 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
               disabled={isEditMode}
             />
           </div>
-          <div className="flex flex-col space-y-2 h-20">
+          <div className="flex flex-col space-y-2">
             <Label htmlFor="time">Hora</Label>
-            <Input 
-              id="time" 
-              type="time" 
-              value={attentionTime}
-              onChange={handleTimeChange} 
-              required 
-              className="h-10" 
-              disabled={isEditMode} 
+            <DatePicker
+              selected={attentionDateTime}
+              onChange={handleTimeChange}
+              showTimeSelect
+              showTimeSelectOnly
+              timeIntervals={5}
+              timeCaption="Hora"
+              dateFormat="h:mm aa"
+              customInput={<TimePickerButton />}
+              disabled={isEditMode}
             />
           </div>
         </div>

@@ -51,8 +51,8 @@ const processPaymentInBackend = async (
     form.submit();
   }
 
-  // Devolvemos los pagos creados que la Edge Function nos pasó.
-  return data.createdPayments;
+  // Devolvemos el objeto de datos completo que la Edge Function nos pasó.
+  return data;
 };
 
 export const useAttentionPayment = () => {
@@ -69,7 +69,7 @@ export const useAttentionPayment = () => {
       // No necesitamos pasar tenantId o userId, la Edge Function los obtiene del token.
       return processPaymentInBackend(attention, paymentOptions);
     },
-    onSuccess: (createdPayments, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
       
       // La lógica de Wompi ya no se decide aquí, sino por la respuesta de la función.
@@ -82,8 +82,8 @@ export const useAttentionPayment = () => {
         });
       }
       
-      // Devolvemos los pagos creados para el onSuccess del componente si es necesario.
-      return createdPayments;
+      // Devolvemos el objeto de datos completo para el onSuccess del componente.
+      return data;
     },
     onError: (error: Error) => {
       toast({

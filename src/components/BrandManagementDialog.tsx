@@ -17,7 +17,7 @@ import { Plus, Edit, Trash2, Tag } from "lucide-react";
 import { useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand, useToggleBrandStatus, Brand } from "@/hooks/useBrands";
 import { BrandDialog } from "./BrandDialog";
 
-export function BrandManagementDialog() {
+export function BrandManagementDialog({ trigger }: { trigger: React.ReactNode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: brands, isLoading } = useBrands();
   const toggleStatusMutation = useToggleBrandStatus();
@@ -50,10 +50,7 @@ export function BrandManagementDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <Tag className="w-4 h-4 mr-2" />
-          Marcas
-        </Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>

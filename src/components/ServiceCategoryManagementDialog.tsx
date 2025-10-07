@@ -17,7 +17,7 @@ import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { useServiceCategories, useCreateServiceCategory, useUpdateServiceCategory, useDeleteServiceCategory, useToggleServiceCategoryStatus, ServiceCategory } from "@/hooks/useServiceCategories";
 import { ServiceCategoryDialog } from "./ServiceCategoryDialog";
 
-export function ServiceCategoryManagementDialog() {
+export function ServiceCategoryManagementDialog({ trigger }: { trigger: React.ReactNode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: categories, isLoading } = useServiceCategories();
   const toggleStatusMutation = useToggleServiceCategoryStatus();
@@ -50,10 +50,7 @@ export function ServiceCategoryManagementDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <ListFilter className="w-4 h-4 mr-2" />
-          Categorías
-        </Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>

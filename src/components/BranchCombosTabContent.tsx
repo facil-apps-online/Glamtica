@@ -1,56 +1,70 @@
-import React, { useState } from "react";
-import { Package, Edit, Link, PlusCircle, DollarSign } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Boxes, Edit, Link, PlusCircle, DollarSign, MoreHorizontal, Search, Plus } from "lucide-react";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { useQueryClient } from "@tanstack/react-query";
-// Importar los hooks correctos de useServices
-import { useBranchServicesAndCombos, useUpdateBranchCombo } from "@/hooks/useServices";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useBranchServicesAndCombos, useUpdateBranchCombo, BranchCombo } from "@/hooks/useServices";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ComboBranchPriceDialog } from "@/components/ComboBranchPriceDialog";
-import { Badge } from "@/components/ui/badge";
-// Importar los nuevos diálogos
-import AddCombosToBranchDialog from "@/components/AddCombosToBranchDialog";
-import { BulkEditBranchComboPricesDialog } from "@/components/BulkEditBranchComboPricesDialog";
-import { useScreenSize } from "@/hooks/useScreenSize";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ComboBranchPriceDialog } from "@/components/ComboBranchPriceDialog";
+import AddCombosToBranchDialog from "@/components/AddCombosToBranchDialog";
+import BulkEditBranchComboPricesDialog from "@/components/BulkEditBranchComboPricesDialog";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
-const BranchComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenPriceDialog, calculateBasePrice, calculateBranchTotalPrice, branchId }) => (
+const CombosTableSkeleton = () => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Combo</TableHead>
+        <TableHead>Items</TableHead>
+        <TableHead>Precio</TableHead>
+        <TableHead>Estado</TableHead>
+        <TableHead className="text-right">Acciones</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {[...Array(5)].map((_, i) => (
+        <TableRow key={i}>
+          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+          <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+);
+
+const ComboCardSkeleton = () => (
+  <div className="space-y-4">
+    {[...Array(3)].map((_, i) => (
+      <Card key={i}>
+        <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-9 w-full mt-2" />
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
+const BranchComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenPriceDialog, calculateBranchTotalPrice }) => (
   <Card>
     <CardHeader>
       <div className="flex justify-between items-start">
-        <div>
-          <CardTitle>{combo.name}</CardTitle>
-          {combo.sku && <p className="text-sm text-muted-foreground">SKU: {combo.sku}</p>}
-        </div>
-        <Switch
-          checked={combo.is_branch_active}
-          onCheckedChange={() => handleToggleStatus(combo, branchId)}
-        />
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Nº de Ítems</span>
-        <span><Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge></span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Precio Base</span>
-        <span>{formatPrice(calculateBasePrice(combo))}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Precio en Sucursal</span>
-        <span>{formatPrice(calculateBranchTotalPrice(combo))}</span>
-      </div>
-      <div className="flex justify-end gap-2 mt-4">
+        <CardTitle className="text-base">{combo.name}</CardTitle>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="ml-2">Acciones</span>
-            </Button>
+            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handleOpenPriceDialog(combo)}>
@@ -60,166 +74,193 @@ const BranchComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenPri
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">Nº de Ítems</span>
+        <Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">Precio en Sucursal</span>
+        <span>{formatPrice(calculateBranchTotalPrice(combo))}</span>
+      </div>
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <label className="text-sm font-medium">Activo en Sucursal</label>
+        <Switch checked={combo.is_branch_active} onCheckedChange={() => handleToggleStatus(combo)} />
+      </div>
     </CardContent>
   </Card>
 );
 
 interface BranchCombosTabContentProps {
   branchId: string;
+  branchName?: string;
 }
 
-const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchId }) => {
+const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchId, branchName }) => {
   const [isPriceDialogOpen, setIsPriceDialogOpen] = useState(false);
-  const [selectedComboForPrices, setSelectedComboForPrices] = useState<any | null>(null); // Usar any temporalmente
-  // Nuevos estados para los diálogos
+  const [selectedComboForPrices, setSelectedComboForPrices] = useState<BranchCombo | null>(null);
   const [isAddComboDialogOpen, setIsAddComboDialogOpen] = useState(false);
   const [isBulkEditPricesDialogOpen, setIsBulkEditPricesDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Usar useBranchServicesAndCombos y filtrar los combos
   const { data: branchServicesAndCombos, isLoading: isLoadingCombos } = useBranchServicesAndCombos(branchId);
-  const branchCombos = branchServicesAndCombos?.filter(item => item.type === 'combo') || [];
+  const branchCombos = branchServicesAndCombos?.filter((item): item is BranchCombo => item.type === 'combo') || [];
 
-  // Usar el hook useUpdateBranchCombo
   const { mutate: updateBranchCombo } = useUpdateBranchCombo();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
 
-  const handleToggleStatus = (combo: any, currentBranchId: string) => { // Usar any temporalmente
+  const handleToggleStatus = (combo: BranchCombo) => {
     updateBranchCombo({ 
-      id: combo.id, // Usar combo.id (el ID del combo maestro) para la mutación
-      branchId: currentBranchId, // Pasar el branchId correcto
+      id: combo.id,
+      branchId: branchId,
       updates: { is_active_in_branch: !combo.is_branch_active } 
     });
   };
 
-  const handleOpenPriceDialog = (combo: any) => { // Usar any temporalmente
+  const handleOpenPriceDialog = (combo: BranchCombo) => {
     setSelectedComboForPrices(combo);
     setIsPriceDialogOpen(true);
   };
 
-  const calculateBasePrice = (combo: any) => { // Usar any temporalmente
-    if (!combo.combo_items) return 0;
-    return combo.combo_items.reduce((total: number, item: any) => total + (item.price * item.quantity), 0);
-  };
-
-  const calculateBranchTotalPrice = (combo: any) => { // Usar any temporalmente
+  const calculateBranchTotalPrice = (combo: BranchCombo) => {
     if (!combo.items) return 0;
-    return combo.items.reduce((total: number, item: any) => total + (item.final_price * item.quantity), 0);
+    return combo.items.reduce((total, item) => total + (item.final_price * item.quantity), 0);
   };
 
-  const handleAddComboSuccess = () => {
+  const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', branchId] });
   };
 
-  const handleBulkEditPricesSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', branchId] });
-  };
+  const filteredCombos = useMemo(() => {
+    if (!branchCombos) return [];
+    return branchCombos.filter(c => 
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.sku?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [branchCombos, searchTerm]);
 
   if (!branchId) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <Link className="mx-auto h-12 w-12 mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Error: ID de sucursal no proporcionado</h3>
-        <p>No se pueden cargar los combos sin un ID de sucursal válido.</p>
-      </div>
-    );
+    return <EmptyState Icon={Link} title="Error: ID de sucursal no proporcionado" description="No se pueden cargar los combos sin un ID de sucursal válido." />;
   }
 
-  if (isLoadingCombos) {
-    return <div className="text-center p-8">Cargando combos de la sucursal...</div>;
-  }
+  const renderContent = () => {
+    if (isLoadingCombos) {
+      return isMobile ? <ComboCardSkeleton /> : <CombosTableSkeleton />;
+    }
+
+    if (filteredCombos.length === 0) {
+      return (
+        <EmptyState
+          Icon={Boxes}
+          title={searchTerm ? "No se encontraron combos" : "No hay combos en esta sucursal"}
+          description={searchTerm ? "Intenta con otro término de búsqueda." : "Asigna combos desde el catálogo para empezar a vender."}
+          action={!searchTerm && (
+            <Button onClick={() => setIsAddComboDialogOpen(true)}><Plus className="w-4 h-4 mr-2"/>Añadir Combos</Button>
+          )}
+        />
+      );
+    }
+
+    return isMobile ? (
+      <div className="space-y-4">
+        {filteredCombos.map((combo) => (
+          <BranchComboCard 
+            key={combo.id} 
+            combo={combo} 
+            formatPrice={formatPrice} 
+            handleToggleStatus={handleToggleStatus} 
+            handleOpenPriceDialog={handleOpenPriceDialog}
+            calculateBranchTotalPrice={calculateBranchTotalPrice}
+          />
+        ))}
+      </div>
+    ) : (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Combo</TableHead>
+            <TableHead>Items</TableHead>
+            <TableHead>Precio en Sucursal</TableHead>
+            <TableHead>Activo</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredCombos.map((combo) => (
+            <TableRow key={combo.id}>
+              <TableCell>
+                <div className="font-medium">{combo.name}</div>
+                {combo.sku && <div className="text-sm text-muted-foreground">SKU: {combo.sku}</div>}
+              </TableCell>
+              <TableCell><Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge></TableCell>
+              <TableCell>{formatPrice(calculateBranchTotalPrice(combo))}</TableCell>
+              <TableCell><Switch checked={combo.is_branch_active} onCheckedChange={() => handleToggleStatus(combo)} /></TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleOpenPriceDialog(combo)}><Edit className="w-4 h-4 mr-2" /> Editar Precios</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-semibold">Combos de la Sucursal</CardTitle>
-        <div className="flex items-center gap-2">
-          {/* <Button size="sm" variant="outline" onClick={() => setIsBulkEditPricesDialogOpen(true)} disabled={!branchCombos || branchCombos.length === 0}>
-            <DollarSign className="mr-2 h-4 w-4" />
-            Editar Precios Masivamente
-          </Button> */}
-          <Button size="sm" onClick={() => setIsAddComboDialogOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Combos
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {isMobile ? (
-          <div className="space-y-4 p-4">
-            {branchCombos?.map((combo: any) => (
-              <BranchComboCard 
-                key={combo.id} 
-                combo={combo} 
-                formatPrice={formatPrice} 
-                handleToggleStatus={handleToggleStatus} 
-                handleOpenPriceDialog={handleOpenPriceDialog}
-                calculateBasePrice={calculateBasePrice}
-                calculateBranchTotalPrice={calculateBranchTotalPrice}
-                branchId={branchId}
-              />
-            ))}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <Boxes className="h-5 w-5" />
+              Combos
+            </CardTitle>
+            <CardDescription>Añade, edita y gestiona los combos disponibles en esta sucursal.</CardDescription>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Combo</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Nº de Ítems</TableHead>
-                <TableHead>Precio Base</TableHead>
-                <TableHead>Precio en Sucursal</TableHead>
-                <TableHead>Activo en Sucursal</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {branchCombos?.map((combo: any) => ( // Usar any temporalmente
-                <TableRow key={combo.id}>
-                  <TableCell>
-                    <div className="font-medium">{combo.name}</div>
-                    {combo.description && <div className="text-sm text-muted-foreground">{combo.description}</div>}
-                  </TableCell>
-                  <TableCell>{combo.sku || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{combo.items?.length || 0} Ítems</Badge>
-                  </TableCell>
-                  <TableCell>{formatPrice(calculateBasePrice(combo))}</TableCell>
-                  <TableCell>{formatPrice(calculateBranchTotalPrice(combo))}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={combo.is_branch_active}
-                      onCheckedChange={() => handleToggleStatus(combo, branchId)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => handleOpenPriceDialog(combo)}>
-                      <Edit className="mr-2 h-4 w-4" /> Editar Precios
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setIsBulkEditPricesDialogOpen(true)} disabled={!branchCombos || branchCombos.length === 0}>
+              <DollarSign className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Editar Precios</span>
+            </Button>
+            <Button size="sm" onClick={() => setIsAddComboDialogOpen(true)}>
+              <PlusCircle className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Añadir</span>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por nombre o SKU..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-        {branchCombos?.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Package className="mx-auto h-12 w-12 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No hay combos asignados a esta sucursal</h3>
-            <p>Asigna combos desde el catálogo principal para gestionarlos aquí.</p>
-          </div>
-        )}
-      </CardContent>
-      
+      <Card>
+        <CardContent className="p-0">
+          {renderContent()}
+        </CardContent>
+      </Card>
+
       {selectedComboForPrices && (
         <ComboBranchPriceDialog
           isOpen={isPriceDialogOpen}
           onOpenChange={setIsPriceDialogOpen}
           combo={selectedComboForPrices}
-          branch={{ id: branchId, name: "" }} // TODO: Pasar el nombre de la sucursal real
+          branch={{ id: branchId, name: branchName || "" }}
         />
       )}
 
@@ -227,10 +268,10 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
         isOpen={isAddComboDialogOpen}
         onOpenChange={setIsAddComboDialogOpen}
         branchId={branchId}
-        onSuccess={handleAddComboSuccess}
+        onSuccess={handleSuccess}
       />
 
-      {/* {branchCombos && branchCombos.length > 0 && (
+      {branchCombos && branchCombos.length > 0 && (
         <BulkEditBranchComboPricesDialog
           isOpen={isBulkEditPricesDialogOpen}
           onOpenChange={setIsBulkEditPricesDialogOpen}
@@ -238,14 +279,14 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
           branchCombos={branchCombos.map(combo => ({
             id: combo.id,
             name: combo.name,
-            selling_price: combo.selling_price,
-            is_branch_active: combo.is_active_in_branch,
+            selling_price: calculateBranchTotalPrice(combo),
+            is_branch_active: combo.is_branch_active,
             branch_combo_id: combo.branch_combo_id,
           }))}
-          onSuccess={handleBulkEditPricesSuccess}
+          onSuccess={handleSuccess}
         />
-      )} */}
-    </Card>
+      )}
+    </div>
   );
 };
 

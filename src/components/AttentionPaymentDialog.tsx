@@ -9,9 +9,9 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { PaymentEvidenceUploadDialog } from './PaymentEvidenceUploadDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInvoiceDetails } from '@/hooks/useInvoiceDetails';
 import { ReceiptDialog } from './ReceiptDialog';
 import { CheckCircle2 } from 'lucide-react';
+import { useSaleDetails, SaleDetails } from '@/hooks/useSaleDetails';
 
 // Interfaces...
 interface AttentionData {
@@ -37,16 +37,6 @@ interface AttentionPaymentRecord {
     payment_method_id: string;
 }
 
-// Invoice data type for the receipt
-interface InvoiceData {
-  id: string; invoice_number: string; created_at: string; subtotal_amount: number;
-  total_tax_amount: number; total_amount: number;
-  client: { name: string; identification_number?: string; address?: string; phone?: string; };
-  branch: { name: string; address?: string; };
-  items: { id: string; item_type: 'SERVICE' | 'PRODUCT'; description: string; quantity: number; unit_price: number; total_price: number; }[];
-  eInvoicingConfig: { enabled: boolean; mode: 'automatic' | 'manual'; };
-}
-
 export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ isOpen, onClose, attention }) => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodItem[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -58,13 +48,17 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
   
   const [paymentState, setPaymentState] = useState<'paying' | 'uploading_evidence' | 'completed'>('paying');
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-  const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+  const [completedSaleId, setCompletedSaleId] = useState<string | null>(null);
 
   const [paymentsRequiringEvidence, setPaymentsRequiringEvidence] = useState<AttentionPaymentRecord[]>([]);
   const [currentEvidencePayment, setCurrentEvidencePayment] = useState<AttentionPaymentRecord | null>(null);
 
   const paymentMutation = useAttentionPayment();
-  const invoiceMutation = useInvoiceDetails();
+  
+  // Use the query hook, but only enable it when the dialog is open
+  const { data: saleData, isLoading: isSaleDataLoading } = useSaleDetails(
+    isReceiptDialogOpen ? completedSaleId : null
+  );
 
   const resetState = () => {
     setPaymentState('paying');
@@ -73,7 +67,8 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
     setDiscountType('value');
     setPaymentsRequiringEvidence([]);
     setCurrentEvidencePayment(null);
-    setInvoiceData(null);
+    setCompletedSaleId(null);
+    setIsReceiptDialogOpen(false);
   };
 
   useEffect(() => {
@@ -128,24 +123,30 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
       discount: discountAmount,
     };
 
-        paymentMutation.mutate({ 
-          attention, 
-          paymentOptions
-        }, {
-            onSuccess: (createdPayments) => {
-                const requiringEvidence = createdPayments.filter(p => 
-                    availablePaymentMethods.find(apm => apm.id === p.payment_method_id)?.requires_evidence
-                );
-    
-                if (requiringEvidence.length > 0) {
-                    setPaymentsRequiringEvidence(requiringEvidence);
-                    setCurrentEvidencePayment(requiringEvidence[0]);
-                    setPaymentState('uploading_evidence');
-                } else {
-                    setPaymentState('completed');
-                }
+    paymentMutation.mutate({ 
+      attention, 
+      paymentOptions
+    }, {
+        onSuccess: (data) => {
+            if (data) {
+              const { createdPayments, saleId } = data;
+              setCompletedSaleId(saleId);
+
+              const requiringEvidence = createdPayments.filter(p => 
+                  availablePaymentMethods.find(apm => apm.id === p.payment_method_id)?.requires_evidence
+              );
+  
+              if (requiringEvidence.length > 0) {
+                  setPaymentsRequiringEvidence(requiringEvidence);
+                  setCurrentEvidencePayment(requiringEvidence[0]);
+                  setPaymentState('uploading_evidence');
+              } else {
+                  setPaymentState('completed');
+              }
             }
-        });  };
+        }
+    });
+  };
 
   const handleUploadComplete = () => {
     const currentIndex = paymentsRequiringEvidence.findIndex(p => p.id === currentEvidencePayment?.id);
@@ -157,16 +158,6 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
         setPaymentState('completed');
     }
   }
-
-  const handleViewReceipt = () => {
-    if (!attention) return;
-    invoiceMutation.mutate(attention.id, {
-      onSuccess: (data) => {
-        setInvoiceData(data as InvoiceData);
-        setIsReceiptDialogOpen(true);
-      }
-    });
-  };
 
   const handleCloseDialog = () => {
     resetState();
@@ -286,8 +277,8 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
             {paymentState === 'completed' && (
               <>
                 <Button onClick={handleCloseDialog} variant="outline">Finalizar</Button>
-                <Button onClick={handleViewReceipt} disabled={invoiceMutation.isPending}>
-                  {invoiceMutation.isPending ? 'Cargando...' : 'Ver Recibo'}
+                <Button onClick={() => setIsReceiptDialogOpen(true)} disabled={!completedSaleId}>
+                  {isSaleDataLoading ? 'Cargando...' : 'Ver Recibo'}
                 </Button>
               </>
             )}
@@ -298,20 +289,18 @@ export const AttentionPaymentDialog: React.FC<AttentionPaymentDialogProps> = ({ 
       {paymentState === 'uploading_evidence' && currentEvidencePayment && (
         <PaymentEvidenceUploadDialog
           isOpen={true}
-          onOpenChange={() => setPaymentState('completed')} // Or handle close differently
+          onOpenChange={() => setPaymentState('completed')}
           attentionPaymentId={currentEvidencePayment.id}
           branchId={attention.branch_id}
           onUploadComplete={handleUploadComplete}
         />
       )}
 
-      {invoiceData && (
-          <ReceiptDialog 
-            isOpen={isReceiptDialogOpen} 
-            onClose={() => setIsReceiptDialogOpen(false)} 
-            invoiceData={invoiceData} 
-          />
-      )}
+      <ReceiptDialog 
+        isOpen={isReceiptDialogOpen} 
+        onClose={() => setIsReceiptDialogOpen(false)} 
+        saleData={saleData}
+      />
     </>
   );
 };

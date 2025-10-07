@@ -117,26 +117,26 @@ export default function Inventory() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate('/inventory/suppliers')}>
+                <DropdownMenuItem onClick={() => navigate('/app/inventory/suppliers')}>
                   Proveedores
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/inventory/purchases')}>
+                <DropdownMenuItem onClick={() => navigate('/app/inventory/purchases')}>
                   Compras
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/inventory/transfers')}>
+                <DropdownMenuItem onClick={() => navigate('/app/inventory/transfers')}>
                   Traslados
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <>
-              <Button onClick={() => navigate('/inventory/suppliers')}>
+              <Button onClick={() => navigate('/app/inventory/suppliers')}>
                 Proveedores
               </Button>
-              <Button onClick={() => navigate('/inventory/purchases')}>
+              <Button onClick={() => navigate('/app/inventory/purchases')}>
                 Compras
               </Button>
-              <Button onClick={() => navigate('/inventory/transfers')}>
+              <Button onClick={() => navigate('/app/inventory/transfers')}>
                 Traslados
               </Button>
             </>

@@ -22,7 +22,9 @@ import {
   Tag, 
   ListFilter, 
   Plus, 
-  Percent 
+  Percent, 
+  SlidersHorizontal,
+  MoreHorizontal
 } from "lucide-react";
 import { useMasterProducts, useUpdateMasterProduct, MasterProduct } from "@/hooks/useProducts";
 import { useBrands } from "@/hooks/useBrands";
@@ -34,16 +36,13 @@ import { ProductCategoryManagementDialog } from "@/components/ProductCategoryMan
 import { BrandManagementDialog } from "@/components/BrandManagementDialog";
 import AssignProductToBranchesDialog from "@/components/AssignProductToBranchesDialog";
 import ManageProductPricesDialog from "@/components/ManageProductPricesDialog";
-import { ManageProductCommissionsDialog } from "@/components/ManageProductCommissionsDialog"; // NEW IMPORT
-
+import { ManageProductCommissionsDialog } from "@/components/ManageProductCommissionsDialog";
 import { UnitOfMeasureManagementDialog } from "@/components/UnitOfMeasureManagementDialog";
-import { SlidersHorizontal } from "lucide-react";
 import { useScreenSize } from "@/hooks/useScreenSize";
-
-
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
-
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog }) => (
   <Card>
@@ -53,31 +52,10 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
           <CardTitle>{product.name}</CardTitle>
           {product.sku && <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>}
         </div>
-        <Switch
-          checked={product.is_active || false}
-          onCheckedChange={() => handleToggleStatus(product)}
-        />
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Marca</span>
-        <span>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Categoría</span>
-        <span>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Costo</span>
-        <span>{product.cost_price ? formatPrice(product.cost_price) : "N/A"}</span>
-      </div>
-      <div className="flex justify-end gap-2 mt-4">
-         <DropdownMenu>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="ghost" size="icon">
               <MoreHorizontal className="h-4 w-4" />
-              <span className="ml-2">Acciones</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -93,19 +71,98 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
               <Percent className="w-4 h-4 mr-2" />
               Gestionar Comisiones
             </DropdownMenuItem>
-             <DropdownMenuItem>
-               <MasterProductDialog product={product} trigger={
-                <div className="flex items-center w-full">
+             <MasterProductDialog product={product} trigger={
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <Edit className="w-4 h-4 mr-2" />
                   <span>Editar</span>
-                </div>
+                </DropdownMenuItem>
               } />
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between items-start gap-4">
+        <span className="text-muted-foreground">Descripción</span>
+        <span className="text-sm text-right">{product.description || "-"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Marca</span>
+        <span>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Categoría</span>
+        <span>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</span>
+      </div>
+      <div className="flex items-center justify-between rounded-md border p-3 mt-4">
+        <label className="text-sm font-medium">Activo</label>
+        <Switch
+          checked={product.is_active || false}
+          onCheckedChange={() => handleToggleStatus(product)}
+        />
+      </div>
     </CardContent>
   </Card>
+);
+
+const ProductCardSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div className="space-y-2 w-full">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <Skeleton className="h-8 w-8" />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <div className="flex justify-between">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <div className="h-10 w-full mt-4 rounded-md border flex items-center justify-between p-3">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-6 w-12" />
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ProductTableSkeleton = () => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Producto</TableHead>
+        <TableHead>Descripción</TableHead>
+        <TableHead>Marca</TableHead>
+        <TableHead>Categoría</TableHead>
+        <TableHead>Activo</TableHead>
+        <TableHead className="text-right">Acciones</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {[...Array(5)].map((_, i) => (
+        <TableRow key={i}>
+          <TableCell>
+            <Skeleton className="h-5 w-32 mb-2" />
+            <Skeleton className="h-4 w-24" />
+          </TableCell>
+          <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+          <TableCell className="text-right">
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
 );
 
 const ProductCatalog = () => {
@@ -118,8 +175,6 @@ const ProductCatalog = () => {
   const [selectedProductForAssignment, setSelectedProductForAssignment] = useState<MasterProduct | null>(null);
   const [isManagePricesDialogOpen, setIsManagePricesDialogOpen] = useState(false);
   const [selectedProductForPrices, setSelectedProductForPrices] = useState<MasterProduct | null>(null);
-
-  // NEW STATE FOR COMMISSIONS DIALOG
   const [isProductCommissionsDialogOpen, setIsProductCommissionsDialogOpen] = useState(false);
   const [selectedProductForCommissions, setSelectedProductForCommissions] = useState<MasterProduct | null>(null);
 
@@ -157,10 +212,9 @@ const ProductCatalog = () => {
     setIsManagePricesDialogOpen(false);
   };
 
-  // NEW HANDLERS FOR COMMISSIONS DIALOG
   const handleOpenProductCommissionsDialog = (product: MasterProduct) => {
     setSelectedProductForCommissions(product);
-setIsProductCommissionsDialogOpen(true);
+    setIsProductCommissionsDialogOpen(true);
   };
 
   const handleProductCommissionsSuccess = () => {
@@ -168,196 +222,206 @@ setIsProductCommissionsDialogOpen(true);
     setIsProductCommissionsDialogOpen(false);
   };
 
-  
+  const renderContent = () => {
+    if (isLoading) {
+      return isMobile 
+        ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <ProductCardSkeleton key={i} />)}</div>
+        : <ProductTableSkeleton />;
+    }
+
+    if (filteredProducts?.length === 0) {
+      return (
+        <EmptyState
+          Icon={Package}
+          title="No se encontraron productos"
+          description="Intenta cambiar los filtros o crea un nuevo producto maestro."
+          action={<MasterProductDialog trigger={<Button>Nuevo Producto</Button>} />}
+        />
+      );
+    }
+
+    return isMobile ? (
+      <div className="space-y-4 p-4">
+        {filteredProducts?.map((product: MasterProduct) => {
+          const brand = brands?.find(b => b.id === product.brand_id);
+          const category = productCategories?.find(c => c.id === product.category_id);
+          return (
+            <ProductCard
+              key={product.id}
+              product={product}
+              brand={brand}
+              category={category}
+              formatPrice={formatPrice}
+              handleToggleStatus={handleToggleStatus}
+              handleOpenAssignProductDialog={handleOpenAssignProductDialog}
+              handleOpenManagePricesDialog={handleOpenManagePricesDialog}
+              handleOpenProductCommissionsDialog={handleOpenProductCommissionsDialog}
+            />
+          );
+        })}
+      </div>
+    ) : (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Producto</TableHead>
+            <TableHead>Descripción</TableHead>
+            <TableHead>Marca</TableHead>
+            <TableHead>Categoría</TableHead>
+            <TableHead>Activo</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredProducts?.map((product: MasterProduct) => {
+            const brand = brands?.find(b => b.id === product.brand_id);
+            return (
+              <TableRow key={product.id}>
+                <TableCell>
+                  <div className="font-medium">{product.name}</div>
+                  {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm text-muted-foreground truncate max-w-xs">{product.description || "-"}</div>
+                </TableCell>
+                <TableCell>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</TableCell>
+                <TableCell>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={product.is_active || false}
+                    onCheckedChange={() => handleToggleStatus(product)}
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <span className="sr-only">Abrir menú</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
+                        <Share2 className="w-4 h-4 mr-2" />
+                        Asignar a Sucursales
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(product)}>
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Gestionar Precios
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenProductCommissionsDialog(product)}>
+                        <Percent className="w-4 h-4 mr-2" />
+                        Gestionar Comisiones
+                      </DropdownMenuItem>
+                      <MasterProductDialog product={product} trigger={
+                        <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">
+                          <Edit className="w-4 h-4 mr-2" />
+                          <span>Editar</span>
+                        </div>
+                      } />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  };
 
   return (
-    <div className="relative space-y-8"> {/* Añadir relative para posicionamiento absoluto del overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <div className="space-y-8">
+      <PageHeader title="Productos" subtitle="Crea y edita los productos base de tu negocio.">
+        <div className="flex items-center gap-2">
+          <UnitOfMeasureManagementDialog trigger={<Button variant="outline" size="sm"><SlidersHorizontal className="w-4 h-4" /><span className="hidden sm:inline ml-2">UoM</span></Button>} />
+          <ProductCategoryManagementDialog trigger={<Button variant="outline" size="sm"><ListFilter className="w-4 h-4" /><span className="hidden sm:inline ml-2">Categorías</span></Button>} />
+          <BrandManagementDialog trigger={<Button variant="outline" size="sm"><Tag className="w-4 h-4" /><span className="hidden sm:inline ml-2">Marcas</span></Button>} />
+          <MasterProductDialog trigger={<Button size="sm"><Plus className="w-4 h-4" /><span className="hidden sm:inline ml-2">Nuevo Producto</span></Button>} />
         </div>
-      )}
-      <div style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}> {/* Contenido principal con opacidad */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold">Catálogo de Productos</h2>
-            <p className="text-muted-foreground">Crea y edita los productos base de tu negocio.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <UnitOfMeasureManagementDialog trigger={<Button variant="outline" size="sm"><SlidersHorizontal className="w-4 h-4 mr-2" />UoM</Button>} />
-            <ProductCategoryManagementDialog trigger={<Button size="sm"><ListFilter className="w-4 h-4 mr-2" />Categorías</Button>} />
-            <BrandManagementDialog trigger={<Button size="sm"><Tag className="w-4 h-4 mr-2" />Marcas</Button>} />
-            <MasterProductDialog trigger={<Button size="sm"><Plus className="w-4 h-4 mr-2" />Nuevo Producto</Button>} />
-          </div>
-        </div>
+      </PageHeader>
 
-        {/* Filtros */}
-        <Card className="mt-4">
-          
-          <CardContent className="py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <Input
-                  placeholder="Buscar por nombre, descripción o SKU..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="md:col-span-3"
+      <Card className="mt-4">
+        <CardContent className="py-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+              <Input
+                placeholder="Buscar por nombre, descripción o SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="md:col-span-3"
+              />
+              <Button onClick={() => setConfirmedSearchTerm(searchTerm)} className="md:col-span-1">
+                <Search className="w-4 h-4 mr-2" />
+                Buscar
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              <select
+                className="w-full px-3 py-2 border rounded-md"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">Todas las categorías</option>
+                {productCategories?.map(category => (
+                  <option key={category.id} value={category.name}>{category.name}</option>
+                ))}
+              </select>
+              <select
+                className="w-full px-3 py-2 border rounded-md"
+                value={filterBrand}
+                onChange={(e) => setFilterBrand(e.target.value)}
+              >
+                <option value="">Todas las marcas</option>
+                {brands?.map(brand => (
+                  <option key={brand.id} value={brand.id}>{brand.name}</option>
+                ))}
+              </select>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={showInactive}
+                  onCheckedChange={setShowInactive}
                 />
-                <Button onClick={() => setConfirmedSearchTerm(searchTerm)} className="md:col-span-1">
-                  <Search className="w-4 h-4 mr-2" />
-                  Buscar
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                <select
-                  className="w-full px-3 py-2 border rounded-md"
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                >
-                  <option value="">Todas las categorías</option>
-                  {productCategories?.map(category => (
-                    <option key={category.id} value={category.name}>{category.name}</option>
-                  ))}
-                </select>
-                <select
-                  className="w-full px-3 py-2 border rounded-md"
-                  value={filterBrand}
-                  onChange={(e) => setFilterBrand(e.target.value)}
-                >
-                  <option value="">Todas las marcas</option>
-                  {brands?.map(brand => (
-                    <option key={brand.id} value={brand.id}>{brand.name}</option>
-                  ))}
-                </select>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={showInactive}
-                    onCheckedChange={setShowInactive}
-                  />
-                  <span className="text-sm text-muted-foreground">Mostrar inactivos</span>
-                </div>
+                <span className="text-sm text-muted-foreground">Mostrar inactivos</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Tabla de productos */}
-        <Card className="mt-8">
-          <CardContent className="p-0">
-           {isMobile ? (
-              <div className="space-y-4 p-4">
-                {filteredProducts?.map((product: MasterProduct) => {
-                  const brand = brands?.find(b => b.id === product.brand_id);
-                  const category = productCategories?.find(c => c.id === product.category_id);
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      brand={brand}
-                      category={category}
-                      formatPrice={formatPrice}
-                      handleToggleStatus={handleToggleStatus}
-                      handleOpenAssignProductDialog={handleOpenAssignProductDialog}
-                      handleOpenManagePricesDialog={handleOpenManagePricesDialog}
-                      handleOpenProductCommissionsDialog={handleOpenProductCommissionsDialog}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead colSpan={2}>Producto</TableHead>
-                  <TableHead className="w-px">Marca</TableHead>
-                  <TableHead className="w-px">Categoría</TableHead>
-                  <TableHead className="w-px">Costo</TableHead>
-                  <TableHead className="w-px">Activo</TableHead>
-                  <TableHead className="w-px">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts?.map((product: MasterProduct) => {
-                  const brand = brands?.find(b => b.id === product.brand_id);
-                  
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell colSpan={2}>
-                        <div className="font-medium">{product.name}</div>
-                        {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}
-                      </TableCell>
-                      <TableCell>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</TableCell>
-                      <TableCell>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</TableCell>
-                      <TableCell>{product.cost_price ? formatPrice(product.cost_price) : "N/A"}</TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={product.is_active || false}
-                          onCheckedChange={() => handleToggleStatus(product)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MasterProductDialog product={product} trigger={
-                            <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
-                          } />
-                          <Button variant="outline" size="sm" onClick={() => handleOpenAssignProductDialog(product)}>
-                            <Share2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleOpenManagePricesDialog(product)}>
-                            <DollarSign className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleOpenProductCommissionsDialog(product)}>
-                            <Percent className="w-4 h-4" />
-                          </Button>
-                          
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            )}
-            
-            {filteredProducts?.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="mx-auto h-12 w-12 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No se encontraron productos en el catálogo</h3>
-                <p>Intenta cambiar los filtros o crea un nuevo producto maestro.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        {selectedProductForAssignment && (
-          <AssignProductToBranchesDialog
-            isOpen={isAssignProductDialogOpen}
-            onOpenChange={setIsAssignProductDialogOpen}
-            product={selectedProductForAssignment}
-            onSuccess={handleAssignProductSuccess}
-          />
-        )}
-        {selectedProductForPrices && (
-          <ManageProductPricesDialog
-            isOpen={isManagePricesDialogOpen}
-            onOpenChange={setIsManagePricesDialogOpen}
-            product={selectedProductForPrices}
-            onSuccess={handleManagePricesSuccess}
-          />
-        )}
-        {/* NEW DIALOG INTEGRATION */}
-        {selectedProductForCommissions && (
-          <ManageProductCommissionsDialog
-            isOpen={isProductCommissionsDialogOpen}
-            onOpenChange={setIsProductCommissionsDialogOpen}
-            productId={selectedProductForCommissions.id}
-            productName={selectedProductForCommissions.name}
-            onSuccess={handleProductCommissionsSuccess}
-          />
-        )}
-      </div>
+      <Card className="mt-8">
+        <CardContent className="p-0">
+          {renderContent()}
+        </CardContent>
+      </Card>
+
+      {selectedProductForAssignment && (
+        <AssignProductToBranchesDialog
+          isOpen={isAssignProductDialogOpen}
+          onOpenChange={setIsAssignProductDialogOpen}
+          product={selectedProductForAssignment}
+          onSuccess={handleAssignProductSuccess}
+        />
+      )}
+      {selectedProductForPrices && (
+        <ManageProductPricesDialog
+          isOpen={isManagePricesDialogOpen}
+          onOpenChange={setIsManagePricesDialogOpen}
+          product={selectedProductForPrices}
+          onSuccess={handleManagePricesSuccess}
+        />
+      )}
+      {selectedProductForCommissions && (
+        <ManageProductCommissionsDialog
+          isOpen={isProductCommissionsDialogOpen}
+          onOpenChange={setIsProductCommissionsDialogOpen}
+          productId={selectedProductForCommissions.id}
+          productName={selectedProductForCommissions.name}
+          onSuccess={handleProductCommissionsSuccess}
+        />
+      )}
     </div>
   );
 };
-
 
 export default ProductCatalog;

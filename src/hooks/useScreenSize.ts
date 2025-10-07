@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 
 const breakpoints = {
   sm: 640,
-  md: 768,
-  lg: 1024,
+  md: 1024,
+  lg: 1280,
 };
 
 type ScreenSize = 'mobile' | 'tablet' | 'desktop';

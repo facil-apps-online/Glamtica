@@ -28,14 +28,15 @@ const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
     if (!authLoading && isAuthenticated) {
       const publicRoutes = ['/auth', '/register-tenant', '/update-password'];
       if (publicRoutes.includes(location.pathname)) {
-        let redirectTo = '/';
-                  if (currentAssignment) {
-                    if (currentAssignment.role_name === 'super_admin') {
-                      redirectTo = '/superadmin/dashboard';
-                    } else {
-                      redirectTo = '/app'; // Changed from '/' to '/app'
-                    }
-                  }        navigate(redirectTo, { replace: true });
+        if (currentAssignment) {
+          if (currentAssignment.role_name === 'super_admin') {
+            navigate('/superadmin/dashboard', { replace: true });
+          } else {
+            navigate('/app', { replace: true });
+          }
+        }
+        // If currentAssignment is not yet available, do nothing.
+        // The effect will re-run when it's populated.
       }
     }
   }, [authLoading, isAuthenticated, currentAssignment, navigate, location.pathname]);

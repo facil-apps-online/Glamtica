@@ -30,6 +30,10 @@ const STATUS_FILTERS = [
   { value: 'rejected', label: 'Rechazadas' },
 ];
 
+import { PageHeader } from '@/components/PageHeader';
+
+import DatePickerButtonInput from "@/components/DatePickerButtonInput";
+
 const TimeOffHistoryPage: React.FC = () => {
   const { currentAssignment } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState<TimeOffRequest['status'] | 'all'>('all');
@@ -46,16 +50,10 @@ const TimeOffHistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">
-            Historial de Ausencias
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Revisa el historial de solicitudes de ausencias.
-          </p>
-        </div>
-      </div>
+      <PageHeader 
+        title="Historial de Ausencias"
+        subtitle="Revisa el historial de solicitudes de ausencias."
+      />
 
       <Card>
         <CardHeader>
@@ -108,23 +106,29 @@ const TimeOffHistoryPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fecha de Inicio</Label>
-                <DatePicker
-                  selected={startDate}
-                  onChange={(date: Date) => setStartDate(date)}
-                  locale="es"
-                  dateFormat="dd/MM/yyyy"
-                  className="w-full px-3 py-2 border border-input rounded-md"
-                />
+                <div className="w-full">
+                  <DatePicker
+                    selected={startDate}
+                    onChange={(date: Date) => setStartDate(date)}
+                    locale="es"
+                    dateFormat="dd/MM/yyyy"
+                    customInput={<DatePickerButtonInput />}
+                    wrapperClassName="w-full"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Fecha de Fin</Label>
-                <DatePicker
-                  selected={endDate}
-                  onChange={(date: Date) => setEndDate(date)}
-                  locale="es"
-                  dateFormat="dd/MM/yyyy"
-                  className="w-full px-3 py-2 border border-input rounded-md"
-                />
+                <div className="w-full">
+                  <DatePicker
+                    selected={endDate}
+                    onChange={(date: Date) => setEndDate(date)}
+                    locale="es"
+                    dateFormat="dd/MM/yyyy"
+                    customInput={<DatePickerButtonInput />}
+                    wrapperClassName="w-full"
+                  />
+                </div>
               </div>
             </div>
           </div>

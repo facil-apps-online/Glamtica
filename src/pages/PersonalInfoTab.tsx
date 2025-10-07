@@ -75,7 +75,7 @@ export const PersonalInfoTab = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="md:col-span-1 flex flex-col items-center md:items-start space-y-4">
                   <FormLabel>Avatar</FormLabel>
                   {!loading && profile && (

@@ -49,6 +49,7 @@ import LandingPage from "@/pages/LandingPage";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import FeaturesPage from "@/pages/FeaturesPage";
+import UIKit from "@/pages/Dev/UIKit";
 
 function App() {
   return (
@@ -105,6 +106,10 @@ function App() {
                   <Route path="translations" element={<TranslationAdmin />} />
                   <Route path="time-off-management" element={<TimeOffManagementPage />} />
                   <Route path="time-off-history" element={<TimeOffHistoryPage />} />
+                  
+                  {/* Ruta de desarrollo para el UI Kit */}
+                  <Route path="dev/uikit" element={<UIKit />} />
+
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Route>

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { useClientDocumentTemplates } from "@/hooks/useClientDocumentTemplates";
 import { ManageFormTemplatesDialog } from '@/components/ManageFormTemplatesDialog';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
+import { Users } from 'lucide-react';
 
 export function ClientsTab() {
   const { toast } = useToast();
@@ -67,7 +67,10 @@ export function ClientsTab() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Configuración de Clientes</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Users className="h-5 w-5" />
+            Configuración de Clientes
+          </CardTitle>
           <CardDescription>
             Define los formularios por defecto y los consentimientos requeridos para tus clientes.
           </CardDescription>
@@ -79,60 +82,74 @@ export function ClientsTab() {
             <div>Error al cargar la configuración.</div>
           ) : (
             <>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="intake-form">Formulario de Admisión por Defecto</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Select
-                      value={formState.default_intake_form_id?.toString() || 'none'}
-                      onValueChange={(value) => setFormState(prev => ({ ...prev, default_intake_form_id: value === 'none' ? null : value }))}
-                    >
-                      <SelectTrigger id="intake-form">
-                        <SelectValue placeholder="Selecciona un formulario..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ninguno</SelectItem>
-                        {templates?.filter(t => t.is_active).map(template => (
-                          <SelectItem key={template.id} value={template.id.toString()}>
-                            {template.name} (v{template.version})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={() => setManageTemplatesOpen(true)}>Gestionar Formularios</Button>
-                  </div>
-                </div>
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Ficha Técnica</CardTitle>
+                    <CardDescription>Selecciona la ficha técnica por defecto que se asociará a los nuevos clientes.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Label htmlFor="intake-form">Ficha Técnica por Defecto</Label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Select
+                        value={formState.default_intake_form_id?.toString() || 'none'}
+                        onValueChange={(value) => setFormState(prev => ({ ...prev, default_intake_form_id: value === 'none' ? null : value }))}
+                      >
+                        <SelectTrigger id="intake-form">
+                          <SelectValue placeholder="Selecciona una ficha..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Ninguno</SelectItem>
+                          {templates?.filter(t => t.is_active).map(template => (
+                            <SelectItem key={template.id} value={template.id.toString()}>
+                              {template.name} (v{template.version})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" onClick={() => setManageTemplatesOpen(true)}>Gestionar Plantillas</Button>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="general-signature" className="text-base">Requerir Firma General</Label>
-                    <p className="text-sm text-slate-600">
-                      Solicita una firma digital general al cliente durante el proceso de registro o en su primera visita.
-                    </p>
-                  </div>
-                  <Switch
-                    id="general-signature"
-                    checked={formState.require_general_signature ?? false}
-                    onCheckedChange={(checked) => setFormState(prev => ({ ...prev, require_general_signature: checked }))}
-                  />
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Consentimientos y Firmas</CardTitle>
+                    <CardDescription>Configura los consentimientos requeridos para tus clientes.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="general-signature" className="text-base">Requerir Firma General</Label>
+                        <p className="text-sm text-slate-600">
+                          Solicita una firma digital general al cliente durante el proceso de registro o en su primera visita.
+                        </p>
+                      </div>
+                      <Switch
+                        id="general-signature"
+                        checked={formState.require_general_signature ?? false}
+                        onCheckedChange={(checked) => setFormState(prev => ({ ...prev, require_general_signature: checked }))}
+                      />
+                    </div>
 
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="image-consent" className="text-base">Requerir Consentimiento de Imagen</Label>
-                    <p className="text-sm text-slate-600">
-                      Solicita al cliente su consentimiento explícito para el uso de imágenes y fotografías.
-                    </p>
-                  </div>
-                  <Switch
-                    id="image-consent"
-                    checked={formState.require_image_consent ?? false}
-                    onCheckedChange={(checked) => setFormState(prev => ({ ...prev, require_image_consent: checked }))}
-                  />
-                </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="image-consent" className="text-base">Requerir Consentimiento de Imagen</Label>
+                        <p className="text-sm text-slate-600">
+                          Solicita al cliente su consentimiento explícito para el uso de imágenes y fotografías.
+                        </p>
+                      </div>
+                      <Switch
+                        id="image-consent"
+                        checked={formState.require_image_consent ?? false}
+                        onCheckedChange={(checked) => setFormState(prev => ({ ...prev, require_image_consent: checked }))}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end mt-6">
                 <Button onClick={handleSave} disabled={isUpdating}>
                   {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
                 </Button>

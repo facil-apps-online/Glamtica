@@ -3,20 +3,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useSaleDetails, SaleDetails } from '@/hooks/useSaleDetails'; // Import new hook and type
-import { Skeleton } from '@/components/ui/skeleton';
+import { SaleDetails } from '@/hooks/useSaleDetails'; // Keep type import
 
 interface ReceiptDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  saleId: string | null; // Changed prop
+  saleData: SaleDetails | null; // Accept full sale data object
 }
 
-// A new component to render the receipt content
 const ReceiptContent = ({ saleData }: { saleData: SaleDetails }) => {
   const { formatPrice } = usePriceFormat();
 
-  // Logic to process items for hierarchical display
   const parentItems = saleData.items.filter(item => !item.parent_item_id);
   const childItemsByParent = saleData.items.reduce((acc, item) => {
     if (item.parent_item_id) {
@@ -66,7 +63,6 @@ const ReceiptContent = ({ saleData }: { saleData: SaleDetails }) => {
                   <TableCell className="text-right">{formatPrice(item.unit_price)}</TableCell>
                   <TableCell className="text-right font-semibold">{formatPrice(item.total_price)}</TableCell>
                 </TableRow>
-                {/* Render child items if they exist for this parent */}
                 {childItemsByParent[item.id]?.map(child => (
                   <TableRow key={child.id}>
                     <TableCell className="pl-8 text-muted-foreground">{child.description}</TableCell>
@@ -101,28 +97,19 @@ const ReceiptContent = ({ saleData }: { saleData: SaleDetails }) => {
   );
 };
 
-
-export const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ isOpen, onClose, saleId }) => {
-  const { data: saleData, isLoading, error } = useSaleDetails(saleId);
-
+export const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ isOpen, onClose, saleData }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Recibo de Venta</DialogTitle>
         </DialogHeader>
-        {isLoading && (
-          <div className="space-y-4">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+        {saleData ? (
+          <ReceiptContent saleData={saleData} />
+        ) : (
+          <p>No hay datos de recibo para mostrar.</p> // Or a loading skeleton
         )}
-        {error && <p className="text-red-500">Error al cargar el recibo: {error.message}</p>}
-        {saleData && <ReceiptContent saleData={saleData} />}
         <DialogFooter>
-          {/* Placeholder for future e-invoicing button */}
-          {/* {saleData?.eInvoicingConfig.enabled && ... } */}
           <Button onClick={onClose} variant="outline">Cerrar</Button>
         </DialogFooter>
       </DialogContent>

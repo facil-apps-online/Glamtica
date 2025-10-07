@@ -1,8 +1,7 @@
-import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { GeneralSettingsTab } from "./Settings/GeneralSettingsTab";
-
 import { UsersTab } from "./Settings/UsersTab";
 import { TributarioTab } from "./Settings/TributarioTab";
 import { SalesTab } from "./Settings/SalesTab";
@@ -10,119 +9,121 @@ import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
 import { SubscriptionTab } from "./Settings/SubscriptionTab";
 import { ClientsTab } from "./Settings/ClientsTab";
 import { IdentitySettingsTab } from "./Settings/IdentitySettingsTab";
-import { Building, Users, Store, CreditCard, FileText, Box, Users2, Loader2, Palette, Hash, Tv } from 'lucide-react';
+import { Building, Users, Store, CreditCard, FileText, Box, Users2, Palette, Hash, Tv, FileDigit } from 'lucide-react';
 import NumberingSequencesPage from "./Settings/NumberingSequencesPage";
 import TvManagementPage from "./TvManagementPage";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const SettingsPageSkeleton = () => (
+  <div>
+    {/* PageHeader Skeleton */}
+    <div>
+      <Skeleton className="h-9 w-1/3" />
+      <Skeleton className="h-5 w-1/2 mt-2" />
+    </div>
+    {/* Tabs Skeleton */}
+    <div className="mt-6">
+      <div className="w-full overflow-x-auto border-b">
+        <div className="inline-flex h-auto p-1 gap-2">
+          <Skeleton className="h-9 w-20 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-20 rounded-md" />
+          <Skeleton className="h-9 w-28 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+        </div>
+      </div>
+      {/* Content Skeleton */}
+      <div className="mt-6">
+        <Skeleton className="h-64 w-full" />
+      </div>
+    </div>
+  </div>
+);
 
 export default function Settings() {
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get("tab") || "general";
+  const [activeTab, setActiveTab] = useState("general");
 
   const { currentAssignment, loading } = useAuth();
   const userRole = currentAssignment?.role_name;
+  const screenSize = useScreenSize();
+  const isMobileOrTablet = screenSize === 'mobile' || screenSize === 'tablet';
 
-  const isSuperAdmin = userRole === 'tenant_super_admin';
-  const isAdmin = userRole === 'tenant_admin';
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+
+  const tabs = [
+    { value: "general", label: "General", icon: <Building className="h-4 w-4" />, component: <GeneralSettingsTab />, roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user'] },
+    { value: "identity", label: "Identidad", icon: <Palette className="h-4 w-4" />, component: <IdentitySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "users", label: "Usuarios", icon: <Users className="h-4 w-4" />, component: <UsersTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "clients", label: "Clientes", icon: <Users2 className="h-4 w-4" />, component: <ClientsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "inventory", label: "Inventario", icon: <Box className="h-4 w-4" />, component: <InventorySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "sales", label: "Ventas", icon: <CreditCard className="h-4 w-4" />, component: <SalesTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "numbering", label: "Numeración", icon: <FileDigit className="h-4 w-4" />, component: <NumberingSequencesPage />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "tv", label: "TV y Playlist", icon: <Tv className="h-4 w-4" />, component: <TvManagementPage />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "tributario", label: "Tributario", icon: <FileText className="h-4 w-4" />, component: <TributarioTab />, roles: ['tenant_super_admin'] },
+    { value: "subscription", label: "Suscripción", icon: <CreditCard className="h-4 w-4" />, component: <SubscriptionTab />, roles: ['tenant_super_admin'] },
+  ];
+
+  const availableTabs = tabs.filter(tab => userRole && tab.roles.includes(userRole));
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Cargando configuración...</p>
-      </div>
-    );
+    return <SettingsPageSkeleton />;
   }
 
-  const renderTrigger = (value: string, icon: React.ReactNode, label: string) => (
-    <TabsTrigger value={value} className="flex items-center gap-2">
-      {icon}
-      {label}
-    </TabsTrigger>
-  );
+  const activeTabContent = availableTabs.find(tab => tab.value === activeTab)?.component || null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-primary">
-          Configuración
-        </h1>
-        <p className="text-slate-600 mt-2">
-          Gestiona la configuración de tu negocio y sucursales
-        </p>
+    <div>
+      <PageHeader 
+        title="Configuración"
+        subtitle="Gestiona la configuración de tu negocio y sucursales"
+      />
+
+      <div className="mt-6">
+              {isMobileOrTablet ? (
+                <div className="space-y-4">            <Select onValueChange={handleTabChange} value={activeTab}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar una sección..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTabs.map(tab => (
+                  <SelectItem key={tab.value} value={tab.value}>{tab.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div>
+              {activeTabContent}
+            </div>
+          </div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <div className="w-full overflow-x-auto border-b">
+              <TabsList className="inline-flex h-auto p-1">
+                {availableTabs.map(tab => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-2">
+                    {tab.icon}{tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+            {availableTabs.map(tab => (
+              <TabsContent key={tab.value} value={tab.value}>
+                {tab.component}
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </div>
-
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="w-full flex-nowrap overflow-x-auto justify-start">
-          {renderTrigger("general", <Building className="h-4 w-4" />, "General")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("identity", <Palette className="h-4 w-4" />, "Identidad")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("users", <Users className="h-4 w-4" />, "Usuarios")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("clients", <Users2 className="h-4 w-4" />, "Clientes")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("inventory", <Box className="h-4 w-4" />, "Inventario")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("sales", <CreditCard className="h-4 w-4" />, "Ventas")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("numbering", <Hash className="h-4 w-4" />, "Numeración")}
-          {(isSuperAdmin || isAdmin) && renderTrigger("tv", <Tv className="h-4 w-4" />, "TV y Playlist")}
-          {isSuperAdmin && renderTrigger("tributario", <FileText className="h-4 w-4" />, "Tributario")}
-          {isSuperAdmin && renderTrigger("subscription", <CreditCard className="h-4 w-4" />, "Suscripción")}
-        </TabsList>
-        
-        <TabsContent value="general">
-          <GeneralSettingsTab />
-        </TabsContent>
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="identity">
-            <IdentitySettingsTab />
-          </TabsContent>
-        )}
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="users">
-            <UsersTab />
-          </TabsContent>
-        )}
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="clients">
-            <ClientsTab />
-          </TabsContent>
-        )}
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="inventory">
-            <InventorySettingsTab />
-          </TabsContent>
-        )}
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="sales">
-            <SalesTab />
-          </TabsContent>
-        )}
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="numbering">
-            <NumberingSequencesPage />
-          </TabsContent>
-        )}
-
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="tv">
-            <TvManagementPage />
-          </TabsContent>
-        )}
-
-        {isSuperAdmin && (
-          <TabsContent value="tributario">
-            <TributarioTab />
-          </TabsContent>
-        )}
-
-        {isSuperAdmin && (
-          <TabsContent value="subscription">
-            <SubscriptionTab />
-          </TabsContent>
-        )}
-      </Tabs>
     </div>
   );
 }

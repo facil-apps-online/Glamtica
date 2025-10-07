@@ -10,11 +10,11 @@ import { useCreateBranch, useUpdateBranch, Branch } from '@/hooks/useBranches';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
 import { Save, Store } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useTimezones } from '@/hooks/useTimezones';
 import { SearchableSelect } from './ui/searchable-select';
 import { useTenantById } from '@/hooks/useTenants';
-
+import { PhoneInput } from '@/components/PhoneInput';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre de la sucursal es requerido."),
@@ -22,7 +22,7 @@ const formSchema = z.object({
   address: z.string().optional().nullable(),
   contact_phone: z.string().optional().nullable(),
   whatsapp_phone: z.string().optional().nullable(),
-  commercial_email: z.string().email("Debe ser un email válido.").optional().nullable().or(z.literal('')),
+  commercial_email: z.string().email("Debe ser un email válido.").optional().nullable().or(z.literal('')), 
   website: z.string().optional().nullable(),
   physical_address_line1: z.string().optional().nullable(),
   physical_address_line2: z.string().optional().nullable(),
@@ -163,150 +163,165 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-primary">
           <Store className="h-5 w-5" />
-          {branchToEdit ? 'Editar Sucursal' : 'Añadir Nueva Sucursal'}
+          Configuración de la Sucursal
         </CardTitle>
+        <CardDescription>
+          Administra la información principal, de contacto y dirección de esta sucursal.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 
             <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Información General</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField control={form.control} name="name" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre de la Sucursal</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <Controller name="timezone" control={form.control} render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Zona Horaria</FormLabel>
-                        <SearchableSelect 
-                          options={timezoneOptions} 
-                          value={timezoneOptions.find(t => t.value === field.value) || null} 
-                          onChange={(option) => field.onChange(option ? option.value : '')} 
-                          placeholder="Selecciona una zona horaria"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </CardContent>
-                </Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Información General</CardTitle>
+                <CardDescription>Nombre de la sucursal que verán tus clientes</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre de la Sucursal</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Información de Contacto</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="contact_phone" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono de Contacto</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>WhatsApp</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    </div>
-                    <FormField control={form.control} name="commercial_email" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Comercial</FormLabel>
-                        <FormControl><Input type="email" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="website" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sitio Web</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </CardContent>
-                </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Configuración Regional</CardTitle>
+                <CardDescription>Define la zona horaria para esta sucursal.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Controller name="timezone" control={form.control} render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Zona Horaria</FormLabel>
+                    <SearchableSelect 
+                      options={timezoneOptions} 
+                      value={timezoneOptions.find(t => t.value === field.value) || null} 
+                      onChange={(option) => field.onChange(option ? option.value : '')} 
+                      placeholder="Selecciona una zona horaria"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dirección Física</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField control={form.control} name="address" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dirección (General)</FormLabel>
-                        <FormControl><Input {...field} readOnly /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <div className="space-y-2 mt-4">
-                      <FormItem>
-                        <FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel>
-                        <FormControl>
-                          <AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} countryRestriction={countryRestriction} defaultValue={branchToEdit?.physical_address_line1 || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                      <FormField control={form.control} name="physical_address_line1" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Línea 1</FormLabel>
-                          <FormControl><Input {...field} readOnly /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="physical_address_line2" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Línea 2 (Opcional)</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <FormField control={form.control} name="physical_city" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ciudad</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="physical_state" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Estado / Provincia</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="physical_postal_code" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Código Postal</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                      </div>
-                    </div>
-                    {watchedLat !== null && watchedLng !== null && (
-                      <div className="w-full h-[200px] rounded-lg overflow-hidden mt-4">
-                        <MapDisplay latitude={watchedLat} longitude={watchedLng} />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isLoading}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {isLoading ? 'Guardando...' : 'Guardar Cambios'}
-                  </Button>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Información de Contacto</CardTitle>
+                <CardDescription>Datos de contacto públicos y para notificaciones.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="contact_phone" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Teléfono de Contacto</FormLabel>
+                      <FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>WhatsApp</FormLabel>
+                      <FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
+                <FormField control={form.control} name="commercial_email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Comercial</FormLabel>
+                    <FormControl><Input type="email" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="website" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sitio Web</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Dirección Física</CardTitle>
+                <CardDescription>Ubicación de tu sucursal para mapas y búsquedas locales.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField control={form.control} name="address" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dirección (General)</FormLabel>
+                    <FormControl><Input {...field} readOnly /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div className="space-y-2 mt-4">
+                  <FormItem>
+                    <FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel>
+                    <FormControl>
+                      <AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} countryRestriction={countryRestriction} defaultValue={branchToEdit?.physical_address_line1 || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                  <FormField control={form.control} name="physical_address_line1" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Línea 1</FormLabel>
+                      <FormControl><Input {...field} readOnly /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="physical_address_line2" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Línea 2 (Opcional)</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <FormField control={form.control} name="physical_city" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ciudad</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="physical_state" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado / Provincia</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="physical_postal_code" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Código Postal</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                </div>
+                {watchedLat !== null && watchedLng !== null && (
+                  <div className="w-full h-[200px] rounded-lg overflow-hidden mt-4">
+                    <MapDisplay latitude={watchedLat} longitude={watchedLng} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isLoading}>
+                <Save className="w-4 h-4 mr-2" />
+                {isLoading ? 'Guardando...' : 'Guardar Cambios'}
+              </Button>
+            </div>
           </form>
         </Form>
       </CardContent>

@@ -11,7 +11,11 @@ import { EquipmentTypeDialog } from '@/components/EquipmentTypeDialog';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import { useToast } from '@/hooks/use-toast';
 
-export const EquipmentTypeManagementDialog: React.FC = () => {
+interface EquipmentTypeManagementDialogProps {
+  trigger: React.ReactNode;
+}
+
+export const EquipmentTypeManagementDialog: React.FC<EquipmentTypeManagementDialogProps> = ({ trigger }) => {
   const { types, loading, deleteType, updateType } = useEquipmentTypes();
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
@@ -40,10 +44,7 @@ export const EquipmentTypeManagementDialog: React.FC = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <ListFilter className="w-4 h-4 mr-2" />
-          Tipos
-        </Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>

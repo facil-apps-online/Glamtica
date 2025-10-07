@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -28,10 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/useDebounce';
-import { InviteOrAssignUserFormValues } from '@/hooks/useInviteOrAssignUser';
+import { useInviteOrAssignUser, InviteOrAssignUserFormValues } from '@/hooks/useInviteOrAssignUser';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoles } from '@/hooks/useRoles';
 import { useBranches } from '@/hooks/useBranches';
+import { useToast } from '@/hooks/use-toast';
 
 type AddUserFormValues = z.infer<ReturnType<typeof createValidationSchema>>;
 
@@ -60,24 +62,23 @@ const createValidationSchema = (userExists: boolean, roles: any[] = []) =>
   });
 
 interface AddUserDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (values: InviteOrAssignUserFormValues) => void;
-  isSubmitting: boolean;
+  children: React.ReactNode;
+  onUserAdded: () => void;
 }
 
 export const AddUserDialog: React.FC<AddUserDialogProps> = ({
-  open,
-  onOpenChange,
-  onSubmit,
-  isSubmitting,
+  children,
+  onUserAdded,
 }) => {
+  const [open, setOpen] = useState(false);
   const [userExists, setUserExists] = useState(false);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
 
+  const { toast } = useToast();
   const { currentAssignment, supabaseClient } = useAuth();
   const { data: roles, isLoading: isLoadingRoles } = useRoles(currentAssignment?.platform_id);
   const { data: branches, isLoading: isLoadingBranches } = useBranches(currentAssignment?.tenant_id);
+  const inviteOrAssignUserMutation = useInviteOrAssignUser();
 
   const tenantSuperAdminRole = useMemo(
     () => roles?.find((role) => role.name === 'tenant_super_admin'),
@@ -90,24 +91,12 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   });
 
   const watchedRoleId = useWatch({ control: form.control, name: 'roleId' });
+  const debouncedEmail = useDebounce(useWatch({ control: form.control, name: 'email' }), 500);
+
   const isSuperAdminSelected = useMemo(
     () => !!(watchedRoleId && tenantSuperAdminRole && watchedRoleId === tenantSuperAdminRole.id),
     [watchedRoleId, tenantSuperAdminRole]
   );
-
-  useEffect(() => {
-    if (isSuperAdminSelected) {
-      form.setValue('branchId', '');
-      form.clearErrors('branchId');
-    }
-  }, [isSuperAdminSelected, form]);
-
-  useEffect(() => {
-    if (!open) {
-      form.reset();
-      setUserExists(false);
-    }
-  }, [open, form]);
 
   const checkUserExists = useCallback(async (email: string) => {
     if (!email || !z.string().email().safeParse(email).success) {
@@ -138,13 +127,23 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     }
   }, [form, currentAssignment, supabaseClient]);
 
-  const debouncedCheckUser = useDebounce(checkUserExists, 500);
+  useEffect(() => {
+    if (isSuperAdminSelected) {
+      form.setValue('branchId', '');
+      form.clearErrors('branchId');
+    }
+  }, [isSuperAdminSelected, form]);
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const email = e.target.value;
-    form.setValue('email', email);
-    debouncedCheckUser(email);
-  };
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+      setUserExists(false);
+    }
+  }, [open, form]);
+
+  useEffect(() => {
+    checkUserExists(debouncedEmail);
+  }, [debouncedEmail, checkUserExists]);
 
   const handleFormSubmit = (values: AddUserFormValues) => {
     const submissionValues: InviteOrAssignUserFormValues = { ...values };
@@ -157,14 +156,28 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     if (currentAssignment?.platform_id) {
       submissionValues.platformId = currentAssignment.platform_id;
     } else {
-      console.error("Error: currentAssignment.platform_id no está disponible.");
+      toast({ title: "Error", description: "No se pudo obtener el ID de la plataforma.", variant: "destructive" });
       return;
     }
-    onSubmit(submissionValues);
+    if (currentAssignment?.tenant_id) {
+        submissionValues.tenantId = currentAssignment.tenant_id;
+    }
+
+    inviteOrAssignUserMutation.mutate(submissionValues, {
+        onSuccess: (data) => {
+            toast({ title: 'Éxito', description: data.message });
+            onUserAdded();
+            setOpen(false);
+        },
+        onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    });
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Invitar Usuario al Negocio</DialogTitle>
@@ -184,7 +197,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="usuario@ejemplo.com" {...field} onChange={handleEmailChange} />
+                    <Input placeholder="usuario@ejemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -230,7 +243,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 <FormItem>
                   <FormLabel>Sucursal</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValuechange={field.onChange}
                     value={field.value}
                     disabled={isSuperAdminSelected || isLoadingBranches}
                   >
@@ -250,11 +263,11 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || isCheckingUser || isLoadingRoles || isLoadingBranches}>
-                {isSubmitting ? 'Guardando...' : (userExists ? 'Vincular Usuario' : 'Crear y Vincular')}
+              <Button type="submit" disabled={inviteOrAssignUserMutation.isPending || isCheckingUser || isLoadingRoles || isLoadingBranches}>
+                {inviteOrAssignUserMutation.isPending ? 'Guardando...' : (userExists ? 'Vincular Usuario' : 'Crear y Vincular')}
               </Button>
             </DialogFooter>
           </form>

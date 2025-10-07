@@ -409,8 +409,8 @@ export default function Attentions() {
             <Button
               onClick={handleNewAttentionClick}
               disabled={!branchIdForDialog}
-              size={isMobile ? "icon" : "default"}
               className="inline-flex items-center"
+              size="sm"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline sm:ml-2">Nueva Atención</span>
@@ -429,7 +429,7 @@ export default function Attentions() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Agenda de Atenciones"
+        title="Atenciones"
         subtitle="Gestiona y programa las citas de tus clientes."
       >
         {NewAttentionButton}
@@ -454,30 +454,32 @@ export default function Attentions() {
       </Dialog>
 
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-2xl w-[95%] max-h-[90vh] md:w-full md:max-h-fit">
-          <DialogHeader>
-            <DialogTitle>Detalle de la Atención</DialogTitle>
-          </DialogHeader>
-          {viewingAttention && (
-            <>
-              <div className="max-h-[60vh] overflow-y-auto p-1">
-                <AttentionCard
-                  attention={viewingAttention}
-                  formatPrice={formatPrice}
-                  onEdit={handleEditFromDetailView}
-                  onOpenPaymentDialog={handleOpenPaymentDialog}
-                  onOpenPaymentDetails={handleOpenPaymentDetails}
-                  screenSize={screenSize}
-                  branchId={viewingAttention.branch_id}
-                />
-              </div>
-              <DialogFooter className="pt-4 gap-2">
-                <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>Cerrar</Button>
-                <Button onClick={handleEditFromDetailView}><Edit className="w-4 h-4 mr-2" /> Editar</Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
+        <TooltipProvider>
+          <DialogContent className="max-w-2xl w-[95%] max-h-[90vh] md:w-full md:max-h-fit">
+            <DialogHeader>
+              <DialogTitle>Detalle de la Atención</DialogTitle>
+            </DialogHeader>
+            {viewingAttention && (
+              <>
+                <div className="max-h-[60vh] overflow-y-auto p-1">
+                  <AttentionCard
+                    attention={viewingAttention}
+                    formatPrice={formatPrice}
+                    onEdit={handleEditFromDetailView}
+                    onOpenPaymentDialog={handleOpenPaymentDialog}
+                    onOpenPaymentDetails={handleOpenPaymentDetails}
+                    screenSize={screenSize}
+                    branchId={viewingAttention.branch_id}
+                  />
+                </div>
+                <DialogFooter className="pt-4 gap-2">
+                  <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>Cerrar</Button>
+                  <Button onClick={handleEditFromDetailView}><Edit className="w-4 h-4 mr-2" /> Editar</Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </TooltipProvider>
       </Dialog>
 
       <AttentionPaymentDialog
@@ -694,10 +696,10 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-4">
-        <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-start'}`}>
+        <div className="flex flex-wrap justify-between items-start gap-4">
           <div className="space-y-1">
             <CardTitle className="text-lg text-primary">{attention.clients?.name || 'Cliente no asignado'}</CardTitle>
-            <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center gap-4'} text-sm text-muted-foreground`}>
+            <div className={`flex flex-wrap items-start gap-x-4 gap-y-1 text-sm text-muted-foreground`}>
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
                 {attention.attention_datetime && format(parseISO(attention.attention_datetime), "dd 'de' MMMM, yyyy", { locale: es })}
@@ -712,26 +714,23 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
               </div>
             </div>
           </div>
-          <div className={`flex items-center gap-2 ${isMobile ? 'self-end' : ''}`}>
+          <div className={`flex items-center gap-2`}>
             {getStatusBadge(attention.status)}
 
             {attention.status === 'Pagada' && (
-              <TooltipProvider>
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => onOpenPaymentDetails(attention)}>
-                              <Receipt className="w-4 h-4 text-purple-500" />
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                          <p>Ver Detalles del Pago</p>
-                      </TooltipContent>
-                  </Tooltip>
-              </TooltipProvider>
+                              <Tooltip delayDuration={0}>
+                                  <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" onClick={() => onOpenPaymentDetails(attention)}>
+                                          <Receipt className="w-4 h-4 text-purple-500" />
+                                      </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                      <p>Ver Detalles del Pago</p>
+                                  </TooltipContent>
+                              </Tooltip>
             )}
 
-            <TooltipProvider>
-                <Tooltip>
+                <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" onClick={() => onEdit(attention)}>
                             <Edit className="w-4 h-4" />
@@ -741,7 +740,6 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
                         <p>Ver / Editar Detalles</p>
                     </TooltipContent>
                 </Tooltip>
-            </TooltipProvider>
 
             {canBeModified && (
               <RescheduleAttentionDialog attention={attention}>

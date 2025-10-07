@@ -2806,12 +2806,19 @@ serve(async (req) => {
           }
 
           // The new function handles sale creation, item creation, and inventory deduction.
-          const { error: saleError } = await supabaseAdmin.rpc('process_sale_from_attention', { 
-            p_attention_id: attention.id 
-          });
+          let saleId;
+          try {
+            const { data, error } = await supabaseAdmin.rpc('process_sale_from_attention', { 
+              p_attention_id: attention.id 
+            });
 
-          if (saleError) {
-            // For now, just throw the error. A more robust implementation could try to roll back the attention status update.
+            if (error) throw error;
+            saleId = data;
+          } catch (saleError) {
+            if (saleError.message.includes('No active document sequence found')) {
+              throw new Error('No se ha configurado una secuencia de numeración para las ventas. Por favor, contacte al administrador.');
+            }
+            // For other errors, just throw the original error.
             throw new Error(`Error al procesar la venta desde la atención: ${saleError.message}`);
           }
         }
@@ -2834,14 +2841,14 @@ serve(async (req) => {
           }
 
           if (wompiData.success) {
-            responseData = { wompiCheckout: true, checkoutData: wompiData.checkoutData, createdPayments };
+            responseData = { wompiCheckout: true, checkoutData: wompiData.checkoutData, createdPayments, saleId };
           } else {
             throw new Error(wompiData.error || 'Error desconocido al iniciar el pago con Wompi.');
           }
         } else {
           // Si no se usó Wompi (o ninguna otra pasarela que requiera redirección),
           // simplemente devolvemos la respuesta estándar.
-          responseData = { wompiCheckout: false, createdPayments };
+          responseData = { wompiCheckout: false, createdPayments, saleId };
         }
         break;
       }
@@ -3523,6 +3530,29 @@ serve(async (req) => {
           throw error;
         }
         
+        responseData = data;
+        break;
+      }
+
+      case 'update_user_assignment': {
+        const { assignmentId, updates } = payload;
+        if (!assignmentId || !updates) {
+          throw new Error('assignmentId and updates are required for update_user_assignment.');
+        }
+
+        // Security check is implicitly handled by RLS policies, but an explicit tenant_id check is safer.
+        const { data, error } = await supabaseAdmin
+          .from('user_assignments')
+          .update(updates)
+          .eq('id', assignmentId)
+          .eq('tenant_id', tenantId) // Explicitly scope the update to the user's tenant
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating user assignment:', error);
+          throw error;
+        }
         responseData = data;
         break;
       }

@@ -11,7 +11,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Plus, Scissors, Clock, DollarSign, Edit, Settings, Users, Share2, Search } from "lucide-react";
+import { Plus, Scissors, Clock, DollarSign, Edit, Settings, Users, Share2, Search, MoreHorizontal, ListFilter } from "lucide-react";
 import { useMasterServices, useUpdateMasterService, MasterService } from "@/hooks/useServices";
 import { useServiceCategories } from "@/hooks/useServiceCategories";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
@@ -20,40 +20,22 @@ import { ServiceCategoryManagementDialog } from "@/components/ServiceCategoryMan
 import AssignServicesToBranchDialog from "@/components/AssignServicesToBranchDialog";
 import ManageServicePricesDialog from "@/components/ManageServicePricesDialog";
 import { useState } from "react";
-import { ManageServiceCommissionsDialog } from "@/components/ManageServiceCommissionsDialog"; // NEW IMPORT
+import { ManageServiceCommissionsDialog } from "@/components/ManageServiceCommissionsDialog";
 import { useScreenSize } from "@/hooks/useScreenSize";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ServiceCard = ({ service, category, formatPrice, handleToggleStatus, handleOpenAssignServiceDialog, handleOpenManagePricesDialog, handleOpenServiceCommissionsDialog }) => (
   <Card>
     <CardHeader>
       <div className="flex justify-between items-start">
-        <div>
-          <CardTitle>{service.name}</CardTitle>
-          {service.description && <p className="text-sm text-muted-foreground">{service.description}</p>}
-        </div>
-        <Switch
-          checked={service.is_active || false}
-          onCheckedChange={() => handleToggleStatus(service)}
-        />
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Categoría</span>
-        <span>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Duración</span>
-        <span>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</span>
-      </div>
-      <div className="flex justify-end gap-2 mt-4">
+        <CardTitle>{service.name}</CardTitle>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MoreHorizontal className="h-4 h-4" />
-              <span className="ml-2">Acciones</span>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -69,21 +51,101 @@ const ServiceCard = ({ service, category, formatPrice, handleToggleStatus, handl
               <Users className="w-4 h-4 mr-2" />
               Gestionar Comisiones
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <MasterServiceDialog service={service} trigger={
-                <div className="flex items-center w-full">
-                  <Edit className="w-4 h-4 mr-2" />
-                  <span>Editar</span>
-                </div>
-              } />
-            </DropdownMenuItem>
+            <MasterServiceDialog service={service} trigger={
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <Edit className="w-4 h-4 mr-2" />
+                <span>Editar</span>
+              </DropdownMenuItem>
+            } />
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4 pt-4">
+      <div className="flex justify-between items-start gap-4">
+        <span className="text-muted-foreground text-sm">Descripción</span>
+        <span className="text-sm text-right">{service.description || "-"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground text-sm">Categoría</span>
+        <span>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground text-sm">Duración</span>
+        <span className="text-sm">{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</span>
+      </div>
+      <div className="flex items-center justify-between rounded-md border p-3 mt-4">
+        <label className="text-sm font-medium">Activo</label>
+        <Switch
+          checked={service.is_active || false}
+          onCheckedChange={() => handleToggleStatus(service)}
+        />
       </div>
     </CardContent>
   </Card>
 );
 
+const ServiceCardSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div className="space-y-2 w-full">
+          <Skeleton className="h-6 w-3/4" />
+        </div>
+        <Skeleton className="h-8 w-8" />
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <div className="flex justify-between">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-16" />
+      </div>
+      <div className="h-10 w-full mt-4 rounded-md border flex items-center justify-between p-3">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-6 w-12" />
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ServiceTableSkeleton = () => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead colSpan={2}>Servicio</TableHead>
+        <TableHead>Categoría</TableHead>
+        <TableHead>Duración</TableHead>
+        <TableHead>Activo</TableHead>
+        <TableHead>Acciones</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {[...Array(5)].map((_, i) => (
+        <TableRow key={i}>
+          <TableCell colSpan={2}>
+            <Skeleton className="h-5 w-32 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </TableCell>
+          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+          <TableCell>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8" />
+            </div>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+);
 
 export default function Services() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,8 +161,6 @@ export default function Services() {
   const [selectedServiceForAssignment, setSelectedServiceForAssignment] = useState<MasterService | null>(null);
   const [isManagePricesDialogOpen, setIsManagePricesDialogOpen] = useState(false);
   const [selectedServiceForPrices, setSelectedServiceForPrices] = useState<MasterService | null>(null);
-
-  // NEW STATE FOR COMMISSIONS DIALOG
   const [isServiceCommissionsDialogOpen, setIsServiceCommissionsDialogOpen] = useState(false);
   const [selectedServiceForCommissions, setSelectedServiceForCommissions] = useState<MasterService | null>(null);
 
@@ -135,7 +195,6 @@ export default function Services() {
     setIsManagePricesDialogOpen(false);
   };
 
-  // NEW HANDLERS FOR COMMISSIONS DIALOG
   const handleOpenServiceCommissionsDialog = (service: MasterService) => {
     setSelectedServiceForCommissions(service);
     setIsServiceCommissionsDialogOpen(true);
@@ -146,44 +205,137 @@ export default function Services() {
     setIsServiceCommissionsDialogOpen(false);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-slate-600">Cargando servicios...</p>
-        </div>
+  const renderContent = () => {
+    if (isLoading) {
+      return isMobile 
+        ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <ServiceCardSkeleton key={i} />)}</div>
+        : <ServiceTableSkeleton />;
+    }
+
+    if (filteredServices?.length === 0) {
+      return (
+        <EmptyState
+          Icon={Scissors}
+          title="No hay servicios"
+          description={
+            filterCategory === "" 
+              ? "No tienes servicios creados aún o no coinciden con los filtros aplicados."
+              : `No hay servicios en la categoría seleccionada que coincidan con los filtros.`
+          }
+          action={
+            allServices?.length === 0 ? (
+              <MasterServiceDialog trigger={<Button>Crear Nuevo Servicio</Button>} />
+            ) : null
+          }
+        />
+      );
+    }
+
+    return isMobile ? (
+      <div className="space-y-4 p-4">
+        {filteredServices?.map((service) => {
+          const category = categories?.find(cat => cat.id === service.category_id);
+          return (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              category={category}
+              handleToggleStatus={handleToggleStatus}
+              handleOpenAssignServiceDialog={handleOpenAssignServiceDialog}
+              handleOpenManagePricesDialog={handleOpenManagePricesDialog}
+              handleOpenServiceCommissionsDialog={handleOpenServiceCommissionsDialog}
+            />
+          );
+        })}
       </div>
+    ) : (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Servicio</TableHead>
+            <TableHead>Descripción</TableHead>
+            <TableHead>Categoría</TableHead>
+            <TableHead>Duración</TableHead>
+            <TableHead>Activo</TableHead>
+            <TableHead>Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredServices?.map((service) => {
+            const category = categories?.find(cat => cat.id === service.category_id);
+            return (
+              <TableRow key={service.id}>
+                <TableCell>
+                  <div className="font-medium">{service.name}</div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm text-muted-foreground">{service.description || "-"}</div>
+                </TableCell>
+                <TableCell>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</TableCell>
+                <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={service.is_active || false}
+                    onCheckedChange={() => handleToggleStatus(service)}
+                  />
+                </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <span className="sr-only">Abrir menú</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenAssignServiceDialog(service)}>
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Asignar a Sucursales
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(service)}>
+                              <DollarSign className="w-4 h-4 mr-2" />
+                              Gestionar Precios
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenServiceCommissionsDialog(service)}>
+                              <Users className="w-4 h-4 mr-2" />
+                              Gestionar Comisiones
+                            </DropdownMenuItem>
+                            <MasterServiceDialog service={service} trigger={
+                                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  <span>Editar</span>
+                                </div>
+                              } />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     );
-  }
+  };
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">
-            Servicios
-          </h1>
-          <p className="text-slate-600 mt-2">
-            Gestiona los servicios del salón y las comisiones de estilistas
-          </p>
-        </div>
+      <PageHeader title="Servicios" subtitle="Gestiona los servicios del salón y las comisiones de estilistas">
         <div className="flex gap-2">
           <ServiceCategoryManagementDialog trigger={
-            <Button variant="outline">
-              <Settings className="w-4 h-4 mr-2" />
-              Gestionar Categorías
+            <Button variant="outline" size="sm">
+              <ListFilter className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Gestionar Categorías</span>
             </Button>
           } />
           
           <MasterServiceDialog trigger={
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Servicio
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Nuevo Servicio</span>
             </Button>
           } />
         </div>
-      </div>
+      </PageHeader>
 
       <Card className="mt-4">
         <CardContent className="py-4">
@@ -223,94 +375,10 @@ export default function Services() {
 
       <Card>
         <CardContent className="p-0">
-          {isMobile ? (
-            <div className="space-y-4 p-4">
-              {filteredServices?.map((service) => {
-                const category = categories?.find(cat => cat.id === service.category_id);
-                return (
-                  <ServiceCard
-                    key={service.id}
-                    service={service}
-                    category={category}
-                    handleToggleStatus={handleToggleStatus}
-                    handleOpenAssignServiceDialog={handleOpenAssignServiceDialog}
-                    handleOpenManagePricesDialog={handleOpenManagePricesDialog}
-                    handleOpenServiceCommissionsDialog={handleOpenServiceCommissionsDialog}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead colSpan={2}>Servicio</TableHead>
-                  <TableHead className="w-px">Categoría</TableHead>
-                  <TableHead className="w-px">Duración</TableHead>
-                  
-                  <TableHead className="w-px">Activo</TableHead>
-                  <TableHead className="w-px">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredServices?.map((service) => {
-                  const category = categories?.find(cat => cat.id === service.category_id);
-                  
-                  return (
-                    <TableRow key={service.id}>
-                      <TableCell colSpan={2}>
-                        <div className="font-medium">{service.name}</div>
-                        {service.description && <div className="text-sm text-muted-foreground">{service.description}</div>}
-                      </TableCell>
-                      <TableCell>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</TableCell>
-                      <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={service.is_active || false}
-                          onCheckedChange={() => handleToggleStatus(service)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MasterServiceDialog service={service} trigger={
-                            <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
-                          } />
-                          <Button variant="outline" size="sm" onClick={() => handleOpenAssignServiceDialog(service)}>
-                            <Share2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleOpenManagePricesDialog(service)}>
-                            <DollarSign className="w-4 h-4" />
-                          </Button>
-                          {/* OLD ServiceCommissionsDialog REMOVED */}
-                          <Button variant="outline" size="sm" onClick={() => handleOpenServiceCommissionsDialog(service)}>
-                            <Users className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-          
-          {filteredServices?.length === 0 && (
-            <div className="text-center py-12">
-              <Scissors className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-bold text-primary mb-2">No hay servicios</h3>
-              <p className="text-slate-600 mb-4">
-                {filterCategory === "" 
-                  ? "No tienes servicios creados aún o no coinciden con los filtros aplicados."
-                  : `No hay servicios en la categoría seleccionada que coincidan con los filtros.`
-                }
-              </p>
-              {allServices?.length === 0 && (
-                <MasterServiceDialog trigger={<Button>Crear Nuevo Servicio</Button>} />
-              )}
-            </div>
-          )}
-          </CardContent>
+          {renderContent()}
+        </CardContent>
       </Card>
+
       {selectedServiceForAssignment && (
         <AssignServicesToBranchDialog
           isOpen={isAssignServiceDialogOpen}
@@ -327,7 +395,6 @@ export default function Services() {
           onSuccess={handleManagePricesSuccess}
         />
       )}
-      {/* NEW DIALOG INTEGRATION */}
       {selectedServiceForCommissions && (
         <ManageServiceCommissionsDialog
           isOpen={isServiceCommissionsDialogOpen}

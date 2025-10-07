@@ -38,7 +38,7 @@ export function BranchActions({ branch, onSuccess, tenantId }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem onClick={() => navigate(`/branches/${branch.id}/settings`)}>
+          <DropdownMenuItem onClick={() => navigate(`/app/branches/${branch.id}/settings`)}>
             <Settings className="mr-2 h-4 w-4" />
             Configurar
           </DropdownMenuItem>

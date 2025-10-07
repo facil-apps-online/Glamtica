@@ -66,22 +66,20 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const screenSize = useScreenSize()
-    const isMobile = screenSize === 'mobile'
+    const isMobile = screenSize === 'mobile' || screenSize === 'tablet'
     const [openMobile, setOpenMobile] = React.useState(false)
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
-        const openState = typeof value === "function" ? value(open) : value
         if (setOpenProp) {
-          setOpenProp(openState)
+          setOpenProp(value)
         } else {
-          _setOpen(openState)
+          _setOpen(value)
         }
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       },
-      [setOpenProp, open]
+      [setOpenProp]
     )
 
     const toggleSidebar = React.useCallback(() => {
@@ -167,7 +165,7 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { screenSize, state, openMobile, setOpenMobile } = useSidebar()
-    const isMobile = screenSize === 'mobile'
+    const isMobile = screenSize === 'mobile' || screenSize === 'tablet'
 
     if (collapsible === "none") {
       return (

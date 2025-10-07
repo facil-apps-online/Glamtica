@@ -227,7 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     if (data.session) {
       await supabaseClient.auth.setSession(data.session);
       await processSession(data.session);
-      navigate('/');
+      navigate('/app');
     } else {
       throw new Error("No se recibieron datos de sesión válidos del servidor.");
     }

@@ -86,9 +86,9 @@ export default function BranchesPage() {
 
     if (isMobile) {
       return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col gap-4">
           {branches.map((branch) => (
-            <BranchCard key={branch.id} branch={branch} onSuccess={handleSuccess} tenantId={tenantId} />
+            <BranchCard key={branch.id} branch={branch} onSuccess={handleSuccess} tenantId={tenantId} screenSize={screenSize} />
           ))}
         </div>
       );
@@ -166,7 +166,7 @@ export default function BranchesPage() {
               <span className="hidden sm:inline sm:ml-2">Activar ({selectedBranchIds.length})</span>
             </Button>
           )}
-          <Button onClick={() => navigate('/branches/new')} size={isMobile ? 'icon' : 'default'}>
+          <Button onClick={() => navigate('/branches/new')} size="sm">
             <PlusCircle className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Añadir Sucursal</span>
           </Button>

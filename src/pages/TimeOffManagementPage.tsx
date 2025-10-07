@@ -24,6 +24,8 @@ const STATUS_FILTERS = [
   { value: 'rejected', label: 'Rechazadas' },
 ];
 
+import { PageHeader } from '@/components/PageHeader';
+
 const TimeOffManagementPage: React.FC = () => {
   const { currentAssignment } = useAuth();
   
@@ -35,16 +37,10 @@ const TimeOffManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">
-            Gestión de Ausencias
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Gestiona las solicitudes de ausencias de tu equipo.
-          </p>
-        </div>
-      </div>
+      <PageHeader 
+        title="Ausencias"
+        subtitle="Gestiona las solicitudes de ausencias de tu equipo."
+      />
 
       
 

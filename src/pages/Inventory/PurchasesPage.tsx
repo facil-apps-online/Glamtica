@@ -117,7 +117,7 @@ export function PurchasesPage() {
         >
           <PurchaseDialog
               trigger={
-                <Button size={isMobile ? "icon" : "default"}>
+                <Button size="sm">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline sm:ml-2">Nueva Compra</span>
                 </Button>

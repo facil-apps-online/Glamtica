@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Archive, Power, MapPin, Phone, Mail, Globe } from 'lucide-react';
+import { MoreHorizontal, Archive, Power, MapPin, Phone, Mail, Globe, Settings } from 'lucide-react';
 import { ActivateBranchesBatchDialog } from './ActivateBranchesBatchDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useArchiveBranch } from '@/hooks/useBranches';
 import { MapDisplay } from '@/components/MapDisplay';
-import BranchDialog from '@/components/BranchDialog';
+import { useNavigate } from 'react-router-dom';
 
 const statusConfig = {
   active: { label: 'Activa', color: 'bg-green-500' },
@@ -29,9 +29,9 @@ const DetailItem = ({ icon, label, value }: { icon: React.ReactNode; label: stri
 
 export function BranchCard({ branch, onSuccess, tenantId }) {
   const [isActivateDialogOpen, setActivateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const archiveBranchMutation = useArchiveBranch(tenantId);
+  const navigate = useNavigate();
 
   const handleArchive = async () => {
     archiveBranchMutation.mutate(branch.id, {
@@ -61,12 +61,19 @@ export function BranchCard({ branch, onSuccess, tenantId }) {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-                Editar
+              <DropdownMenuItem onClick={() => navigate(`/app/branches/${branch.id}/settings`)}>
+                <Settings className="mr-2 h-4 w-4" />
+                Configurar
               </DropdownMenuItem>
+              {branch.status === 'pending_activation' && (
+                <DropdownMenuItem onClick={() => setActivateDialogOpen(true)}>
+                  <Power className="mr-2 h-4 w-4" />
+                  Activar Sucursal
+                </DropdownMenuItem>
+              )}
               {branch.status === 'active' && !branch.is_main_branch && (
                 <DropdownMenuItem onClick={handleArchive} disabled={archiveBranchMutation.isPending}>
                   <Archive className="mr-2 h-4 w-4" /> Archivar
@@ -91,13 +98,6 @@ export function BranchCard({ branch, onSuccess, tenantId }) {
           <div className="w-full h-[150px] rounded-lg overflow-hidden mt-4">
             <MapDisplay latitude={branch.latitude} longitude={branch.longitude} />
           </div>
-        )}
-
-        {branch.status === 'pending_activation' && (
-          <Button className="w-full mt-4" onClick={() => setActivateDialogOpen(true)}>
-            <Power className="mr-2 h-4 w-4" />
-            Activar Sucursal
-          </Button>
         )}
         {branch.is_main_branch && <p className="text-sm text-slate-500 mt-2">Esta es tu sucursal principal.</p>}
       </CardContent>

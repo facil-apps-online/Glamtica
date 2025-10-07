@@ -1,7 +1,7 @@
 import {
   BarChart3,
   Calendar,
-  Combine, // Añadido para Combos
+  Combine,
   Package,
   Scissors,
   Settings,
@@ -10,7 +10,7 @@ import {
   Warehouse,
   TrendingUp,
   Store,
-  HardHat // New import for Equipment icon
+  HardHat
 } from 'lucide-react';
 
 export const tenantNavigationConfig = [
@@ -19,19 +19,19 @@ export const tenantNavigationConfig = [
     items: [
       {
         title: "Dashboard",
-        url: "/",
+        url: "/app",
         icon: BarChart3,
         roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
       },
       {
         title: "Atenciones",
-        url: "/attentions",
+        url: "/app/attentions",
         icon: Calendar,
         roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
       },
       {
         title: "Clientes",
-        url: "/clients",
+        url: "/app/clients",
         icon: Users,
         roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
       }
@@ -42,20 +42,20 @@ export const tenantNavigationConfig = [
     items: [
       {
         title: "Equipo",
-        url: "/team",
+        url: "/app/team",
         icon: UserCheck,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Gestión de Ausencias",
-        url: "/time-off-management",
-        icon: UserCheck, // Opcional: puedes usar otro ícono
+        url: "/app/time-off-management",
+        icon: UserCheck,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Historial de Ausencias",
-        url: "/time-off-history",
-        icon: UserCheck, // Opcional: puedes usar otro ícono
+        url: "/app/time-off-history",
+        icon: UserCheck,
         roles: ['tenant_super_admin', 'tenant_admin']
       }
     ]
@@ -65,31 +65,31 @@ export const tenantNavigationConfig = [
     items: [
       {
         title: "Servicios",
-        url: "/services",
+        url: "/app/services",
         icon: Scissors,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Productos",
-        url: "/products",
+        url: "/app/products",
         icon: Package,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Combos",
-        url: "/combos",
+        url: "/app/combos",
         icon: Combine,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Inventario",
-        url: "/inventory",
+        url: "/app/inventory",
         icon: Warehouse,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Equipos",
-        url: "/equipment",
+        url: "/app/equipment",
         icon: HardHat,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
@@ -101,7 +101,7 @@ export const tenantNavigationConfig = [
     items: [
       {
         title: "Reportes",
-        url: "/reports",
+        url: "/app/reports",
         icon: TrendingUp,
         roles: ['tenant_super_admin', 'tenant_admin']
       }
@@ -112,13 +112,13 @@ export const tenantNavigationConfig = [
     items: [
       {
         title: "Configuración",
-        url: "/settings",
+        url: "/app/settings",
         icon: Settings,
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
         title: "Sucursales",
-        url: "/branches",
+        url: "/app/branches",
         icon: Store,
         roles: ['tenant_super_admin']
       }

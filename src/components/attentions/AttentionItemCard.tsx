@@ -119,7 +119,7 @@ export const AttentionItemCard = ({
                     {iconMap[type]}
                     {name}
                 </p>
-                <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center gap-4'} text-sm text-muted-foreground items-center`}>
+                <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center gap-4'} text-sm text-muted-foreground`}>
                     {assignedTo && type !== 'combo' && (
                         <div className="flex items-center gap-1">
                             <User className="w-4 h-4" />

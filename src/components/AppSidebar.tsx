@@ -76,7 +76,7 @@ const BranchFooter: React.FC = () => {
 
 // --- COMPONENTE PRINCIPAL (Corregido y Unificado) ---
 export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", subtitle = "Panel", ...props }: AppSidebarProps) {
-  const { setOpenMobile } = useSidebar();
+  const { setOpenMobile, open } = useSidebar();
   const { user, tenant, currentAssignment } = useAuth();
   const userRole = currentAssignment?.role_name;
 
@@ -87,7 +87,7 @@ export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", 
   };
 
   return (
-    <Sidebar variant="inset" {...props}>
+    <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
