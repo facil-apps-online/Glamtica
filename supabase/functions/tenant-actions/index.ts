@@ -17,6 +17,38 @@ const callRpc = async (supabaseAdmin: any, rpcName: string, ...params: any[]) =>
   return data;
 };
 
+// Helper function to queue a notification for a client
+const queueClientNotification = async (
+  supabaseAdmin: any,
+  tenantId: string,
+  clientId: string,
+  templateType: string,
+  templateData: object
+) => {
+  try {
+    const { error } = await supabaseAdmin.rpc('queue_client_email', {
+      p_tenant_id: tenantId,
+      p_client_id: clientId,
+      p_template_type: templateType,
+      p_template_data: templateData,
+    });
+
+    if (error) {
+      // Log the error but don't throw, as failing to send a notification
+      // shouldn't block the main operation (e.g., creating an attention).
+      console.error(
+        `Failed to queue notification ${templateType} for client ${clientId}:`,
+        error
+      );
+    }
+  } catch (e) {
+    console.error(
+      `Exception while queueing notification ${templateType} for client ${clientId}:`,
+      e
+    );
+  }
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -1107,6 +1139,41 @@ serve(async (req) => {
           .single();
         if (error) throw error;
         responseData = { settings_data: data?.settings_data };
+        break;
+      }
+
+      case 'get_notification_settings': {
+        if (!tenantId) throw new Error('Tenant ID is required.');
+        const { data, error } = await supabaseAdmin
+            .from('tenant_template_settings')
+            .select('template_type, is_active')
+            .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_notification_settings': {
+        const { settings } = payload;
+        if (!settings || !Array.isArray(settings)) {
+            throw new Error('Settings payload must be an array.');
+        }
+        if (!tenantId) throw new Error('Tenant ID is required.');
+
+        const upsertData = settings.map(s => ({
+            tenant_id: tenantId,
+            template_type: s.template_type,
+            is_active: s.is_active
+        }));
+
+        const { data, error } = await supabaseAdmin
+            .from('tenant_template_settings')
+            .upsert(upsertData, { onConflict: 'tenant_id, template_type' })
+            .select();
+
+        if (error) throw error;
+        responseData = data;
         break;
       }
 
@@ -2713,10 +2780,13 @@ serve(async (req) => {
 
       case 'cancel_attention': {
         const { attentionId } = payload;
-        const { error } = await supabaseAdmin
-          .from('attentions')
-          .update({ status: 'Cancelada' })
-          .eq('id', attentionId);
+        if (!attentionId) {
+          throw new Error('Attention ID is required for cancellation.');
+        }
+        // This RPC handles the status update and the notification
+        const { error } = await supabaseAdmin.rpc('cancel_attention_and_notify', {
+          p_attention_id: attentionId,
+        });
         if (error) throw error;
         responseData = { success: true };
         break;

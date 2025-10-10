@@ -8,8 +8,9 @@ import { SalesTab } from "./Settings/SalesTab";
 import { InventorySettingsTab } from "./Settings/InventorySettingsTab";
 import { SubscriptionTab } from "./Settings/SubscriptionTab";
 import { ClientsTab } from "./Settings/ClientsTab";
+import { NotificationSettingsTab } from "./Settings/NotificationSettingsTab";
 import { IdentitySettingsTab } from "./Settings/IdentitySettingsTab";
-import { Building, Users, Store, CreditCard, FileText, Box, Users2, Palette, Hash, Tv, FileDigit } from 'lucide-react';
+import { Building, Users, Store, CreditCard, FileText, Box, Users2, Palette, Hash, Tv, FileDigit, Bell } from 'lucide-react';
 import NumberingSequencesPage from "./Settings/NumberingSequencesPage";
 import TvManagementPage from "./TvManagementPage";
 import { useScreenSize } from "@/hooks/useScreenSize";
@@ -66,6 +67,7 @@ export default function Settings() {
     { value: "identity", label: "Identidad", icon: <Palette className="h-4 w-4" />, component: <IdentitySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "users", label: "Usuarios", icon: <Users className="h-4 w-4" />, component: <UsersTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "clients", label: "Clientes", icon: <Users2 className="h-4 w-4" />, component: <ClientsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "notifications", label: "Notificaciones", icon: <Bell className="h-4 w-4" />, component: <NotificationSettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "inventory", label: "Inventario", icon: <Box className="h-4 w-4" />, component: <InventorySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "sales", label: "Ventas", icon: <CreditCard className="h-4 w-4" />, component: <SalesTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "numbering", label: "Numeración", icon: <FileDigit className="h-4 w-4" />, component: <NumberingSequencesPage />, roles: ['tenant_super_admin', 'tenant_admin'] },

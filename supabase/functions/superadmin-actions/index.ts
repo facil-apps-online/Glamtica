@@ -1,6 +1,41 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// --- Encryption Helpers ---
+const ENCRYPTION_KEY = Deno.env.get('GLAMTICA_ENCRYPTION_KEY');
+
+async function getKey() {
+  if (!ENCRYPTION_KEY) {
+    throw new Error("GLAMTICA_ENCRYPTION_KEY is not set in environment variables.");
+  }
+  const keyData = new TextEncoder().encode(ENCRYPTION_KEY.slice(0, 32)); // AES-256 requires a 32-byte key
+  return await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encrypt(data: string): Promise<{ encrypted: string; nonce: string }> {
+  const key = await getKey();
+  const nonce = crypto.getRandomValues(new Uint8Array(12)); // 12-byte nonce for AES-GCM
+  const encodedData = new TextEncoder().encode(data);
+
+  const encryptedBuffer = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: nonce },
+    key,
+    encodedData
+  );
+
+  // Convert buffer to base64
+  const encrypted = btoa(String.fromCharCode.apply(null, new Uint8Array(encryptedBuffer)));
+  const nonceB64 = btoa(String.fromCharCode.apply(null, nonce));
+
+  return { encrypted, nonce: nonceB64 };
+}
+
 console.log("Initializing superadmin-actions function");
 
 Deno.serve(async (req) => {
@@ -593,6 +628,39 @@ Deno.serve(async (req) => {
           if (error) throw error;
           responseData = data;
           break;
+        }
+
+        case 'save_whatsapp_integration': {
+            const { tenant_id, credentials } = payload;
+            if (!tenant_id || !credentials) {
+                throw new Error('tenant_id and credentials are required.');
+            }
+
+            const { access_token, account_id, phone_number_id } = credentials;
+            if (!access_token || !account_id || !phone_number_id) {
+                throw new Error('credentials must include access_token, account_id, and phone_number_id.');
+            }
+
+            const { encrypted, nonce } = await encrypt(JSON.stringify(credentials));
+
+            const { data, error } = await supabaseAdmin
+                .from('tenant_integrations')
+                .upsert({
+                    tenant_id: tenant_id,
+                    provider: 'meta_whatsapp',
+                    environment: 'production',
+                    encrypted_credentials: encrypted,
+                    nonce: nonce,
+                    is_active: true
+                }, {
+                    onConflict: 'tenant_id, provider, environment'
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            responseData = { success: true, ...data };
+            break;
         }
 
         case 'delete_tenant_integration': {
