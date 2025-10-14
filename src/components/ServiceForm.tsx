@@ -8,8 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { MasterService } from "@/types/services";
-import { useServiceCategories } from "@/hooks/useServiceCategories";
 import { useTaxTypes } from "@/hooks/useTaxTypes";
+import { ServiceCategory } from "@/hooks/useServiceCategories";
 
 interface ServiceFormProps {
   form: UseFormReturn<Partial<MasterService & { tax_type_ids: string[] }>>;
@@ -17,11 +17,12 @@ interface ServiceFormProps {
   isEdit: boolean;
   isLoading: boolean;
   onCancel?: () => void;
+  serviceCategories: ServiceCategory[] | undefined;
+  isLoadingCategories: boolean;
 }
 
-export const ServiceForm: React.FC<ServiceFormProps> = ({ form, onSubmit, isEdit, isLoading, onCancel }) => {
+export const ServiceForm: React.FC<ServiceFormProps> = ({ form, onSubmit, isEdit, isLoading, onCancel, serviceCategories, isLoadingCategories }) => {
   const { register, handleSubmit, control, formState: { errors, isDirty } } = form;
-  const { data: serviceCategories, isLoading: isLoadingCategories } = useServiceCategories();
   const { data: taxTypes, isLoading: isLoadingTaxTypes } = useTaxTypes();
 
   const taxTypeOptions = React.useMemo(() => {

@@ -143,9 +143,15 @@ export const useUpdateMasterService = () => {
   return useMutation<MasterService, Error, { id: string; updates: Partial<MasterService> }>({
     mutationFn: ({ id, updates }) =>
       callTenantAction('update_master_service', { id, updates }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['master_services'] });
       queryClient.invalidateQueries({ queryKey: ['branch_services'] });
+      // Invalidate the details query for this specific service
+      queryClient.invalidateQueries({ queryKey: ['master_service_details', variables.id] });
+      // Invalidate the chatter query for this specific service
+      if (data && data.tenant_id && variables.id) {
+        queryClient.invalidateQueries({ queryKey: ['chatter', 'services', variables.id, data.tenant_id] });
+      }
       toast({ title: "Servicio Maestro Actualizado", description: "La información del servicio ha sido actualizada.", variant: "success" });
     },
     onError: (error: Error) => {

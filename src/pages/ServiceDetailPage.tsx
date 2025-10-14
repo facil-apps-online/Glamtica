@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useMasterServiceDetails, useUpdateMasterService } from '@/hooks/useServices';
+import { useServiceCategories } from '@/hooks/useServiceCategories';
 import { useServiceTaxTypes, useAddServiceTaxType, useRemoveServiceTaxType } from "@/hooks/useServiceTaxTypes";
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,8 @@ export default function ServiceDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { data: service, isLoading, error, refetch: refetchServiceDetails } = useMasterServiceDetails(id || '');
+  const { data: service, isLoading: isLoadingService, error, refetch: refetchServiceDetails } = useMasterServiceDetails(id || '');
+  const { data: serviceCategories, isLoading: isLoadingCategories } = useServiceCategories();
   const { mutate: updateService, isPending: isUpdating } = useUpdateMasterService();
   const { data: existingTaxTypes, refetch: refetchServiceTaxTypes } = useServiceTaxTypes(id || '');
   const { mutate: addServiceTaxType } = useAddServiceTaxType();
@@ -42,14 +44,16 @@ export default function ServiceDetailPage() {
   });
 
   useEffect(() => {
-    if (service) {
+    // We reset the form only when both the service details and the service categories are loaded.
+    // This ensures that the category dropdown is populated before its value is set, preventing race conditions.
+    if (service && serviceCategories) {
       const tax_type_ids = existingTaxTypes?.map(st => st.tax_type_id) || [];
       form.reset({
         ...service,
         tax_type_ids,
       });
     }
-  }, [service, existingTaxTypes, form]);
+  }, [service, existingTaxTypes, serviceCategories, form]);
 
   const handleTaxTypeUpdates = (serviceId: string, selectedTaxTypeIds: string[]) => {
     if (!serviceId) return;
@@ -79,7 +83,7 @@ export default function ServiceDetailPage() {
     });
   };
 
-  if (isLoading) {
+  if (isLoadingService || isLoadingCategories) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-10 w-1/3" />
@@ -126,6 +130,8 @@ export default function ServiceDetailPage() {
                     onSubmit={onSubmit}
                     isEdit={true}
                     isLoading={isUpdating}
+                    serviceCategories={serviceCategories}
+                    isLoadingCategories={isLoadingCategories}
                   />
                 </CardContent>
               </Card>
@@ -157,7 +163,7 @@ export default function ServiceDetailPage() {
           </Tabs>
         </div>
         <div>
-          <ChatterBox resourceType="master_services" resourceId={service.id} tenantId={service.tenant_id} containerClassName="h-[calc(100vh-22rem)]" />
+          <ChatterBox resourceType="services" resourceId={service.id} tenantId={service.tenant_id} containerClassName="h-[calc(100vh-22rem)]" />
         </div>
       </div>
     </div>

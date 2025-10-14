@@ -500,7 +500,7 @@ export const ChatterBox: React.FC<ChatterBoxProps> = ({ resourceType, resourceId
                             <Paperclip className="w-4 h-4" />
                         </Button>
                     </div>
-                    <Button onClick={handleSubmit} disabled={createCommentMutation.isPending || (!editor?.getText().trim() && filesToUpload.length === 0)}>
+                    <Button onClick={handleSubmit} disabled={createCommentMutation.isPending || (editor?.isEmpty && filesToUpload.length === 0)}>
                         <Send className="w-4 h-4 mr-2" />
                         Enviar
                     </Button>

@@ -5,7 +5,8 @@ import { supabase } from "@/lib/supabaseClient";
 // Estructura de datos que el hook devolverá
 export interface ServiceCommissionData {
   user_id: string;
-  user_name: string;
+  first_name: string;
+  last_name: string;
   branches: {
     branch_id: string;
     branch_name: string;

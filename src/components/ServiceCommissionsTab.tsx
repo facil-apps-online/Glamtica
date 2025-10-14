@@ -47,7 +47,7 @@ export const ServiceCommissionsTab: React.FC<ServiceCommissionsTabProps> = ({ se
           }
           transformed[branchData.branch_id].users.push({
             user_id: userData.user_id,
-            user_name: userData.user_name,
+            user_name: [userData.first_name, userData.last_name].filter(Boolean).join(' '),
             commission_rate: branchData.commission_rate,
             can_perform: branchData.can_perform,
             commission_id: branchData.commission_id,

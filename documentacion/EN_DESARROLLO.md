@@ -40,7 +40,16 @@ Este es el plan de desarrollo para la **Prioridad #1**.
     - [ ] Ventas (POS)
 - **Catálogo y Precios:**
     - [ ] Productos (Maestro)
-    - [ ] Servicios (Maestro)
+    - **Servicios (Maestro):**
+    - [x] **Investigación de Auditoría:** Se detectó que los logs de auditoría para la tabla `services` no se estaban generando.
+    - [x] **Análisis de Causa Raíz:** Se investigó el historial de migraciones y se descubrió que el trigger de auditoría (`audit_services_changes`) fue eliminado intencionadamente en el pasado (`20250802000046_drop_audit_services_trigger.sql`) debido a una refactorización que eliminó la columna `branch_id` de la tabla `services`, lo que rompía la función de auditoría genérica.
+    - [x] **Solución Implementada:**
+        - Se creó una nueva función de base de datos específica: `public.audit_master_services_function()`.
+        - Esta función está diseñada para la tabla `services`, obteniendo el `tenant_id` pero pasando `NULL` para el `branch_id` que ya no existe.
+        - Se creó una nueva migración (`20251014000001_reintroduce_audit_on_services_table.sql`) para implementar la nueva función y un nuevo trigger (`audit_services_master_changes`) en la tabla `services`.
+        - [x] **Corrección (Bug Fix):** Se creó una migración adicional (`20251014000002_fix_audit_master_services_function_cast.sql`) para corregir un error de tipo en la función de auditoría, asegurando que el valor `NULL` para `branch_id` se interprete correctamente como `uuid`.
+        - [x] **Corrección Definitiva:** Se creó una tercera migración (`20251014000003_definitive_fix_for_audit_master_services_function.sql`) después de descubrir que la firma de la función `log_audit_action` había cambiado. La nueva función ahora captura y pasa el `user_id` y ajusta todos los tipos de datos para alinearse con la última versión del sistema de auditoría.
+    - [x] **Estado:** La auditoría para la tabla maestra de servicios ha sido restaurada y ahora funciona correctamente.
     - [ ] Combos (Maestro)
     - [ ] Categorías (Productos y Servicios)
     - [ ] Marcas de Productos
