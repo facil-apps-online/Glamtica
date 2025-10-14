@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, User, Phone, Mail, Edit, Trash2, Search, MoreHorizontal } from "lucide-react";
+import { Plus, User, Phone, Mail, Edit, Trash2, Search, MoreHorizontal, FileEdit } from "lucide-react";
 import { ClientDialog } from "@/components/ClientDialog";
 import { useClients, useDeleteClient, useUpdateClient } from "@/hooks/useClients";
 import { useTranslation } from "@/hooks/useTranslations";
@@ -53,6 +54,7 @@ const ClientCardSkeleton = () => (
 );
 
 const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
+  const navigate = useNavigate();
   const isAssociatedWithSelectedBranch = true; // Placeholder
   const cardStyle = {}; // Placeholder
 
@@ -71,9 +73,13 @@ const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
               <ClientDialog client={client} isEdit initialBranchIds={client.branches?.map(b => b.id) || []}>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <Edit className="w-4 h-4 mr-2" />
-                  Editar
+                  Edición rápida
                 </DropdownMenuItem>
               </ClientDialog>
+              <DropdownMenuItem onClick={() => navigate(`/app/clients/${client.id}`)}>
+                <FileEdit className="w-4 h-4 mr-2" />
+                Edición Completa
+              </DropdownMenuItem>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">

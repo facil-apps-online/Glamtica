@@ -89,6 +89,15 @@ export const useMasterServices = (searchTerm?: string, showInactive?: boolean, f
   });
 };
 
+// Hook para obtener los detalles de un servicio maestro
+export const useMasterServiceDetails = (serviceId: string) => {
+  return useQuery<MasterService, Error>({
+    queryKey: ['master_service_details', serviceId],
+    queryFn: () => callTenantAction('get_master_service_details', { serviceId }),
+    enabled: !!serviceId,
+  });
+};
+
 // Hook para obtener todos los combos maestros (el catálogo general)
 export const useMasterCombos = () => {
   return useQuery<any[], Error>({ // TODO: Definir un tipo MasterCombo
@@ -247,6 +256,23 @@ export const useBulkUpdateBranchComboPrices = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos'] });
       toast({ title: "Precios de Combos Actualizados", description: "Los precios de los combos han sido actualizados masivamente.", variant: "success" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Eliminar un servicio del catálogo maestro
+export const useDeleteMasterService = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, string>({
+    mutationFn: (id) => callTenantAction('delete_master_service', { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['master_services'] });
+      toast({ title: "Servicio Eliminado", description: "El servicio ha sido eliminado del catálogo general.", variant: "success" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

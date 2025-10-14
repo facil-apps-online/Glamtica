@@ -10,10 +10,13 @@ import { ReadOnlyBanner } from "./ReadOnlyBanner";
 import { GracePeriodBanner } from "./GracePeriodBanner";
 import { CancelledBanner } from "./CancelledBanner";
 import { tenantNavigationConfig } from "@/config/tenantNavigation";
+import { useNotificationStore, Notification } from "@/stores/notificationStore";
+import { supabase } from "@/lib/supabaseClient";
 
 export function Layout() {
   const { currentAssignment } = useAuth();
   const { data: subscription, isLoading: isSubscriptionLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
+  const { fetchNotifications, addNotification } = useNotificationStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,6 +24,38 @@ export function Layout() {
   const isAdmin = currentAssignment?.role_name === 'tenant_super_admin' || currentAssignment?.role_name === 'tenant_admin';
   const isReadOnly = status === 'suspendido' || status === 'cancelado';
   const showGraceBanner = status === 'gracia' && isAdmin;
+
+  // Fetch initial notifications on load
+  React.useEffect(() => {
+    if (currentAssignment) {
+      fetchNotifications();
+    }
+  }, [currentAssignment, fetchNotifications]);
+
+  // Set up real-time listener for new notifications
+  React.useEffect(() => {
+    if (!currentAssignment) return;
+
+    const channel = supabase
+      .channel('public:notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          // We check if the new notification is for the current user
+          // RLS on the subscription should handle this, but an extra check is good practice
+          if (payload.new.user_id === currentAssignment.user_id) {
+            addNotification(payload.new as Notification);
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentAssignment, addNotification]);
 
   React.useEffect(() => {
     if (!isSubscriptionLoading && status === 'suspendido' && location.pathname !== '/subscribe') {

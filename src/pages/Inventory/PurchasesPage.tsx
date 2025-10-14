@@ -110,7 +110,7 @@ export function PurchasesPage() {
           title="Gestión de Compras"
           subtitle="Crea, gestiona y registra las compras de tus proveedores."
           backButton={
-            <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
+            <Button variant="outline" size="icon" onClick={() => navigate('/app/inventory')}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
           }

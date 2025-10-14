@@ -49,6 +49,88 @@ const queueClientNotification = async (
   }
 };
 
+// Helper function to create a notification for a user
+const createUserNotification = async (
+  supabaseAdmin: any,
+  tenantId: string,
+  userId: string,
+  type: string,
+  title: string,
+  body: string,
+  linkTo: string
+) => {
+  try {
+    const { error } = await supabaseAdmin.rpc('create_notification', {
+      p_tenant_id: tenantId,
+      p_user_id: userId,
+      p_type: type,
+      p_title: title,
+      p_body: body,
+      p_link_to: linkTo,
+    });
+
+    if (error) {
+      console.error(
+        `Failed to create notification for user ${userId} with title "${title}":`,
+        error
+      );
+    }
+  } catch (e) {
+    console.error(
+      `Exception while creating notification for user ${userId}:`,
+      e
+    );
+  }
+};
+
+// Helper function to log field changes for a resource to the chatter
+const logFieldChangesToChatter = async (
+  supabase: any,
+  tenantId: string,
+  userId: string,
+  resourceType: string,
+  resourceId: string,
+  oldRecord: Record<string, any>,
+  newUpdates: Record<string, any>
+) => {
+  const eventsToLog = [];
+  const fieldsToIgnore = ['updated_at', 'created_at', 'id', 'tenant_id']; // Fields to ignore in audit
+
+  for (const key in newUpdates) {
+    if (Object.prototype.hasOwnProperty.call(newUpdates, key) && !fieldsToIgnore.includes(key)) {
+      // Ensure we are comparing values of the same type if possible, especially for null/undefined vs empty string
+      const oldValue = oldRecord[key] ?? null;
+      const newValue = newUpdates[key] ?? null;
+
+      if (oldValue !== newValue) {
+        eventsToLog.push({
+          tenant_id: tenantId,
+          user_id: userId,
+          resource_type: resourceType,
+          resource_id: resourceId,
+          event_type: 'field_update',
+          payload: {
+            field: key,
+            old_value: oldValue,
+            new_value: newValue,
+          },
+        });
+      }
+    }
+  }
+
+  if (eventsToLog.length > 0) {
+    try {
+      const { error } = await supabase.from('chatter_events').insert(eventsToLog);
+      if (error) {
+        console.error('Failed to log field changes to chatter:', error);
+      }
+    } catch (e) {
+      console.error('Exception while logging field changes to chatter:', e);
+    }
+  }
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -114,6 +196,27 @@ serve(async (req) => {
         throw new Error('Tenant ID not found in JWT app_metadata.assignments[0].tenant_id.');
       }
     }
+
+
+    // --- START: Add this block for Audit Context ---
+    const userAssignments = decodedToken.app_metadata?.assignments || [];
+    const branchId = userAssignments[0]?.branch_id; // Get branch_id from the first assignment
+
+    const auditContext = {
+      user_id: userId,
+      tenant_id: tenantId,
+      branch_id: branchId, // Include the branch_id
+    };
+
+    console.log("Setting Audit Context:", JSON.stringify(auditContext, null, 2));
+
+    const { error: rpcError } = await supabaseAdmin.rpc('set_audit_context', { p_context: auditContext });
+
+    if (rpcError) {
+      // Log the error but do not block the main operation
+      console.error('CRITICAL: Failed to set audit context. Audit logs for this transaction may be incomplete.', rpcError);
+    }
+    // --- END: Add this block for Audit Context ---
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -185,7 +288,7 @@ serve(async (req) => {
 
         const { data: clientData, error: clientError } = await supabaseAdmin
           .from('clients')
-          .select('*')
+          .select('id, name, phone, email, document_type_id, document_number, parent_client_id, created_at, updated_at, is_active, tenant_id')
           .eq('tenant_id', tenantId)
           .eq('id', clientId)
           .single();
@@ -245,7 +348,20 @@ serve(async (req) => {
         const { clientId, updates } = payload;
         if (!clientId || !updates) throw new Error('Client ID and updates are required.');
 
-        const { data, error } = await supabaseAdmin
+        // Step 1: Fetch the old record for comparison
+        const { data: oldClient, error: fetchError } = await supabaseAdmin
+          .from('clients')
+          .select('*')
+          .eq('id', clientId)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (fetchError) {
+          throw new Error(`Could not fetch client to update: ${fetchError.message}`);
+        }
+
+        // Step 2: Perform the update
+        const { data: updatedClient, error: updateError } = await supabaseAdmin
           .from('clients')
           .update(updates)
           .eq('id', clientId)
@@ -253,8 +369,20 @@ serve(async (req) => {
           .select()
           .single();
 
-        if (error) throw error;
-        responseData = data;
+        if (updateError) throw updateError;
+
+        // Step 3: Log changes to chatter (fire and forget)
+        await logFieldChangesToChatter(
+          supabaseClient, // Use client with user's role to insert
+          tenantId,
+          userId,
+          'client', // resource_type
+          clientId, // resource_id
+          oldClient, // old record
+          updates    // new values
+        );
+
+        responseData = updatedClient;
         break;
       }
 
@@ -1104,6 +1232,271 @@ serve(async (req) => {
         break;
       }
 
+      case 'GET_NOTIFICATIONS': {
+        const { page = 1, pageSize = 20 } = payload;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, error, count } = await supabaseClient
+          .from('notifications')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) {
+          console.error('Error fetching notifications:', error);
+          throw new Error(`Failed to fetch notifications: ${error.message}`);
+        }
+        
+        responseData = { data, count };
+        break;
+      }
+
+      case 'MARK_NOTIFICATION_AS_READ': {
+        const { notification_id } = payload;
+        if (!notification_id) throw new Error('Notification ID is required.');
+
+        const { data, error } = await supabaseClient
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', notification_id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error marking notification as read:', error);
+          throw new Error(`Failed to mark notification as read: ${error.message}`);
+        }
+
+        responseData = data;
+        break;
+      }
+
+      case 'MARK_ALL_NOTIFICATIONS_AS_READ': {
+        const { data, error } = await supabaseClient
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .is('read_at', null) // Solo actualiza las no leídas
+          .select();
+
+        if (error) {
+          console.error('Error marking all notifications as read:', error);
+          throw new Error(`Failed to mark all notifications as read: ${error.message}`);
+        }
+
+        responseData = { success: true, updatedCount: data.length };
+        break;
+      }
+
+      case 'get_chatter_events': {
+        const { resource_type, resource_id } = payload;
+        if (!resource_type || !resource_id) {
+          throw new Error('resource_type and resource_id are required.');
+        }
+
+        // Step 1: Call the simplified SQL function to get raw events
+        const { data: rawEvents, error: rpcError } = await supabaseClient.rpc('get_unified_chatter_feed', {
+          p_resource_type: resource_type,
+          p_resource_id: resource_id
+        });
+
+        if (rpcError) {
+          console.error('Error fetching raw chatter feed:', rpcError);
+          throw new Error(`Failed to fetch raw chatter feed: ${rpcError.message}`);
+        }
+
+        if (!rawEvents || rawEvents.length === 0) {
+          responseData = [];
+          break;
+        }
+
+        // Step 2: Fetch attachments for all comments
+        const commentIds = rawEvents.filter(e => e.event_type === 'comment').map(e => e.id);
+        const { data: attachments, error: attachmentsError } = await supabaseAdmin
+          .from('chatter_attachments')
+          .select('*')
+          .in('chatter_comment_id', commentIds);
+
+        if (attachmentsError) {
+          console.error('Error fetching chatter attachments:', attachmentsError);
+          // Don't throw, just continue without attachments
+        }
+
+        const attachmentsByCommentId = (attachments || []).reduce((acc, attachment) => {
+          if (!acc[attachment.chatter_comment_id]) {
+            acc[attachment.chatter_comment_id] = [];
+          }
+          acc[attachment.chatter_comment_id].push(attachment);
+          return acc;
+        }, {});
+
+        // Step 3: Collect unique user IDs
+        const userIds = [...new Set(rawEvents.map(event => event.user_id).filter(Boolean))];
+
+        // Step 4: Fetch user profiles using admin client and create a map
+        const userProfiles = new Map();
+        if (userIds.length > 0) {
+          const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 9999 });
+          
+          if (usersError) {
+            console.error('Chatter enrichment failed: Could not list users.', usersError);
+          } else {
+            for (const id of userIds) {
+              const user = users.find(u => u.id === id);
+              if (user) {
+                const fullName = `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim();
+                userProfiles.set(id, {
+                  user_full_name: fullName || user.email,
+                  user_avatar_url: user.user_metadata?.avatar_url || null
+                });
+              }
+            }
+          }
+        }
+
+        // Step 5: Enrich events with user data and attachments
+        const enrichedEvents = rawEvents.map(event => {
+          const profile = event.user_id ? userProfiles.get(event.user_id) : null;
+          return {
+            ...event,
+            user_full_name: profile?.user_full_name || (event.user_id ? 'Usuario Desconocido' : 'Sistema'),
+            user_avatar_url: profile?.user_avatar_url || null,
+            chatter_attachments: attachmentsByCommentId[event.id] || [],
+          };
+        });
+
+        responseData = enrichedEvents;
+        break;
+      }
+
+      case 'create_chatter_comment': {
+        const { resource_type, resource_id, text } = payload;
+        if (!resource_type || !resource_id || !text) {
+          throw new Error('resource_type, resource_id, and text are required.');
+        }
+
+        const { data, error } = await supabaseClient
+          .from('chatter_comments') // Corrected table
+          .insert({
+            tenant_id: tenantId,
+            user_id: userId,
+            resource_type: resource_type,
+            resource_id: resource_id,
+            comment_text: text // Corrected column
+          })
+          .select() // Simplified select
+          .single();
+
+        if (error) {
+          console.error('Error creating chatter comment:', error);
+          // The original error from Supabase is often more informative
+          throw new Error(error.message || 'Failed to create chatter comment');
+        }
+
+        responseData = data;
+        break;
+      }
+
+      case 'CREATE_MENTION_NOTIFICATIONS': {
+        const { mentioned_user_ids, actor_name, resource_type, resource_id, comment_snippet } = payload;
+        if (!mentioned_user_ids || !actor_name || !resource_type || !resource_id) {
+          throw new Error('Missing required payload for mention notifications.');
+        }
+
+        const notificationPromises = mentioned_user_ids.map((userId: string) => {
+          return createUserNotification(
+            supabaseAdmin,
+            tenantId,
+            userId,
+            'mention',
+            `${actor_name} te ha mencionado en un comentario.`,
+            comment_snippet,
+                        `/app/${resource_type}/${resource_id}`          );
+        });
+
+        await Promise.all(notificationPromises);
+        responseData = { success: true };
+        break;
+      }
+
+      case 'get_tenant_settings': {
+        const { tenantId: queryTenantId } = payload;
+        if (!queryTenantId) throw new Error('Tenant ID is required for get_tenant_settings.');
+        const { data, error } = await supabaseAdmin
+          .from('tenant_settings')
+          .select('settings_data')
+          .eq('tenant_id', queryTenantId)
+          .single();
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+        responseData = { settings_data: data?.settings_data || {} };
+        break;
+      }
+
+      case 'get_document_types': {
+        const { applies_to } = payload;
+        if (!applies_to) throw new Error('applies_to is required.');
+
+        const { data, error } = await supabaseAdmin
+          .from('document_types')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .contains('applies_to', [applies_to])
+          .order('name');
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_document_type': {
+        const { name, abbreviation, applies_to } = payload;
+        if (!name || !applies_to) throw new Error('name and applies_to are required.');
+
+        const { data, error } = await supabaseAdmin
+          .from('document_types')
+          .insert({ tenant_id: tenantId, name, abbreviation, applies_to, is_active: true })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_document_type': {
+        const { id, ...updates } = payload;
+        if (!id) throw new Error('ID is required for update.');
+
+        const { data, error } = await supabaseAdmin
+          .from('document_types')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_document_type': {
+        const { id } = payload;
+        if (!id) throw new Error('ID is required for delete.');
+
+        const { error } = await supabaseAdmin
+          .from('document_types')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
       case 'get_tenant_settings': {
         const { tenantId: queryTenantId } = payload;
         if (!queryTenantId) throw new Error('Tenant ID is required for get_tenant_settings.');
@@ -1376,6 +1769,22 @@ serve(async (req) => {
           .eq('tenant_id', tenantId)
           .select()
           .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'get_master_service_details': {
+        const { serviceId } = payload;
+        if (!serviceId) throw new Error('Service ID is required.');
+
+        const { data, error } = await supabaseAdmin
+          .from('services')
+          .select('*') // Seleccionar todos los campos
+          .eq('tenant_id', tenantId)
+          .eq('id', serviceId)
+          .single();
+
         if (error) throw error;
         responseData = data;
         break;
@@ -2774,6 +3183,49 @@ serve(async (req) => {
         // Simplemente lo pasamos directamente a la función RPC.
         const { data, error } = await supabaseAdmin.rpc('create_full_attention', payload);
         if (error) throw error;
+
+        // --- Inicio: Lógica de Notificación ---
+        try {
+          // Notificar al usuario asignado si la cita se creó correctamente
+          if (data && data.id && payload.services && payload.services.length > 0) {
+            const staffUserId = payload.services[0].user_id;
+            const clientId = payload.client_id;
+            const attentionId = data.id;
+            const attentionDt = new Date(payload.attention_datetime);
+
+            if (staffUserId && clientId) {
+              // Obtener el nombre del cliente para el mensaje
+              const { data: client, error: clientError } = await supabaseAdmin
+                .from('clients')
+                .select('name')
+                .eq('id', clientId)
+                .single();
+
+              if (clientError) {
+                console.error(`Notification Error: Could not fetch client name for id ${clientId}:`, clientError.message);
+              } else {
+                const clientName = client.name || 'un cliente';
+                const formattedDate = attentionDt.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
+                const formattedTime = attentionDt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+                await createUserNotification(
+                  supabaseAdmin,
+                  tenantId, // tenantId del token
+                  staffUserId,
+                  'new_appointment', // tipo de notificación
+                  'Nueva Cita Asignada', // título
+                  `Se te asignó una cita con ${clientName} el ${formattedDate} a las ${formattedTime}.`, // cuerpo
+                  `/attentions/${attentionId}` // enlace
+                );
+              }
+            }
+          }
+        } catch (notificationError) {
+          // No bloquear la respuesta principal si la notificación falla
+          console.error('Failed to send appointment notification:', notificationError);
+        }
+        // --- Fin: Lógica de Notificación ---
+
         responseData = data;
         break;
       }
@@ -2909,14 +3361,40 @@ serve(async (req) => {
             throw new Error(`Error al actualizar el estado de la atención: ${updateError.message}`);
           }
 
-          // The new function handles sale creation, item creation, and inventory deduction.
+          // The function now returns a JSONB object with saleId and commissions
           try {
-            const { data, error } = await supabaseAdmin.rpc('process_sale_from_attention', { 
+            const { data: saleProcessingResult, error } = await supabaseAdmin.rpc('process_sale_from_attention', { 
               p_attention_id: attention.id 
             });
 
             if (error) throw error;
-            saleId = data;
+
+            saleId = saleProcessingResult.saleId;
+
+            // --- Inicio: Notificación de Comisiones ---
+            if (saleProcessingResult.commissions && saleProcessingResult.commissions.length > 0) {
+              for (const commission of saleProcessingResult.commissions) {
+                // Formatear el monto a un formato de moneda local (ej. peso colombiano)
+                const formattedAmount = new Intl.NumberFormat('es-CO', { 
+                  style: 'currency', 
+                  currency: 'COP',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0 
+                }).format(commission.amount);
+
+                await createUserNotification(
+                  supabaseAdmin,
+                  tenantId,
+                  commission.user_id,
+                  'commission_earned',
+                  '¡Comisión Ganada!',
+                  `Ganaste una comisión de ${formattedAmount} por la venta de ${commission.item_name}.`,
+                  `/commissions` // Un futuro enlace a la página de comisiones
+                );
+              }
+            }
+            // --- Fin: Notificación de Comisiones ---
+
           } catch (saleError) {
             if (saleError.message.includes('No active document sequence found')) {
               throw new Error('No se ha configurado una secuencia de numeración para las ventas. Por favor, contacte al administrador.');

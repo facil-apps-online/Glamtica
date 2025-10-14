@@ -31,7 +31,7 @@ export function TransfersPage() {
         title="Gestión de Traslados"
         subtitle="Solicita, aprueba y gestiona transferencias de productos entre sucursales."
         backButton={
-          <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
+          <Button variant="outline" size="icon" onClick={() => navigate('/app/inventory')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         }

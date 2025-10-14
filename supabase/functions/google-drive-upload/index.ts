@@ -127,6 +127,17 @@ serve(async (req) => {
 
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.json();
+
+      if (errorBody.error === 'invalid_grant') {
+        console.error(`invalid_grant error for integration ID: ${googleDriveIntegration.id}. Deactivating integration.`);
+        await supabaseAdmin
+          .from('tenant_integrations')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('id', googleDriveIntegration.id);
+        
+        throw new Error('La conexión con Google ha expirado. Por favor, vuelve a conectar tu cuenta desde la configuración.');
+      }
+
       throw new Error(`Google token refresh failed: ${JSON.stringify(errorBody)}`);
     }
 
@@ -276,6 +287,31 @@ serve(async (req) => {
         if (dbError) {
           // TODO: Consider deleting the file from Google Drive if DB insert fails
           throw new Error(`Failed to save product image record to database: ${dbError.message}`);
+        }
+        break;
+      }
+      case 'Chatter': {
+        if (!userId || !tenantId) {
+          throw new Error('Missing userId or tenantId for Chatter context.');
+        }
+        
+        const fileBuffer = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
+        const fileSize = fileBuffer.length;
+
+        const { error: dbError } = await supabaseAdmin
+          .from('chatter_attachments')
+          .insert({
+            chatter_comment_id: contextId,
+            google_drive_file_id: fileId,
+            file_name: newFileName,
+            mime_type: mimeType,
+            file_size: fileSize,
+            tenant_id: tenantId,
+            user_id: userId,
+          });
+        if (dbError) {
+          // TODO: Consider deleting the file from Google Drive if DB insert fails
+          throw new Error(`Failed to save chatter attachment record to database: ${dbError.message}`);
         }
         break;
       }

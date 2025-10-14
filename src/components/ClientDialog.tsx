@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -11,24 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ClientForm } from '@/components/ClientForm';
 import { useForm, Controller } from "react-hook-form";
 import { Client, useCreateClient, useUpdateClient, useClientDetails, useSubClients, useAssignClientToBranch, useUnassignClientFromBranch } from "@/hooks/useClients";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DynamicFormRenderer } from "@/components/DynamicFormRenderer";
-import { SignaturePad } from "@/components/SignaturePad";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  useTenantClientSettings,
-} from "@/hooks/useTenantClientSettings";
+import { useTenantClientSettings } from "@/hooks/useTenantClientSettings";
 import { useClientDocumentTemplates } from "@/hooks/useClientDocumentTemplates";
-import {
-  useClientDocumentInstances,
-  useSaveClientDocumentInstance,
-} from "@/hooks/useClientDocumentInstances";
-import {
-  useClientConsentRecords,
-  useSaveClientConsentRecord,
-} from "@/hooks/useClientConsentRecords";
+import { useClientDocumentInstances, useSaveClientDocumentInstance } from "@/hooks/useClientDocumentInstances";
+import { useClientConsentRecords } from "@/hooks/useClientConsentRecords";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle } from "lucide-react";
@@ -37,6 +29,8 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { FormViewerDialog } from "@/components/FormViewerDialog";
 import { IntakeFormDialog } from "@/components/IntakeFormDialog";
 import { ConsentManagerDialog } from "@/components/ConsentManagerDialog";
+import { ChatterBox } from "@/components/ChatterBox";
+import { useScreenSize, type ScreenSize } from "@/hooks/useScreenSize";
 
 const documentTypes = [
   { value: "cc", label: "Cédula de Ciudadanía" },
@@ -64,6 +58,7 @@ export const ClientDialog = ({
   parentClientId
 }: ClientDialogProps) => {
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
   const createMutation = useCreateClient();
   const updateMutation = useUpdateClient();
   const assignClientToBranch = useAssignClientToBranch();
@@ -77,13 +72,8 @@ export const ClientDialog = ({
   const { data: clientDocumentInstances, isLoading: isLoadingInstances } = useClientDocumentInstances(client?.id || '');
   const { mutate: saveDocumentInstance, isLoading: isSavingInstance } = useSaveClientDocumentInstance();
   const { data: clientConsentRecords, isLoading: isLoadingConsents } = useClientConsentRecords(client?.id || '');
-  const { mutate: saveConsentRecord, isLoading: isSavingConsent } = useSaveClientConsentRecord();
 
   const [activeTab, setActiveTab] = useState('general');
-  const [dynamicFormData, setDynamicFormData] = useState<{ [key: string]: any }>({});
-  const [signatureData, setSignatureData] = useState<string | undefined>(undefined);
-  const [imageConsent, setImageConsent] = useState<boolean>(false);
-
   const [isFormViewerOpen, setIsFormViewerOpen] = useState(false);
   const [selectedFormSchema, setSelectedFormSchema] = useState<any>({});
   const [selectedFormData, setSelectedFormData] = useState<any>({});
@@ -93,6 +83,9 @@ export const ClientDialog = ({
   const [isIntakeFormOpen, setIsIntakeFormOpen] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
 
+  const screenSize: ScreenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
+
   const defaultIntakeTemplate = documentTemplates?.find(
     (template) => template.id === tenantSettings?.default_intake_form_id
   );
@@ -100,23 +93,17 @@ export const ClientDialog = ({
   const { data: parentClient } = useClientDetails(parentClientId || client?.parent_client_id || '');
   const { data: subClients, isLoading: isLoadingSubClients } = useSubClients(client?.id || '');
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    setValue,
-    formState: { errors },
-  } = useForm<Client>({
+  const form = useForm<Client>({
     defaultValues: client || {
       name: "",
       phone: "",
       email: "",
-      document_type: "",
+      document_type_id: "",
       document_number: "",
       parent_client_id: parentClientId
     },
   });
+
 
   useEffect(() => {
     if (open) {
@@ -124,66 +111,43 @@ export const ClientDialog = ({
       if (parentClientId) {
         defaultValues.parent_client_id = parentClientId;
       }
-      reset(defaultValues);
+      form.reset(defaultValues);
       
       if (isEdit && client?.client_branches) {
         setSelectedBranchIds(client.client_branches.map(cb => cb.branches?.id).filter(Boolean) as string[]);
       } else {
         setSelectedBranchIds(initialBranchIds);
       }
-
-      if (isEdit && client?.id) {
-        const lastDefaultInstance = clientDocumentInstances?.find(
-          (instance) => instance.template_id === tenantSettings?.default_intake_form_id
-        );
-        if (lastDefaultInstance) {
-          setDynamicFormData(lastDefaultInstance.data);
-        }
-
-        const generalSignatureRecord = clientConsentRecords?.find(rec => rec.consent_type === 'general_signature');
-        if (generalSignatureRecord) {
-          setSignatureData(generalSignatureRecord.signature_data);
-        }
-        const imageConsentRecord = clientConsentRecords?.find(rec => rec.consent_type === 'image_use');
-        if (imageConsentRecord) {
-          setImageConsent(true);
-        }
-      }
     }
-  }, [open, isEdit, client, parentClientId, clientDocumentInstances, clientConsentRecords, tenantSettings, reset, initialBranchIds]);
+  }, [open, isEdit, client, parentClientId, form.reset, initialBranchIds]);
 
   const handleCopyParentData = (checked: boolean) => {
     if (checked && parentClient) {
-      setValue('phone', parentClient.phone);
-      setValue('email', parentClient.email || '');
+      form.setValue('phone', parentClient.phone);
+      form.setValue('email', parentClient.email || '');
     } else {
-      setValue('phone', '');
-      setValue('email', '');
+      form.setValue('phone', '');
+      form.setValue('email', '');
     }
   };
 
   const onSubmitGeneral = (data: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
     if (isEdit && client?.id) {
-      // Definir las propiedades permitidas para la tabla 'clients'
       const allowedClientProps = [
-        'name', 'phone', 'email', 'document_type', 'document_number', 'parent_client_id'
-        // Añadir aquí cualquier otra columna directa de la tabla 'clients'
+        'name', 'phone', 'email', 'document_type_id', 'document_number', 'parent_client_id'
       ];
-
-      // Filtrar el objeto 'data' para incluir solo las propiedades permitidas
       const updatesToSend: Partial<Client> = {};
       for (const key in data) {
         if (allowedClientProps.includes(key as keyof Client)) {
           (updatesToSend as any)[key] = (data as any)[key];
         }
       }
-
       updateMutation.mutate(
         { clientId: client.id, updates: updatesToSend },
         {
           onSuccess: () => {
             toast({ title: "Éxito", description: "Cliente actualizado correctamente.", variant: "success" });
-            // No cerramos el dialogo en modo edicion para poder cambiar de pestaña
+            queryClient.invalidateQueries({ queryKey: ['chatter', 'clients', client.id] });
           },
           onError: (error: any) => toast({ title: "Error", description: `Error al actualizar cliente: ${error.message}`, variant: "destructive" })
         }
@@ -208,7 +172,6 @@ export const ClientDialog = ({
 
   const handleBranchAssociationChange = (branchId: string, isAssociated: boolean) => {
     if (!client?.id) return;
-
     const mutation = isAssociated ? assignClientToBranch : unassignClientFromBranch;
     mutation.mutate({ clientId: client.id, branchId }, {
       onSuccess: () => {
@@ -217,165 +180,75 @@ export const ClientDialog = ({
           : selectedBranchIds.filter(id => id !== branchId);
         setSelectedBranchIds(newSelectedBranchIds);
         toast({ title: "Éxito", description: `Asociación con la sucursal actualizada.`, variant: "success" });
+        queryClient.invalidateQueries({ queryKey: ['chatter', 'clients', client.id] });
       },
       onError: (error: any) => {
-        toast({ title: "Error", description: `No se pudo actualizar la asociación: ${error.message}`, variant: "destructive" });
+        toast({ title: "Error", description: `No se pudo actualizar la asociación: ${error.message}`, variant: "destructive" })
       }
     });
   };
 
   const branchOptions = branches?.map(branch => ({ value: branch.id, label: branch.name })) || [];
 
+  const tabs = [
+    { value: "general", label: "Información", disabled: false },
+    { value: "branches", label: "Sucursales", disabled: !isEdit },
+    { value: "family", label: "Familiares", disabled: !isEdit },
+    { value: "forms-consents", label: "Formularios", disabled: !isEdit },
+    { value: "activity", label: "Actividad", disabled: !isEdit },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Editar Cliente" : "Añadir Cliente"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "Editar Cliente" : "Añadir Cliente"}</DialogTitle>
           <DialogDescription>
-            {isEdit 
-              ? 'Gestiona la información y asociaciones del cliente' 
-              : 'Completa la información del nuevo cliente'
-            }
+            {isEdit ? 'Gestiona la información y asociaciones del cliente' : 'Completa la información del nuevo cliente'}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="general">Información</TabsTrigger>
-            <TabsTrigger value="branches" disabled={!isEdit}>Sucursales</TabsTrigger>
-            <TabsTrigger value="family" disabled={!isEdit}>Familiares</TabsTrigger>
-            <TabsTrigger value="forms-consents" disabled={!isEdit}>Formularios</TabsTrigger>
-          </TabsList>
+          {isMobile ? (
+            <div className="px-1 mb-4">
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una sección" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tabs.map(tab => (
+                    <SelectItem key={tab.value} value={tab.value} disabled={tab.disabled}>
+                      {tab.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <TabsList className="grid w-full grid-cols-5">
+              {tabs.map(tab => (
+                <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          )}
 
           <TabsContent value="general" className="mt-4">
-            <form onSubmit={handleSubmit(onSubmitGeneral)} className="space-y-4">
-              {parentClient && (
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-md space-y-3">
-                  <p className="text-sm text-blue-800">Este es un familiar de: <strong>{parentClient.name}</strong></p>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="copy-parent-data" onCheckedChange={handleCopyParentData} />
-                    <Label htmlFor="copy-parent-data" className="text-sm font-medium">Usar los mismos datos de contacto del padre</Label>
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre</Label>
-                  <Input
-                    id="name"
-                    {...register("name", { required: "El nombre es obligatorio" })}
-                    placeholder="Nombre completo del cliente"
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-600">{errors.name.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    {...register("phone")}
-                    placeholder="+34 666 123 456"
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-red-600">{errors.phone.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="document_type">Tipo de Documento</Label>
-                  <Controller
-                    name="document_type"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {documentTypes.map(doc => (
-                            <SelectItem key={doc.value} value={doc.value}>{doc.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="document_number">Número de Documento</Label>
-                  <Input
-                    id="document_number"
-                    {...register("document_number")}
-                    placeholder="123456789"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    {...register("email")}
-                    placeholder="email@ejemplo.com"
-                  />
-                </div>
-                
-                {!isEdit && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="branches">Sucursales Iniciales</Label>
-                    <MultiSelect
-                      options={branchOptions}
-                      selected={selectedBranchIds}
-                      onSelectedChange={setSelectedBranchIds}
-                      placeholder="Selecciona una o más sucursales"
-                      className="w-full"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending || isLoadingBranches}
-                >
-                  {isEdit ? "Guardar Cambios" : "Guardar"}
-                </Button>
-              </DialogFooter>
-            </form>
+            <ClientForm form={form} onSubmit={onSubmitGeneral} isEdit={isEdit} isLoading={createMutation.isPending || updateMutation.isPending || isLoadingBranches} />
           </TabsContent>
 
           <TabsContent value="branches" className="mt-4 space-y-4">
             <div className="border p-4 rounded-md">
               <h4 className="text-lg font-semibold mb-4">Asociar a Sucursales</h4>
               <div className="space-y-2">
-                {isLoadingBranches ? (
-                  <p>Cargando sucursales...</p>
-                ) : (
-                  branches?.map(branch => (
-                    <div key={branch.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`branch-${branch.id}`}
-                        checked={selectedBranchIds.includes(branch.id)}
-                        onCheckedChange={(checked) => handleBranchAssociationChange(branch.id, !!checked)}
-                        disabled={assignClientToBranch.isPending || unassignClientFromBranch.isPending}
-                      />
-                      <Label htmlFor={`branch-${branch.id}`}>{branch.name}</Label>
-                    </div>
-                  ))
-                )}
+                {isLoadingBranches ? <p>Cargando sucursales...</p> : branches?.map(branch => (
+                  <div key={branch.id} className="flex items-center space-x-2">
+                    <Checkbox id={`branch-${branch.id}`} checked={selectedBranchIds.includes(branch.id)} onCheckedChange={(checked) => handleBranchAssociationChange(branch.id, !!checked)} disabled={assignClientToBranch.isPending || unassignClientFromBranch.isPending} />
+                    <Label htmlFor={`branch-${branch.id}`}>{branch.name}</Label>
+                  </div>
+                ))}
               </div>
             </div>
           </TabsContent>
@@ -384,24 +257,15 @@ export const ClientDialog = ({
             <div className="border p-4 rounded-md space-y-4">
               <div className="flex justify-between items-center">
                 <h4 className="text-lg font-semibold">Miembros Familiares</h4>
-                <ClientDialog 
-                  parentClientId={client?.id} 
-                  initialBranchIds={selectedBranchIds}
-                >
-                  <Button size="sm">
-                    <PlusCircle className="w-4 h-4 mr-2" />
-                    Añadir Familiar
-                  </Button>
+                <ClientDialog parentClientId={client?.id} initialBranchIds={selectedBranchIds}>
+                  <Button size="sm"><PlusCircle className="w-4 h-4 mr-2" />Añadir Familiar</Button>
                 </ClientDialog>
               </div>
-              {isLoadingSubClients ? (
-                <p>Cargando familiares...</p>
-              ) : subClients && subClients.length > 0 ? (
+              {isLoadingSubClients ? <p>Cargando familiares...</p> : subClients && subClients.length > 0 ? (
                 <ul className="space-y-2">
                   {subClients.map(sub => (
                     <li key={sub.id} className="flex justify-between items-center p-2 bg-slate-50 rounded-md">
                       <span>{sub.name}</span>
-                      {/* Aquí se podría añadir un botón para editar el familiar */}
                     </li>
                   ))}
                 </ul>
@@ -412,58 +276,35 @@ export const ClientDialog = ({
           </TabsContent>
 
           <TabsContent value="forms-consents" className="mt-4 space-y-6">
-            {/* Botón para abrir el Formulario de Admisión */}
             {defaultIntakeTemplate && (
               <div className="border p-4 rounded-md space-y-4">
                 <h4 className="text-lg font-semibold">Formulario de Admisión</h4>
-                <p className="text-sm text-slate-600">
-                  Plantilla por defecto: {defaultIntakeTemplate.name} (v{defaultIntakeTemplate.version})
-                </p>
-                <Button onClick={() => setIsIntakeFormOpen(true)}>
-                  Llenar/Editar Formulario de Admisión
-                </Button>
+                <p className="text-sm text-slate-600">Plantilla por defecto: {defaultIntakeTemplate.name} (v{defaultIntakeTemplate.version})</p>
+                <Button onClick={() => setIsIntakeFormOpen(true)}>Llenar/Editar Formulario de Admisión</Button>
               </div>
             )}
-
-            {/* Botón para abrir el Gestor de Consentimientos */}
             {(tenantSettings?.require_general_signature || tenantSettings?.require_image_consent) && (
               <div className="border p-4 rounded-md space-y-4">
                 <h4 className="text-lg font-semibold">Consentimientos</h4>
-                <p className="text-sm text-slate-600">
-                  Gestiona la firma general y el consentimiento de imágenes.
-                </p>
-                <Button onClick={() => setIsConsentManagerOpen(true)}>
-                  Gestionar Consentimientos
-                </Button>
+                <p className="text-sm text-slate-600">Gestiona la firma general y el consentimiento de imágenes.</p>
+                <Button onClick={() => setIsConsentManagerOpen(true)}>Gestionar Consentimientos</Button>
               </div>
             )}
-
-            {/* Historial de Formularios */}
             <div className="border p-4 rounded-md space-y-4">
               <h4 className="text-lg font-semibold">Historial de Formularios</h4>
-              {isLoadingInstances ? (
-                <p>Cargando historial de formularios...</p>
-              ) : clientDocumentInstances && clientDocumentInstances.length > 0 ? (
+              {isLoadingInstances ? <p>Cargando historial de formularios...</p> : clientDocumentInstances && clientDocumentInstances.length > 0 ? (
                 <ul className="space-y-2">
                   {clientDocumentInstances.map(instance => (
                     <li key={instance.id} className="p-2 bg-slate-50 rounded-md">
                       <p className="font-medium">{instance.template?.name} (v{instance.template?.version})</p>
                       <p className="text-sm text-slate-600">Fecha: {new Date(instance.created_at).toLocaleDateString()}</p>
-                      {/* Aquí podrías añadir un botón para ver los detalles del formulario */}
-                      {/* Por ahora, solo mostramos un resumen o un botón para ver */}
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedFormSchema(instance.template?.schema || {});
-                          setSelectedFormData(instance.data);
-                          setSelectedFormName(instance.template?.name);
-                          setSelectedFormVersion(instance.template?.version);
-                          setIsFormViewerOpen(true);
-                        }}
-                      >
-                        Ver Datos
-                      </Button>
+                      <Button variant="link" size="sm" onClick={() => {
+                        setSelectedFormSchema(instance.template?.schema || {});
+                        setSelectedFormData(instance.data);
+                        setSelectedFormName(instance.template?.name);
+                        setSelectedFormVersion(instance.template?.version);
+                        setIsFormViewerOpen(true);
+                      }}>Ver Datos</Button>
                     </li>
                   ))}
                 </ul>
@@ -471,13 +312,9 @@ export const ClientDialog = ({
                 <p className="text-sm text-slate-500">No hay formularios llenados para este cliente.</p>
               )}
             </div>
-
-            {/* Historial de Consentimientos */}
             <div className="border p-4 rounded-md space-y-4">
               <h4 className="text-lg font-semibold">Historial de Consentimientos</h4>
-              {isLoadingConsents ? (
-                <p>Cargando historial de consentimientos...</p>
-              ) : clientConsentRecords && clientConsentRecords.length > 0 ? (
+              {isLoadingConsents ? <p>Cargando historial de consentimientos...</p> : clientConsentRecords && clientConsentRecords.length > 0 ? (
                 <ul className="space-y-2">
                   {clientConsentRecords.map(record => (
                     <li key={record.id} className="p-2 bg-slate-50 rounded-md">
@@ -498,6 +335,10 @@ export const ClientDialog = ({
               )}
             </div>
           </TabsContent>
+
+          <TabsContent value="activity" className="mt-4">
+            {client?.id && <ChatterBox resourceType="clients" resourceId={client.id} tenantId={client.tenant_id} />}
+          </TabsContent>
         </Tabs>
       </DialogContent>
       <FormViewerDialog
@@ -508,23 +349,18 @@ export const ClientDialog = ({
         formName={selectedFormName}
         formVersion={selectedFormVersion}
       />
-
       {defaultIntakeTemplate && (
         <IntakeFormDialog
           open={isIntakeFormOpen}
           onOpenChange={setIsIntakeFormOpen}
           template={defaultIntakeTemplate}
-          initialFormData={dynamicFormData}
+          initialFormData={clientDocumentInstances?.find(inst => inst.template_id === defaultIntakeTemplate.id)?.data || {}}
           onSave={async (formData) => {
             if (client?.id && defaultIntakeTemplate) {
-              await saveDocumentInstance({
-                client_id: client.id,
-                template_id: defaultIntakeTemplate.id,
-                data: formData,
-              }, {
+              await saveDocumentInstance({ client_id: client.id, template_id: defaultIntakeTemplate.id, data: formData }, {
                 onSuccess: () => {
                   toast({ title: "Éxito", description: "Formulario de admisión guardado.", variant: "success" });
-                  setIsIntakeFormOpen(false); // Cerrar el modal al guardar
+                  setIsIntakeFormOpen(false);
                 },
                 onError: (error: any) => toast({ title: "Error", description: `Error al guardar formulario: ${error.message}`, variant: "destructive" }),
               });
@@ -535,13 +371,12 @@ export const ClientDialog = ({
           isSaving={isSavingInstance}
         />
       )}
-
       <ConsentManagerDialog
         open={isConsentManagerOpen}
         onOpenChange={setIsConsentManagerOpen}
         clientId={client?.id || ''}
-        initialSignatureData={signatureData}
-        initialImageConsent={imageConsent}
+        initialSignatureData={clientConsentRecords?.find(rec => rec.consent_type === 'general_signature')?.signature_data}
+        initialImageConsent={!!clientConsentRecords?.find(rec => rec.consent_type === 'image_use')}
         requireGeneralSignature={tenantSettings?.require_general_signature ?? false}
         requireImageConsent={tenantSettings?.require_image_consent ?? false}
       />

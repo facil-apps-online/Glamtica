@@ -12,6 +12,7 @@ import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
 import { ContextSwitcher } from './ContextSwitcher';
 import { BranchSelector } from './BranchSelector';
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from './NotificationBell';
 
 interface HeaderProps {
   panelTitle?: string;
@@ -64,6 +65,7 @@ export function Header({ panelTitle = "" }: HeaderProps) {
       {/* Right Section */}
       <div className="flex items-center gap-4">
         <ThemeToggle />
+        <NotificationBell />
         {!isMobile && (
           <div className="text-sm text-right">
             <p className="font-semibold text-foreground truncate max-w-xs">{displayName}</p>

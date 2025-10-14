@@ -19,6 +19,7 @@ export interface Client {
   phone: string;
   email?: string;
   document_type?: string;
+  document_type_id?: string;
   document_number?: string;
   parent_client_id?: string;
   created_at: string;

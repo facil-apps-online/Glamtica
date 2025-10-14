@@ -192,7 +192,7 @@ export const SuppliersPage = () => {
       <PageHeader 
         title="Gestión de Proveedores"
         subtitle="Centraliza la información y el estado de todos tus proveedores."
-        backButton={<Button variant="outline" size="icon" onClick={() => navigate('/inventory')}><ArrowLeft className="h-4 w-4" /></Button>}
+        backButton={<Button variant="outline" size="icon" onClick={() => navigate('/app/inventory')}><ArrowLeft className="h-4 w-4" /></Button>}
       >
         <SupplierDialog trigger={<Button><PlusCircle className="w-4 h-4 mr-2" />Nuevo Proveedor</Button>} />
       </PageHeader>

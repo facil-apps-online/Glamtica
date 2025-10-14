@@ -5,6 +5,8 @@ import { Layout } from "@/components/Layout";
 import Index from "@/pages/Index";
 import Attentions from "@/pages/Attentions";
 import Clients from "@/pages/Clients";
+import ClientDetailPage from "@/pages/ClientDetailPage";
+import ServiceDetailPage from "@/pages/ServiceDetailPage";
 import Services from "@/pages/Services";
 import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
@@ -81,6 +83,7 @@ function App() {
                   <Route path="profile-settings" element={<ProfileSettings />} />
                   <Route path="attentions" element={<Attentions />} />
                   <Route path="clients" element={<Clients />} />
+                  <Route path="clients/:id" element={<ClientDetailPage />} />
                   <Route path="products" element={<Products />} />
                   <Route path="combos" element={<Combos />} />
                   <Route path="inventory">
@@ -91,6 +94,7 @@ function App() {
                     <Route path="transfers" element={<TransfersPage />} />
                   </Route>
                   <Route path="services" element={<Services />} />
+                  <Route path="services/:id" element={<ServiceDetailPage />} />
                   <Route path="team" element={<Team />} />
                   <Route path="equipment">
                     <Route index element={<EquipmentPage />} />

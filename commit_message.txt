@@ -1,8 +1,22 @@
-feat(attentions): Unifica recibo y detalles de pago
+feat(notifications): Implementa sistema de notificaciones para clientes por Email y WhatsApp
 
-Refactoriza la visualización de transacciones para mejorar la experiencia de usuario y la claridad de la interfaz.
+Se implementa un sistema de notificaciones transaccionales completo y configurable para los clientes finales, con soporte para Email y WhatsApp.
 
-- **Nuevo Diálogo Unificado:** Se crea el componente `TransactionReceiptDialog` que combina la información de la venta (items, totales) y los pagos realizados en una sola vista.
-- **Botón Único:** Se reemplazan los dos botones anteriores ("Ver Recibo" y "Ver Detalles de Pago") en la tarjeta de atención por un único botón con un ícono claro.
-- **Lógica Encapsulada:** Se crea el componente `ViewTransactionButton` que maneja toda la lógica de obtención de datos para el nuevo diálogo, manteniendo el resto de los componentes limpios.
-- **Backend Optimizado:** Se mejora la acción `get_sale_details` en la Edge Function para que devuelva toda la información necesaria (venta, items y pagos) en una sola llamada.
+**Características Principales:**
+
+- **Canal de Email:**
+  - Se crea una cola de envío (`client_email_queue`) y una Edge Function procesadora para manejar las notificaciones por correo electrónico.
+
+- **Canal de WhatsApp:**
+  - Se añade un sistema para almacenar de forma segura las credenciales de la API de Meta, soportando una arquitectura multi-plataforma con un "tenant propietario" por plataforma.
+  - Se crea una cola de envío (`client_whatsapp_queue`) y una Edge Function (`process-whatsapp-queue`) que se ejecuta cada minuto para enviar los mensajes.
+  - Se implementa un Webhook (`whatsapp-webhook`) para recibir mensajes, con validación de seguridad y lógica para procesar respuestas a botones y consultas de texto.
+
+- **Integración y Flujos:**
+  - Se integran las notificaciones (Email y WhatsApp) en los flujos de negocio clave: creación de citas, cancelación, pago (recibo) y facturación.
+  - Se reutiliza y refactoriza la lógica de encolamiento en funciones de base de datos (`plpgsql`).
+
+- **Configuración de Tenant:**
+  - Se añade una nueva pestaña "Notificaciones" en el panel de configuración del tenant.
+  - Los administradores del tenant pueden activar o desactivar individualmente cada tipo de notificación para cada canal (Email/WhatsApp).
+  - La interfaz es responsiva y se adapta a dispositivos móviles.
