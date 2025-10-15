@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useCreateMasterService, useUpdateMasterService } from "@/hooks/useServices";
 import { useServiceTaxTypes, useAddServiceTaxType, useRemoveServiceTaxType } from "@/hooks/useServiceTaxTypes";
+import { useServiceCategories } from "@/hooks/useServiceCategories";
 import { MasterService } from "@/types/services";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceForm } from "./ServiceForm";
@@ -23,6 +24,7 @@ export const MasterServiceDialog = ({ service, trigger }: MasterServiceDialogPro
 
   const { mutate: createService, isPending: isCreating } = useCreateMasterService();
   const { mutate: updateService, isPending: isUpdating } = useUpdateMasterService();
+  const { data: serviceCategories, isLoading: isLoadingCategories } = useServiceCategories();
   
   const { data: existingTaxTypes, refetch: refetchServiceTaxTypes } = useServiceTaxTypes(service?.id || '');
   const { mutate: addServiceTaxType } = useAddServiceTaxType();
@@ -124,6 +126,8 @@ export const MasterServiceDialog = ({ service, trigger }: MasterServiceDialogPro
           isEdit={!!service}
           isLoading={isCreating || isUpdating}
           onCancel={() => setOpen(false)}
+          serviceCategories={serviceCategories}
+          isLoadingCategories={isLoadingCategories}
         />
       </DialogContent>
     </Dialog>

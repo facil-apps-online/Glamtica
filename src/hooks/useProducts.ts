@@ -173,3 +173,21 @@ export const useRemoveProductFromBranch = () => {
     },
   });
 };
+
+// Eliminar un producto del catálogo maestro
+export const useDeleteMasterProduct = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => 
+      callTenantAction('delete_master_product', { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['master_products'] });
+      toast({ title: "Producto Eliminado", description: "El producto ha sido eliminado del catálogo general.", variant: "success" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};

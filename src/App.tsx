@@ -7,6 +7,7 @@ import Attentions from "@/pages/Attentions";
 import Clients from "@/pages/Clients";
 import ClientDetailPage from "@/pages/ClientDetailPage";
 import ServiceDetailPage from "@/pages/ServiceDetailPage";
+import ProductEditPage from "@/pages/Products/ProductEditPage"; // Añadido
 import Services from "@/pages/Services";
 import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
@@ -85,6 +86,7 @@ function App() {
                   <Route path="clients" element={<Clients />} />
                   <Route path="clients/:id" element={<ClientDetailPage />} />
                   <Route path="products" element={<Products />} />
+                  <Route path="products/:id" element={<ProductEditPage />} />
                   <Route path="combos" element={<Combos />} />
                   <Route path="inventory">
                     <Route index element={<Inventory />} />

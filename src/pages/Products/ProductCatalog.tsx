@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,11 @@ import {
   Plus, 
   Percent, 
   SlidersHorizontal,
-  MoreHorizontal
+  MoreHorizontal,
+  FileEdit,
+  Trash2
 } from "lucide-react";
-import { useMasterProducts, useUpdateMasterProduct, MasterProduct } from "@/hooks/useProducts";
+import { useMasterProducts, useUpdateMasterProduct, useDeleteMasterProduct, MasterProduct } from "@/hooks/useProducts";
 import { useBrands } from "@/hooks/useBrands";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
@@ -39,12 +42,23 @@ import ManageProductPricesDialog from "@/components/ManageProductPricesDialog";
 import { ManageProductCommissionsDialog } from "@/components/ManageProductCommissionsDialog";
 import { UnitOfMeasureManagementDialog } from "@/components/UnitOfMeasureManagementDialog";
 import { useScreenSize } from "@/hooks/useScreenSize";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog }) => (
+const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog, navigate, handleDelete }) => (
   <Card>
     <CardHeader>
       <div className="flex justify-between items-start">
@@ -59,6 +73,17 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <MasterProductDialog product={product} trigger={
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <Edit className="w-4 h-4 mr-2" />
+                <span>Edición rápida</span>
+              </DropdownMenuItem>
+            } />
+            <DropdownMenuItem onClick={() => navigate(`/app/products/${product.id}`)}>
+              <FileEdit className="w-4 h-4 mr-2" />
+              Edición Completa
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
               <Share2 className="w-4 h-4 mr-2" />
               Asignar a Sucursales
@@ -71,12 +96,27 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
               <Percent className="w-4 h-4 mr-2" />
               Gestionar Comisiones
             </DropdownMenuItem>
-             <MasterProductDialog product={product} trigger={
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  <span>Editar</span>
+            <DropdownMenuSeparator />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
                 </DropdownMenuItem>
-              } />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    ¿Estás seguro de que quieres eliminar <strong>{product.name}</strong>? Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleDelete(product.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -185,11 +225,17 @@ const ProductCatalog = () => {
   const { formatPrice } = usePriceFormat();
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
+  const navigate = useNavigate();
+  const { mutate: deleteProduct } = useDeleteMasterProduct();
 
   const filteredProducts = products;
 
   const handleToggleStatus = (product: MasterProduct) => {
     updateProduct({ id: product.id, updates: { is_active: !product.is_active } });
+  };
+
+  const handleDelete = (productId: string) => {
+    deleteProduct(productId);
   };
 
   const handleOpenAssignProductDialog = (product: MasterProduct) => {
@@ -256,6 +302,8 @@ const ProductCatalog = () => {
               handleOpenAssignProductDialog={handleOpenAssignProductDialog}
               handleOpenManagePricesDialog={handleOpenManagePricesDialog}
               handleOpenProductCommissionsDialog={handleOpenProductCommissionsDialog}
+              navigate={navigate}
+              handleDelete={handleDelete}
             />
           );
         })}
@@ -301,6 +349,17 @@ const ProductCatalog = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <MasterProductDialog product={product} trigger={
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          <span>Edición rápida</span>
+                        </DropdownMenuItem>
+                      } />
+                      <DropdownMenuItem onClick={() => navigate(`/app/products/${product.id}`)}>
+                        <FileEdit className="w-4 h-4 mr-2" />
+                        Edición Completa
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
                         <Share2 className="w-4 h-4 mr-2" />
                         Asignar a Sucursales
@@ -313,12 +372,27 @@ const ProductCatalog = () => {
                         <Percent className="w-4 h-4 mr-2" />
                         Gestionar Comisiones
                       </DropdownMenuItem>
-                      <MasterProductDialog product={product} trigger={
-                        <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">
-                          <Edit className="w-4 h-4 mr-2" />
-                          <span>Editar</span>
-                        </div>
-                      } />
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              ¿Estás seguro de que quieres eliminar <strong>{product.name}</strong>? Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(product.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
