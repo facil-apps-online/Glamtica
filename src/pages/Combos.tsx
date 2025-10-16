@@ -1,11 +1,9 @@
-import ComboCatalog from "./Combos/ComboCatalog";
+import CombosPage from "./Combos/CombosPage";
 
-const CombosPage = () => {
+const Combos = () => {
   return (
-    <div>
-      <ComboCatalog />
-    </div>
+    <CombosPage />
   );
 };
 
-export default CombosPage;
+export default Combos;

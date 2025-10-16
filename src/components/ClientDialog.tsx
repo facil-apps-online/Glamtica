@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -31,14 +32,6 @@ import { IntakeFormDialog } from "@/components/IntakeFormDialog";
 import { ConsentManagerDialog } from "@/components/ConsentManagerDialog";
 import { ChatterBox } from "@/components/ChatterBox";
 import { useScreenSize, type ScreenSize } from "@/hooks/useScreenSize";
-
-const documentTypes = [
-  { value: "cc", label: "Cédula de Ciudadanía" },
-  { value: "ce", label: "Cédula de Extranjería" },
-  { value: "nit", label: "NIT" },
-  { value: "passport", label: "Pasaporte" },
-  { value: "other", label: "Otro" },
-];
 
 interface ClientDialogProps {
   children: React.ReactNode;

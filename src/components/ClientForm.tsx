@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm, Controller, UseFormReturn } from 'react-hook-form';
 import { Input } from "@/components/ui/input";
@@ -7,14 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Client } from "@/hooks/useClients";
 import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
-
-const documentTypes = [
-  { value: "cc", label: "Cédula de Ciudadanía" },
-  { value: "ce", label: "Cédula de Extranjería" },
-  { value: "nit", label: "NIT" },
-  { value: "passport", label: "Pasaporte" },
-  { value: "other", label: "Otro" },
-];
 
 interface ClientFormProps {
   form: UseFormReturn<Client>;

@@ -3,19 +3,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 // La interfaz base del proveedor
-interface Supplier {
+export interface Supplier {
   id: string;
   tenant_id: string;
-  identification_type: string;
+  document_type_id?: string;
   identification_number: string;
   name: string;
-  address?: string;
   phone?: string;
   email?: string;
   is_active: boolean;
-  branch_ids?: string[]; // Nuevo campo
+  branch_ids?: string[];
   created_at: string;
   updated_at: string;
+
+  // Structured Address
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 // Tipos para la creación y actualización, omitiendo los campos que gestiona el backend
@@ -106,6 +115,28 @@ export const useUpdateSupplier = () => {
     },
     onError: (error) => {
       toast({ title: "Error al actualizar", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Hook para ELIMINAR un proveedor
+export const useDeleteSupplier = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const invokeDeleteSupplier = useTenantAction<{ id: string }, { id: string }>('delete_supplier');
+
+  return useMutation({
+    mutationFn: invokeDeleteSupplier,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', currentAssignment?.tenant_id] });
+      toast({
+        title: "Proveedor eliminado",
+        description: "El proveedor ha sido eliminado exitosamente.",
+      });
+    },
+    onError: (error) => {
+      toast({ title: "Error al eliminar", description: error.message, variant: "destructive" });
     },
   });
 };

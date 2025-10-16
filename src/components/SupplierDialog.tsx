@@ -1,397 +1,218 @@
 import { useState, useEffect } from "react";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Check, X, ChevronDown } from "lucide-react";
-import { useCreateSupplier, useUpdateSupplier, useSuppliers } from "@/hooks/useSuppliers";
-import { useMasterProducts } from "@/hooks/useProducts";
-import { useProductsBySupplier, useAddSupplierProduct, useUpdateSupplierProduct, useToggleSupplierProductStatus } from "@/hooks/useSupplierProducts";
+import { Plus, Edit, ChevronDown } from "lucide-react";
+import { useCreateSupplier, useUpdateSupplier, Supplier } from "@/hooks/useSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePriceFormat } from "@/hooks/usePriceFormat";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useBranches } from "@/hooks/useBranches";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useMasterProducts } from "@/hooks/useProducts";
+import { useProductsBySupplier, useAddSupplierProduct, useUpdateSupplierProduct, useToggleSupplierProductStatus } from "@/hooks/useSupplierProducts";
+import { usePriceFormat } from "@/hooks/usePriceFormat";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
-interface Supplier {
-  id?: string;
-  identification_type: string;
-  identification_number: string;
-  name: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  is_active?: boolean;
-  branch_ids?: string[];
-}
+const formSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido."),
+  document_type_id: z.string().min(1, "El tipo de documento es requerido."),
+  identification_number: z.string().min(1, "El número de documento es requerido."),
+  phone: z.string().optional(),
+  email: z.string().email("Debe ser un email válido.").optional().or(z.literal('')),
+  branch_ids: z.array(z.string()).optional(),
+});
+
+type SupplierFormValues = z.infer<typeof formSchema>;
 
 interface SupplierDialogProps {
   supplier?: Supplier;
   trigger?: React.ReactNode;
 }
 
-const IDENTIFICATION_TYPES = [
-  { value: 'NIT', label: 'NIT' },
-  { value: 'CC', label: 'Cédula de Ciudadanía' },
-  { value: 'CE', label: 'Cédula de Extranjería' },
-  { value: 'Pasaporte', label: 'Pasaporte' },
-];
-
 export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierDialogProps) => {
   const [open, setOpen] = useState(false);
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | undefined>(initialSupplier);
-
-  const [identificationType, setIdentificationType] = useState(currentSupplier?.identification_type || "");
-  const [identificationNumber, setIdentificationNumber] = useState(currentSupplier?.identification_number || "");
-  const [name, setName] = useState(currentSupplier?.name || "");
-  const [address, setAddress] = useState(currentSupplier?.address || "");
-  const [phone, setPhone] = useState(currentSupplier?.phone || "");
-  const [email, setEmail] = useState(currentSupplier?.email || "");
-  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>(currentSupplier?.branch_ids || []);
-
-  // State for new supplier product
-  const [newProductId, setNewProductId] = useState("");
-  const [newSupplierPrice, setNewSupplierPrice] = useState<number | string>(0);
 
   const { toast } = useToast();
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const { data: branches } = useBranches(tenantId);
+  const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');
   const createMutation = useCreateSupplier();
   const updateMutation = useUpdateSupplier();
-  const { data: allProducts } = useMasterProducts("", false, "", ""); // All products in the system
+
+  const { data: allProducts } = useMasterProducts("", false, "", "");
   const { data: supplierProducts, isLoading: isLoadingSupplierProducts, refetch: refetchSupplierProducts } = useProductsBySupplier(currentSupplier?.id);
   const addSupplierProductMutation = useAddSupplierProduct();
   const updateSupplierProductMutation = useUpdateSupplierProduct();
   const toggleSupplierProductStatusMutation = useToggleSupplierProductStatus();
   const { formatPrice } = usePriceFormat();
+  const [newProductId, setNewProductId] = useState("");
+  const [newSupplierPrice, setNewSupplierPrice] = useState<number | string>(0);
+
+  const form = useForm<SupplierFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {},
+  });
+
+  const { formState: { isDirty } } = form;
 
   useEffect(() => {
-    setCurrentSupplier(initialSupplier);
-    setSelectedBranchIds(initialSupplier?.branch_ids || []);
-  }, [initialSupplier]);
-
-  useEffect(() => {
-    if (open && currentSupplier?.id) {
-      refetchSupplierProducts();
+    if (open) {
+      if (initialSupplier) {
+        setCurrentSupplier(initialSupplier);
+        form.reset({
+            name: initialSupplier.name || '',
+            document_type_id: initialSupplier.document_type_id || '',
+            identification_number: initialSupplier.identification_number || '',
+            phone: initialSupplier.phone || '',
+            email: initialSupplier.email || '',
+            branch_ids: initialSupplier.branch_ids || [],
+        });
+        refetchSupplierProducts();
+      } else {
+        form.reset({});
+        setCurrentSupplier(undefined);
+      }
     }
-  }, [open, currentSupplier?.id, refetchSupplierProducts]);
+  }, [open, initialSupplier, form, refetchSupplierProducts]);
 
-  const handleBranchSelect = (branchId: string) => {
-    setSelectedBranchIds(prev => 
-      prev.includes(branchId) 
-        ? prev.filter(id => id !== branchId) 
-        : [...prev, branchId]
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!identificationType || !identificationNumber || !name) {
-      toast({ title: "Error", description: "Los campos de identificación y nombre son requeridos.", variant: "destructive" });
-      return;
-    }
-
-    const supplierData = {
-      identification_type: identificationType,
-      identification_number: identificationNumber,
-      name,
-      address: address || undefined,
-      phone: phone || undefined,
-      email: email || undefined,
-      branch_ids: selectedBranchIds,
-    };
-
+  const onSubmit = async (values: SupplierFormValues) => {
     try {
       if (currentSupplier) {
-        await updateMutation.mutateAsync({
-          id: currentSupplier.id!,
-          ...supplierData,
-        });
-        setOpen(false); // Close on update
+        await updateMutation.mutateAsync({ id: currentSupplier.id!, ...values });
+        setOpen(false);
       } else {
-        const newSupplier = await createMutation.mutateAsync(supplierData);
+        const newSupplier = await createMutation.mutateAsync(values);
         if (newSupplier) {
           setCurrentSupplier(newSupplier);
-          // Keep dialog open to add products
         } else {
           setOpen(false);
-          resetForm();
         }
       }
     } catch (error) {
       console.error('Error saving supplier:', error);
-      toast({ title: "Error", description: `No se pudo guardar el proveedor: ${error.message}`, variant: "destructive" });
+      toast({ title: "Error", description: `No se pudo guardar el proveedor: ${(error as Error).message}`, variant: "destructive" });
     }
   };
-
-  const resetForm = () => {
-    if (!initialSupplier) {
-      setIdentificationType("");
-      setIdentificationNumber("");
-      setName("");
-      setAddress("");
-      setPhone("");
-      setEmail("");
-      setSelectedBranchIds([]);
-      setNewProductId("");
-      setNewSupplierPrice(0);
-      setCurrentSupplier(undefined);
-    }
-  };
-  
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [open]);
-
 
   const handleAddSupplierProduct = async () => {
-    if (!currentSupplier?.id) {
-        toast({ title: "Error", description: "Se requiere un proveedor para agregar un producto.", variant: "destructive" });
-        return;
-    }
-    if (!newProductId) {
-        toast({ title: "Error", description: "Por favor, seleccione un producto.", variant: "destructive" });
-        return;
-    }
-    if (typeof newSupplierPrice !== 'number' || newSupplierPrice < 0) {
-        toast({ title: "Error", description: "Por favor, ingrese un precio válido.", variant: "destructive" });
-        return;
-    }
-
+    if (!currentSupplier?.id || !newProductId || newSupplierPrice <= 0) return;
     await addSupplierProductMutation.mutateAsync({
       supplier_id: currentSupplier.id,
       product_id: newProductId,
       supplier_price: Number(newSupplierPrice),
     });
-
     setNewProductId("");
     setNewSupplierPrice(0);
   };
 
-  const handleUpdateSupplierProductPrice = async (supplierProductId: string, price: number) => {
-    await updateSupplierProductMutation.mutateAsync({ id: supplierProductId, supplier_price: price });
-  };
-
-  const handleToggleSupplierProductStatus = async (supplierProductId: string, isActive: boolean) => {
-    await toggleSupplierProductStatusMutation.mutateAsync({ id: supplierProductId, is_active: isActive });
-  };
-
-  const availableProducts = allProducts?.filter(p => 
-    !supplierProducts?.some(sp => sp.product_id === p.id)
-  );
+  const availableProducts = allProducts?.filter(p => !supplierProducts?.some(sp => sp.product_id === p.id));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Proveedor
-          </Button>
-        )}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger || <Button><Plus className="w-4 h-4 mr-2" />Nuevo Proveedor</Button>}</DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-primary">
-            {currentSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Form fields remain the same */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="identification_type">Tipo de Identificación</Label>
-              <Select value={identificationType} onValueChange={setIdentificationType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {IDENTIFICATION_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="identification_number">Número de Identificación</Label>
-              <Input
-                id="identification_number"
-                value={identificationNumber}
-                onChange={(e) => setIdentificationNumber(e.target.value)}
-                placeholder="Ej: 900123456-7"
-                required
-              />
-            </div>
-          </div>
+        <DialogHeader><DialogTitle className="text-primary">{initialSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}</DialogTitle></DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Tabs defaultValue="general">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="products" disabled={!currentSupplier}>Productos</TabsTrigger>
+              </TabsList>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre del Proveedor</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Distribuidora Beauty Pro"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="branches">Sucursales</Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between">
-                  <span>
-                    {selectedBranchIds.length === 0
-                      ? "Seleccionar sucursales"
-                      : `${selectedBranchIds.length} sucursal(es) seleccionada(s)`}
-                  </span>
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full">
-                <DropdownMenuLabel>Sucursales Disponibles</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {branches?.map((branch) => (
-                  <DropdownMenuCheckboxItem
-                    key={branch.id}
-                    checked={selectedBranchIds.includes(branch.id)}
-                    onCheckedChange={() => handleBranchSelect(branch.id)}
-                  >
-                    {branch.name}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address">Dirección</Label>
-            <Textarea
-              id="address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Dirección completa del proveedor..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono</Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+57 1 234-5678"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="contacto@proveedor.com"
-              />
-            </div>
-          </div>
-
-          {currentSupplier && (
-            <div className="space-y-4 border-t pt-4 mt-4">
-              <h3 className="text-lg font-semibold">Productos del Proveedor</h3>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label htmlFor="product">Producto</Label>
-                  <Select value={newProductId} onValueChange={setNewProductId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar producto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProducts?.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <TabsContent value="general" className="pt-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="document_type_id" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Identificación</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} required>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger></FormControl>
+                        <SelectContent>{isLoadingDocumentTypes ? <SelectItem value="loading" disabled>Cargando...</SelectItem> : documentTypes?.map((type) => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="identification_number" render={({ field }) => (<FormItem><FormLabel>Número de Identificación</FormLabel><FormControl><Input {...field} placeholder="Ej: 900123456-7" required /></FormControl><FormMessage /></FormItem>)} />
                 </div>
-                <div className="w-32">
-                  <Label htmlFor="price">Precio ({formatPrice(0).replace(/\d|\.|,/g, '')})</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    value={newSupplierPrice}
-                    onChange={(e) => setNewSupplierPrice(parseFloat(e.target.value) || 0)}
-                  />
+                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Proveedor</FormLabel><FormControl><Input {...field} placeholder="Ej: Distribuidora Beauty Pro" required /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="branch_ids" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Sucursales</FormLabel>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild><FormControl><Button variant="outline" className="w-full justify-between"><span>{field.value?.length === 0 ? "Seleccionar sucursales" : `${field.value?.length} sucursal(es) seleccionada(s)`}</span><ChevronDown className="h-4 w-4 opacity-50" /></Button></FormControl></DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[--radix-popover-trigger-width]">
+                                <DropdownMenuLabel>Sucursales Disponibles</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {branches?.map((branch) => (<DropdownMenuCheckboxItem key={branch.id} checked={field.value?.includes(branch.id)} onCheckedChange={(checked) => { const newValue = checked ? [...(field.value || []), branch.id] : (field.value || []).filter(id => id !== branch.id); field.onChange(newValue);}}>{branch.name}</DropdownMenuCheckboxItem>))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                 <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
                 </div>
-                <Button type="button" onClick={handleAddSupplierProduct} className="mt-auto">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
+              </TabsContent>
 
-              {isLoadingSupplierProducts ? (
-                <div>Cargando productos asociados...</div>
-              ) : supplierProducts && supplierProducts.length > 0 ? (
-                <div className="space-y-2">
-                  {supplierProducts.map((sp) => (
-                    <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
-                      <div className="flex-1">
-                        <p className="font-medium">{sp.products.name}</p>
-                        <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
+              <TabsContent value="products" className="pt-4 space-y-4">
+                <h3 className="text-lg font-semibold">Productos del Proveedor</h3>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Label htmlFor="product">Producto</Label>
+                    <Select value={newProductId} onValueChange={setNewProductId}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
+                      <SelectContent>{availableProducts?.map((product) => (<SelectItem key={product.id} value={product.id}>{product.name}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-32">
+                    <Label htmlFor="price">Precio ({formatPrice(0).replace(/\d|\.|,/g, '')})</Label>
+                    <Input id="price" type="number" step="0.01" value={newSupplierPrice} onChange={(e) => setNewSupplierPrice(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <Button type="button" onClick={handleAddSupplierProduct} className="mt-auto"><Plus className="w-4 h-4" /></Button>
+                </div>
+                {isLoadingSupplierProducts ? (
+                  <div>Cargando productos asociados...</div>
+                ) : supplierProducts && supplierProducts.length > 0 ? (
+                  <div className="space-y-2">
+                    {supplierProducts.map((sp) => (
+                      <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
+                        <div className="flex-1">
+                          <p className="font-medium">{sp.products.name}</p>
+                          <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input type="number" step="0.01" value={sp.supplier_price} onChange={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)} className="w-24 text-right" />
+                          <Badge variant={sp.is_active ? 'success' : 'destructive'}>{sp.is_active ? 'Activo' : 'Inactivo'}</Badge>
+                          <Switch checked={sp.is_active} onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)} aria-label={`Activar o desactivar ${sp.products?.name}`} />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={sp.supplier_price}
-                          onChange={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)}
-                          className="w-24 text-right"
-                        />
-                        <Badge variant={sp.is_active ? 'success' : 'destructive'}>
-                          {sp.is_active ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                        <Switch
-                          checked={sp.is_active}
-                          onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)}
-                          aria-label={`Activar o desactivar ${sp.products?.name}`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
+                )}
+              </TabsContent>
+            </Tabs>
+            <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (initialSupplier && !isDirty)}>
+                    {currentSupplier ? "Actualizar" : "Crear y Añadir Productos"}
+                </Button>
             </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {currentSupplier ? "Actualizar" : "Crear y Añadir Productos"}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

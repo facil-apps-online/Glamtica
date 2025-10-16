@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import { useSuppliers, useToggleSupplierStatus } from '@/hooks/useSuppliers';
+import { useSuppliers, useToggleSupplierStatus, useDeleteSupplier } from '@/hooks/useSuppliers';
 import { SupplierDialog } from '@/components/SupplierDialog';
+import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Edit, PlusCircle, ArrowLeft, MoreHorizontal, Trash2, Phone, Mail } from 'lucide-react';
+import { Edit, PlusCircle, ArrowLeft, MoreHorizontal, Phone, Mail, FileEdit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { useScreenSize } from '@/hooks/useScreenSize';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -68,59 +69,80 @@ const SupplierTableSkeleton = () => (
   </Table>
 );
 
-const SupplierCard = ({ supplier, handleToggleStatus }) => (
-  <Card>
-    <CardHeader>
-      <div className="flex justify-between items-start">
-        <CardTitle>{supplier.name}</CardTitle>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <SupplierDialog supplier={supplier} trigger={
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                <Edit className="w-4 h-4 mr-2" />
-                Editar
-              </DropdownMenuItem>
-            } />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="text-sm text-muted-foreground">
-        {supplier.identification_type}: {supplier.identification_number}
-      </div>
-      {supplier.phone && (
-        <div className="flex items-center gap-2 text-sm">
-          <Phone className="w-4 h-4" /> {supplier.phone}
-        </div>
-      )}
-      {supplier.email && (
-        <div className="flex items-center gap-2 text-sm">
-          <Mail className="w-4 h-4" /> {supplier.email}
-        </div>
-      )}
-      <div className="flex items-center justify-between rounded-md border p-3 mt-4">
-        <label className="text-sm font-medium">Activo</label>
-        <Switch
-          checked={supplier.is_active}
-          onCheckedChange={() => handleToggleStatus(supplier)}
-        />
-      </div>
-    </CardContent>
-  </Card>
-);
+const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
+    const navigate = useNavigate();
+    return (
+        <Card>
+            <CardHeader>
+            <div className="flex justify-between items-start">
+                <CardTitle>{supplier.name}</CardTitle>
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <SupplierDialog supplier={supplier} trigger={
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edición Rápida
+                        </DropdownMenuItem>
+                    } />
+                    <DropdownMenuItem onClick={() => navigate(`/app/inventory/suppliers/edit/${supplier.id}`)}>
+                        <FileEdit className="w-4 h-4 mr-2" />
+                        Edición Completa
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onDelete} className="text-red-600">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+                {supplier.identification_type}: {supplier.identification_number}
+            </div>
+            {supplier.phone && (
+                <div className="flex items-center gap-2 text-sm">
+                <Phone className="w-4 h-4" /> {supplier.phone}
+                </div>
+            )}
+            {supplier.email && (
+                <div className="flex items-center gap-2 text-sm">
+                <Mail className="w-4 h-4" /> {supplier.email}
+                </div>
+            )}
+            <div className="flex items-center justify-between rounded-md border p-3 mt-4">
+                <label className="text-sm font-medium">Activo</label>
+                <Switch
+                checked={supplier.is_active}
+                onCheckedChange={() => handleToggleStatus(supplier)}
+                />
+            </div>
+            </CardContent>
+        </Card>
+    );
+};
 
 export const SuppliersPage = () => {
   const navigate = useNavigate();
   const { data: suppliers, isLoading, error } = useSuppliers();
   const toggleStatusMutation = useToggleSupplierStatus();
+  const deleteMutation = useDeleteSupplier();
   const { isMobile } = useScreenSize();
+  const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null);
 
   const handleToggleStatus = (supplier: Supplier) => {
     toggleStatusMutation.mutate({ id: supplier.id, is_active: !supplier.is_active });
+  };
+
+  const handleDelete = async () => {
+    if (deleteTarget) {
+      await deleteMutation.mutateAsync({ id: deleteTarget.id });
+      setDeleteTarget(null);
+    }
   };
 
   const renderContent = () => {
@@ -134,7 +156,7 @@ export const SuppliersPage = () => {
 
     return isMobile ? (
       <div className="space-y-4 p-4">
-        {suppliers.map(supplier => <SupplierCard key={supplier.id} supplier={supplier} handleToggleStatus={handleToggleStatus} />)}
+        {suppliers.map(supplier => <SupplierCard key={supplier.id} supplier={supplier} handleToggleStatus={handleToggleStatus} onDelete={() => setDeleteTarget(supplier)} />)}
       </div>
     ) : (
       <Table>
@@ -157,9 +179,10 @@ export const SuppliersPage = () => {
                 <div>{supplier.phone}</div>
               </TableCell>
               <TableCell>
-                <Badge variant={supplier.is_active ? 'success' : 'destructive'}>
-                  {supplier.is_active ? 'Activo' : 'Inactivo'}
-                </Badge>
+                <Switch
+                  checked={supplier.is_active}
+                  onCheckedChange={() => handleToggleStatus(supplier)}
+                />
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
@@ -170,12 +193,17 @@ export const SuppliersPage = () => {
                     <SupplierDialog supplier={supplier} trigger={
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         <Edit className="w-4 h-4 mr-2" />
-                        Editar
+                        Edición Rápida
                       </DropdownMenuItem>
                     } />
-                    <DropdownMenuItem onClick={() => handleToggleStatus(supplier)}>
-                      <Switch checked={supplier.is_active} className="mr-2 h-4 w-7" />
-                      <span>{supplier.is_active ? 'Desactivar' : 'Activar'}</span>
+                    <DropdownMenuItem onClick={() => navigate(`/app/inventory/suppliers/edit/${supplier.id}`)}>
+                        <FileEdit className="w-4 h-4 mr-2" />
+                        Edición Completa
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setDeleteTarget(supplier)} className="text-red-600">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -202,6 +230,14 @@ export const SuppliersPage = () => {
           {renderContent()}
         </CardContent>
       </Card>
+
+      <ConfirmationDialog 
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title={`¿Estás seguro de que deseas eliminar a ${deleteTarget?.name}?`}
+        description="Esta acción no se puede deshacer. Se eliminará permanentemente el proveedor y todos sus datos asociados."
+      />
     </div>
   );
 };

@@ -5,9 +5,15 @@ interface AddressAutocompleteInputProps {
   onPlaceSelected: (place: google.maps.places.PlaceResult) => void;
   defaultValue?: string;
   countryRestriction?: string;
+  isGlobalSearch?: boolean;
 }
 
-export function AddressAutocompleteInput({ onPlaceSelected, defaultValue, countryRestriction }: AddressAutocompleteInputProps) {
+export function AddressAutocompleteInput({ 
+  onPlaceSelected, 
+  defaultValue, 
+  countryRestriction, 
+  isGlobalSearch = false 
+}: AddressAutocompleteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -24,10 +30,8 @@ export function AddressAutocompleteInput({ onPlaceSelected, defaultValue, countr
       options.componentRestrictions = { country: countryRestriction };
     }
 
-    // Limpiar la instancia anterior si existe
     if (autocompleteRef.current) {
-      // No hay un método 'destroy' directo, pero podemos desvincular el input
-      // y dejar que el GC se encargue. Para asegurar, creamos una nueva instancia.
+      window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       autocompleteRef.current = null;
     }
 
@@ -52,21 +56,25 @@ export function AddressAutocompleteInput({ onPlaceSelected, defaultValue, countr
 
     return () => {
       if (autocompleteRef.current) {
-        // Eliminar el listener para evitar fugas de memoria
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
         autocompleteRef.current = null;
       }
     };
   }, [countryRestriction, defaultValue, onPlaceSelected]);
 
+  const getPlaceholder = () => {
+    if (isGlobalSearch) return "Buscar dirección...";
+    if (countryRestriction) return "Buscar dirección en el país seleccionado...";
+    return "Selecciona un país para buscar...";
+  }
+
   return (
     <Input
       ref={inputRef}
       type="text"
-      placeholder={countryRestriction ? "Buscar dirección en el país seleccionado..." : "Selecciona un país para buscar..."}
-      
-      disabled={!countryRestriction}
-      autoComplete="nope" // Intentando un valor no estándar para deshabilitar el autocompletado del navegador
+      placeholder={getPlaceholder()}
+      disabled={!isGlobalSearch && !countryRestriction}
+      autoComplete="off"
     />
   );
 }

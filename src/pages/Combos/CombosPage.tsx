@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,8 @@ import {
   Plus, 
   Combine,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  FileEdit
 } from "lucide-react";
 import { useGetCombos, useUpdateCombo, useDeleteCombo, Combo } from "@/hooks/useCombos";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
@@ -27,77 +29,88 @@ import { ComboDialog } from "@/components/ComboDialog";
 import { ManageComboInBranchesDialog } from "@/components/ManageComboInBranchesDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useScreenSize } from "@/hooks/useScreenSize";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDialog, handleOpenAssignDialog, handleDelete, calculateBasePrice }) => (
-  <Card>
-    <CardHeader>
-      <div className="flex justify-between items-start">
-        <div>
-          <CardTitle>{combo.name}</CardTitle>
-          {combo.sku && <p className="text-sm text-muted-foreground">SKU: {combo.sku}</p>}
+const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDialog, handleOpenAssignDialog, handleDelete, calculateBasePrice }) => {
+  const navigate = useNavigate();
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>{combo.name}</CardTitle>
+            {combo.sku && <p className="text-sm text-muted-foreground">SKU: {combo.sku}</p>}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleOpenComboDialog(combo)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edición rápida
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/app/combos/edit/${combo.id}`)}>
+                <FileEdit className="w-4 h-4 mr-2" />
+                Edición Completa
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleOpenAssignDialog(combo)}>
+                <Share2 className="w-4 h-4 mr-2" />
+                Asignar a Sucursales
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer. Se eliminará el combo permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(combo.id)} className="bg-red-600 hover:bg-red-700">
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleOpenComboDialog(combo)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleOpenAssignDialog(combo)}>
-              <Share2 className="w-4 h-4 mr-2" />
-              Asignar a Sucursales
-            </DropdownMenuItem>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Eliminar
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará el combo permanentemente.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDelete(combo.id)}>Eliminar</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Nº de Ítems</span>
-        <span><Badge variant="secondary">{combo.combo_items?.length || 0} Ítems</Badge></span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Precio Base</span>
-        <span>{formatPrice(calculateBasePrice(combo))}</span>
-      </div>
-      <div className="flex items-center justify-between rounded-md border p-3 mt-4">
-        <label className="text-sm font-medium">Activo</label>
-        <Switch
-          checked={combo.is_active || false}
-          onCheckedChange={() => handleToggleStatus(combo)}
-        />
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Nº de Ítems</span>
+          <span><Badge variant="secondary">{combo.combo_items?.length || 0} Ítems</Badge></span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Precio Base</span>
+          <span>{formatPrice(calculateBasePrice(combo))}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-md border p-3 mt-4">
+          <label className="text-sm font-medium">Activo</label>
+          <Switch
+            checked={combo.is_active || false}
+            onCheckedChange={() => handleToggleStatus(combo)}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ComboCardSkeleton = () => (
   <Card>
@@ -154,13 +167,14 @@ const ComboTableSkeleton = () => (
   </Table>
 );
 
-const ComboCatalog = () => {
+const CombosPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null);
 
+  const navigate = useNavigate();
   const { data: combos, isLoading, refetch } = useGetCombos();
   const { mutate: updateCombo } = useUpdateCombo();
   const { mutate: deleteCombo } = useDeleteCombo();
@@ -272,20 +286,26 @@ const ComboCatalog = () => {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleOpenComboDialog(combo)}>
                       <Edit className="w-4 h-4 mr-2" />
-                      Editar
+                      Edición rápida
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(`/app/combos/edit/${combo.id}`)}>
+                        <FileEdit className="w-4 h-4 mr-2" />
+                        Edición Completa
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleOpenAssignDialog(combo)}>
                       <Share2 className="w-4 h-4 mr-2" />
                       Asignar a Sucursales
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
+                        <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Eliminar
+                            </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
@@ -294,7 +314,9 @@ const ComboCatalog = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(combo.id)}>Eliminar</AlertDialogAction>
+                          <AlertDialogAction onClick={() => handleDelete(combo.id)} className="bg-red-600 hover:bg-red-700">
+                            Eliminar
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -360,4 +382,4 @@ const ComboCatalog = () => {
   );
 };
 
-export default ComboCatalog;
+export default CombosPage;

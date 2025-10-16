@@ -8,6 +8,7 @@ import Clients from "@/pages/Clients";
 import ClientDetailPage from "@/pages/ClientDetailPage";
 import ServiceDetailPage from "@/pages/ServiceDetailPage";
 import ProductEditPage from "@/pages/Products/ProductEditPage"; // Añadido
+import EditComboPage from "@/pages/Combos/EditComboPage";
 import Services from "@/pages/Services";
 import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
@@ -22,6 +23,7 @@ import Products from "@/pages/Products";
 import Combos from "@/pages/Combos";
 import Inventory from "@/pages/Inventory";
 import { SuppliersPage } from "@/pages/SuppliersPage";
+import EditSupplierPage from "@/pages/Suppliers/EditSupplierPage";
 import BranchProductsPage from "@/pages/Inventory/BranchProductsPage";
 import { PurchasesPage } from "@/pages/Inventory/PurchasesPage";
 import { TransfersPage } from "@/pages/Inventory/TransfersPage";
@@ -88,9 +90,11 @@ function App() {
                   <Route path="products" element={<Products />} />
                   <Route path="products/:id" element={<ProductEditPage />} />
                   <Route path="combos" element={<Combos />} />
+                  <Route path="combos/edit/:id" element={<EditComboPage />} />
                   <Route path="inventory">
                     <Route index element={<Inventory />} />
                     <Route path="suppliers" element={<SuppliersPage />} />
+                    <Route path="suppliers/edit/:id" element={<EditSupplierPage />} />
                     <Route path="branch-products" element={<BranchProductsPage />} />
                     <Route path="purchases" element={<PurchasesPage />} />
                     <Route path="transfers" element={<TransfersPage />} />
