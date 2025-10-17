@@ -68,7 +68,7 @@ export default function Settings() {
     { value: "identity", label: "Identidad", icon: <Palette className="h-4 w-4" />, component: <IdentitySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "users", label: "Usuarios", icon: <Users className="h-4 w-4" />, component: <UsersTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "clients", label: "Clientes", icon: <Users2 className="h-4 w-4" />, component: <ClientsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
-    { value: "document_types", label: "Tipos de Documento", icon: <FileText className="h-4 w-4" />, component: <DocumentTypesSettingsTab />, roles: ['tenant_super_admin'] },
+    { value: "document_types", label: "Parametrización", icon: <FileText className="h-4 w-4" />, component: <DocumentTypesSettingsTab />, roles: ['tenant_super_admin'] },
     { value: "notifications", label: "Notificaciones", icon: <Bell className="h-4 w-4" />, component: <NotificationSettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "inventory", label: "Inventario", icon: <Box className="h-4 w-4" />, component: <InventorySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "sales", label: "Ventas", icon: <CreditCard className="h-4 w-4" />, component: <SalesTab />, roles: ['tenant_super_admin', 'tenant_admin'] },

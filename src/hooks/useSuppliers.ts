@@ -75,6 +75,19 @@ export const useActiveSuppliers = () => {
   return { data: activeSuppliers, ...rest };
 };
 
+// Hook para obtener un proveedor por su ID
+export const useSupplier = (id: string) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const invokeGetSupplier = useTenantAction<Supplier, { id: string }>('get_supplier');
+
+  return useQuery({
+    queryKey: ['suppliers', tenantId, id],
+    queryFn: () => invokeGetSupplier({ id }),
+    enabled: !!tenantId && !!id,
+  });
+};
+
 // Hook para CREAR un proveedor
 export const useCreateSupplier = () => {
   const queryClient = useQueryClient();

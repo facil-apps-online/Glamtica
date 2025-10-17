@@ -1581,6 +1581,20 @@ serve(async (req) => {
         break;
       }
 
+      case 'get_supplier': {
+        const { id } = payload;
+        if (!id) throw new Error('Supplier ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('suppliers')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
       case 'create_supplier': {
         const { name, identification_type, identification_number, address, phone, email } = payload;
         const { data, error } = await supabaseAdmin
@@ -1627,6 +1641,173 @@ serve(async (req) => {
           .single();
         if (error) throw error;
         responseData = data;
+        break;
+      }
+
+      case 'get_supplier_contacts': {
+        const { supplierId } = payload;
+        if (!supplierId) throw new Error('Supplier ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('supplier_contacts')
+          .select(`
+            *,
+            contact_types ( name )
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('supplier_id', supplierId)
+          .order('created_at');
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_supplier_contact': {
+        const { supplier_id, contact_type_id, name, email, phone } = payload;
+        if (!supplier_id || !contact_type_id || !name) {
+          throw new Error('Supplier ID, contact type ID, and name are required.');
+        }
+        const { data, error } = await supabaseAdmin
+          .from('supplier_contacts')
+          .insert([{ tenant_id: tenantId, supplier_id, contact_type_id, name, email, phone }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_supplier_contact': {
+        const { id, ...updates } = payload;
+        if (!id) throw new Error('Contact ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('supplier_contacts')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_supplier_contact': {
+        const { id } = payload;
+        if (!id) throw new Error('Contact ID is required.');
+        const { error } = await supabaseAdmin
+          .from('supplier_contacts')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      case 'get_supplier_addresses': {
+        const { supplierId } = payload;
+        if (!supplierId) throw new Error('Supplier ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('supplier_addresses')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('supplier_id', supplierId)
+          .order('created_at');
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_supplier_address': {
+        const { supplier_id, ...addressData } = payload;
+        if (!supplier_id) throw new Error('Supplier ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('supplier_addresses')
+          .insert([{ tenant_id: tenantId, supplier_id, ...addressData }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_supplier_address': {
+        const { id, ...updates } = payload;
+        if (!id) throw new Error('Address ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('supplier_addresses')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_supplier_address': {
+        const { id } = payload;
+        if (!id) throw new Error('Address ID is required.');
+        const { error } = await supabaseAdmin
+          .from('supplier_addresses')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
+        break;
+      }
+
+      case 'get_contact_types': {
+        const { data, error } = await supabaseAdmin
+          .from('contact_types')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('name');
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'create_contact_type': {
+        const { name, is_for_supplier, is_for_client } = payload;
+        if (!name) throw new Error('Name is required.');
+        const { data, error } = await supabaseAdmin
+          .from('contact_types')
+          .insert([{ tenant_id: tenantId, name, is_for_supplier, is_for_client }])
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'update_contact_type': {
+        const { id, ...updates } = payload;
+        if (!id) throw new Error('ID is required.');
+        const { data, error } = await supabaseAdmin
+          .from('contact_types')
+          .update(updates)
+          .eq('id', id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+        if (error) throw error;
+        responseData = data;
+        break;
+      }
+
+      case 'delete_contact_type': {
+        const { id } = payload;
+        if (!id) throw new Error('ID is required.');
+        const { error } = await supabaseAdmin
+          .from('contact_types')
+          .delete()
+          .eq('id', id)
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        responseData = { success: true };
         break;
       }
 

@@ -3,11 +3,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, ChevronDown } from "lucide-react";
+import { Plus, Edit, ChevronDown, X, Save } from "lucide-react";
 import { useCreateSupplier, useUpdateSupplier, Supplier } from "@/hooks/useSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,8 @@ import { useProductsBySupplier, useAddSupplierProduct, useUpdateSupplierProduct,
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
@@ -30,6 +33,37 @@ const formSchema = z.object({
   email: z.string().email("Debe ser un email válido.").optional().or(z.literal('')),
   branch_ids: z.array(z.string()).optional(),
 });
+
+const ProductListItemSkeleton = () => (
+    <div className="flex items-center justify-between p-2 border rounded-md">
+        <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-3 w-1/4" />
+        </div>
+        <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-6 w-16" />
+        </div>
+    </div>
+);
+
+const ProductCardSkeleton = () => (
+    <Card>
+        <CardHeader>
+            <Skeleton className="h-6 w-3/4" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="space-y-1">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-6 w-12" />
+            </div>
+        </CardContent>
+    </Card>
+);
 
 type SupplierFormValues = z.infer<typeof formSchema>;
 
@@ -58,10 +92,18 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
   const { formatPrice } = usePriceFormat();
   const [newProductId, setNewProductId] = useState("");
   const [newSupplierPrice, setNewSupplierPrice] = useState<number | string>(0);
+  const isMobile = useScreenSize() === 'mobile';
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {},
+    defaultValues: {
+        name: '',
+        document_type_id: '',
+        identification_number: '',
+        phone: '',
+        email: '',
+        branch_ids: [],
+    },
   });
 
   const { formState: { isDirty } } = form;
@@ -122,7 +164,12 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger || <Button><Plus className="w-4 h-4 mr-2" />Nuevo Proveedor</Button>}</DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="text-primary">{initialSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-primary">
+            {initialSupplier ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+            {initialSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}
+          </DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs defaultValue="general">
@@ -132,7 +179,7 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
               </TabsList>
 
               <TabsContent value="general" className="pt-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="document_type_id" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Identificación</FormLabel>
@@ -160,7 +207,7 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
                         <FormMessage />
                     </FormItem>
                 )} />
-                 <div className="grid grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
                 </div>
@@ -168,7 +215,7 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
 
               <TabsContent value="products" className="pt-4 space-y-4">
                 <h3 className="text-lg font-semibold">Productos del Proveedor</h3>
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-2">
                   <div className="flex-1">
                     <Label htmlFor="product">Producto</Label>
                     <Select value={newProductId} onValueChange={setNewProductId}>
@@ -180,35 +227,80 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
                     <Label htmlFor="price">Precio ({formatPrice(0).replace(/\d|\.|,/g, '')})</Label>
                     <Input id="price" type="number" step="0.01" value={newSupplierPrice} onChange={(e) => setNewSupplierPrice(parseFloat(e.target.value) || 0)} />
                   </div>
-                  <Button type="button" onClick={handleAddSupplierProduct} className="mt-auto"><Plus className="w-4 h-4" /></Button>
+                  <Button type="button" onClick={handleAddSupplierProduct} className="mt-4 md:mt-auto"><Plus className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Añadir</span></Button>
                 </div>
                 {isLoadingSupplierProducts ? (
-                  <div>Cargando productos asociados...</div>
+                    isMobile ? (
+                        <div className="space-y-4">
+                            {[...Array(3)].map((_, i) => <ProductCardSkeleton key={i} />)}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {[...Array(3)].map((_, i) => <ProductListItemSkeleton key={i} />)}
+                        </div>
+                    )
                 ) : supplierProducts && supplierProducts.length > 0 ? (
-                  <div className="space-y-2">
-                    {supplierProducts.map((sp) => (
-                      <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
-                        <div className="flex-1">
-                          <p className="font-medium">{sp.products.name}</p>
-                          <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
+                    isMobile ? (
+                        <div className="space-y-4">
+                            {supplierProducts.map((sp) => (
+                                <Card key={sp.id}>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">{sp.products.name}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div>
+                                            <Label htmlFor={`price-card-${sp.id}`}>Precio de Costo</Label>
+                                            <Input
+                                                id={`price-card-${sp.id}`}
+                                                type="number"
+                                                step="0.01"
+                                                defaultValue={sp.supplier_price}
+                                                onBlur={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)}
+                                                className="w-full text-right"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-md border p-3">
+                                            <Label htmlFor={`switch-card-${sp.id}`} className="text-sm font-medium">Activo</Label>
+                                            <Switch
+                                                id={`switch-card-${sp.id}`}
+                                                checked={sp.is_active}
+                                                onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Input type="number" step="0.01" value={sp.supplier_price} onChange={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)} className="w-24 text-right" />
-                          <Badge variant={sp.is_active ? 'success' : 'destructive'}>{sp.is_active ? 'Activo' : 'Inactivo'}</Badge>
-                          <Switch checked={sp.is_active} onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)} aria-label={`Activar o desactivar ${sp.products?.name}`} />
-                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                        {supplierProducts.map((sp) => (
+                          <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
+                            <div className="flex-1">
+                              <p className="font-medium">{sp.products.name}</p>
+                              <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input type="number" step="0.01" defaultValue={sp.supplier_price} onBlur={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)} className="w-24 text-right" />
+                              <Switch checked={sp.is_active} onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)} aria-label={`Activar o desactivar ${sp.products?.name}`} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )
                 ) : (
                   <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
                 )}
               </TabsContent>
             </Tabs>
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                    <X className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Cancelar</span>
+                </Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (initialSupplier && !isDirty)}>
-                    {currentSupplier ? "Actualizar" : "Crear y Añadir Productos"}
+                    <Save className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{currentSupplier ? "Actualizar" : "Crear y Añadir Productos"}</span>
+                    <span className="sm:hidden">{currentSupplier ? "Actualizar" : "Crear"}</span>
                 </Button>
             </div>
           </form>

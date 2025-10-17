@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, MouseEvent } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useSuppliers, useToggleSupplierStatus, useDeleteSupplier } from '@/hooks/useSuppliers';
 import { SupplierDialog } from '@/components/SupplierDialog';
@@ -71,8 +71,22 @@ const SupplierTableSkeleton = () => (
 
 const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
     const navigate = useNavigate();
+
+    const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement;
+        if (
+            target.closest('button') ||
+            target.closest('[role="switch"]') ||
+            target.closest('[data-radix-dropdown-menu-content]') ||
+            target.closest('[role="menuitem"]')
+        ) {
+            return;
+        }
+        navigate(`/app/inventory/suppliers/edit/${supplier.id}`);
+    };
+
     return (
-        <Card>
+        <Card onClick={handleCardClick} className="cursor-pointer transition-colors hover:bg-muted/50">
             <CardHeader>
             <div className="flex justify-between items-start">
                 <CardTitle>{supplier.name}</CardTitle>
@@ -126,12 +140,13 @@ const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
     );
 };
 
-export const SuppliersPage = () => {
+const SuppliersPage = () => {
   const navigate = useNavigate();
   const { data: suppliers, isLoading, error } = useSuppliers();
   const toggleStatusMutation = useToggleSupplierStatus();
   const deleteMutation = useDeleteSupplier();
-  const { isMobile } = useScreenSize();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'mobile';
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null);
 
   const handleToggleStatus = (supplier: Supplier) => {
@@ -171,7 +186,23 @@ export const SuppliersPage = () => {
         </TableHeader>
         <TableBody>
           {suppliers.map((supplier) => (
-            <TableRow key={supplier.id}>
+            <TableRow 
+              key={supplier.id}
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                // Evitar navegar si se hace clic en un botón, un switch, o dentro del menú de acciones
+                if (
+                  target.closest('button') || 
+                  target.closest('[role="switch"]') || 
+                  target.closest('[data-radix-dropdown-menu-content]') ||
+                  target.closest('[role="menuitem"]')
+                ) {
+                  return;
+                }
+                navigate(`/app/inventory/suppliers/edit/${supplier.id}`);
+              }}
+              className="cursor-pointer hover:bg-muted/50"
+            >
               <TableCell className="font-medium">{supplier.name}</TableCell>
               <TableCell>{supplier.identification_type}: {supplier.identification_number}</TableCell>
               <TableCell>
@@ -218,11 +249,16 @@ export const SuppliersPage = () => {
   return (
     <div className="space-y-4">
       <PageHeader 
-        title="Gestión de Proveedores"
+        title="Proveedores"
         subtitle="Centraliza la información y el estado de todos tus proveedores."
         backButton={<Button variant="outline" size="icon" onClick={() => navigate('/app/inventory')}><ArrowLeft className="h-4 w-4" /></Button>}
       >
-        <SupplierDialog trigger={<Button><PlusCircle className="w-4 h-4 mr-2" />Nuevo Proveedor</Button>} />
+                <SupplierDialog trigger={
+          <Button>
+            <PlusCircle className="w-4 h-4" />
+            <span className="hidden sm:inline ml-2">Nuevo Proveedor</span>
+          </Button>
+        } />
       </PageHeader>
 
       <Card>
@@ -241,3 +277,5 @@ export const SuppliersPage = () => {
     </div>
   );
 };
+
+export default SuppliersPage;

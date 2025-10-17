@@ -22,7 +22,7 @@ import { queryClient } from "@/lib/queryClient";
 import Products from "@/pages/Products";
 import Combos from "@/pages/Combos";
 import Inventory from "@/pages/Inventory";
-import { SuppliersPage } from "@/pages/SuppliersPage";
+import SuppliersPage from "@/pages/SuppliersPage";
 import EditSupplierPage from "@/pages/Suppliers/EditSupplierPage";
 import BranchProductsPage from "@/pages/Inventory/BranchProductsPage";
 import { PurchasesPage } from "@/pages/Inventory/PurchasesPage";

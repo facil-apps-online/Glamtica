@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGetDocumentTypes, useDeleteDocumentType, DocumentType } from '@/hooks/useDocumentTypes';
+import { useGetContactTypes, useDeleteContactType, ContactType } from '@/hooks/useContactTypes';
 import { Button } from '@/components/ui/button';
 import { 
   Table, 
@@ -16,17 +16,16 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { DocumentTypeDialog } from '@/components/DocumentTypeDialog';
+import { ContactTypeManagementDialog } from '@/components/ContactTypeManagementDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { ContactTypesSettingsTab } from './ContactTypesSettingsTab';
+import { Badge } from '@/components/ui/badge';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function DocumentTypesSettingsTab() {
-  const [activeType, setActiveType] = useState('client'); // 'client' or 'supplier'
-  const { data: documentTypes, isLoading, error } = useGetDocumentTypes(activeType);
-  const deleteMutation = useDeleteDocumentType();
+export function ContactTypesSettingsTab() {
+  const { data: contactTypes, isLoading, error } = useGetContactTypes();
+  const deleteMutation = useDeleteContactType();
   const { toast } = useToast();
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
@@ -34,7 +33,7 @@ export function DocumentTypesSettingsTab() {
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        toast({ title: 'Éxito', description: 'Tipo de documento eliminado.' });
+        toast({ title: 'Éxito', description: 'Tipo de contacto eliminado.' });
       },
       onError: (error) => {
         toast({ title: 'Error', description: `No se pudo eliminar: ${error.message}` });
@@ -48,17 +47,20 @@ export function DocumentTypesSettingsTab() {
         <TableHeader>
           <TableRow>
             <TableHead>Nombre</TableHead>
-            <TableHead>Abreviatura</TableHead>
             <TableHead>Aplica a</TableHead>
             <TableHead><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {documentTypes?.map((docType) => (
-            <TableRow key={docType.id}>
-              <TableCell className="font-medium">{docType.name}</TableCell>
-              <TableCell>{docType.abbreviation}</TableCell>
-              <TableCell>{docType.applies_to.join(', ')}</TableCell>
+          {contactTypes?.map((contactType) => (
+            <TableRow key={contactType.id}>
+              <TableCell className="font-medium">{contactType.name}</TableCell>
+              <TableCell>
+                <div className="flex gap-2">
+                  {contactType.is_for_client && <Badge variant="outline">Clientes</Badge>}
+                  {contactType.is_for_supplier && <Badge variant="outline">Proveedores</Badge>}
+                </div>
+              </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -68,12 +70,12 @@ export function DocumentTypesSettingsTab() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DocumentTypeDialog documentType={docType} isEdit={true}>
+                    <ContactTypeManagementDialog contactType={contactType} isEdit={true}>
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         <Edit className="w-4 h-4 mr-2" />
                         Editar
                       </DropdownMenuItem>
-                    </DocumentTypeDialog>
+                    </ContactTypeManagementDialog>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
@@ -83,14 +85,14 @@ export function DocumentTypesSettingsTab() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar tipo de documento?</AlertDialogTitle>
+                          <AlertDialogTitle>¿Eliminar tipo de contacto?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Esta acción no se puede deshacer.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(docType.id)} className="bg-red-600 hover:bg-red-700">
+                          <AlertDialogAction onClick={() => handleDelete(contactType.id)} className="bg-red-600 hover:bg-red-700">
                             Eliminar
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -108,11 +110,11 @@ export function DocumentTypesSettingsTab() {
 
   const renderMobileView = () => (
     <div className="space-y-4">
-      {documentTypes?.map((docType) => (
-        <Card key={docType.id}>
+      {contactTypes?.map((contactType) => (
+        <Card key={contactType.id}>
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              {docType.name}
+              {contactType.name}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
@@ -121,12 +123,12 @@ export function DocumentTypesSettingsTab() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DocumentTypeDialog documentType={docType} isEdit={true}>
+                  <ContactTypeManagementDialog contactType={contactType} isEdit={true}>
                     <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                       <Edit className="w-4 h-4 mr-2" />
                       Editar
                     </DropdownMenuItem>
-                  </DocumentTypeDialog>
+                  </ContactTypeManagementDialog>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
@@ -136,14 +138,14 @@ export function DocumentTypesSettingsTab() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar tipo de documento?</AlertDialogTitle>
+                        <AlertDialogTitle>¿Eliminar tipo de contacto?</AlertDialogTitle>
                         <AlertDialogDescription>
                           Esta acción no se puede deshacer.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(docType.id)} className="bg-red-600 hover:bg-red-700">
+                        <AlertDialogAction onClick={() => handleDelete(contactType.id)} className="bg-red-600 hover:bg-red-700">
                           Eliminar
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -154,8 +156,10 @@ export function DocumentTypesSettingsTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p><strong>Abreviatura:</strong> {docType.abbreviation}</p>
-            <p><strong>Aplica a:</strong> {docType.applies_to.join(', ')}</p>
+            <div className="flex gap-2">
+              {contactType.is_for_client && <Badge variant="outline">Clientes</Badge>}
+              {contactType.is_for_supplier && <Badge variant="outline">Proveedores</Badge>}
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -163,25 +167,21 @@ export function DocumentTypesSettingsTab() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Tipos de Documento</h3>
-        <DocumentTypeDialog>
+        <h3 className="text-lg font-medium">Tipos de Contacto</h3>
+        <ContactTypeManagementDialog>
           <Button size="sm">
             <PlusCircle className="w-4 h-4 mr-2" />
             Añadir Tipo
           </Button>
-        </DocumentTypeDialog>
+        </ContactTypeManagementDialog>
       </div>
-
-      {/* TODO: Add toggle for client/supplier */}
 
       {isLoading && <p>Cargando...</p>}
       {error && <p className="text-red-500">Error: {error.message}</p>}
 
       {isMobile ? renderMobileView() : renderDesktopView()}
-
-      <ContactTypesSettingsTab />
     </div>
   );
 }
