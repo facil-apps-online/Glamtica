@@ -13,6 +13,13 @@ import { usePublicSubscriptionPlans } from '@/hooks/usePublicSubscriptionPlans';
 import { PublicSubscriptionPlan } from '@/types/subscription';
 import { Currency } from '@/hooks/useCurrencies'; // Import Currency interface
 
+// Declare gtag function
+declare global {
+  interface Window {
+    gtag: (type: string, eventName: string, eventParams: object) => void;
+  }
+}
+
 const pageVariants = {
   initial: {
     opacity: 0,
@@ -71,7 +78,11 @@ export default function LandingPage() {
     }
   }, [publicData?.countries]);
 
-
+  const trackGtagEvent = (eventName, params) => {
+    if (window.gtag) {
+      window.gtag('event', eventName, params);
+    }
+  };
 
   // Plans are already structured as PublicSubscriptionPlan, no need for extra grouping
   const sortedPlans = useMemo(() => {
@@ -93,9 +104,9 @@ export default function LandingPage() {
           <span className="text-2xl font-bold text-purple-700">Glamtica.app</span>
         </div>
         <nav className="space-x-4">
-          <Link to="/auth" className="text-gray-600 hover:text-purple-700">Iniciar Sesión</Link>
+          <Link to="/auth" className="text-gray-600 hover:text-purple-700" onClick={() => trackGtagEvent('login_click', { event_category: 'engagement', event_label: 'Header Login' })}>Iniciar Sesión</Link>
           <Link to="/register-tenant">
-            <Button>Regístrate</Button>
+            <Button onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Header Register' })}>Regístrate</Button>
           </Link>
         </nav>
       </header>
@@ -109,10 +120,10 @@ export default function LandingPage() {
           <p className="text-xl mb-8 opacity-90">La plataforma todo en uno diseñada para salones de belleza, spas y barberías. Simplifica tu administración, deleita a tus clientes y haz crecer tu negocio.</p>
           <div className="space-x-4">
             <Link to="/register-tenant">
-              <Button size="lg" className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-lg px-8 py-3 rounded-full shadow-lg">Empieza Gratis</Button>
+              <Button size="lg" className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-lg px-8 py-3 rounded-full shadow-lg" onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Hero Register' })}>Empieza Gratis</Button>
             </Link>
             <Link to="/auth">
-              <Button size="lg" variant="outline" className="text-purple-700 border-purple-700 hover:bg-purple-700 hover:text-white font-bold text-lg px-8 py-3 rounded-full">Iniciar Sesión</Button>
+              <Button size="lg" variant="outline" className="text-purple-700 border-purple-700 hover:bg-purple-700 hover:text-white font-bold text-lg px-8 py-3 rounded-full" onClick={() => trackGtagEvent('login_click', { event_category: 'engagement', event_label: 'Hero Login' })}>Iniciar Sesión</Button>
             </Link>
           </div>
         </div>
@@ -156,7 +167,7 @@ export default function LandingPage() {
           </div>
           <div className="text-center mt-12">
             <Link to="/features">
-              <Button variant="outline" className="text-purple-700 border-purple-700 hover:bg-purple-700 hover:text-white">Ver más características</Button>
+              <Button variant="outline" className="text-purple-700 border-purple-700 hover:bg-purple-700 hover:text-white" onClick={() => trackGtagEvent('features_click', { event_category: 'engagement', event_label: 'View More Features' })}>Ver más características</Button>
             </Link>
           </div>
         </div>
@@ -231,7 +242,7 @@ export default function LandingPage() {
                     )}
                   </div>
                   <Link to="/register-tenant">
-                    <Button size="lg" className="w-full bg-purple-600 hover:bg-purple-700 text-white">Elegir Plan</Button>
+                    <Button size="lg" className="w-full bg-purple-600 hover:bg-purple-700 text-white" onClick={() => trackGtagEvent('select_plan', { event_category: 'ecommerce', event_label: plan.plan_name, value: plan.calculated_price })}>Elegir Plan</Button>
                   </Link>
                 </div>
               ))}
@@ -264,7 +275,7 @@ export default function LandingPage() {
           <h2 className="text-4xl font-bold mb-6">¿Listo para Transformar tu Negocio?</h2>
           <p className="text-xl mb-8 opacity-90">Únete a cientos de salones que ya están optimizando su gestión con Glamtica.app.</p>
           <Link to="/register-tenant">
-            <Button size="lg" className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg">Regístrate Ahora</Button>
+            <Button size="lg" className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg" onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Footer Register' })}>Regístrate Ahora</Button>
           </Link>
         </div>
       </section>
