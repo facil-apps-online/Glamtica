@@ -7,7 +7,7 @@ const fetchPublicSubscriptionPlans = async (countryId: string, platformId: strin
     return [];
   }
 
-  const { data, error } = await supabase.functions.invoke('tenant-actions', {
+  const { data, error } = await supabase.functions.invoke('public-actions', {
     body: {
       action: 'GET_PUBLIC_SUBSCRIPTION_PLANS',
       payload: { countryId, platformId },
