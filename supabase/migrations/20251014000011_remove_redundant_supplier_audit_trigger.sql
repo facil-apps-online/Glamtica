@@ -1,1 +1,0 @@
-DROP TRIGGER IF EXISTS audit_suppliers_changes ON public.suppliers;

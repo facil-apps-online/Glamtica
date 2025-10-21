@@ -1,1 +1,0 @@
-DROP FUNCTION IF EXISTS public.set_session_context(jsonb);

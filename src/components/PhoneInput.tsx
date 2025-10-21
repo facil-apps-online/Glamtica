@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, forwardRef } from 'react';
 import { usePhonePrefixes } from '@/hooks/usePhonePrefixes';
+import { useCountryPlaceholders } from '@/hooks/useCountryPlaceholders';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -18,15 +19,31 @@ interface PhoneInputProps {
 export const PhoneInput = forwardRef<HTMLDivElement, PhoneInputProps>(
   ({ value, onChange, defaultCountryId }, ref) => {
     const { data: prefixes, isLoading } = usePhonePrefixes();
+    const { data: placeholders } = useCountryPlaceholders(defaultCountryId);
     
     const [selectedPrefixId, setSelectedPrefixId] = useState<string | undefined>();
     const [currentNumber, setCurrentNumber] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
+    const dynamicPlaceholder = useMemo(() => {
+      if (!placeholders || placeholders.length === 0) {
+        return "300 123 4567"; // Fallback to original
+      }
+      const firstPlaceholder = placeholders[0].value; // e.g., "+57 300 123 4567"
+
+      const foundPrefix = prefixes?.find(p => firstPlaceholder.startsWith(p.prefix));
+
+      if (foundPrefix) {
+        return firstPlaceholder.replace(foundPrefix.prefix, '').trim();
+      }
+
+      return firstPlaceholder; // Fallback to the full string if no prefix matches
+    }, [placeholders, prefixes]);
+
     const defaultPrefixInfo = useMemo(() => {
       if (!prefixes) return undefined;
       const country = defaultCountryId 
-        ? prefixes.find(p => p.iso_code.toLowerCase() === defaultCountryId.toLowerCase()) 
+        ? prefixes.find(p => p.country_id === defaultCountryId) 
         : prefixes.find(p => p.prefix === '+1') || prefixes[0];
       return country;
     }, [defaultCountryId, prefixes]);
@@ -66,7 +83,6 @@ export const PhoneInput = forwardRef<HTMLDivElement, PhoneInputProps>(
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newNumber = e.target.value;
 
-      // Detectar y actualizar prefijo al escribir/pegar
       if (newNumber.startsWith('+')) {
         const parts = newNumber.split(' ');
         const potentialPrefix = parts[0];
@@ -77,7 +93,7 @@ export const PhoneInput = forwardRef<HTMLDivElement, PhoneInputProps>(
           const restOfNumber = parts.slice(1).join(' ');
           setCurrentNumber(restOfNumber);
           onChange(`${foundPrefix.prefix} ${restOfNumber}`);
-          return; // Salir para evitar doble actualización
+          return;
         }
       }
       
@@ -146,7 +162,7 @@ export const PhoneInput = forwardRef<HTMLDivElement, PhoneInputProps>(
           value={currentNumber}
           onChange={handleNumberChange}
           className="rounded-l-none"
-          placeholder="300 123 4567"
+          placeholder={dynamicPlaceholder}
         />
       </div>
     );

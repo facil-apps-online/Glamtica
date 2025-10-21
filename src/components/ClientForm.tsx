@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Client } from "@/hooks/useClients";
 import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface ClientFormProps {
   form: UseFormReturn<Client>;
   onSubmit: (data: Client) => void;
   isEdit: boolean;
   isLoading: boolean;
+  countryId?: string | null;
 }
 
-export const ClientForm: React.FC<ClientFormProps> = ({ form, onSubmit, isEdit, isLoading }) => {
+export const ClientForm: React.FC<ClientFormProps> = ({ form, onSubmit, isEdit, isLoading, countryId }) => {
   const { register, handleSubmit, control, formState: { errors, isDirty } } = form;
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('client');
 
@@ -28,7 +30,16 @@ export const ClientForm: React.FC<ClientFormProps> = ({ form, onSubmit, isEdit, 
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Teléfono</Label>
-          <Input id="phone" {...register("phone")} placeholder="+34 666 123 456" />
+          <Controller
+            name="phone"
+            control={control}
+            render={({ field }) => (
+              <PhoneInput
+                {...field}
+                defaultCountryId={countryId}
+              />
+            )}
+          />
           {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
         </div>
         <div className="space-y-2">

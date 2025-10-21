@@ -1,1 +1,0 @@
-DROP TRIGGER IF EXISTS audit_services_changes ON public.services;

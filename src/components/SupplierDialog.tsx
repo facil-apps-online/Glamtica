@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useScreenSize } from "@/hooks/useScreenSize";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PhoneInput } from '@/components/PhoneInput';
+import { useTenantCountry } from '@/hooks/useTenantCountry';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
@@ -79,6 +81,7 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
   const { toast } = useToast();
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+  const { data: countryId } = useTenantCountry(tenantId);
   const { data: branches } = useBranches(tenantId);
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');
   const createMutation = useCreateSupplier();
@@ -208,7 +211,7 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
                     </FormItem>
                 )} />
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryId} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
                 </div>
               </TabsContent>

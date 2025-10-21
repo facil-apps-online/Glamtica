@@ -1,9 +1,0 @@
-CREATE OR REPLACE FUNCTION execute_sql(sql TEXT)
-RETURNS TABLE(data JSON)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    RETURN QUERY EXECUTE format('SELECT row_to_json(t) FROM (%s) t', sql);
-END;
-$$;

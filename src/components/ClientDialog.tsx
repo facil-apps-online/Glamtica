@@ -42,14 +42,17 @@ interface ClientDialogProps {
   parentClientId?: string; // Para crear un sub-cliente
 }
 
-export const ClientDialog = ({ 
-  children, 
-  client, 
-  isEdit = false, 
-  onClientCreated, 
+import { useAuth } from "@/contexts/AuthContext";
+
+export const ClientDialog = ({
+  children,
+  client,
+  isEdit = false,
+  onClientCreated,
   initialBranchIds = [],
   parentClientId
 }: ClientDialogProps) => {
+  const { tenant } = useAuth();
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const createMutation = useCreateClient();
@@ -229,7 +232,7 @@ export const ClientDialog = ({
           )}
 
           <TabsContent value="general" className="mt-4">
-            <ClientForm form={form} onSubmit={onSubmitGeneral} isEdit={isEdit} isLoading={createMutation.isPending || updateMutation.isPending || isLoadingBranches} />
+            <ClientForm form={form} onSubmit={onSubmitGeneral} isEdit={isEdit} isLoading={createMutation.isPending || updateMutation.isPending || isLoadingBranches} countryId={tenant?.country_id} />
           </TabsContent>
 
           <TabsContent value="branches" className="mt-4 space-y-4">

@@ -1,1 +1,0 @@
-ALTER TABLE supplier_addresses ADD COLUMN name TEXT;
