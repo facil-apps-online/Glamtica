@@ -58,8 +58,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog, navigate, handleDelete }) => (
-  <Card>
+const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog, navigate, handleDelete }) => {
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('[role="switch"]') ||
+      target.closest('[data-radix-dropdown-menu-content]') ||
+      target.closest('[role="menuitem"]')
+    ) {
+      return;
+    }
+    navigate(`/app/products/${product.id}`);
+  };
+
+  return (
+  <Card onClick={handleCardClick} className="cursor-pointer transition-colors hover:bg-muted/50">
     <CardHeader>
       <div className="flex justify-between items-start">
         <div>
@@ -143,7 +157,8 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
       </div>
     </CardContent>
   </Card>
-);
+  );
+}
 
 const ProductCardSkeleton = () => (
   <Card>
@@ -324,7 +339,22 @@ const ProductCatalog = () => {
           {filteredProducts?.map((product: MasterProduct) => {
             const brand = brands?.find(b => b.id === product.brand_id);
             return (
-              <TableRow key={product.id}>
+              <TableRow 
+                key={product.id}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest('button') || 
+                    target.closest('[role="switch"]') || 
+                    target.closest('[data-radix-dropdown-menu-content]') ||
+                    target.closest('[role="menuitem"]')
+                  ) {
+                    return;
+                  }
+                  navigate(`/app/products/${product.id}`);
+                }}
+                className="cursor-pointer hover:bg-muted/50"
+              >
                 <TableCell>
                   <div className="font-medium">{product.name}</div>
                   {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}

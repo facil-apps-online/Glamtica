@@ -29,6 +29,10 @@ export default {
     				DEFAULT: 'hsl(var(--primary))',
     				foreground: 'hsl(var(--primary-foreground))'
     			},
+                success: {
+                    DEFAULT: 'hsl(142.1 76.2% 36.3%)', // A shade of green
+                    foreground: 'hsl(355.7 100% 97.3%)', // White/light text
+                },
     			secondary: {
     				DEFAULT: 'hsl(var(--secondary))',
     				foreground: 'hsl(var(--secondary-foreground))'

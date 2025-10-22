@@ -36,8 +36,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDialog, handleOpenAssignDialog, handleDelete, calculateBasePrice }) => {
   const navigate = useNavigate();
+
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('[role="switch"]') ||
+      target.closest('[data-radix-dropdown-menu-content]') ||
+      target.closest('[role="menuitem"]')
+    ) {
+      return;
+    }
+    navigate(`/app/combos/edit/${combo.id}`);
+  };
+
   return (
-    <Card>
+    <Card onClick={handleCardClick} className="cursor-pointer transition-colors hover:bg-muted/50">
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
@@ -110,7 +124,7 @@ const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDial
       </CardContent>
     </Card>
   );
-};
+}
 
 const ComboCardSkeleton = () => (
   <Card>
@@ -263,7 +277,22 @@ const CombosPage = () => {
         </TableHeader>
         <TableBody>
           {filteredCombos?.map((combo: Combo) => (
-            <TableRow key={combo.id}>
+            <TableRow 
+              key={combo.id}
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (
+                  target.closest('button') || 
+                  target.closest('[role="switch"]') || 
+                  target.closest('[data-radix-dropdown-menu-content]') ||
+                  target.closest('[role="menuitem"]')
+                ) {
+                  return;
+                }
+                navigate(`/app/combos/edit/${combo.id}`);
+              }}
+              className="cursor-pointer hover:bg-muted/50"
+            >
               <TableCell className="font-medium">{combo.name}</TableCell>
               <TableCell>{combo.sku || 'N/A'}</TableCell>
               <TableCell>

@@ -58,8 +58,25 @@ const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
   const isAssociatedWithSelectedBranch = true; // Placeholder
   const cardStyle = {}; // Placeholder
 
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('[role="switch"]') ||
+      target.closest('[data-radix-dropdown-menu-content]') ||
+      target.closest('[role="menuitem"]')
+    ) {
+      return;
+    }
+    navigate(`/app/clients/${client.id}`);
+  };
+
   return (
-    <Card style={cardStyle} className="backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+    <Card 
+      onClick={handleCardClick}
+      style={cardStyle} 
+      className="cursor-pointer backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+    >
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle>{client.name}</CardTitle>

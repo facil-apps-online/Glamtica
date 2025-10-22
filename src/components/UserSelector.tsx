@@ -11,14 +11,13 @@ export const UserSelector = ({ selectedUserId, onUserChange, users }: UserSelect
   const userOptions = [
     { value: "all", label: "Todos los usuarios" },
     ...(users?.map(user => ({
-      value: user.id,
+      value: user.user_id,
       label: `${user.first_name || ''} ${user.last_name || ''}`.trim()
     })) || [])
   ];
 
   return (
     <FilterableSelect
-      label="Usuario"
       placeholder="Selecciona un usuario"
       options={userOptions}
       value={selectedUserId}

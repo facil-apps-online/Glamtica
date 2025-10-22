@@ -3,25 +3,29 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
 import { useCurrencies, Currency } from '@/hooks/useCurrencies';
 
-export const usePriceFormat = (publicCurrencyId?: string, publicCurrencyDetails?: Currency) => {
+export const usePriceFormat = (publicCurrencyId?: string) => {
   const { profile, loading: isAuthLoading, isAuthenticated } = useAuth();
   const { data: settings, isLoading: isLoadingSettings } = useSettings();
   const { data: allCurrencies, isLoading: isLoadingCurrencies } = useCurrencies();
 
   const currentCurrencyDetails = useMemo(() => {
     let details: Currency | undefined;
+
     if (isAuthenticated) {
       const tenantDefaultCurrencyId = settings?.default_currency_id;
       const authenticatedCurrencyId = profile?.currency_id || tenantDefaultCurrencyId;
       details = allCurrencies?.find(c => c.id === authenticatedCurrencyId);
     } else {
-      details = publicCurrencyDetails || allCurrencies?.find(c => c.id === publicCurrencyId);
+      // For public users, find currency details using publicCurrencyId from allCurrencies
+      if (allCurrencies && publicCurrencyId) {
+        details = allCurrencies.find(c => c.id === publicCurrencyId);
+      }
       if (!details) {
         details = allCurrencies?.find(c => c.code === 'USD'); // Fallback
       }
     }
     return details;
-  }, [isAuthenticated, settings, profile, allCurrencies, publicCurrencyId, publicCurrencyDetails]);
+  }, [isAuthenticated, settings, profile, allCurrencies, publicCurrencyId]);
 
   const symbol = currentCurrencyDetails?.symbol || '$';
   const decimalPlaces = currentCurrencyDetails?.decimal_places ?? 2;

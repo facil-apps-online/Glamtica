@@ -59,6 +59,7 @@ export const useEquipmentAssignments = () => {
             equipmentId,
             userId,
             branchId,
+            tenant_id: session.user.app_metadata.assignments[0].tenant_id,
             assignmentDate: new Date().toISOString().split('T')[0], // Current date
           },
         },
@@ -68,6 +69,7 @@ export const useEquipmentAssignments = () => {
       toast({
         title: 'Éxito',
         description: 'Equipo asignado correctamente.',
+        variant: 'success',
       });
       // Optionally refetch assignments if needed immediately after assignment
       // await fetchEquipmentAssignments(equipmentId);

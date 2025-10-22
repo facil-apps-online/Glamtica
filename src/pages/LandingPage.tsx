@@ -58,9 +58,8 @@ export default function LandingPage() {
   // Derive publicCurrencyId and publicCurrencyDetails for usePriceFormat
   const selectedCountry = publicData?.countries.find(c => c.id === selectedCountryId);
   const publicCurrencyId = selectedCountry?.default_currency_id;
-  const publicCurrencyDetails = publicData?.currencies.find(c => c.id === publicCurrencyId);
 
-  const { formatPrice } = usePriceFormat(publicCurrencyId, publicCurrencyDetails);
+  const { formatPrice } = usePriceFormat(publicCurrencyId);
 
   useEffect(() => {
     if (publicData?.countries && publicData.countries.length > 0) {
@@ -182,20 +181,23 @@ export default function LandingPage() {
             {isLoadingCountries ? (
               <p>Cargando países...</p>
             ) : (
-              publicData?.countries.map(country => (
-                <button 
-                  key={country.id} 
-                  onClick={() => setSelectedCountryId(country.id)}
-                  className={`rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${selectedCountryId === country.id ? 'ring-2 ring-purple-600' : ''}`}
-                  title={country.name}
-                >
-                  <img 
-                    src={`https://flagcdn.com/w40/${country.iso_code.toLowerCase()}.png`} 
-                    alt={`Bandera de ${country.name}`}
-                    className="w-10 h-auto rounded-full"
-                  />
-                </button>
-              ))
+              publicData?.countries
+                .slice() // Create a shallow copy to avoid modifying the original array
+                .sort((a, b) => a.iso_code.localeCompare(b.iso_code)) // Sort alphabetically by iso_code
+                .map(country => (
+                  <button 
+                    key={country.id} 
+                    onClick={() => setSelectedCountryId(country.id)}
+                    className={`rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${selectedCountryId === country.id ? 'ring-2 ring-purple-600' : ''}`}
+                    title={country.name}
+                  >
+                    <img 
+                      src={`https://flagcdn.com/w40/${country.iso_code.toLowerCase()}.png`} 
+                      alt={`Bandera de ${country.name}`}
+                      className="w-10 h-auto rounded-full"
+                    />
+                  </button>
+                ))
             )}
           </div>
 

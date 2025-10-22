@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import { EquipmentSelector } from './EquipmentSelector';
 import { useEquipmentAssignments } from '@/hooks/useEquipmentAssignments';
 import { Plus, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantUsers } from '@/hooks/useTenantUsers';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AssignEquipmentDialogProps {
   equipmentId?: string;
@@ -34,6 +36,19 @@ export const AssignEquipmentDialog: React.FC<AssignEquipmentDialogProps> = ({
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const { assignEquipment, loading } = useEquipmentAssignments();
   const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const { data: users, isLoading: usersLoading } = useTenantUsers(currentAssignment?.tenant_id || '');
+
+  const uniqueUsers = useMemo(() => {
+    if (!users) return [];
+    const userMap = new Map();
+    users.forEach(user => {
+      if (!userMap.has(user.user_id)) {
+        userMap.set(user.user_id, user);
+      }
+    });
+    return Array.from(userMap.values());
+  }, [users]);
 
   useEffect(() => {
     if (open) {
@@ -58,8 +73,7 @@ export const AssignEquipmentDialog: React.FC<AssignEquipmentDialogProps> = ({
     if (success) {
       onAssignmentSuccess?.();
       setOpen(false);
-    } 
-    // The hook now handles success/error toasts
+    }
   };
 
   const isFormValid = selectedEquipmentId && selectedUserId && selectedBranchId;
@@ -82,7 +96,11 @@ export const AssignEquipmentDialog: React.FC<AssignEquipmentDialogProps> = ({
           {!userId && (
             <div className="space-y-2">
               <Label htmlFor="user">Usuario</Label>
-              <UserSelector onSelectUser={setSelectedUserId} />
+              <UserSelector
+                users={uniqueUsers}
+                selectedUserId={selectedUserId}
+                onUserChange={setSelectedUserId}
+              />
             </div>
           )}
           {!equipmentId && (
@@ -93,7 +111,11 @@ export const AssignEquipmentDialog: React.FC<AssignEquipmentDialogProps> = ({
           )}
           <div className="space-y-2">
             <Label htmlFor="branch">Sucursal de Asignación</Label>
-            <BranchSelector onSelectBranch={setSelectedBranchId} />
+            <BranchSelector
+              selectedValue={selectedBranchId}
+              onSelectBranch={setSelectedBranchId}
+              showInactive={true}
+            />
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

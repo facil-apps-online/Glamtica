@@ -30,6 +30,7 @@ import { TransfersPage } from "@/pages/Inventory/TransfersPage";
 import TimeOffManagementPage from "@/pages/TimeOffManagementPage";
 import TimeOffHistoryPage from "@/pages/TimeOffHistoryPage";
 import EquipmentPage from "@/pages/EquipmentPage";
+import EditEquipmentPage from "@/pages/Equipments/EditEquipmentPage";
 
 
 
@@ -104,7 +105,7 @@ function App() {
                   <Route path="team" element={<Team />} />
                   <Route path="equipment">
                     <Route index element={<EquipmentPage />} />
-                    
+                    <Route path="edit/:id" element={<EditEquipmentPage />} />
                   </Route>
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />

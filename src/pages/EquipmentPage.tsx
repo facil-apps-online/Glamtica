@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Plus, MoreHorizontal, History, Briefcase, Search, Edit, SlidersHorizontal, Tag } from "lucide-react";
+import { Plus, MoreHorizontal, History, Briefcase, Search, Edit, SlidersHorizontal, Tag, FileEdit } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 import { useEquipment, Equipment } from '@/hooks/useEquipment';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useEquipmentBrands } from '@/hooks/useEquipmentBrands';
@@ -72,8 +73,24 @@ const EquipmentTableSkeleton = () => (
   </Table>
 );
 
-const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => (
-  <Card>
+const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => {
+  const navigate = useNavigate();
+
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('[role="switch"]') ||
+      target.closest('[data-radix-dropdown-menu-content]') ||
+      target.closest('[role="menuitem"]')
+    ) {
+      return;
+    }
+    navigate(`/app/equipment/edit/${item.id}`);
+  };
+
+  return (
+  <Card onClick={handleCardClick} className="cursor-pointer transition-colors hover:bg-muted/50">
     <CardHeader>
       <div className="flex justify-between items-start">
         <div>
@@ -85,7 +102,11 @@ const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => (
             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <EquipmentDialog equipment={item} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>} onSuccess={refreshEquipment} />
+            <EquipmentDialog equipment={item} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Edición Rápida</DropdownMenuItem>} onSuccess={refreshEquipment} />
+            <DropdownMenuItem onClick={() => navigate(`/app/equipment/edit/${item.id}`)}>
+              <FileEdit className="w-4 h-4 mr-2" />
+              Edición Completa
+            </DropdownMenuItem>
             <MaintenanceHistoryDialog equipmentId={item.id} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><History className="w-4 h-4 mr-2" />Historial</DropdownMenuItem>} />
             <AssignEquipmentDialog equipmentId={item.id} onAssignmentSuccess={refreshEquipment} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Briefcase className="w-4 h-4 mr-2" />Asignar</DropdownMenuItem>} />
           </DropdownMenuContent>
@@ -101,13 +122,10 @@ const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => (
         <span className="text-muted-foreground">Sucursal</span>
         <span>{item.assigned_branch_name ? <Badge variant="secondary">{item.assigned_branch_name}</Badge> : <Badge variant="outline">N/A</Badge>}</span>
       </div>
-      <div className="flex items-center justify-between rounded-md border p-3 mt-4">
-        <label className="text-sm font-medium">Activo</label>
-        <Switch checked={item.is_active} onCheckedChange={() => handleToggleStatus(item)} />
-      </div>
     </CardContent>
   </Card>
-);
+  );
+}
 
 
 const EquipmentPage: React.FC = () => {
@@ -124,6 +142,7 @@ const EquipmentPage: React.FC = () => {
   const { brands: equipmentBrands } = useEquipmentBrands();
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'mobile';
+  const navigate = useNavigate();
 
 
   const handleToggleStatus = async (item: Equipment) => {
@@ -153,7 +172,22 @@ const EquipmentPage: React.FC = () => {
         <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Tipo</TableHead><TableHead>Marca</TableHead><TableHead>Asignado a</TableHead><TableHead>Sucursal</TableHead><TableHead>Activo</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
         <TableBody>
           {equipment.map((item) => (
-            <TableRow key={item.id}>
+            <TableRow 
+              key={item.id}
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (
+                  target.closest('button') || 
+                  target.closest('[role="switch"]') || 
+                  target.closest('[data-radix-dropdown-menu-content]') ||
+                  target.closest('[role="menuitem"]')
+                ) {
+                  return;
+                }
+                navigate(`/app/equipment/edit/${item.id}`);
+              }}
+              className="cursor-pointer hover:bg-muted/50"
+            >
               <TableCell className="font-medium">{item.name}</TableCell>
               <TableCell>{item.type_name}</TableCell>
               <TableCell>{item.brand_name}</TableCell>
@@ -164,7 +198,11 @@ const EquipmentPage: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <EquipmentDialog equipment={item} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>} onSuccess={refreshEquipment} />
+                    <EquipmentDialog equipment={item} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Edición Rápida</DropdownMenuItem>} onSuccess={refreshEquipment} />
+                    <DropdownMenuItem onClick={() => navigate(`/app/equipment/edit/${item.id}`)}>
+                      <FileEdit className="w-4 h-4 mr-2" />
+                      Edición Completa
+                    </DropdownMenuItem>
                     <MaintenanceHistoryDialog equipmentId={item.id} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><History className="w-4 h-4 mr-2" />Historial</DropdownMenuItem>} />
                     <AssignEquipmentDialog equipmentId={item.id} onAssignmentSuccess={refreshEquipment} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Briefcase className="w-4 h-4 mr-2" />Asignar</DropdownMenuItem>} />
                   </DropdownMenuContent>

@@ -39,8 +39,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const ServiceCard = ({ service, category, handleToggleStatus, handleOpenAssignServiceDialog, handleOpenManagePricesDialog, handleOpenServiceCommissionsDialog, navigate, handleDelete }) => (
-  <Card>
+const ServiceCard = ({ service, category, handleToggleStatus, handleOpenAssignServiceDialog, handleOpenManagePricesDialog, handleOpenServiceCommissionsDialog, navigate, handleDelete }) => {
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('[role="switch"]') ||
+      target.closest('[data-radix-dropdown-menu-content]') ||
+      target.closest('[role="menuitem"]')
+    ) {
+      return;
+    }
+    navigate(`/app/services/${service.id}`);
+  };
+
+  return (
+  <Card onClick={handleCardClick} className="cursor-pointer transition-colors hover:bg-muted/50">
     <CardHeader>
       <div className="flex justify-between items-start">
         <CardTitle>{service.name}</CardTitle>
@@ -116,7 +130,8 @@ const ServiceCard = ({ service, category, handleToggleStatus, handleOpenAssignSe
       </div>
     </CardContent>
   </Card>
-);
+  );
+}
 
 const ServiceCardSkeleton = () => (
   <Card>
@@ -275,7 +290,22 @@ export default function Services() {
           {services?.map((service) => {
             const category = categories?.find(cat => cat.id === service.category_id);
             return (
-              <TableRow key={service.id}>
+              <TableRow 
+                key={service.id}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest('button') || 
+                    target.closest('[role="switch"]') || 
+                    target.closest('[data-radix-dropdown-menu-content]') ||
+                    target.closest('[role="menuitem"]')
+                  ) {
+                    return;
+                  }
+                  navigate(`/app/services/${service.id}`);
+                }}
+                className="cursor-pointer hover:bg-muted/50"
+              >
                 <TableCell className="font-medium">{service.name}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{service.description || "-"}</TableCell>
                 <TableCell>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</TableCell>

@@ -99,3 +99,42 @@ export const useEquipment = (searchTerm?: string, showInactive?: boolean, typeId
     updateEquipment: updateEquipmentMutation.mutateAsync,
   };
 };
+
+export const useUpdateEquipment = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ equipmentId, equipmentData }: { equipmentId: string; equipmentData: any }) =>
+      callTenantAction('update_equipment', { equipmentId, equipmentData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      toast({
+        title: 'Éxito',
+        description: 'Equipo actualizado correctamente.',
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Error al actualizar el equipo: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useEquipmentById = (equipmentId: string) => {
+  const { currentAssignment } = useAuth();
+
+  return useQuery<Equipment, Error>({
+    queryKey: ['equipment', equipmentId],
+    queryFn: async () => {
+      if (!currentAssignment?.tenant_id || !equipmentId) return null;
+      const data = await callTenantAction('get_equipment_by_id', { equipmentId });
+      return data;
+    },
+    enabled: !!currentAssignment?.tenant_id && !!equipmentId,
+  });
+};
