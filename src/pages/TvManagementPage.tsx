@@ -55,7 +55,7 @@ const TvManagementPage: React.FC = () => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const [tvDisplays, setTvDisplays] = useState<TvDisplay[]>([]);
   const [mediaPlaylists, setMediaPlaylists] = useState<MediaPlaylist[]>([]);
   const [loadingTv, setLoadingTv] = useState<boolean>(true);

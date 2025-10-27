@@ -18,7 +18,7 @@ export function TransfersPage() {
   const tenantId = currentAssignment?.tenant_id;
   const { data: branches } = useBranches(tenantId);
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);

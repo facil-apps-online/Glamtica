@@ -111,7 +111,7 @@ const BranchCombosTabContent: React.FC<BranchCombosTabContentProps> = ({ branchI
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const handleToggleStatus = (combo: BranchCombo) => {
     updateBranchCombo({ 

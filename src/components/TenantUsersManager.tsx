@@ -189,7 +189,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
                 </DropdownMenu>
               </div>
 
-              {screenSize !== 'mobile' && (
+              {screenSize !== 'sm' && screenSize !== 'md' && (
                 <>
                   <div className="grid grid-cols-5 gap-x-4 gap-y-2 text-sm font-medium text-muted-foreground mb-2">
                     <div>Rol</div>
@@ -210,7 +210,7 @@ export const TenantUsersManager: React.FC<TenantUsersManagerProps> = ({ tenantId
                 </>
               )}
 
-              {screenSize === 'mobile' && (
+              {(screenSize === 'sm' || screenSize === 'md') && (
                 <div className="space-y-4">
                   {user.assignments.map(assignment => (
                     <div key={assignment.assignment_id} className="p-3 border rounded-lg space-y-2">

@@ -102,7 +102,7 @@ export function TaxTypesManagement() {
   const { mutate: updateTaxType, isPending: isUpdating } = useUpdateTaxType();
   const { mutate: deleteTaxType, isPending: isDeleting } = useDeleteTaxType();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTaxType, setEditingTaxType] = useState<TaxType | null>(null);

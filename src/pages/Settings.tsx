@@ -14,7 +14,7 @@ import { IdentitySettingsTab } from "./Settings/IdentitySettingsTab";
 import { Building, Users, Store, CreditCard, FileText, Box, Users2, Palette, Hash, Tv, FileDigit, Bell } from 'lucide-react';
 import NumberingSequencesPage from "./Settings/NumberingSequencesPage";
 import TvManagementPage from "./TvManagementPage";
-import { useScreenSize } from "@/hooks/useScreenSize";
+
 import {
   Select,
   SelectContent,
@@ -56,8 +56,7 @@ export default function Settings() {
 
   const { currentAssignment, loading } = useAuth();
   const userRole = currentAssignment?.role_name;
-  const screenSize = useScreenSize();
-  const isMobileOrTablet = screenSize === 'mobile' || screenSize === 'tablet';
+
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -94,8 +93,7 @@ export default function Settings() {
       />
 
       <div className="mt-6">
-              {isMobileOrTablet ? (
-                <div className="space-y-4">            <Select onValueChange={handleTabChange} value={activeTab}>
+        <div className="md:hidden space-y-4">            <Select onValueChange={handleTabChange} value={activeTab}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar una sección..." />
               </SelectTrigger>
@@ -109,7 +107,8 @@ export default function Settings() {
               {activeTabContent}
             </div>
           </div>
-        ) : (
+
+        <div className="hidden md:block">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="w-full overflow-x-auto border-b">
               <TabsList className="inline-flex h-auto p-1">
@@ -126,7 +125,7 @@ export default function Settings() {
               </TabsContent>
             ))}
           </Tabs>
-        )}
+        </div>
       </div>
     </div>
   );

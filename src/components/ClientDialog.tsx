@@ -40,6 +40,7 @@ interface ClientDialogProps {
   onClientCreated?: (clientId: string) => void;
   initialBranchIds?: string[];
   parentClientId?: string; // Para crear un sub-cliente
+  onOpenChange?: (open: boolean) => void;
 }
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,10 +51,16 @@ export const ClientDialog = ({
   isEdit = false,
   onClientCreated,
   initialBranchIds = [],
-  parentClientId
+  parentClientId,
+  onOpenChange
 }: ClientDialogProps) => {
   const { tenant } = useAuth();
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
   const queryClient = useQueryClient();
   const createMutation = useCreateClient();
   const updateMutation = useUpdateClient();
@@ -80,7 +87,7 @@ export const ClientDialog = ({
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
 
   const screenSize: ScreenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const defaultIntakeTemplate = documentTemplates?.find(
     (template) => template.id === tenantSettings?.default_intake_form_id
@@ -191,13 +198,12 @@ export const ClientDialog = ({
     { value: "branches", label: "Sucursales", disabled: !isEdit },
     { value: "family", label: "Familiares", disabled: !isEdit },
     { value: "forms-consents", label: "Formularios", disabled: !isEdit },
-    { value: "activity", label: "Actividad", disabled: !isEdit },
   ];
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent onInteractOutside={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenChange(false); }} onClick={(e) => e.stopPropagation()} className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Cliente" : "Añadir Cliente"}</DialogTitle>
           <DialogDescription>
@@ -222,7 +228,7 @@ export const ClientDialog = ({
               </Select>
             </div>
           ) : (
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               {tabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
                   {tab.label}
@@ -332,9 +338,7 @@ export const ClientDialog = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="activity" className="mt-4">
-            {client?.id && <ChatterBox resourceType="clients" resourceId={client.id} tenantId={client.tenant_id} />}
-          </TabsContent>
+
         </Tabs>
       </DialogContent>
       <FormViewerDialog

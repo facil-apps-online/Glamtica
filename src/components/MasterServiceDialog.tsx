@@ -16,11 +16,17 @@ type ServiceFormData = Partial<MasterService & { tax_type_ids: string[] }>;
 interface MasterServiceDialogProps {
   service?: MasterService;
   trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const MasterServiceDialog = ({ service, trigger }: MasterServiceDialogProps) => {
+export const MasterServiceDialog = ({ service, trigger, onOpenChange }: MasterServiceDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
 
   const { mutate: createService, isPending: isCreating } = useCreateMasterService();
   const { mutate: updateService, isPending: isUpdating } = useUpdateMasterService();
@@ -107,7 +113,7 @@ export const MasterServiceDialog = ({ service, trigger }: MasterServiceDialogPro
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button>
@@ -116,7 +122,7 @@ export const MasterServiceDialog = ({ service, trigger }: MasterServiceDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent onInteractOutside={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenChange(false); }} className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{service ? "Editar Servicio Maestro" : "Nuevo Servicio Maestro"}</DialogTitle>
         </DialogHeader>

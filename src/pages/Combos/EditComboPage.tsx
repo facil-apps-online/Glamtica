@@ -18,6 +18,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatterBox } from "@/components/ChatterBox";
 import { useQueryClient } from "@tanstack/react-query";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ComboBranchesTab } from "@/components/ComboBranchesTab";
 
 type SelectableItem = {
     value: string;
@@ -32,6 +36,9 @@ const EditComboPage = () => {
     const { toast } = useToast();
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const screenSize = useScreenSize();
+    const isSmallScreen = screenSize === 'sm' || screenSize === 'md';
+    const [activeTab, setActiveTab] = useState("details");
 
     const { data: combos, isLoading: isLoadingCombos } = useGetCombos();
     const combo = combos?.find(c => c.id === id);
@@ -41,6 +48,7 @@ const EditComboPage = () => {
     const [sku, setSku] = useState("");
     const [items, setItems] = useState<any[]>([]);
     const [itemSearchTerm, setItemSearchTerm] = useState("");
+    const [initialComboState, setInitialComboState] = useState<any>(null);
 
     const debouncedSetItemSearchTerm = useMemo(() => debounce(setItemSearchTerm, 300), []);
 
@@ -70,6 +78,7 @@ const EditComboPage = () => {
                 duration: item.service?.duration_minutes || 0,
             }));
             setItems(initialItems);
+            setInitialComboState({ name: combo.name || "", description: combo.description || "", sku: combo.sku || "", items: initialItems });
         }
     }, [combo]);
 
@@ -98,6 +107,25 @@ const EditComboPage = () => {
 
     const handleRemoveItem = (index: number) => {
         setItems(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const hasChanges = () => {
+        if (!initialComboState) return false;
+        if (name !== initialComboState.name) return true;
+        if (description !== initialComboState.description) return true;
+        if (sku !== initialComboState.sku) return true;
+        if (items.length !== initialComboState.items.length) return true;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const initialItem = initialComboState.items[i];
+            if (item.product_id !== initialItem.product_id) return true;
+            if (item.service_id !== initialItem.service_id) return true;
+            if (item.quantity !== initialItem.quantity) return true;
+            if (item.price !== initialItem.price) return true;
+            if (item.offset_minutes !== initialItem.offset_minutes) return true;
+            if (item.is_parallel !== initialItem.is_parallel) return true;
+        }
+        return false;
     };
 
     const handleSuccess = () => {
@@ -164,125 +192,207 @@ const EditComboPage = () => {
                     </Button>
                 }
             />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
-                        <CardContent className="space-y-4 pt-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label htmlFor="name">Nombre del Combo</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>
-                                <div className="space-y-2"><Label htmlFor="sku">SKU</Label><Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} /></div>
-                            </div>
-                            <div className="space-y-2"><Label htmlFor="description">Descripción</Label><Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader><CardTitle>Ítems del Combo</CardTitle></CardHeader>
-                        <CardContent className="space-y-4 pt-4">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    Añadir producto o servicio...
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                    <CommandInput 
-                                        placeholder="Buscar ítem..." 
-                                        onValueChange={debouncedSetItemSearchTerm}
-                                    />
-                                    <CommandList>
-                                        {isLoadingProducts || isLoadingServices ? (
-                                        <div className="p-2 text-center text-sm">Cargando...</div>
-                                        ) : (
-                                        <>
-                                            <CommandEmpty>No se encontraron ítems.</CommandEmpty>
-                                            <CommandGroup>
-                                            {selectableItems.map((item) => (
-                                                <CommandItem key={item.value} onSelect={() => { handleAddItem(item); }}>
-                                                {item.label}
-                                                </CommandItem>
-                                            ))}
-                                            </CommandGroup>
-                                        </>
-                                        )}
-                                    </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+            <div className={`grid ${isSmallScreen ? 'grid-cols-1' : 'grid-cols-3'} gap-8`}>
+                <div className="lg:col-span-2 space-y-6">
+                    {isSmallScreen ? (
+                        <Select onValueChange={setActiveTab} value={activeTab}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar una sección..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="details">Detalles</SelectItem>
+                                <SelectItem value="branches">Sucursales</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <Tabs defaultValue="details" onValueChange={setActiveTab} value={activeTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="details">Detalles</TabsTrigger>
+                                <TabsTrigger value="branches">Sucursales</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    )}
 
-                            {items.length > 0 && (
-                            <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground font-medium">
-                                <div className="w-10" />
-                                <div className="flex-grow">Ítem</div>
-                                <div className="w-28 text-center">Desfase (min)</div>
-                                <div className="w-20 text-center">Cantidad</div>
-                                <div className="w-28 text-center">Precio</div>
-                                <div className="w-10" />
-                            </div>
-                            )}
-                            <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                                {items.map((item, index) => (
-                                    <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
-                                        <div className="w-10">
-                                            {item.service_id && (
-                                            <Button 
-                                                type="button"
-                                                variant="ghost" 
-                                                size="icon" 
-                                                onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
-                                                disabled={index === 0}
-                                                title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
-                                            >
-                                                <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
-                                            </Button>
-                                            )}
-                                        </div>
-                                        <div className="flex-grow font-medium text-sm">{item.name}</div>
-                                        <div className="w-28">
-                                            {item.service_id && (
-                                            <Input 
-                                                type="number" 
-                                                placeholder="Desfase" 
-                                                value={item.offset_minutes || 0} 
-                                                onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
-                                                min={0}
-                                                disabled={!item.is_parallel}
-                                            />
-                                            )}
-                                        </div>
-                                        <div className="w-20">
-                                            <Input 
-                                            type="number" 
-                                            placeholder="Cant." 
-                                            value={item.quantity} 
-                                            onChange={(e) => {
-                                                const isDecimalAllowed = item.product?.allow_decimal_sale;
-                                                const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
-                                                handleUpdateItem(index, 'quantity', value || 0);
-                                            }}
-                                            min={item.product?.allow_decimal_sale ? 0.01 : 1}
-                                            step={item.product?.allow_decimal_sale ? 0.01 : 1}
-                                            disabled={item.service_id !== null}
-                                            />
-                                        </div>
-                                        <div className="w-28">
-                                            <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
-                                        </div>
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
+                    {activeTab === 'details' && (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <Card>
+                                <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
+                                <CardContent className="space-y-4 pt-4">
+                                    <div className={`grid ${isSmallScreen ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
+                                        <div className="space-y-2"><Label htmlFor="name">Nombre del Combo</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>
+                                        <div className="space-y-2"><Label htmlFor="sku">SKU</Label><Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} /></div>
                                     </div>
-                                ))}
+                                    <div className="space-y-2"><Label htmlFor="description">Descripción</Label><Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Ítems del Combo</CardTitle></CardHeader>
+                                <CardContent className="space-y-4 pt-4">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                            Añadir producto o servicio...
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                            <CommandInput 
+                                                placeholder="Buscar ítem..." 
+                                                onValueChange={debouncedSetItemSearchTerm}
+                                            />
+                                            <CommandList>
+                                                {isLoadingProducts || isLoadingServices ? (
+                                                <div className="p-2 text-center text-sm">Cargando...</div>
+                                                ) : (
+                                                <>
+                                                    <CommandEmpty>No se encontraron ítems.</CommandEmpty>
+                                                    <CommandGroup>
+                                                    {selectableItems.map((item) => (
+                                                        <CommandItem key={item.value} onSelect={() => { handleAddItem(item); }}>
+                                                        {item.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                    </CommandGroup>
+                                                </>
+                                                )}
+                                            </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+
+                                    {items.length > 0 && !isSmallScreen && (
+                                    <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground font-medium">
+                                        <div className="w-10" />
+                                        <div className="flex-grow">Ítem</div>
+                                        <div className="w-28 text-center">Desfase (min)</div>
+                                        <div className="w-20 text-center">Cantidad</div>
+                                        <div className="w-28 text-center">Precio</div>
+                                        <div className="w-10" />
+                                    </div>
+                                    )}
+                                    <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                        {items.map((item, index) => (
+                                            isSmallScreen ? (
+                                                <div key={index} className="p-4 border rounded-md space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="font-medium text-sm flex-grow">{item.name}</div>
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label>Cantidad</Label>
+                                                            <Input 
+                                                                type="number" 
+                                                                placeholder="Cant." 
+                                                                value={item.quantity} 
+                                                                onChange={(e) => {
+                                                                    const isDecimalAllowed = item.product?.allow_decimal_sale;
+                                                                    const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+                                                                    handleUpdateItem(index, 'quantity', value || 0);
+                                                                }}
+                                                                min={item.product?.allow_decimal_sale ? 0.01 : 1}
+                                                                step={item.product?.allow_decimal_sale ? 0.01 : 1}
+                                                                disabled={item.service_id !== null}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Precio</Label>
+                                                            <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
+                                                        </div>
+                                                    </div>
+                                                    {item.service_id && (
+                                                        <div className="space-y-2">
+                                                            <Label>Desfase (min)</Label>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input 
+                                                                    type="number" 
+                                                                    placeholder="Desfase" 
+                                                                    value={item.offset_minutes || 0} 
+                                                                    onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
+                                                                    min={0}
+                                                                    disabled={!item.is_parallel}
+                                                                />
+                                                                <Button 
+                                                                    type="button"
+                                                                    variant="outline" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
+                                                                    disabled={index === 0}
+                                                                    title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
+                                                                >
+                                                                    <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                            <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                                <div className="w-10">
+                                                    {item.service_id && (
+                                                    <Button 
+                                                        type="button"
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
+                                                        disabled={index === 0}
+                                                        title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
+                                                    >
+                                                        <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
+                                                    </Button>
+                                                    )}
+                                                </div>
+                                                <div className="flex-grow font-medium text-sm">{item.name}</div>
+                                                <div className="w-28">
+                                                    {item.service_id && (
+                                                    <Input 
+                                                        type="number" 
+                                                        placeholder="Desfase" 
+                                                        value={item.offset_minutes || 0} 
+                                                        onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
+                                                        min={0}
+                                                        disabled={!item.is_parallel}
+                                                    />
+                                                    )}
+                                                </div>
+                                                <div className="w-20">
+                                                    <Input 
+                                                    type="number" 
+                                                    placeholder="Cant." 
+                                                    value={item.quantity} 
+                                                    onChange={(e) => {
+                                                        const isDecimalAllowed = item.product?.allow_decimal_sale;
+                                                        const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+                                                        handleUpdateItem(index, 'quantity', value || 0);
+                                                    }}
+                                                    min={item.product?.allow_decimal_sale ? 0.01 : 1}
+                                                    step={item.product?.allow_decimal_sale ? 0.01 : 1}
+                                                    disabled={item.service_id !== null}
+                                                    />
+                                                </div>
+                                                <div className="w-28">
+                                                    <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
+                                                </div>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
+                                            </div>
+                                            )
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <div className="flex justify-end gap-2 mt-8">
+                                <Button type="submit" disabled={isUpdating || !hasChanges()}>
+                                    <Save className="w-4 h-4 mr-2" />
+                                    {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
+                                </Button>
                             </div>
-                        </CardContent>
-                    </Card>
-                    <div className="flex justify-end gap-2 mt-8">
-                        <Button type="submit" disabled={isUpdating}>
-                            <Save className="w-4 h-4 mr-2" />
-                            {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
-                        </Button>
-                    </div>
-                </form>
+                        </form>
+                    )}
+                    {activeTab === 'branches' && (
+                        <ComboBranchesTab combo={combo} />
+                    )}
+                </div>
                 <div className="lg:col-span-1 space-y-6">
                      {combo && (
                         <ChatterBox 

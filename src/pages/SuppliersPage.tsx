@@ -4,13 +4,12 @@ import { useSuppliers, useToggleSupplierStatus, useDeleteSupplier } from '@/hook
 import { SupplierDialog } from '@/components/SupplierDialog';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Edit, PlusCircle, ArrowLeft, MoreHorizontal, Phone, Mail, FileEdit, Trash2 } from 'lucide-react';
+import { Edit, PlusCircle, ArrowLeft, MoreHorizontal, Phone, Mail, FileEdit, Trash2, Search } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
-import { useScreenSize } from '@/hooks/useScreenSize';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,35 +43,15 @@ const SupplierCardSkeleton = () => (
   </Card>
 );
 
-const SupplierTableSkeleton = () => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Nombre</TableHead>
-        <TableHead>Identificación</TableHead>
-        <TableHead>Contacto</TableHead>
-        <TableHead>Estado</TableHead>
-        <TableHead className="text-right">Acciones</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {[...Array(5)].map((_, i) => (
-        <TableRow key={i}>
-          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-          <TableCell className="text-right"><Skeleton className="h-8 w-8" /></TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
+
 
 const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
     const navigate = useNavigate();
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
+        if (isDialogOpen) return;
+
         const target = e.target as HTMLElement;
         if (
             target.closest('button') ||
@@ -95,7 +74,10 @@ const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
                     <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <SupplierDialog supplier={supplier} trigger={
+                    <SupplierDialog 
+                        supplier={supplier} 
+                        onOpenChange={setIsDialogOpen}
+                        trigger={
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                             <Edit className="w-4 h-4 mr-2" />
                             Edición Rápida
@@ -142,11 +124,12 @@ const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
 
 const SuppliersPage = () => {
   const navigate = useNavigate();
-  const { data: suppliers, isLoading, error } = useSuppliers();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [confirmedSearchTerm, setConfirmedSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
+  const { data: suppliers, isLoading, error } = useSuppliers(confirmedSearchTerm, showInactive);
   const toggleStatusMutation = useToggleSupplierStatus();
   const deleteMutation = useDeleteSupplier();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null);
 
   const handleToggleStatus = (supplier: Supplier) => {
@@ -160,92 +143,6 @@ const SuppliersPage = () => {
     }
   };
 
-  const renderContent = () => {
-    if (isLoading) {
-      return isMobile ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <SupplierCardSkeleton key={i} />)}</div> : <SupplierTableSkeleton />;
-    }
-
-    if (!suppliers || suppliers.length === 0) {
-      return <EmptyState Icon={PlusCircle} title="No hay proveedores" description="Crea tu primer proveedor para empezar a gestionar compras." action={<SupplierDialog trigger={<Button>Nuevo Proveedor</Button>} />} />;
-    }
-
-    return isMobile ? (
-      <div className="space-y-4 p-4">
-        {suppliers.map(supplier => <SupplierCard key={supplier.id} supplier={supplier} handleToggleStatus={handleToggleStatus} onDelete={() => setDeleteTarget(supplier)} />)}
-      </div>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Identificación</TableHead>
-            <TableHead>Contacto</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {suppliers.map((supplier) => (
-            <TableRow 
-              key={supplier.id}
-              onClick={(e) => {
-                const target = e.target as HTMLElement;
-                // Evitar navegar si se hace clic en un botón, un switch, o dentro del menú de acciones
-                if (
-                  target.closest('button') || 
-                  target.closest('[role="switch"]') || 
-                  target.closest('[data-radix-dropdown-menu-content]') ||
-                  target.closest('[role="menuitem"]')
-                ) {
-                  return;
-                }
-                navigate(`/app/inventory/suppliers/edit/${supplier.id}`);
-              }}
-              className="cursor-pointer hover:bg-muted/50"
-            >
-              <TableCell className="font-medium">{supplier.name}</TableCell>
-              <TableCell>{supplier.identification_type}: {supplier.identification_number}</TableCell>
-              <TableCell>
-                <div>{supplier.email}</div>
-                <div>{supplier.phone}</div>
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={supplier.is_active}
-                  onCheckedChange={() => handleToggleStatus(supplier)}
-                />
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <SupplierDialog supplier={supplier} trigger={
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edición Rápida
-                      </DropdownMenuItem>
-                    } />
-                    <DropdownMenuItem onClick={() => navigate(`/app/inventory/suppliers/edit/${supplier.id}`)}>
-                        <FileEdit className="w-4 h-4 mr-2" />
-                        Edición Completa
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setDeleteTarget(supplier)} className="text-red-600">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
-
   return (
     <div className="space-y-4">
       <PageHeader 
@@ -253,7 +150,7 @@ const SuppliersPage = () => {
         subtitle="Centraliza la información y el estado de todos tus proveedores."
         backButton={<Button variant="outline" size="icon" onClick={() => navigate('/app/inventory')}><ArrowLeft className="h-4 w-4" /></Button>}
       >
-                <SupplierDialog trigger={
+        <SupplierDialog trigger={
           <Button>
             <PlusCircle className="w-4 h-4" />
             <span className="hidden sm:inline ml-2">Nuevo Proveedor</span>
@@ -262,10 +159,47 @@ const SuppliersPage = () => {
       </PageHeader>
 
       <Card>
-        <CardContent className="p-0 sm:p-6">
-          {renderContent()}
+        <CardContent className="py-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+               <Input
+                  placeholder="Buscar proveedores..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="md:col-span-3"
+                />
+                <Button onClick={() => setConfirmedSearchTerm(searchTerm)} className="md:col-span-1">
+                  <Search className="w-4 h-4 mr-2" />
+                  Buscar
+                </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+                id="show-inactive-suppliers"
+              />
+              <label htmlFor="show-inactive-suppliers" className="text-sm text-muted-foreground">Mostrar inactivos</label>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {isLoading
+          ? [...Array(6)].map((_, i) => <SupplierCardSkeleton key={i} />)
+          : suppliers?.map(supplier => <SupplierCard key={supplier.id} supplier={supplier} handleToggleStatus={handleToggleStatus} onDelete={() => setDeleteTarget(supplier)} />)
+        }
+      </div>
+
+      {suppliers?.length === 0 && !isLoading && (
+        <EmptyState 
+          Icon={PlusCircle} 
+          title="No hay proveedores" 
+          description="Crea tu primer proveedor para empezar a gestionar compras." 
+          action={<SupplierDialog trigger={<Button>Nuevo Proveedor</Button>} />} 
+        />
+      )}
 
       <ConfirmationDialog 
         open={!!deleteTarget}

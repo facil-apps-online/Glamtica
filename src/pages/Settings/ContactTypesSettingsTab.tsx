@@ -20,15 +20,14 @@ import { ContactTypeManagementDialog } from '@/components/ContactTypeManagementD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useScreenSize } from '@/hooks/useScreenSize';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export function ContactTypesSettingsTab() {
   const { data: contactTypes, isLoading, error } = useGetContactTypes();
   const deleteMutation = useDeleteContactType();
   const { toast } = useToast();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id, {
@@ -167,21 +166,33 @@ export function ContactTypesSettingsTab() {
   );
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Tipos de Contacto</h3>
+    <Card>
+      <CardHeader className="flex flex-row items-baseline justify-between">
+        <div>
+          <CardTitle className="text-lg">Tipos de Contacto</CardTitle>
+          <CardDescription>Gestiona los tipos de contacto que se pueden asociar a clientes y proveedores.</CardDescription>
+        </div>
         <ContactTypeManagementDialog>
           <Button size="sm">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Añadir Tipo
+            <PlusCircle className="w-4 h-4" />
+            <span className="hidden sm:inline ml-2">Añadir Tipo</span>
           </Button>
         </ContactTypeManagementDialog>
-      </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
 
-      {isLoading && <p>Cargando...</p>}
-      {error && <p className="text-red-500">Error: {error.message}</p>}
 
-      {isMobile ? renderMobileView() : renderDesktopView()}
-    </div>
+        {isLoading && <p>Cargando...</p>}
+        {error && <p className="text-red-500">Error: {error.message}</p>}
+
+        <div className="hidden md:block">
+          {renderDesktopView()}
+        </div>
+        <div className="md:hidden">
+          {renderMobileView()}
+        </div>
+      </CardContent>
+    </Card>
   );
+
 }

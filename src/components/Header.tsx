@@ -21,7 +21,7 @@ interface HeaderProps {
 export function Header({ panelTitle = "" }: HeaderProps) {
   const { profile, logout, currentAssignment } = useAuth();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const navigate = useNavigate();
 
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);

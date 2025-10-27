@@ -99,7 +99,7 @@ interface PaymentMethodsCRUDProps {
 
 export const PaymentMethodsCRUD: React.FC<PaymentMethodsCRUDProps> = ({ tenantId }) => {
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const { data: paymentMethods = [], isLoading } = usePaymentMethods(tenantId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -153,53 +153,7 @@ export const PaymentMethodsCRUD: React.FC<PaymentMethodsCRUDProps> = ({ tenantId
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <PaymentMethodTableSkeleton />
-              ) : (
-                paymentMethods.map((method: PaymentMethod) => (
-                  <TableRow key={method.id}>
-                    <TableCell>{method.name}</TableCell>
-                    <TableCell>{method.is_active ? 'Sí' : 'No'}</TableCell>
-                                      <TableCell className="text-right">
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                              <span className="sr-only">Abrir menú</span>
-                                              <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => handleEdit(method)}>
-                                              <Pencil className="mr-2 h-4 w-4" />
-                                              <span>Editar</span>
-                                            </DropdownMenuItem>
-                                            <AlertDialog>
-                                              <AlertDialogTrigger asChild>
-                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                                  <Trash2 className="mr-2 h-4 w-4" />
-                                                  <span>Eliminar</span>
-                                                </DropdownMenuItem>
-                                              </AlertDialogTrigger>
-                                              <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                  <AlertDialogDescription>
-                                                    Esta acción no se puede deshacer. Se eliminará permanentemente el medio de pago.
-                                                  </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                  <AlertDialogAction onClick={() => handleDelete(method.id)}>Eliminar</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                              </AlertDialogContent>
-                                            </AlertDialog>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      </TableCell>                  </TableRow>
-                ))
-              )}
-            </TableBody>
+            <TableBody>{isLoading ? <PaymentMethodTableSkeleton /> : paymentMethods.map((method: PaymentMethod) => (<TableRow key={method.id}><TableCell>{method.name}</TableCell><TableCell>{method.is_active ? 'Sí' : 'No'}</TableCell><TableCell className="text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><span className="sr-only">Abrir menú</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => handleEdit(method)}><Pencil className="mr-2 h-4 w-4" /><span>Editar</span></DropdownMenuItem><AlertDialog><AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>Eliminar</span></DropdownMenuItem></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente el medio de pago.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(method.id)}>Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
           </Table>
         )}
         <PaymentMethodDialog 

@@ -62,7 +62,7 @@ export default function BranchSettingsPage() {
   const queryClient = useQueryClient();
   const { data: branches, isLoading, error } = useBranches(tenantId);
   const screenSize = useScreenSize();
-  const isMobileOrTablet = screenSize === 'mobile' || screenSize === 'tablet';
+  const isMobileOrTablet = screenSize === 'sm' || screenSize === 'md';
 
   const branchToEdit = branches?.find(b => b.id === branchId);
 

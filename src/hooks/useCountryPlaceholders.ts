@@ -25,10 +25,10 @@ const fetchCountryPlaceholders = async (countryIsoCode: string): Promise<PhonePl
   return data?.field_placeholders?.phone || null;
 };
 
-export const useCountryPlaceholders = (countryId?: string | null) => {
+export const useCountryPlaceholders = (countryIsoCode?: string | null) => {
   return useQuery<PhonePlaceholder[] | null, Error>({
-    queryKey: ["countryPlaceholders", countryId],
-    queryFn: () => fetchCountryPlaceholders(countryId!),
-    enabled: !!countryId,
+    queryKey: ["countryPlaceholders", countryIsoCode],
+    queryFn: () => fetchCountryPlaceholders(countryIsoCode!),
+    enabled: !!countryIsoCode,
   });
 };

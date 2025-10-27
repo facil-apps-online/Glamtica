@@ -209,7 +209,11 @@ export default function RegisterTenant() {
   const countryOptions = useMemo(() => publicData?.countries.map(c => ({ value: c.id, label: c.name })) || [], [publicData]);
   const languageOptions = useMemo(() => publicData?.languages.map(l => ({ value: l.iso_code, label: l.name })) || [], [publicData]);
   const currencyOptions = useMemo(() => publicData?.currencies.map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })) || [], [publicData]);
-  const timezoneOptions = useMemo(() => publicData?.timezones.map(t => ({ value: t.name, label: t.name })) || [], [publicData]);
+  const timezoneOptions = useMemo(() => {
+    if (!watchedCountryId || !publicData?.countries) return [];
+    const selectedCountry = publicData.countries.find(c => c.id === watchedCountryId);
+    return selectedCountry?.timezones?.map(tz => ({ value: tz, label: tz })) || [];
+  }, [watchedCountryId, publicData]);
 
   const countryRestriction = useMemo(() => {
     if (!watchedCountryId || !publicData?.countries) return '';
@@ -400,8 +404,8 @@ export default function RegisterTenant() {
                   <div className="p-4 border rounded-lg">
                     <h3 className="text-lg font-semibold mb-4">Información de Contacto y Fiscal</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input type="email" {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="legal_name" render={({ field }) => (<FormItem><FormLabel>Razón Social</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="tax_id" render={({ field }) => (<FormItem><FormLabel>ID Fiscal</FormLabel><FormControl><Input {...field} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />

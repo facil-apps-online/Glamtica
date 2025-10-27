@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Client } from "@/hooks/useClients";
 import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
 import { PhoneInput } from '@/components/PhoneInput';
+import { useCountries } from '@/hooks/useCountries';
 
 interface ClientFormProps {
   form: UseFormReturn<Client>;
@@ -19,6 +20,9 @@ interface ClientFormProps {
 export const ClientForm: React.FC<ClientFormProps> = ({ form, onSubmit, isEdit, isLoading, countryId }) => {
   const { register, handleSubmit, control, formState: { errors, isDirty } } = form;
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('client');
+  const { data: countries } = useCountries();
+
+  const countryIsoCode = countries?.find(c => c.id === countryId)?.iso_code;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -36,7 +40,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ form, onSubmit, isEdit, 
             render={({ field }) => (
               <PhoneInput
                 {...field}
-                defaultCountryId={countryId}
+                defaultCountryIsoCode={countryIsoCode}
               />
             )}
           />

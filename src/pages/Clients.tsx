@@ -55,10 +55,13 @@ const ClientCardSkeleton = () => (
 
 const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
   const navigate = useNavigate();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const isAssociatedWithSelectedBranch = true; // Placeholder
   const cardStyle = {}; // Placeholder
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDialogOpen) return;
+
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -87,7 +90,12 @@ const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <ClientDialog client={client} isEdit initialBranchIds={client.branches?.map(b => b.id) || []}>
+              <ClientDialog 
+                client={client} 
+                isEdit 
+                initialBranchIds={client.branches?.map(b => b.id) || []}
+                onOpenChange={setIsDialogOpen}
+              >
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edición rápida

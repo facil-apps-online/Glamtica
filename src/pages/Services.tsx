@@ -4,14 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
 import { Plus, Scissors, DollarSign, Edit, Users, Share2, Search, MoreHorizontal, ListFilter, FileEdit, Trash2 } from "lucide-react";
 import { useMasterServices, useUpdateMasterService, useDeleteMasterService, MasterService } from "@/hooks/useServices";
 import { useServiceCategories } from "@/hooks/useServiceCategories";
@@ -22,7 +14,6 @@ import ManageServicePricesDialog from "@/components/ManageServicePricesDialog";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ManageServiceCommissionsDialog } from "@/components/ManageServiceCommissionsDialog";
-import { useScreenSize } from "@/hooks/useScreenSize";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -40,7 +31,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ServiceCard = ({ service, category, handleToggleStatus, handleOpenAssignServiceDialog, handleOpenManagePricesDialog, handleOpenServiceCommissionsDialog, navigate, handleDelete }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDialogOpen) return;
+
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -63,7 +58,10 @@ const ServiceCard = ({ service, category, handleToggleStatus, handleOpenAssignSe
             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <MasterServiceDialog service={service} trigger={
+            <MasterServiceDialog 
+              service={service} 
+              onOpenChange={setIsDialogOpen}
+              trigger={
               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                 <Edit className="w-4 h-4 mr-2" />
                 <span>Edición rápida</span>
@@ -149,32 +147,7 @@ const ServiceCardSkeleton = () => (
   </Card>
 );
 
-const ServiceTableSkeleton = () => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Servicio</TableHead>
-        <TableHead>Descripción</TableHead>
-        <TableHead>Categoría</TableHead>
-        <TableHead>Duración</TableHead>
-        <TableHead>Activo</TableHead>
-        <TableHead>Acciones</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {[...Array(5)].map((_, i) => (
-        <TableRow key={i}>
-          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-          <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
+
 
 export default function Services() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -195,9 +168,6 @@ export default function Services() {
   const [selectedServiceForPrices, setSelectedServiceForPrices] = useState<MasterService | null>(null);
   const [isServiceCommissionsDialogOpen, setIsServiceCommissionsDialogOpen] = useState(false);
   const [selectedServiceForCommissions, setSelectedServiceForCommissions] = useState<MasterService | null>(null);
-
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = (service: MasterService) => {
     updateService({ id: service.id, updates: { is_active: !service.is_active } }, { onSuccess: () => refetch() });
@@ -239,9 +209,11 @@ export default function Services() {
 
   const renderContent = () => {
     if (isLoading) {
-      return isMobile 
-        ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <ServiceCardSkeleton key={i} />)}</div>
-        : <ServiceTableSkeleton />;
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+          {[...Array(6)].map((_, i) => <ServiceCardSkeleton key={i} />)}
+        </div>
+      );
     }
 
     if (services?.length === 0) {
@@ -255,8 +227,8 @@ export default function Services() {
       );
     }
 
-    return isMobile ? (
-      <div className="space-y-4 p-4">
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
         {services?.map((service) => {
           const category = categories?.find(cat => cat.id === service.category_id);
           return (
@@ -274,101 +246,6 @@ export default function Services() {
           );
         })}
       </div>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Servicio</TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Categoría</TableHead>
-            <TableHead>Duración</TableHead>
-            <TableHead>Activo</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {services?.map((service) => {
-            const category = categories?.find(cat => cat.id === service.category_id);
-            return (
-              <TableRow 
-                key={service.id}
-                onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (
-                    target.closest('button') || 
-                    target.closest('[role="switch"]') || 
-                    target.closest('[data-radix-dropdown-menu-content]') ||
-                    target.closest('[role="menuitem"]')
-                  ) {
-                    return;
-                  }
-                  navigate(`/app/services/${service.id}`);
-                }}
-                className="cursor-pointer hover:bg-muted/50"
-              >
-                <TableCell className="font-medium">{service.name}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{service.description || "-"}</TableCell>
-                <TableCell>{category ? <Badge variant="secondary">{category.name}</Badge> : "N/A"}</TableCell>
-                <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "N/A"}</TableCell>
-                <TableCell><Switch checked={service.is_active || false} onCheckedChange={() => handleToggleStatus(service)} /></TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <MasterServiceDialog service={service} trigger={
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          <span>Edición rápida</span>
-                        </DropdownMenuItem>
-                      } />
-                      <DropdownMenuItem onClick={() => navigate(`/app/services/${service.id}`)}>
-                        <FileEdit className="w-4 h-4 mr-2" />
-                        Edición Completa
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleOpenAssignServiceDialog(service)}>
-                        <Share2 className="w-4 h-4 mr-2" />
-                        Asignar a Sucursales
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(service)}>
-                        <DollarSign className="w-4 h-4 mr-2" />
-                        Gestionar Precios
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenServiceCommissionsDialog(service)}>
-                        <Users className="w-4 h-4 mr-2" />
-                        Gestionar Comisiones
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              ¿Estás seguro de que quieres eliminar <strong>{service.name}</strong>? Esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(service.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
     );
   };
 

@@ -9,7 +9,7 @@ import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 export function PriceHistory({ isLoading, history }) {
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const today = startOfToday();
   const { formatPrice } = usePriceFormat(); // Usar el hook
 

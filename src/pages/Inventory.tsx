@@ -49,7 +49,7 @@ export default function Inventory() {
   const { currentAssignment } = useAuth(); // Obtener el currentAssignment para el tenantId
   const tenantId = currentAssignment?.tenant_id; // Asegurarse de que tenantId esté disponible
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const completePurchaseMutation = useCompletePurchase();
 

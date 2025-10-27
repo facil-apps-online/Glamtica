@@ -120,7 +120,7 @@ export default function BranchCommissionsTabContent({ branchId }: BranchCommissi
   const [commissionData, setCommissionData] = useState<BranchCommissionData | undefined>(undefined);
   const [dirtyItems, setDirtyItems] = useState<Set<string>>(new Set());
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   useEffect(() => {
     if (data) {

@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useScreenSize } from "@/hooks/useScreenSize";
 
 export const SupplierProductsManager = ({ supplierId }) => {
     const [newProductId, setNewProductId] = useState("");
@@ -25,7 +24,6 @@ export const SupplierProductsManager = ({ supplierId }) => {
     const updateSupplierProductMutation = useUpdateSupplierProduct();
     const toggleSupplierProductStatusMutation = useToggleSupplierProductStatus();
     const { formatPrice } = usePriceFormat();
-    const isMobile = useScreenSize() === 'mobile';
 
     const handleAddSupplierProduct = async () => {
         if (!supplierId) {
@@ -120,38 +118,6 @@ export const SupplierProductsManager = ({ supplierId }) => {
                     {isLoadingSupplierProducts ? (
                         <div>Cargando productos...</div>
                     ) : supplierProducts && supplierProducts.length > 0 ? (
-                        isMobile ? (
-                            <div className="space-y-4">
-                                {supplierProducts.map((sp) => (
-                                    <Card key={sp.id}>
-                                        <CardHeader>
-                                            <CardTitle className="text-base">{sp.products.name}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div>
-                                                <Label htmlFor={`price-card-${sp.id}`}>Precio de Costo</Label>
-                                                <Input
-                                                    id={`price-card-${sp.id}`}
-                                                    type="number"
-                                                    step="0.01"
-                                                    defaultValue={sp.supplier_price}
-                                                    onBlur={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)}
-                                                    className="w-full text-right"
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-between rounded-md border p-3">
-                                                <Label htmlFor={`switch-card-${sp.id}`} className="text-sm font-medium">Activo</Label>
-                                                <Switch
-                                                    id={`switch-card-${sp.id}`}
-                                                    checked={sp.is_active}
-                                                    onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)}
-                                                />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        ) : (
                             <div className="space-y-2">
                                 {supplierProducts.map((sp) => (
                                     <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md gap-4">
@@ -176,9 +142,7 @@ export const SupplierProductsManager = ({ supplierId }) => {
                                         </div>
                                     </div>
                                 ))}
-                            </div>
-                        )
-                    ) : (
+                            </div>                    ) : (
                         <p className="text-center text-sm text-muted-foreground py-4">No hay productos asociados a este proveedor.</p>
                     )}
                 </div>

@@ -6,9 +6,10 @@ export interface PublicCountry {
   id: string;
   name: string;
   iso_code: string;
+  is_active: boolean;
   default_localization_id: string | null;
   default_currency_id: string | null;
-  timezone: string | null;
+  timezones: string[] | null;
 }
 
 export interface PublicLanguage {
@@ -28,15 +29,10 @@ export interface PublicCurrency {
   thousands_separator: string;
 }
 
-export interface PublicTimezone {
-  name: string;
-}
-
 export interface PublicRegistrationData {
   countries: PublicCountry[];
   languages: PublicLanguage[];
   currencies: PublicCurrency[];
-  timezones: PublicTimezone[];
 }
 
 /**

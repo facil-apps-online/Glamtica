@@ -40,7 +40,7 @@ export const TimeOffRequestsList = ({
 }: TimeOffRequestsListProps) => {
   const { profile, currentAssignment } = useAuth();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   let branchIdToUse: string | undefined = undefined;
 

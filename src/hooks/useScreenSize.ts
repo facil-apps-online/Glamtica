@@ -3,29 +3,34 @@ import { useState, useEffect } from 'react';
 
 const breakpoints = {
   sm: 640,
-  md: 1024,
-  lg: 1280,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
 };
 
-type ScreenSize = 'mobile' | 'tablet' | 'desktop';
+type ScreenSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 export function useScreenSize(): ScreenSize {
-  const [screenSize, setScreenSize] = useState<ScreenSize>('desktop');
+  const [screenSize, setScreenSize] = useState<ScreenSize>('lg');
 
   useEffect(() => {
     function handleResize() {
       const width = window.innerWidth;
-      if (width < breakpoints.md) {
-        setScreenSize('mobile');
+      if (width < breakpoints.sm) {
+        setScreenSize('sm');
+      } else if (width >= breakpoints.sm && width < breakpoints.md) {
+        setScreenSize('md');
       } else if (width >= breakpoints.md && width < breakpoints.lg) {
-        setScreenSize('tablet');
+        setScreenSize('lg');
+      } else if (width >= breakpoints.lg && width < breakpoints.xl) {
+        setScreenSize('xl');
       } else {
-        setScreenSize('desktop');
+        setScreenSize('2xl');
       }
     }
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Llamar al inicio para establecer el tamaño inicial
+    handleResize();
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);

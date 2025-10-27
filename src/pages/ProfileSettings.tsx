@@ -15,7 +15,7 @@ import {
 export default function ProfileSettings() {
   const [activeTab, setActiveTab] = useState("personal");
   const screenSize = useScreenSize();
-  const isMobileOrTablet = screenSize === 'mobile' || screenSize === 'tablet';
+  const isMobileOrTablet = screenSize === 'sm' || screenSize === 'md';
 
   // Mobile or Tablet View using a ShadCN Select component
   if (isMobileOrTablet) {

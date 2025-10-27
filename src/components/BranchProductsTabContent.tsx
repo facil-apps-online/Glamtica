@@ -129,7 +129,7 @@ const BranchProductsTabContent: React.FC<BranchProductsTabContentProps> = ({ bra
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const handleToggleStatus = (product: BranchProduct) => {
     updateBranchProduct({ 

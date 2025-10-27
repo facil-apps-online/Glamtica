@@ -215,7 +215,7 @@ export const TransactionReceiptDialog: React.FC<TransactionReceiptDialogProps> =
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-4">
           {saleData ? (
-            screenSize === 'mobile' ? <MobileReceiptContent saleData={saleData} /> : <DesktopReceiptContent saleData={saleData} />
+            screenSize === 'sm' || screenSize === 'md' ? <MobileReceiptContent saleData={saleData} /> : <DesktopReceiptContent saleData={saleData} />
           ) : (
             <div className="text-center py-8">Cargando datos del recibo...</div>
           )}

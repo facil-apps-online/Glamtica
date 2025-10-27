@@ -15,6 +15,9 @@ import { useProductBranchPrices, useUpdateBranchProduct } from "@/hooks/useProdu
 import { useToast } from "@/hooks/use-toast";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { useQueryClient } from "@tanstack/react-query";
+import { ResponsivePricesTable } from '@/components/ResponsivePricesTable';
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { Check } from "lucide-react";
 
 interface ProductPricesManagerProps {
   productId: string;
@@ -24,13 +27,15 @@ const ProductPricesManager: React.FC<ProductPricesManagerProps> = ({ productId }
   const { toast } = useToast();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
+  const screenSize = useScreenSize();
+  const isSmallScreen = screenSize === 'sm' || screenSize === 'md';
 
   const { data: branchPrices, isLoading } = useProductBranchPrices(productId);
   const { mutate: updateBranchProduct, isPending: isUpdating } = useUpdateBranchProduct();
 
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
   const [uniformPrice, setUniformPrice] = useState<string>("");
-  const [selectedBranchProductIds, setSelectedBranchProductIds] = useState<string[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (branchPrices) {
@@ -42,10 +47,10 @@ const ProductPricesManager: React.FC<ProductPricesManagerProps> = ({ productId }
     }
   }, [branchPrices]);
 
-  const handlePriceChange = (branchProductId: string, value: string) => {
+  const handlePriceChange = (itemId: string, value: string) => {
     setEditedPrices(prev => ({
       ...prev,
-      [branchProductId]: parseFloat(value) || 0,
+      [itemId]: parseFloat(value) || 0,
     }));
   };
 
@@ -61,16 +66,16 @@ const ProductPricesManager: React.FC<ProductPricesManagerProps> = ({ productId }
     }
 
     const newEditedPrices = { ...editedPrices };
-    selectedBranchProductIds.forEach(id => {
+    selectedItemIds.forEach(id => {
       newEditedPrices[id] = price;
     });
     setEditedPrices(newEditedPrices);
     toast({ title: "Precio Unificado Aplicado", description: "El precio se ha aplicado a los productos seleccionados." });
   };
 
-  const handleSelectBranchProduct = (branchProductId: string, isChecked: boolean) => {
-    setSelectedBranchProductIds(prev => 
-      isChecked ? [...prev, branchProductId] : prev.filter(id => id !== branchProductId)
+  const handleSelectItem = (itemId: string, isChecked: boolean) => {
+    setSelectedItemIds(prev => 
+      isChecked ? [...prev, itemId] : prev.filter(id => id !== itemId)
     );
   };
 
@@ -117,59 +122,29 @@ const ProductPricesManager: React.FC<ProductPricesManagerProps> = ({ productId }
               step="0.01"
               className="w-40"
             />
-            <Button onClick={handleApplyUniformPrice} disabled={selectedBranchProductIds.length === 0 || isNaN(parseFloat(uniformPrice))}>
-              Aplicar a Seleccionados
-            </Button>
+            {isSmallScreen ? (
+              <Button onClick={handleApplyUniformPrice} disabled={selectedItemIds.length === 0 || isNaN(parseFloat(uniformPrice))} size="icon">
+                <Check className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button onClick={handleApplyUniformPrice} disabled={selectedItemIds.length === 0 || isNaN(parseFloat(uniformPrice))}>
+                Aplicar a Seleccionados
+              </Button>
+            )}
         </div>
 
           {isLoading ? (
             <div className="text-center">Cargando precios por sucursal...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">Seleccionar</TableHead>
-                  <TableHead>Sucursal</TableHead>
-                  <TableHead>Precio Actual</TableHead>
-                  <TableHead>Nuevo Precio</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {branchPrices?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Este producto no está asignado a ninguna sucursal.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  branchPrices?.map(bp => (
-                    <TableRow key={bp.branch_product_id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedBranchProductIds.includes(bp.branch_product_id)}
-                          onCheckedChange={(checked) => handleSelectBranchProduct(bp.branch_product_id, !!checked)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{bp.branch_name}</TableCell>
-                      <TableCell>{formatPrice(bp.selling_price)}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={editedPrices[bp.branch_product_id] || ''}
-                          onChange={(e) => handlePriceChange(bp.branch_product_id, e.target.value)}
-                          min="0"
-                          step="0.01"
-                        />
-                      </TableCell>
-                      <TableCell>{bp.stock_quantity}</TableCell>
-                      <TableCell>{bp.is_active ? "Activo" : "Inactivo"}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <ResponsivePricesTable
+              branchPrices={branchPrices?.map(bp => ({ ...bp, itemId: bp.branch_product_id })) || []}
+              editedPrices={editedPrices}
+              selectedItemIds={selectedItemIds}
+              onPriceChange={handlePriceChange}
+              onSelectItem={handleSelectItem}
+              formatPrice={formatPrice}
+              itemType="product"
+            />
           )}
         <div className="flex justify-end mt-4">
           <Button onClick={handleSave} disabled={isUpdating}>

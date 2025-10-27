@@ -4,6 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
+import { UserAvatar } from "@/components/UserAvatar";
 import { startOfDay } from 'date-fns';
 import { Loader } from 'lucide-react';
 
@@ -83,9 +84,44 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
   };
 
   return (
-    <div className="relative p-4 bg-white rounded-lg shadow-md text-sm md:text-base">
+    <div className="relative p-4 rounded-lg shadow-md text-sm md:text-base">
+      <style>{`
+        .dark .fc .fc-toolbar-title {
+          color: hsl(var(--card-foreground));
+        }
+        .dark .fc .fc-button {
+          background-color: hsl(var(--primary));
+          color: hsl(var(--primary-foreground));
+          border: none;
+        }
+        .dark .fc .fc-button:hover {
+          background-color: hsl(var(--primary) / 0.9);
+        }
+        .dark .fc-theme-standard .fc-day-today {
+          background-color: hsl(var(--accent)) !important;
+        }
+        .dark .fc-scrollgrid {
+            border: none;
+            border-collapse: collapse;
+        }
+        .dark .fc-theme-standard th,
+        .dark .fc-theme-standard td {
+          background-color: hsl(var(--card));
+          border: 1px solid hsl(var(--border));
+        }
+        .dark .fc-timegrid-slot-label,
+        .dark .fc-daygrid-day-number {
+            color: hsl(var(--card-foreground));
+        }
+        .dark .fc-col-header-cell-cushion {
+            color: hsl(var(--card-foreground));
+        }
+        .dark .fc a {
+            color: hsl(var(--card-foreground));
+        }
+      `}</style>
       {isLoading && (
-        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+        <div className="absolute inset-0 bg-card/75 flex items-center justify-center z-10">
           <Loader className="animate-spin h-8 w-8 text-blue-600" />
         </div>
       )}
@@ -93,11 +129,14 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
       {allUsers && allUsers.length > 0 && userColorMap && (
         <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 justify-center">
           {allUsers.map(user => (
-            <div key={user.id} className="flex items-center gap-1">
-              <span 
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: userColorMap.get(user.id) || '#ccc' }}
-              ></span>
+            <div key={user.id} className="flex items-center gap-2">
+                <UserAvatar
+                    src={user.avatar_url}
+                    alt={user.first_name}
+                    fallback={user.first_name?.[0]}
+                    borderColor={userColorMap.get(user.id) || '#ccc'}
+                    className="h-8 w-8 border-2"
+                />
               <span className="text-xs font-medium">{user.first_name}</span>
             </div>
           ))}

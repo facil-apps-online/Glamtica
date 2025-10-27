@@ -61,7 +61,7 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState<Date>(new Date());
 
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const formattedDateFrom = formatDate(dateFrom, 'yyyy-MM-dd');
   const formattedDateTo = formatDate(dateTo, 'yyyy-MM-dd');

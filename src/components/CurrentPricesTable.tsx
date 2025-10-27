@@ -8,7 +8,7 @@ import { usePriceFormat } from '@/hooks/usePriceFormat'; // Importar el hook
 
 export function CurrentPricesTable({ plans, calculatedPrices, isLoading }) {
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const { formatPrice } = usePriceFormat(); // Usar el hook
   const { countries, pricesByCountry } = useMemo(() => {
     if (!calculatedPrices || !plans) return { countries: [], pricesByCountry: {} };

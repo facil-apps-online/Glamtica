@@ -19,7 +19,6 @@ export default function EditBranchPage() {
   const { data: branches, isLoading: isLoadingBranches } = useBranches(tenantId);
 
   const branchToEdit = branches?.find(b => b.id === branchId);
-  const countryRestriction = countries?.find(c => c.id === tenant?.country_id)?.iso_code || '';
 
   if (!tenantId) {
     return <div className="p-4 mt-4">ID de Tenant no disponible.</div>;
@@ -49,7 +48,6 @@ export default function EditBranchPage() {
             branchToEdit={branchToEdit}
             onSuccess={() => navigate('/branches')}
             tenantId={tenantId}
-            countryRestriction={countryRestriction}
           />
         </CardContent>
       </Card>

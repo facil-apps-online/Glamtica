@@ -267,6 +267,8 @@ const EditEquipmentPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState("details");
+
   const { equipment: allEquipment, loading: isLoadingEquipment } = useEquipment();
   const { mutate: updateEquipment, isPending: isUpdating } = useUpdateEquipment();
   const { types: equipmentTypes, loading: isLoadingTypes } = useEquipmentTypes();
@@ -331,50 +333,99 @@ const EditEquipmentPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="details">Detalles</TabsTrigger>
-              <TabsTrigger value="maintenance">Mantenimiento</TabsTrigger>
-              <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details">
-              <Card>
-                <CardHeader><CardTitle>Detalles del Equipo</CardTitle></CardHeader>
-                <CardContent>
-                  {equipmentData && (
-                    <EquipmentDetailsForm 
-                      equipment={equipmentData} 
-                      onFormChange={handleFormChange} 
-                      onSave={handleSave} 
-                      isSaving={isUpdating} 
-                      equipmentTypes={equipmentTypes}
-                      equipmentBrands={equipmentBrands}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+          <div className="md:hidden">
+            <Select onValueChange={setActiveTab} value={activeTab}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar una sección..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="details">Detalles</SelectItem>
+                <SelectItem value="maintenance">Mantenimiento</SelectItem>
+                <SelectItem value="assignments">Asignaciones</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="pt-4">
+              {activeTab === 'details' && (
+                <Card>
+                  <CardHeader><CardTitle>Detalles del Equipo</CardTitle></CardHeader>
+                  <CardContent>
+                    {equipmentData && (
+                      <EquipmentDetailsForm 
+                        equipment={equipmentData} 
+                        onFormChange={handleFormChange} 
+                        onSave={handleSave} 
+                        isSaving={isUpdating} 
+                        equipmentTypes={equipmentTypes}
+                        equipmentBrands={equipmentBrands}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'maintenance' && (
+                <Card>
+                  <CardHeader><CardTitle>Historial de Mantenimiento</CardTitle></CardHeader>
+                  <CardContent>
+                    <MaintenanceHistoryTab equipmentId={equipment.id} />
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'assignments' && (
+                <Card>
+                  <CardHeader><CardTitle>Historial de Asignaciones</CardTitle></CardHeader>
+                  <CardContent>
+                    <AssignmentsTab equipmentId={equipment.id} />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <Tabs defaultValue="details" onValueChange={setActiveTab} value={activeTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="details">Detalles</TabsTrigger>
+                <TabsTrigger value="maintenance">Mantenimiento</TabsTrigger>
+                <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details">
+                <Card>
+                  <CardHeader><CardTitle>Detalles del Equipo</CardTitle></CardHeader>
+                  <CardContent>
+                    {equipmentData && (
+                      <EquipmentDetailsForm 
+                        equipment={equipmentData} 
+                        onFormChange={handleFormChange} 
+                        onSave={handleSave} 
+                        isSaving={isUpdating} 
+                        equipmentTypes={equipmentTypes}
+                        equipmentBrands={equipmentBrands}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="maintenance">
-              <Card>
-                <CardHeader><CardTitle>Historial de Mantenimiento</CardTitle></CardHeader>
-                <CardContent>
-                  <MaintenanceHistoryTab equipmentId={equipment.id} />
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="maintenance">
+                <Card>
+                  <CardHeader><CardTitle>Historial de Mantenimiento</CardTitle></CardHeader>
+                  <CardContent>
+                    <MaintenanceHistoryTab equipmentId={equipment.id} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="assignments">
-              <Card>
-                <CardHeader><CardTitle>Historial de Asignaciones</CardTitle></CardHeader>
-                <CardContent>
-                  <AssignmentsTab equipmentId={equipment.id} />
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="assignments">
+                <Card>
+                  <CardHeader><CardTitle>Historial de Asignaciones</CardTitle></CardHeader>
+                  <CardContent>
+                    <AssignmentsTab equipmentId={equipment.id} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          </Tabs>
+            </Tabs>
+          </div>
         </div>
         <div>
           <ChatterBox resourceType="equipments" resourceId={equipment.id} tenantId={equipment.tenant_id} containerClassName="h-[calc(100vh-22rem)]" />

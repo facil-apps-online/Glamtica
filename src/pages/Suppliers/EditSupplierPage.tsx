@@ -27,7 +27,6 @@ import { ChevronDown } from 'lucide-react';
 import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
-import { useScreenSize } from '@/hooks/useScreenSize';
 import { PhoneInput } from '@/components/PhoneInput';
 import { useTenantCountry } from '@/hooks/useTenantCountry';
 
@@ -63,7 +62,6 @@ const EditSupplierPage = () => {
   const { data: countryId } = useTenantCountry(tenantId);
   const { data: branches } = useBranches(tenantId);
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');
-  const isMobile = useScreenSize() === 'mobile';
 
 
 
@@ -170,284 +168,280 @@ const EditSupplierPage = () => {
             </PageHeader>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 space-y-8">
-                                    {isMobile ? (
+                <div className="lg:col-span-2 space-y-8">
+                    <div className="md:hidden">
+                        <Select onValueChange={setActiveTab} value={activeTab}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar una sección..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="general">General</SelectItem>
+                                <SelectItem value="address">Dirección y Contacto</SelectItem>
+                                <SelectItem value="products">Productos</SelectItem>
+                                <SelectItem value="contacts">Contactos Adicionales</SelectItem>
+                                <SelectItem value="addresses">Direcciones Adicionales</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="pt-4">
+                            {activeTab === 'general' && (
+                                <Card>
+                                    <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
+                                    <CardContent className="pt-6">
                                         <div className="space-y-4">
-                                            <Select onValueChange={setActiveTab} value={activeTab}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Seleccionar una sección..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="general">General</SelectItem>
-                                                    <SelectItem value="address">Dirección y Contacto</SelectItem>
-                                                    <SelectItem value="products">Productos</SelectItem>
-                                                    <SelectItem value="contacts">Contactos Adicionales</SelectItem>
-                                                    <SelectItem value="addresses">Direcciones Adicionales</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <div className="pt-4">
-                                                {activeTab === 'general' && (
-                                                    <Card>
-                                                        <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
-                                                        <CardContent className="pt-6">
-                                                            <div className="space-y-4">
-                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                                    <FormField control={form.control} name="document_type_id" render={({ field }) => (
-                                                                        <FormItem>
-                                                                            <FormLabel className="text-sm font-medium">Tipo de Identificación</FormLabel>
-                                                                            <Select onValueChange={field.onChange} value={field.value} required>
-                                                                                <FormControl><SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger></FormControl>
-                                                                                <SelectContent>{isLoadingDocumentTypes ? <SelectItem value="loading" disabled>Cargando...</SelectItem> : documentTypes?.map((type) => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
-                                                                            </Select>
-                                                                            <FormMessage />
-                                                                        </FormItem>
-                                                                    )} />
-                                                                    <FormField control={form.control} name="identification_number" render={({ field }) => (
-                                                                        <FormItem>
-                                                                            <FormLabel className="text-sm font-medium">Número de Identificación</FormLabel>
-                                                                            <FormControl><Input {...field} placeholder="Ej: 900123456-7" required /></FormControl>
-                                                                            <FormMessage />
-                                                                        </FormItem>
-                                                                    )} />
-                                                                </div>
-                                                                <FormField control={form.control} name="name" render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-sm font-medium">Nombre del Proveedor</FormLabel>
-                                                                        <FormControl><Input {...field} placeholder="Ej: Distribuidora Beauty Pro" required /></FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )} />
-                                                                <FormField control={form.control} name="branch_ids" render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-sm font-medium">Sucursales</FormLabel>
-                                                                        <DropdownMenu>
-                                                                            <DropdownMenuTrigger asChild><FormControl><Button variant="outline" className="w-full justify-between"><span>{field.value?.length === 0 ? "Seleccionar sucursales" : `${field.value?.length} sucursal(es) seleccionada(s)`}</span><ChevronDown className="h-4 w-4 opacity-50" /></Button></FormControl></DropdownMenuTrigger>
-                                                                            <DropdownMenuContent className="w-[--radix-popover-trigger-width]">
-                                                                                <DropdownMenuLabel>Sucursales Disponibles</DropdownMenuLabel>
-                                                                                <DropdownMenuSeparator />
-                                                                                {branches?.map((branch) => (<DropdownMenuCheckboxItem key={branch.id} checked={field.value?.includes(branch.id)} onCheckedChange={(checked) => { const newValue = checked ? [...(field.value || []), branch.id] : (field.value || []).filter(id => id !== branch.id); field.onChange(newValue);}}>{branch.name}</DropdownMenuCheckboxItem>))}
-                                                                            </DropdownMenuContent>
-                                                                        </DropdownMenu>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )} />
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                )}
-                                                {activeTab === 'address' && (
-                                                    <Card>
-                                                        <CardHeader><CardTitle>Dirección y Contacto</CardTitle></CardHeader>
-                                                        <CardContent className="pt-6">
-                                                            <div className="space-y-4">
-                                                                <FormField control={form.control} name="search_address" render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-sm font-medium">Buscar Dirección</FormLabel>
-                                                                        <FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} defaultValue={supplier?.address_line_1 || ''} isGlobalSearch={true} /></FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )} />
-                                                                <FormField control={form.control} name="address_line_1" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 1 de Dirección</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                <FormField control={form.control} name="address_line_2" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 2 (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                                    <FormField control={form.control} name="city" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Ciudad</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                    <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Estado/Provincia</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                    <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                </div>
-                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
-                                                                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
-                                                                </div>
-                                                                <div className="w-full mt-4 md:mt-0">
-                                                                    {watchedLat !== null && watchedLng !== null && <div className="w-full h-full rounded-lg overflow-hidden mt-4"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>}
-                                                                </div>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                )}
-                                                                                {activeTab === 'products' && (
-                                                                                    <SupplierProductsManager supplierId={supplier.id} />
-                                                                                )}
-                                                                                {activeTab === 'contacts' && (
-                                                                                    <Card>
-                                                                                        <CardHeader>
-                                                                                            <div className="flex justify-between items-center">
-                                                                                                <CardTitle>Contactos Adicionales</CardTitle>
-                                                                                                <SupplierContactDialog supplierId={supplier.id}>
-                                                                                                    <Button type="button" variant="outline" size={isMobile ? "icon" : "default"}>
-                                                                                                        <Plus className="h-4 w-4" />
-                                                                                                        {!isMobile && <span className="ml-2">Añadir Contacto</span>}
-                                                                                                    </Button>
-                                                                                                </SupplierContactDialog>
-                                                                                            </div>
-                                                                                        </CardHeader>
-                                                                                        <CardContent className="pt-6">
-                                                                                            <SupplierContactsManager supplierId={supplier.id} />
-                                                                                        </CardContent>
-                                                                                    </Card>
-                                                                                )}
-                                                                                {activeTab === 'addresses' && (
-                                                                                    <Card>
-                                                                                        <CardHeader>
-                                                                                            <div className="flex justify-between items-center">
-                                                                                                <CardTitle>Direcciones Adicionales</CardTitle>
-                                                                                                <Button type="button" variant="outline" size={isMobile ? "icon" : "default"} onClick={() => setIsAddingAddress(!isAddingAddress)}>
-                                                                                                    <Plus className="h-4 w-4" />
-                                                                                                    {!isMobile && <span className="ml-2">Añadir Dirección</span>}
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        </CardHeader>
-                                                                                        <CardContent className="pt-6">
-                                                                                            <SupplierAddressesManager supplierId={supplier.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
-                                                                                        </CardContent>
-                                                                                    </Card>
-                                                                                )}                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="document_type_id" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium">Tipo de Identificación</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value} required>
+                                                            <FormControl><SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger></FormControl>
+                                                            <SelectContent>{isLoadingDocumentTypes ? <SelectItem value="loading" disabled>Cargando...</SelectItem> : documentTypes?.map((type) => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="identification_number" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium">Número de Identificación</FormLabel>
+                                                        <FormControl><Input {...field} placeholder="Ej: 900123456-7" required /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <FormField control={form.control} name="name" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm font-medium">Nombre del Proveedor</FormLabel>
+                                                    <FormControl><Input {...field} placeholder="Ej: Distribuidora Beauty Pro" required /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="branch_ids" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm font-medium">Sucursales</FormLabel>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild><FormControl><Button variant="outline" className="w-full justify-between"><span>{field.value?.length === 0 ? "Seleccionar sucursales" : `${field.value?.length} sucursal(es) seleccionada(s)`}</span><ChevronDown className="h-4 w-4 opacity-50" /></Button></FormControl></DropdownMenuTrigger>
+                                                        <DropdownMenuContent className="w-[--radix-popover-trigger-width]">
+                                                            <DropdownMenuLabel>Sucursales Disponibles</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            {branches?.map((branch) => (<DropdownMenuCheckboxItem key={branch.id} checked={field.value?.includes(branch.id)} onCheckedChange={(checked) => { const newValue = checked ? [...(field.value || []), branch.id] : (field.value || []).filter(id => id !== branch.id); field.onChange(newValue);}}>{branch.name}</DropdownMenuCheckboxItem>))}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
                                         </div>
-                                    ) : (
-                                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                            <TabsList>
-                                                <TabsTrigger value="general">General</TabsTrigger>
-                                                <TabsTrigger value="address">Dirección y Contacto</TabsTrigger>
-                                                <TabsTrigger value="products">Productos</TabsTrigger>
-                                                <TabsTrigger value="contacts">Contactos Adicionales</TabsTrigger>
-                                                <TabsTrigger value="addresses">Direcciones Adicionales</TabsTrigger>
-                                            </TabsList>
-                                            <TabsContent value="general">
-                                                <Card>
-                                                    <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
-                                                    <CardContent className="pt-6">
-                                                        <div className="space-y-4">
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <FormField control={form.control} name="document_type_id" render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-sm font-medium">Tipo de Identificación</FormLabel>
-                                                                        <Select onValueChange={field.onChange} value={field.value} required>
-                                                                            <FormControl><SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger></FormControl>
-                                                                            <SelectContent>{isLoadingDocumentTypes ? <SelectItem value="loading" disabled>Cargando...</SelectItem> : documentTypes?.map((type) => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
-                                                                        </Select>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )} />
-                                                                <FormField control={form.control} name="identification_number" render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-sm font-medium">Número de Identificación</FormLabel>
-                                                                        <FormControl><Input {...field} placeholder="Ej: 900123456-7" required /></FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )} />
-                                                            </div>
-                                                            <FormField control={form.control} name="name" render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel className="text-sm font-medium">Nombre del Proveedor</FormLabel>
-                                                                    <FormControl><Input {...field} placeholder="Ej: Distribuidora Beauty Pro" required /></FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )} />
-                                                            <FormField control={form.control} name="branch_ids" render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel className="text-sm font-medium">Sucursales</FormLabel>
-                                                                    <DropdownMenu>
-                                                                        <DropdownMenuTrigger asChild><FormControl><Button variant="outline" className="w-full justify-between"><span>{field.value?.length === 0 ? "Seleccionar sucursales" : `${field.value?.length} sucursal(es) seleccionada(s)`}</span><ChevronDown className="h-4 w-4 opacity-50" /></Button></FormControl></DropdownMenuTrigger>
-                                                                        <DropdownMenuContent className="w-[--radix-popover-trigger-width]">
-                                                                            <DropdownMenuLabel>Sucursales Disponibles</DropdownMenuLabel>
-                                                                            <DropdownMenuSeparator />
-                                                                            {branches?.map((branch) => (<DropdownMenuCheckboxItem key={branch.id} checked={field.value?.includes(branch.id)} onCheckedChange={(checked) => { const newValue = checked ? [...(field.value || []), branch.id] : (field.value || []).filter(id => id !== branch.id); field.onChange(newValue);}}>{branch.name}</DropdownMenuCheckboxItem>))}
-                                                                        </DropdownMenuContent>
-                                                                    </DropdownMenu>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )} />
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            </TabsContent>
-                                            <TabsContent value="address">
-                                                <Card>
-                                                    <CardHeader><CardTitle>Dirección y Contacto</CardTitle></CardHeader>
-                                                    <CardContent className="pt-6">
-                                                        <div className="flex gap-4">
-                                                            <div className="w-[70%] space-y-4">
-                                                                <FormField control={form.control} name="search_address" render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-sm font-medium">Buscar Dirección</FormLabel>
-                                                                        <FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} defaultValue={supplier?.address_line_1 || ''} isGlobalSearch={true} /></FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )} />
-                                                                <FormField control={form.control} name="address_line_1" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 1 de Dirección</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                <FormField control={form.control} name="address_line_2" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 2 (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                    <FormField control={form.control} name="city" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Ciudad</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                    <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Estado/Provincia</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                    <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font--medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
-                                                                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
-                                                                </div>
-                                                            </div>
-                                                            <div className="w-[30%] mt-4 md:mt-0">
-                                                                {watchedLat !== null && watchedLng !== null && <div className="w-full h-full rounded-lg overflow-hidden mt-4"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>}
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            </TabsContent>
-                                                                        <TabsContent value="products">
-                                                                            <SupplierProductsManager supplierId={supplier.id} />
-                                                                        </TabsContent>
-                                                                        <TabsContent value="contacts">
-                                                                            <Card>
-                                                                                <CardHeader>
-                                                                                    <div className="flex justify-between items-center">
-                                                                                        <CardTitle>Contactos Adicionales</CardTitle>
-                                                                                        <SupplierContactDialog supplierId={supplier.id}>
-                                                                                            <Button type="button" variant="outline" size={isMobile ? "icon" : "default"}>
-                                                                                                <Plus className="h-4 w-4" />
-                                                                                                {!isMobile && <span className="ml-2">Añadir Contacto</span>}
-                                                                                            </Button>
-                                                                                        </SupplierContactDialog>
-                                                                                    </div>
-                                                                                </CardHeader>
-                                                                                <CardContent className="pt-6">
-                                                                                    <SupplierContactsManager supplierId={supplier.id} />
-                                                                                </CardContent>
-                                                                            </Card>
-                                                                        </TabsContent>
-                                                                        <TabsContent value="addresses">
-                                                                                {activeTab === 'addresses' && (
-                                                                                    <Card>
-                                                                                        <CardHeader>
-                                                                                            <div className="flex justify-between items-center">
-                                                                                                <CardTitle>Direcciones Adicionales</CardTitle>
-                                                                                                <Button type="button" variant="outline" size={isMobile ? "icon" : "default"} onClick={() => setIsAddingAddress(!isAddingAddress)}>
-                                                                                                    <Plus className="h-4 w-4" />
-                                                                                                    {!isMobile && <span className="ml-2">Añadir Dirección</span>}
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        </CardHeader>
-                                                                                        <CardContent className="pt-6">
-                                                                                            <SupplierAddressesManager supplierId={supplier.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
-                                                                                        </CardContent>
-                                                                                    </Card>
-                                                                                )}
-                                                                        </TabsContent>                                        </Tabs>
-                                    )}
-                                    <div className="flex justify-end pt-8">
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {activeTab === 'address' && (
+                                <Card>
+                                    <CardHeader><CardTitle>Dirección y Contacto</CardTitle></CardHeader>
+                                    <CardContent className="pt-6">
+                                        <div className="space-y-4">
+                                            <FormField control={form.control} name="search_address" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm font-medium">Buscar Dirección</FormLabel>
+                                                    <FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} defaultValue={supplier?.address_line_1 || ''} isGlobalSearch={true} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="address_line_1" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 1 de Dirección</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="address_line_2" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 2 (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                <FormField control={form.control} name="city" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Ciudad</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Estado/Provincia</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
+                                            </div>
+                                            <div className="w-full mt-4 md:mt-0">
+                                                {watchedLat !== null && watchedLng !== null && <div className="w-full h-full rounded-lg overflow-hidden mt-4"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {activeTab === 'products' && (
+                                <SupplierProductsManager supplierId={supplier.id} />
+                            )}
+                            {activeTab === 'contacts' && (
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-center">
+                                            <CardTitle>Contactos Adicionales</CardTitle>
+                                            <SupplierContactDialog supplierId={supplier.id}>
+                                                <Button type="button" variant="outline" size="icon">
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </SupplierContactDialog>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-6">
+                                        <SupplierContactsManager supplierId={supplier.id} />
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {activeTab === 'addresses' && (
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-center">
+                                            <CardTitle>Direcciones Adicionales</CardTitle>
+                                            <Button type="button" variant="outline" size="icon" onClick={() => setIsAddingAddress(!isAddingAddress)}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-6">
+                                        <SupplierAddressesManager supplierId={supplier.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
+                    <div className="hidden md:block">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList>
+                                <TabsTrigger value="general">General</TabsTrigger>
+                                <TabsTrigger value="address">Dirección y Contacto</TabsTrigger>
+                                <TabsTrigger value="products">Productos</TabsTrigger>
+                                <TabsTrigger value="contacts">Contactos Adicionales</TabsTrigger>
+                                <TabsTrigger value="addresses">Direcciones Adicionales</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="general">
+                                <Card>
+                                    <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
+                                    <CardContent className="pt-6">
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="document_type_id" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium">Tipo de Identificación</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value} required>
+                                                            <FormControl><SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger></FormControl>
+                                                            <SelectContent>{isLoadingDocumentTypes ? <SelectItem value="loading" disabled>Cargando...</SelectItem> : documentTypes?.map((type) => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="identification_number" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium">Número de Identificación</FormLabel>
+                                                        <FormControl><Input {...field} placeholder="Ej: 900123456-7" required /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <FormField control={form.control} name="name" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm font-medium">Nombre del Proveedor</FormLabel>
+                                                    <FormControl><Input {...field} placeholder="Ej: Distribuidora Beauty Pro" required /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="branch_ids" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm font-medium">Sucursales</FormLabel>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild><FormControl><Button variant="outline" className="w-full justify-between"><span>{field.value?.length === 0 ? "Seleccionar sucursales" : `${field.value?.length} sucursal(es) seleccionada(s)`}</span><ChevronDown className="h-4 w-4 opacity-50" /></Button></FormControl></DropdownMenuTrigger>
+                                                        <DropdownMenuContent className="w-[--radix-popover-trigger-width]">
+                                                            <DropdownMenuLabel>Sucursales Disponibles</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            {branches?.map((branch) => (<DropdownMenuCheckboxItem key={branch.id} checked={field.value?.includes(branch.id)} onCheckedChange={(checked) => { const newValue = checked ? [...(field.value || []), branch.id] : (field.value || []).filter(id => id !== branch.id); field.onChange(newValue);}}>{branch.name}</DropdownMenuCheckboxItem>))}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="address">
+                                <Card>
+                                    <CardHeader><CardTitle>Dirección y Contacto</CardTitle></CardHeader>
+                                    <CardContent className="pt-6">
+                                        <div className="flex flex-col md:flex-row gap-4">
+                                            <div className="w-full md:w-[70%] space-y-4">
+                                                <FormField control={form.control} name="search_address" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium">Buscar Dirección</FormLabel>
+                                                        <FormControl><AddressAutocompleteInput onPlaceSelected={handlePlaceSelected} defaultValue={supplier?.address_line_1 || ''} isGlobalSearch={true} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="address_line_1" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 1 de Dirección</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="address_line_2" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Línea 2 (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <FormField control={form.control} name="city" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Ciudad</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Estado/Provincia</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
+                                            </div>
+                                            <div className="w-full md:w-[30%] mt-4 md:mt-0">
+                                                {watchedLat !== null && watchedLng !== null && <div className="w-full h-full rounded-lg overflow-hidden mt-4"><MapDisplay latitude={watchedLat} longitude={watchedLng} /></div>}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="products">
+                                <SupplierProductsManager supplierId={supplier.id} />
+                            </TabsContent>
+                            <TabsContent value="contacts">
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-center">
+                                            <CardTitle>Contactos Adicionales</CardTitle>
+                                            <SupplierContactDialog supplierId={supplier.id}>
+                                                <Button type="button" variant="outline">
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Añadir Contacto
+                                                </Button>
+                                            </SupplierContactDialog>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-6">
+                                        <SupplierContactsManager supplierId={supplier.id} />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="addresses">
+                                    <Card>
+                                        <CardHeader>
+                                            <div className="flex justify-between items-center">
+                                                <CardTitle>Direcciones Adicionales</CardTitle>
+                                                <Button type="button" variant="outline" onClick={() => setIsAddingAddress(!isAddingAddress)}>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Añadir Dirección
+                                                </Button>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="pt-6">
+                                            <SupplierAddressesManager supplierId={supplier.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
+                                        </CardContent>
+                                    </Card>
+                            </TabsContent>
+                        </Tabs>
+                    </div>
+                    <div className="flex justify-end pt-8">
                         <Button type="submit" disabled={isSaving || !isDirty}>
                             <Save className="w-4 h-4 mr-2" />
                             {isSaving ? 'Guardando...' : 'Guardar Cambios'}
                         </Button>
                     </div>
                 </div>
-                
                 <div className="lg:col-span-1">
                 {supplier && (
                     <ChatterBox 
                     resourceType="suppliers"
                     resourceId={supplier.id}
                     tenantId={supplier.tenant_id}
-                    containerClassName={isMobile ? "h-[70vh]" : "h-[calc(100vh-22rem)]"}
+                    containerClassName="h-[70vh] md:h-[calc(100vh-22rem)]"
                     />
                 )}
                 </div>

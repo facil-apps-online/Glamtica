@@ -56,14 +56,14 @@ const useTenantAction = <T, P>(action: string) => {
 };
 
 // Hook para obtener TODOS los proveedores del tenant
-export const useSuppliers = () => {
+export const useSuppliers = (searchTerm?: string, includeInactive?: boolean) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-  const invokeGetSuppliers = useTenantAction<Supplier[], {}>('get_suppliers');
+  const invokeGetSuppliers = useTenantAction<Supplier[], { searchTerm?: string, includeInactive?: boolean }>('get_suppliers');
 
   return useQuery({
-    queryKey: ['suppliers', tenantId],
-    queryFn: () => invokeGetSuppliers({}),
+    queryKey: ['suppliers', tenantId, searchTerm, includeInactive],
+    queryFn: () => invokeGetSuppliers({ searchTerm, includeInactive }),
     enabled: !!tenantId,
   });
 };

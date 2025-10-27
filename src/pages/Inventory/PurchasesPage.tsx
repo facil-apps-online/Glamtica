@@ -50,7 +50,7 @@ export function PurchasesPage() {
   const cancelPurchaseMutation = useCancelPurchase();
   const updatePaymentStatusMutation = useUpdatePurchasePaymentStatus();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);

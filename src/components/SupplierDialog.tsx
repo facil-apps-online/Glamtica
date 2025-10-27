@@ -22,10 +22,10 @@ import { useProductsBySupplier, useAddSupplierProduct, useUpdateSupplierProduct,
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { useScreenSize } from "@/hooks/useScreenSize";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PhoneInput } from '@/components/PhoneInput';
 import { useTenantCountry } from '@/hooks/useTenantCountry';
+import { useCountries } from "@/hooks/useCountries";
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
@@ -72,30 +72,18 @@ type SupplierFormValues = z.infer<typeof formSchema>;
 interface SupplierDialogProps {
   supplier?: Supplier;
   trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierDialogProps) => {
+export const SupplierDialog = ({ supplier: initialSupplier, trigger, onOpenChange }: SupplierDialogProps) => {
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
+
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | undefined>(initialSupplier);
-
-  const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
-  const { data: countryId } = useTenantCountry(tenantId);
-  const { data: branches } = useBranches(tenantId);
-  const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');
-  const createMutation = useCreateSupplier();
-  const updateMutation = useUpdateSupplier();
-
-  const { data: allProducts } = useMasterProducts("", false, "", "");
-  const { data: supplierProducts, isLoading: isLoadingSupplierProducts, refetch: refetchSupplierProducts } = useProductsBySupplier(currentSupplier?.id);
-  const addSupplierProductMutation = useAddSupplierProduct();
-  const updateSupplierProductMutation = useUpdateSupplierProduct();
-  const toggleSupplierProductStatusMutation = useToggleSupplierProductStatus();
-  const { formatPrice } = usePriceFormat();
-  const [newProductId, setNewProductId] = useState("");
-  const [newSupplierPrice, setNewSupplierPrice] = useState<number | string>(0);
-  const isMobile = useScreenSize() === 'mobile';
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(formSchema),
@@ -108,6 +96,40 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
         branch_ids: [],
     },
   });
+
+  const { toast } = useToast();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const { data: countryId } = useTenantCountry(tenantId);
+  const { data: countries } = useCountries();
+  const { data: branches } = useBranches(tenantId);
+  const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');
+  const createMutation = useCreateSupplier();
+  const updateMutation = useUpdateSupplier();
+
+  const countryIsoCode = countries?.find(c => c.id === countryId)?.iso_code;
+
+  const { data: allProducts } = useMasterProducts("", false, "", "");
+  const { data: supplierProducts, isLoading: isLoadingSupplierProducts, refetch: refetchSupplierProducts } = useProductsBySupplier(initialSupplier?.id);
+  const addSupplierProductMutation = useAddSupplierProduct();
+  const updateSupplierProductMutation = useUpdateSupplierProduct();
+  const toggleSupplierProductStatusMutation = useToggleSupplierProductStatus();
+  const { formatPrice } = usePriceFormat();
+  const [newProductId, setNewProductId] = useState("");
+  const [newSupplierPrice, setNewSupplierPrice] = useState<number | string>(0);
+
+  const handleUpdateSupplierProductPrice = async (id: string, price: number) => {
+    if (price <= 0) {
+        toast({ title: "Error", description: "El precio debe ser mayor a cero.", variant: "destructive" });
+        refetchSupplierProducts();
+        return;
+    }
+    await updateSupplierProductMutation.mutateAsync({ id, supplier_price: price });
+  };
+
+  const handleToggleSupplierProductStatus = async (id: string, is_active: boolean) => {
+    await toggleSupplierProductStatusMutation.mutateAsync({ id, is_active });
+  };
 
   const { formState: { isDirty } } = form;
 
@@ -164,9 +186,9 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
   const availableProducts = allProducts?.filter(p => !supplierProducts?.some(sp => sp.product_id === p.id));
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger || <Button><Plus className="w-4 h-4 mr-2" />Nuevo Proveedor</Button>}</DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent onInteractOutside={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenChange(false); }} onClick={(e) => e.stopPropagation()} className="w-[95vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-primary">
             {initialSupplier ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
@@ -178,7 +200,7 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
             <Tabs defaultValue="general">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="products" disabled={!currentSupplier}>Productos</TabsTrigger>
+                <TabsTrigger value="products">Productos</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="pt-4 space-y-4">
@@ -211,87 +233,54 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger }: SupplierD
                     </FormItem>
                 )} />
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryId} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
                 </div>
               </TabsContent>
 
               <TabsContent value="products" className="pt-4 space-y-4">
-                <h3 className="text-lg font-semibold">Productos del Proveedor</h3>
-                <div className="flex flex-col md:flex-row gap-2">
-                  <div className="flex-1">
-                    <Label htmlFor="product">Producto</Label>
-                    <Select value={newProductId} onValueChange={setNewProductId}>
-                      <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
-                      <SelectContent>{availableProducts?.map((product) => (<SelectItem key={product.id} value={product.id}>{product.name}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-32">
-                    <Label htmlFor="price">Precio ({formatPrice(0).replace(/\d|\.|,/g, '')})</Label>
-                    <Input id="price" type="number" step="0.01" value={newSupplierPrice} onChange={(e) => setNewSupplierPrice(parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <Button type="button" onClick={handleAddSupplierProduct} className="mt-4 md:mt-auto"><Plus className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Añadir</span></Button>
-                </div>
-                {isLoadingSupplierProducts ? (
-                    isMobile ? (
-                        <div className="space-y-4">
-                            {[...Array(3)].map((_, i) => <ProductCardSkeleton key={i} />)}
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {[...Array(3)].map((_, i) => <ProductListItemSkeleton key={i} />)}
-                        </div>
-                    )
-                ) : supplierProducts && supplierProducts.length > 0 ? (
-                    isMobile ? (
-                        <div className="space-y-4">
-                            {supplierProducts.map((sp) => (
-                                <Card key={sp.id}>
-                                    <CardHeader>
-                                        <CardTitle className="text-base">{sp.products.name}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div>
-                                            <Label htmlFor={`price-card-${sp.id}`}>Precio de Costo</Label>
-                                            <Input
-                                                id={`price-card-${sp.id}`}
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={sp.supplier_price}
-                                                onBlur={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)}
-                                                className="w-full text-right"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between rounded-md border p-3">
-                                            <Label htmlFor={`switch-card-${sp.id}`} className="text-sm font-medium">Activo</Label>
-                                            <Switch
-                                                id={`switch-card-${sp.id}`}
-                                                checked={sp.is_active}
-                                                onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)}
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                        {supplierProducts.map((sp) => (
-                          <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
-                            <div className="flex-1">
-                              <p className="font-medium">{sp.products.name}</p>
-                              <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Input type="number" step="0.01" defaultValue={sp.supplier_price} onBlur={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)} className="w-24 text-right" />
-                              <Switch checked={sp.is_active} onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)} aria-label={`Activar o desactivar ${sp.products?.name}`} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
+                {!currentSupplier ? (
+                  <p className="text-center text-slate-500">Guarde el proveedor para poder añadir productos.</p>
                 ) : (
-                  <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
+                  <>
+                    <h3 className="text-lg font-semibold">Productos del Proveedor</h3>
+                    <div className="flex flex-col md:flex-row gap-2">
+                      <div className="flex-1">
+                        <Label htmlFor="product">Producto</Label>
+                        <Select value={newProductId} onValueChange={setNewProductId}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
+                          <SelectContent>{availableProducts?.map((product) => (<SelectItem key={product.id} value={product.id}>{product.name}</SelectItem>))}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-32">
+                        <Label htmlFor="price">Precio ({formatPrice(0).replace(/\d|\.|,/g, '')})</Label>
+                        <Input id="price" type="number" step="0.01" value={newSupplierPrice} onChange={(e) => setNewSupplierPrice(parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <Button type="button" onClick={handleAddSupplierProduct} className="mt-4 md:mt-auto"><Plus className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Añadir</span></Button>
+                    </div>
+                    {isLoadingSupplierProducts ? (
+                            <div className="space-y-2">
+                                {[...Array(3)].map((_, i) => <ProductListItemSkeleton key={i} />)}
+                            </div>
+                    ) : supplierProducts && supplierProducts.length > 0 ? (
+                            <div className="space-y-2">
+                            {supplierProducts.map((sp) => (
+                              <div key={sp.id} className="flex items-center justify-between p-2 border rounded-md">
+                                <div className="flex-1">
+                                  <p className="font-medium">{sp.products.name}</p>
+                                  <p className="text-sm text-slate-500">{sp.suppliers.name}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Input type="number" step="0.01" defaultValue={sp.supplier_price} onBlur={(e) => handleUpdateSupplierProductPrice(sp.id, parseFloat(e.target.value) || 0)} className="w-24 text-right" />
+                                  <Switch checked={sp.is_active} onCheckedChange={(checked) => handleToggleSupplierProductStatus(sp.id, checked)} aria-label={`Activar o desactivar ${sp.products?.name}`} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                    ) : (
+                      <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
+                    )}
+                  </>
                 )}
               </TabsContent>
             </Tabs>

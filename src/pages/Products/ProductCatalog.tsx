@@ -6,14 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
   Package, 
   Search, 
   Edit, 
@@ -41,7 +33,6 @@ import AssignProductToBranchesDialog from "@/components/AssignProductToBranchesD
 import ManageProductPricesDialog from "@/components/ManageProductPricesDialog";
 import { ManageProductCommissionsDialog } from "@/components/ManageProductCommissionsDialog";
 import { UnitOfMeasureManagementDialog } from "@/components/UnitOfMeasureManagementDialog";
-import { useScreenSize } from "@/hooks/useScreenSize";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -59,7 +50,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog, navigate, handleDelete }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDialogOpen) return;
+
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -87,7 +82,10 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <MasterProductDialog product={product} trigger={
+            <MasterProductDialog 
+              product={product} 
+              onOpenChange={setIsDialogOpen}
+              trigger={
               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                 <Edit className="w-4 h-4 mr-2" />
                 <span>Edición rápida</span>
@@ -188,37 +186,7 @@ const ProductCardSkeleton = () => (
   </Card>
 );
 
-const ProductTableSkeleton = () => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Producto</TableHead>
-        <TableHead>Descripción</TableHead>
-        <TableHead>Marca</TableHead>
-        <TableHead>Categoría</TableHead>
-        <TableHead>Activo</TableHead>
-        <TableHead className="text-right">Acciones</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {[...Array(5)].map((_, i) => (
-        <TableRow key={i}>
-          <TableCell>
-            <Skeleton className="h-5 w-32 mb-2" />
-            <Skeleton className="h-4 w-24" />
-          </TableCell>
-          <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-          <TableCell className="text-right">
-            <Skeleton className="h-8 w-8 rounded-full" />
-          </TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
+
 
 const ProductCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -238,29 +206,15 @@ const ProductCatalog = () => {
   const { data: productCategories } = useProductCategories();
   const { mutate: updateProduct } = useUpdateMasterProduct();
   const { formatPrice } = usePriceFormat();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
   const navigate = useNavigate();
-  const { mutate: deleteProduct } = useDeleteMasterProduct();
-
-  const filteredProducts = products;
 
   const handleToggleStatus = (product: MasterProduct) => {
     updateProduct({ id: product.id, updates: { is_active: !product.is_active } });
   };
 
-  const handleDelete = (productId: string) => {
-    deleteProduct(productId);
-  };
-
   const handleOpenAssignProductDialog = (product: MasterProduct) => {
-    setSelectedProductForAssignment(product);
+    setSelectedProductForBranches(product);
     setIsAssignProductDialogOpen(true);
-  };
-
-  const handleAssignProductSuccess = () => {
-    setSelectedProductForAssignment(null);
-    setIsAssignProductDialogOpen(false);
   };
 
   const handleOpenManagePricesDialog = (product: MasterProduct) => {
@@ -268,26 +222,38 @@ const ProductCatalog = () => {
     setIsManagePricesDialogOpen(true);
   };
 
-  const handleManagePricesSuccess = () => {
-    setSelectedProductForPrices(null);
-    setIsManagePricesDialogOpen(false);
-  };
-
   const handleOpenProductCommissionsDialog = (product: MasterProduct) => {
     setSelectedProductForCommissions(product);
     setIsProductCommissionsDialogOpen(true);
   };
 
-  const handleProductCommissionsSuccess = () => {
-    setSelectedProductForCommissions(null);
-    setIsProductCommissionsDialogOpen(false);
+  const handleDelete = (productId: string) => {
+    // TODO: Implement delete product logic
+    console.log("Delete product", productId);
   };
+
+  const handleProductCommissionsSuccess = () => {
+    refetch();
+  };
+
+  const filteredProducts = products?.filter(product => {
+    const searchMatch = confirmedSearchTerm.toLowerCase() === '' ||
+      product.name.toLowerCase().includes(confirmedSearchTerm.toLowerCase()) ||
+      product.description?.toLowerCase().includes(confirmedSearchTerm.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(confirmedSearchTerm.toLowerCase());
+    const activityMatch = showInactive ? true : product.is_active;
+    const categoryMatch = !filterCategory || product.category_id === productCategories?.find(c => c.name === filterCategory)?.id;
+    const brandMatch = !filterBrand || product.brand_id === filterBrand;
+    return searchMatch && activityMatch && categoryMatch && brandMatch;
+  });
 
   const renderContent = () => {
     if (isLoading) {
-      return isMobile 
-        ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <ProductCardSkeleton key={i} />)}</div>
-        : <ProductTableSkeleton />;
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+          {[...Array(6)].map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
+      );
     }
 
     if (filteredProducts?.length === 0) {
@@ -301,8 +267,8 @@ const ProductCatalog = () => {
       );
     }
 
-    return isMobile ? (
-      <div className="space-y-4 p-4">
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
         {filteredProducts?.map((product: MasterProduct) => {
           const brand = brands?.find(b => b.id === product.brand_id);
           const category = productCategories?.find(c => c.id === product.category_id);
@@ -323,114 +289,6 @@ const ProductCatalog = () => {
           );
         })}
       </div>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Producto</TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Marca</TableHead>
-            <TableHead>Categoría</TableHead>
-            <TableHead>Activo</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredProducts?.map((product: MasterProduct) => {
-            const brand = brands?.find(b => b.id === product.brand_id);
-            return (
-              <TableRow 
-                key={product.id}
-                onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (
-                    target.closest('button') || 
-                    target.closest('[role="switch"]') || 
-                    target.closest('[data-radix-dropdown-menu-content]') ||
-                    target.closest('[role="menuitem"]')
-                  ) {
-                    return;
-                  }
-                  navigate(`/app/products/${product.id}`);
-                }}
-                className="cursor-pointer hover:bg-muted/50"
-              >
-                <TableCell>
-                  <div className="font-medium">{product.name}</div>
-                  {product.sku && <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>}
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm text-muted-foreground truncate max-w-xs">{product.description || "-"}</div>
-                </TableCell>
-                <TableCell>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</TableCell>
-                <TableCell>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={product.is_active || false}
-                    onCheckedChange={() => handleToggleStatus(product)}
-                  />
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <span className="sr-only">Abrir menú</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <MasterProductDialog product={product} trigger={
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          <span>Edición rápida</span>
-                        </DropdownMenuItem>
-                      } />
-                      <DropdownMenuItem onClick={() => navigate(`/app/products/${product.id}`)}>
-                        <FileEdit className="w-4 h-4 mr-2" />
-                        Edición Completa
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
-                        <Share2 className="w-4 h-4 mr-2" />
-                        Asignar a Sucursales
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(product)}>
-                        <DollarSign className="w-4 h-4 mr-2" />
-                        Gestionar Precios
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenProductCommissionsDialog(product)}>
-                        <Percent className="w-4 h-4 mr-2" />
-                        Gestionar Comisiones
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              ¿Estás seguro de que quieres eliminar <strong>{product.name}</strong>? Esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(product.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
     );
   };
 

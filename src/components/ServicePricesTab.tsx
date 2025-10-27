@@ -16,6 +16,9 @@ import { useServiceBranchPrices, useUpdateBranchService, MasterService } from "@
 import { useToast } from "@/hooks/use-toast";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { useQueryClient } from "@tanstack/react-query";
+import { ResponsivePricesTable } from './ResponsivePricesTable';
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { Check } from "lucide-react";
 
 interface ServicePricesTabProps {
   service: MasterService;
@@ -25,13 +28,15 @@ export const ServicePricesTab: React.FC<ServicePricesTabProps> = ({ service }) =
   const { toast } = useToast();
   const { formatPrice } = usePriceFormat();
   const queryClient = useQueryClient();
+  const screenSize = useScreenSize();
+  const isSmallScreen = screenSize === 'sm' || screenSize === 'md';
 
   const { data: branchPrices, isLoading, refetch } = useServiceBranchPrices(service.id);
   const { mutate: updateBranchService, isPending: isUpdating } = useUpdateBranchService();
 
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
   const [uniformPrice, setUniformPrice] = useState<string>("");
-  const [selectedBranchServiceIds, setSelectedBranchServiceIds] = useState<string[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (branchPrices) {
@@ -41,14 +46,14 @@ export const ServicePricesTab: React.FC<ServicePricesTabProps> = ({ service }) =
       });
       setEditedPrices(initialPrices);
       // Reset selection when data reloads
-      setSelectedBranchServiceIds([]);
+      setSelectedItemIds([]);
     }
   }, [branchPrices]);
 
-  const handlePriceChange = (branchServiceId: string, value: string) => {
+  const handlePriceChange = (itemId: string, value: string) => {
     setEditedPrices(prev => ({
       ...prev,
-      [branchServiceId]: parseFloat(value) || 0,
+      [itemId]: parseFloat(value) || 0,
     }));
   };
 
@@ -64,16 +69,16 @@ export const ServicePricesTab: React.FC<ServicePricesTabProps> = ({ service }) =
     }
 
     const newEditedPrices = { ...editedPrices };
-    selectedBranchServiceIds.forEach(id => {
+    selectedItemIds.forEach(id => {
       newEditedPrices[id] = price;
     });
     setEditedPrices(newEditedPrices);
     toast({ title: "Precio Unificado Aplicado", description: "El precio se ha aplicado a los servicios seleccionados.", variant: "success" });
   };
 
-  const handleSelectBranchService = (branchServiceId: string, isChecked: boolean) => {
-    setSelectedBranchServiceIds(prev => 
-      isChecked ? [...prev, branchServiceId] : prev.filter(id => id !== branchServiceId)
+  const handleSelectItem = (itemId: string, isChecked: boolean) => {
+    setSelectedItemIds(prev => 
+      isChecked ? [...prev, itemId] : prev.filter(id => id !== itemId)
     );
   };
 
@@ -120,57 +125,29 @@ export const ServicePricesTab: React.FC<ServicePricesTabProps> = ({ service }) =
           step="0.01"
           className="w-40"
         />
-        <Button onClick={handleApplyUniformPrice} disabled={selectedBranchServiceIds.length === 0 || isNaN(parseFloat(uniformPrice))}>
-          Aplicar a Seleccionados
-        </Button>
+        {isSmallScreen ? (
+          <Button onClick={handleApplyUniformPrice} disabled={selectedItemIds.length === 0 || isNaN(parseFloat(uniformPrice))} size="icon">
+            <Check className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button onClick={handleApplyUniformPrice} disabled={selectedItemIds.length === 0 || isNaN(parseFloat(uniformPrice))}>
+            Aplicar a Seleccionados
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
         <div className="text-center">Cargando precios por sucursal...</div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">Seleccionar</TableHead>
-              <TableHead>Sucursal</TableHead>
-              <TableHead>Precio Actual</TableHead>
-              <TableHead>Nuevo Precio</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {branchPrices?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Este servicio no está asignado a ninguna sucursal.
-                </TableCell>
-              </TableRow>
-            ) : (
-              branchPrices?.map(bp => (
-                <TableRow key={bp.branch_service_id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedBranchServiceIds.includes(bp.branch_service_id)}
-                      onCheckedChange={(checked) => handleSelectBranchService(bp.branch_service_id, !!checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{bp.branch_name}</TableCell>
-                  <TableCell>{formatPrice(bp.selling_price)}</TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={editedPrices[bp.branch_service_id] ?? ''}
-                      onChange={(e) => handlePriceChange(bp.branch_service_id, e.target.value)}
-                      min="0"
-                      step="0.01"
-                    />
-                  </TableCell>
-                  <TableCell>{bp.is_active ? "Activo" : "Inactivo"}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <ResponsivePricesTable
+          branchPrices={branchPrices?.map(bp => ({ ...bp, itemId: bp.branch_service_id })) || []}
+          editedPrices={editedPrices}
+          selectedItemIds={selectedItemIds}
+          onPriceChange={handlePriceChange}
+          onSelectItem={handleSelectItem}
+          formatPrice={formatPrice}
+          itemType="service"
+        />
       )}
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isUpdating}>

@@ -37,7 +37,7 @@ interface AttentionFormProps {
   onFinished: () => void;
   initialDate?: Date;
   attention?: any | null;
-  screenSize: 'mobile' | 'tablet' | 'desktop';
+  screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
 // MODIFICACIÓN: Componente interno para manejar la lógica de la vista previa
@@ -105,7 +105,7 @@ TimePickerButton.displayName = "TimePickerButton";
 
 export const AttentionForm = ({ branchId, onFinished, initialDate, attention = null, screenSize }: AttentionFormProps) => {
   const { toast } = useToast();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const isEditMode = !!attention;
 
   // --- State Declarations ---

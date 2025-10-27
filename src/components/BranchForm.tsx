@@ -11,10 +11,11 @@ import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
 import { MapDisplay } from '@/components/MapDisplay';
 import { Save, Store } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useTimezones } from '@/hooks/useTimezones';
 import { SearchableSelect } from './ui/searchable-select';
 import { useTenantById } from '@/hooks/useTenants';
 import { PhoneInput } from '@/components/PhoneInput';
+import { usePublicRegistrationData } from '@/hooks/usePublicRegistrationData';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre de la sucursal es requerido."),
@@ -39,17 +40,26 @@ interface BranchFormProps {
   branchToEdit?: Branch | null;
   onSuccess: () => void;
   tenantId: string;
-  countryRestriction?: string;
 }
 
-export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestriction }: BranchFormProps) {
+export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProps) {
   const { toast } = useToast();
   const createBranchMutation = useCreateBranch(tenantId);
   const updateBranchMutation = useUpdateBranch(tenantId);
-  const { data: timezones } = useTimezones();
   const { data: tenant } = useTenantById(tenantId);
+  const { data: publicData } = usePublicRegistrationData();
+  const countries = publicData?.countries;
 
-  const timezoneOptions = useMemo(() => timezones?.map(t => ({ value: t.name, label: t.name })) || [], [timezones]);
+  const countryRestriction = useMemo(() => {
+    if (!tenant?.country_id || !countries) return '';
+    return countries.find(c => c.id === tenant.country_id)?.iso_code || '';
+  }, [tenant, countries]);
+
+  const timezoneOptions = useMemo(() => {
+    if (!countryRestriction || !countries) return [];
+    const selectedCountry = countries.find(c => c.iso_code === countryRestriction);
+    return selectedCountry?.timezones?.map(tz => ({ value: tz, label: tz })) || [];
+  }, [countryRestriction, countries]);
 
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(formSchema),
@@ -195,18 +205,25 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
                 <CardDescription>Define la zona horaria para esta sucursal.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Controller name="timezone" control={form.control} render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Zona Horaria</FormLabel>
-                    <SearchableSelect 
-                      options={timezoneOptions} 
-                      value={timezoneOptions.find(t => t.value === field.value) || null} 
-                      onChange={(option) => field.onChange(option ? option.value : '')} 
-                      placeholder="Selecciona una zona horaria"
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {countryRestriction && countries ? (
+                  <Controller name="timezone" control={form.control} render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Zona Horaria</FormLabel>
+                      <SearchableSelect 
+                        options={timezoneOptions} 
+                        value={timezoneOptions.find(t => t.value === field.value) || null} 
+                        onChange={(option) => field.onChange(option ? option.value : '')} 
+                        placeholder="Selecciona una zona horaria"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                ) : (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -219,33 +236,20 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="contact_phone" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Teléfono de Contacto</FormLabel>
-                      <FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl>
-                      <FormMessage />
+                            <FormLabel>Teléfono de Contacto</FormLabel>
+                            <FormControl><PhoneInput {...field} defaultCountryIsoCode={countryRestriction} /></FormControl>                      <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (
                     <FormItem>
                       <FormLabel>WhatsApp</FormLabel>
-                      <FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl>
+                      <FormControl><PhoneInput {...field} defaultCountryIsoCode={countryRestriction} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                 </div>
-                <FormField control={form.control} name="commercial_email" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Comercial</FormLabel>
-                    <FormControl><Input type="email" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="website" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sitio Web</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="website" render={({ field }) => (<FormItem><FormLabel>Sitio Web</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
 
@@ -270,42 +274,12 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId, countryRestricti
                     </FormControl>
                     <FormMessage />
                   </FormItem>
-                  <FormField control={form.control} name="physical_address_line1" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Línea 1</FormLabel>
-                      <FormControl><Input {...field} readOnly /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="physical_address_line2" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Línea 2 (Opcional)</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <FormField control={form.control} name="physical_address_line1" render={({ field }) => (<FormItem><FormLabel>Línea 1</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="physical_address_line2" render={({ field }) => (<FormItem><FormLabel>Línea 2 (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <FormField control={form.control} name="physical_city" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ciudad</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="physical_state" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estado / Provincia</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="physical_postal_code" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Código Postal</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField control={form.control} name="physical_city" render={({ field }) => (<FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="physical_state" render={({ field }) => (<FormItem><FormLabel>Estado / Provincia</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="physical_postal_code" render={({ field }) => (<FormItem><FormLabel>Código Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
                 {watchedLat !== null && watchedLng !== null && (

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useMasterServiceDetails, useUpdateMasterService } from '@/hooks/useServices';
@@ -18,6 +18,7 @@ import { ServiceAssignmentTab } from '@/components/ServiceAssignmentTab';
 import { ChatterBox } from '@/components/ChatterBox';
 import { MasterService } from '@/types/services';
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ServiceFormData = Partial<MasterService & { tax_type_ids: string[] }>;
 
@@ -25,6 +26,7 @@ export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("info");
 
   const { data: service, isLoading: isLoadingService, error, refetch: refetchServiceDetails } = useMasterServiceDetails(id || '');
   const { data: serviceCategories, isLoading: isLoadingCategories } = useServiceCategories();
@@ -114,53 +116,109 @@ export default function ServiceDetailPage() {
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="info">Información</TabsTrigger>
-              <TabsTrigger value="prices">Precios</TabsTrigger>
-              <TabsTrigger value="commissions">Comisiones</TabsTrigger>
-              <TabsTrigger value="assignment">Asignación</TabsTrigger>
-            </TabsList>
-            <TabsContent value="info" className="mt-4">
-              <Card>
-                <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
-                <CardContent>
-                  <ServiceForm
-                    form={form}
-                    onSubmit={onSubmit}
-                    isEdit={true}
-                    isLoading={isUpdating}
-                    serviceCategories={serviceCategories}
-                    isLoadingCategories={isLoadingCategories}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="prices" className="mt-4">
-              <Card>
-                <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
-                <CardContent>
-                  <ServicePricesTab service={service} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="commissions" className="mt-4">
-              <Card>
-                <CardHeader><CardTitle>Comisiones</CardTitle></CardHeader>
-                <CardContent>
-                  <ServiceCommissionsTab serviceId={service.id} serviceName={service.name} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="assignment" className="mt-4">
-              <Card>
-                <CardHeader><CardTitle>Asignación a Sucursales</CardTitle></CardHeader>
-                <CardContent>
-                  <ServiceAssignmentTab service={service} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <div className="md:hidden">
+            <Select onValueChange={setActiveTab} value={activeTab}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar una sección..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="info">Información</SelectItem>
+                <SelectItem value="prices">Precios</SelectItem>
+                <SelectItem value="commissions">Comisiones</SelectItem>
+                <SelectItem value="assignment">Asignación</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="pt-4">
+              {activeTab === 'info' && (
+                <Card>
+                  <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceForm
+                      form={form}
+                      onSubmit={onSubmit}
+                      isEdit={true}
+                      isLoading={isUpdating}
+                      serviceCategories={serviceCategories}
+                      isLoadingCategories={isLoadingCategories}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'prices' && (
+                <Card>
+                  <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServicePricesTab service={service} />
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'commissions' && (
+                <Card>
+                  <CardHeader><CardTitle>Comisiones</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceCommissionsTab serviceId={service.id} serviceName={service.name} />
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'assignment' && (
+                <Card>
+                  <CardHeader><CardTitle>Asignación a Sucursales</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceAssignmentTab service={service} />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <Tabs defaultValue="info" onValueChange={setActiveTab} value={activeTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="info">Información</TabsTrigger>
+                <TabsTrigger value="prices">Precios</TabsTrigger>
+                <TabsTrigger value="commissions">Comisiones</TabsTrigger>
+                <TabsTrigger value="assignment">Asignación</TabsTrigger>
+              </TabsList>
+              <TabsContent value="info" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle>Información General</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceForm
+                      form={form}
+                      onSubmit={onSubmit}
+                      isEdit={true}
+                      isLoading={isUpdating}
+                      serviceCategories={serviceCategories}
+                      isLoadingCategories={isLoadingCategories}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="prices" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServicePricesTab service={service} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="commissions" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle>Comisiones</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceCommissionsTab serviceId={service.id} serviceName={service.name} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="assignment" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle>Asignación a Sucursales</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceAssignmentTab service={service} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
         <div>
           <ChatterBox resourceType="services" resourceId={service.id} tenantId={service.tenant_id} containerClassName="h-[calc(100vh-22rem)]" />

@@ -12,11 +12,17 @@ import { ProductImageGallery } from "./ProductImageGallery";
 interface MasterProductDialogProps {
   product?: MasterProduct;
   trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const MasterProductDialog = ({ product, trigger }: MasterProductDialogProps) => {
+export const MasterProductDialog = ({ product, trigger, onOpenChange }: MasterProductDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
 
   const { mutate: createProduct, isPending: isCreating } = useCreateMasterProduct();
   const { mutate: updateProduct, isPending: isUpdating } = useUpdateMasterProduct();
@@ -71,7 +77,7 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button>
@@ -80,7 +86,7 @@ export const MasterProductDialog = ({ product, trigger }: MasterProductDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent onInteractOutside={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenChange(false); }} className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{product ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
         </DialogHeader>

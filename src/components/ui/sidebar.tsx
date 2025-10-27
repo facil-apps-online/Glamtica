@@ -30,7 +30,8 @@ type SidebarContext = {
   setOpen: (open: boolean) => void
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
-  screenSize: "mobile" | "tablet" | "desktop"
+  screenSize: "sm" | "md" | "lg" | "xl" | "2xl"
+  isMobile: boolean
   toggleSidebar: () => void
 }
 
@@ -66,7 +67,7 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const screenSize = useScreenSize()
-    const isMobile = screenSize === 'mobile' || screenSize === 'tablet'
+    const isMobile = screenSize === 'sm' || screenSize === 'md'
     const [openMobile, setOpenMobile] = React.useState(false)
 
     const [_open, _setOpen] = React.useState(defaultOpen)
@@ -114,8 +115,9 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        isMobile,
       }),
-      [state, open, setOpen, screenSize, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, screenSize, openMobile, setOpenMobile, toggleSidebar, isMobile]
     )
 
     return (
@@ -164,8 +166,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { screenSize, state, openMobile, setOpenMobile } = useSidebar()
-    const isMobile = screenSize === 'mobile' || screenSize === 'tablet'
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -545,8 +546,7 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { screenSize, state } = useSidebar()
-    const isMobile = screenSize === 'mobile'
+    const { isMobile, state } = useSidebar()
 
     const button = (
       <Comp

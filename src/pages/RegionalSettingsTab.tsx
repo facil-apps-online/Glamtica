@@ -8,8 +8,7 @@ import { Form, FormItem, FormLabel } from '@/components/ui/form';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCountries, useLocalizations } from '@/hooks/useLocalization';
-import { useCurrencies } from '@/hooks/useCurrencies';
+import { useRegionalSettingsData } from '@/hooks/useRegionalSettingsData';
 import { useTimezones } from '@/hooks/useTimezones';
 import { useUpdateRegionalSettings } from '@/hooks/useProfileSettings'; // Hook específico
 
@@ -23,10 +22,9 @@ const regionalSettingsFormSchema = z.object({
 export const RegionalSettingsTab = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
-  const { data: countries, isLoading: isLoadingCountries } = useCountries();
-  const { data: localizations, isLoading: isLoadingLocalizations } = useLocalizations();
-  const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();
-  const { data: timezones, isLoading: isLoadingTimezones } = useTimezones();
+  const { data: regionalSettingsData, isLoading: isLoadingRegionalSettings } = useRegionalSettingsData();
+  const { countries, localizations, currencies } = regionalSettingsData || {};
+
   const regionalSettingsMutation = useUpdateRegionalSettings(); // Mutación específica
 
   const form = useForm<z.infer<typeof regionalSettingsFormSchema>>({
@@ -40,7 +38,7 @@ export const RegionalSettingsTab = () => {
   });
 
   useEffect(() => {
-    if (profile) {
+    if (profile && countries && localizations && currencies) {
       form.reset({
         country_id: profile.country_id || null,
         language_id: profile.language_id || null,
@@ -48,7 +46,7 @@ export const RegionalSettingsTab = () => {
         timezone: profile.timezone || null,
       });
     }
-  }, [profile, form.reset]);
+  }, [profile, form.reset, countries, localizations, currencies]);
 
   const onSubmit = (values: z.infer<typeof regionalSettingsFormSchema>) => {
     regionalSettingsMutation.mutate(values, {
@@ -62,22 +60,44 @@ export const RegionalSettingsTab = () => {
     [countries]
   );
   
-  const activeLanguageOptions = useMemo(() => 
-    localizations?.filter(l => l.is_active).map(l => ({ value: l.id, label: l.name })) || [],
-    [localizations]
-  );
+  const countryId = form.watch('country_id');
 
-  const activeCurrencyOptions = useMemo(() => 
-    currencies?.filter(c => c.is_active).map(c => ({ value: c.id, label: `${c.name} (${c.code})` })) || [],
-    [currencies]
-  );
+  const activeLanguageOptions = useMemo(() => {
+    if (countryId) {
+      const selectedCountry = countries?.find(c => c.id === countryId);
+      if (selectedCountry && selectedCountry.default_localization_id) {
+        return localizations?.filter(l => l.id === selectedCountry.default_localization_id).map(l => ({ value: l.id, label: l.name })) || [];
+      }
+      return []; // If country selected but no default localization, show empty
+    }
+    return localizations?.filter(l => l.is_active).map(l => ({ value: l.id, label: l.name })) || [];
+  }, [localizations, countryId, countries]);
 
-  const timezoneOptions = useMemo(() => 
-    timezones?.map(t => ({ value: t.name, label: t.name })) || [],
-    [timezones]
-  );
+  const activeCurrencyOptions = useMemo(() => {
+    if (countryId) {
+      const selectedCountry = countries?.find(c => c.id === countryId);
+      if (selectedCountry && selectedCountry.default_currency_id) {
+        return currencies?.filter(c => c.id === selectedCountry.default_currency_id).map(c => ({ value: c.id, label: `${c.name} (${c.code})` })) || [];
+      }
+      return []; // If country selected but no default currency, show empty
+    }
+    return currencies?.filter(c => c.is_active).map(c => ({ value: c.id, label: `${c.name} (${c.code})` })) || [];
+  }, [currencies, countryId, countries]);
 
-  const isLoading = isLoadingCountries || isLoadingLocalizations || isLoadingCurrencies || isLoadingTimezones;
+  const timezoneOptions = useMemo(() => {
+    if (!countryId) {
+      return [];
+    }
+    const selectedCountry = countries?.find(c => c.id === countryId);
+    if (!selectedCountry || !selectedCountry.timezones) {
+      return [];
+    }
+    return selectedCountry.timezones.map(tz => ({ value: tz, label: tz }));
+  }, [countryId, countries]);
+
+  const isLoading = isLoadingRegionalSettings;
+
+
 
   return (
     <div className="space-y-6 mt-4">

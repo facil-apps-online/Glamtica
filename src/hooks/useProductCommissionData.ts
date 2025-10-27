@@ -65,7 +65,7 @@ export const useProductCommissionData = (productId?: string, branchId?: string) 
           }
           transformedDataMap.get(branchData.branch_id)?.users.push({
             user_id: userData.user_id,
-            user_name: userData.user_name,
+            user_name: `${userData.first_name} ${userData.last_name}`,
             commission_rate: branchData.commission_rate,
             commission_id: branchData.commission_id,
           });
@@ -79,7 +79,7 @@ export const useProductCommissionData = (productId?: string, branchId?: string) 
 
       return sortedTransformedData;
     },
-    enabled: !!productId && !!branchId,
+    enabled: !!productId,
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos
   });
 };

@@ -22,7 +22,11 @@ export interface Country {
   currencies?: { name: string; code: string };
   languages?: { name: string };
   phone_prefixes?: { prefix: string };
+  timezones?: string[] | null;
+  timezone?: string | null;
 }
+
+
 
 // Hook para obtener todas las localizaciones (antes idiomas)
 export const useLocalizations = () => {
@@ -94,6 +98,9 @@ export const useCountries = () => {
       if (error) throw error;
       return data;
     },
+    select: (data) => data.map(country => ({
+      ...country,
+    })),
   });
 };
 

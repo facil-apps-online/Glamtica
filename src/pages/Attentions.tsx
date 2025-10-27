@@ -351,7 +351,7 @@ export default function Attentions() {
     setViewingPaymentsFor(attention);
   };
 
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const NewAttentionButton = (
     <TooltipProvider>
@@ -453,7 +453,7 @@ export default function Attentions() {
               onDateChange={setDateFilter} 
               selectedUserId={selectedUser}
             />
-            <UserSelector selectedUserId={selectedUser} onUserChange={setSelectedUser} users={users} />
+            <UserSelector selectedUserId={selectedUser} onUserChange={setSelectedUser} users={users} label="Profesionales" />
             <AttentionStatusFilter selectedStatus={statusFilter} onStatusChange={setStatusFilter} />
           </div>
         </CardContent>
@@ -613,7 +613,7 @@ interface AttentionCardProps {
   formatPrice: (price: number) => string;
   onEdit: (attention: Attention) => void;
   onOpenPaymentDialog: (attention: Attention) => void;
-  screenSize: 'mobile' | 'tablet' | 'desktop';
+  screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   branchId: string;
 }
 
@@ -637,7 +637,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, sc
     }
   };
 
-  const isMobile = screenSize === 'mobile';
+
 
   const standaloneServices = attention.attention_services?.filter(s => !s.attention_combo_id) || [];
   const standaloneProducts = attention.attention_products?.filter(p => !p.attention_combo_id) || [];

@@ -147,7 +147,7 @@ export function UsersTab() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const [isAssignmentManagerOpen, setIsAssignmentManagerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<GroupedUser | null>(null);

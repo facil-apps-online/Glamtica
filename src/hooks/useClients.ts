@@ -26,6 +26,16 @@ export interface Client {
   updated_at: string;
   client_branches: ClientBranch[];
   branches?: Branch[]; // For useClientDetails
+
+  // Structured Address
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 // Hook to get all clients for the tenant

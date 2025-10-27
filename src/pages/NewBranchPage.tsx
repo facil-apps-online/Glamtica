@@ -14,8 +14,6 @@ export default function NewBranchPage() {
   const { data: tenant } = useTenantById(tenantId!);
   const { data: countries } = useCountries();
 
-  const countryRestriction = countries?.find(c => c.id === tenant?.country_id)?.iso_code || '';
-
   if (!tenantId) {
     return <div className="p-4 mt-4">ID de Tenant no disponible.</div>;
   }
@@ -31,7 +29,6 @@ export default function NewBranchPage() {
       <BranchForm
         onSuccess={() => navigate('/branches')}
         tenantId={tenantId}
-        countryRestriction={countryRestriction}
       />
     </div>
   );

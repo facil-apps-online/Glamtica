@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,25 +15,30 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
 import { debounce } from "@/lib/utils";
+import { useScreenSize } from "@/hooks/useScreenSize";
 
 interface ComboDialogProps {
   combo?: Combo | null;
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
+  trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-type SelectableItem = {
-  value: string;
-  label: string;
-  data: any;
-  type: 'product' | 'service';
-};
-
-export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDialogProps) => {
+export const ComboDialog = ({ combo, trigger, onOpenChange, onSuccess }: ComboDialogProps) => {
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (onOpenChange) {
+      onOpenChange(isOpen);
+    }
+  };
+
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
+  const screenSize = useScreenSize();
+  const isSmallScreen = screenSize === 'sm' || screenSize === 'md';
 
   const branchId = currentAssignment?.role_name === 'tenant_super_admin' 
     ? selectedBranchId 
@@ -44,6 +49,7 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
   const [sku, setSku] = useState("");
   const [items, setItems] = useState<any[]>([]);
   const [itemSearchTerm, setItemSearchTerm] = useState("");
+  const [initialComboState, setInitialComboState] = useState<any>(null);
 
   const debouncedSetItemSearchTerm = useMemo(() => debounce(setItemSearchTerm, 300), []);
 
@@ -64,7 +70,7 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
   }, [masterProducts, masterServices]);
 
   useEffect(() => {
-    if (combo && isOpen) {
+    if (combo && open) {
       setName(combo.name || "");
       setDescription(combo.description || "");
       setSku(combo.sku || "");
@@ -76,10 +82,12 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
         duration: item.service?.duration_minutes || 0,
       }));
       setItems(initialItems);
+      setInitialComboState({ name: combo.name || "", description: combo.description || "", sku: combo.sku || "", items: initialItems });
     } else {
       resetForm();
+      setInitialComboState(null);
     }
-  }, [combo, isOpen]);
+  }, [combo, open]);
 
   useEffect(() => {
     const newItems = JSON.parse(JSON.stringify(items));
@@ -151,6 +159,25 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
     setItemSearchTerm("");
   };
 
+  const hasChanges = () => {
+    if (!initialComboState) return false;
+    if (name !== initialComboState.name) return true;
+    if (description !== initialComboState.description) return true;
+    if (sku !== initialComboState.sku) return true;
+    if (items.length !== initialComboState.items.length) return true;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const initialItem = initialComboState.items[i];
+      if (item.product_id !== initialItem.product_id) return true;
+      if (item.service_id !== initialItem.service_id) return true;
+      if (item.quantity !== initialItem.quantity) return true;
+      if (item.price !== initialItem.price) return true;
+      if (item.offset_minutes !== initialItem.offset_minutes) return true;
+      if (item.is_parallel !== initialItem.is_parallel) return true;
+    }
+    return false;
+  };
+
   const handleSuccess = () => {
     toast({ title: "Éxito", description: `Combo ${combo ? 'actualizado' : 'creado'} correctamente.`, variant: "success" });
     onSuccess?.();
@@ -187,13 +214,14 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent onInteractOutside={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenChange(false); }} className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>{combo ? "Editar Combo" : "Nuevo Combo"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid ${isSmallScreen ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
             <div className="space-y-2"><Label htmlFor="name">Nombre del Combo</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>
             <div className="space-y-2"><Label htmlFor="sku">SKU</Label><Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} /></div>
           </div>
@@ -234,7 +262,7 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
               </PopoverContent>
             </Popover>
 
-            {items.length > 0 && (
+            {items.length > 0 && !isSmallScreen && (
               <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground font-medium">
                 <div className="w-10" /> {/* Spacer for link button */}
                 <div className="flex-grow">Ítem</div>
@@ -246,61 +274,117 @@ export const ComboDialog = ({ combo, isOpen, onOpenChange, onSuccess }: ComboDia
             )}
             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
               {items.map((item, index) => (
-                <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
-                  <div className="w-10">
+                isSmallScreen ? (
+                  <div key={index} className="p-4 border rounded-md space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="font-medium text-sm flex-grow">{item.name}</div>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Cantidad</Label>
+                        <Input 
+                          type="number" 
+                          placeholder="Cant." 
+                          value={item.quantity} 
+                          onChange={(e) => {
+                            const isDecimalAllowed = item.product?.allow_decimal_sale;
+                            const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+                            handleUpdateItem(index, 'quantity', value || 0);
+                          }}
+                          min={item.product?.allow_decimal_sale ? 0.01 : 1}
+                          step={item.product?.allow_decimal_sale ? 0.01 : 1}
+                          disabled={item.service_id !== null}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Precio</Label>
+                        <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
+                      </div>
+                    </div>
                     {item.service_id && (
-                      <Button 
-                        type="button"
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
-                        disabled={index === 0}
-                        title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
-                      >
-                        <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
-                      </Button>
+                      <div className="space-y-2">
+                        <Label>Desfase (min)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="number" 
+                            placeholder="Desfase" 
+                            value={item.offset_minutes || 0} 
+                            onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
+                            min={0}
+                            disabled={!item.is_parallel}
+                          />
+                          <Button 
+                            type="button"
+                            variant="outline" 
+                            size="icon" 
+                            onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
+                            disabled={index === 0}
+                            title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
+                          >
+                            <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="flex-grow font-medium text-sm">{item.name}</div>
-                  <div className="w-28">
-                    {item.service_id && (
+                ) : (
+                  <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                    <div className="w-10">
+                      {item.service_id && (
+                        <Button 
+                          type="button"
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleUpdateItem(index, 'is_parallel', !item.is_parallel)}
+                          disabled={index === 0}
+                          title={index === 0 ? "El primer ítem no puede ser paralelo" : "Marcar como paralelo"}
+                        >
+                          <Link className={`h-4 w-4 ${item.is_parallel ? 'text-blue-500' : ''}`} />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex-grow font-medium text-sm">{item.name}</div>
+                    <div className="w-28">
+                      {item.service_id && (
+                        <Input 
+                          type="number" 
+                          placeholder="Desfase" 
+                          value={item.offset_minutes || 0} 
+                          onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
+                          min={0}
+                          disabled={!item.is_parallel}
+                        />
+                      )}
+                    </div>
+                    <div className="w-20">
                       <Input 
                         type="number" 
-                        placeholder="Desfase" 
-                        value={item.offset_minutes || 0} 
-                        onChange={(e) => handleUpdateItem(index, 'offset_minutes', parseInt(e.target.value, 10) || 0)} 
-                        min={0}
-                        disabled={!item.is_parallel}
+                        placeholder="Cant." 
+                        value={item.quantity} 
+                        onChange={(e) => {
+                          const isDecimalAllowed = item.product?.allow_decimal_sale;
+                          const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+                          handleUpdateItem(index, 'quantity', value || 0);
+                        }}
+                        min={item.product?.allow_decimal_sale ? 0.01 : 1}
+                        step={item.product?.allow_decimal_sale ? 0.01 : 1}
+                        disabled={item.service_id !== null}
                       />
-                    )}
+                    </div>
+                    <div className="w-28">
+                      <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
                   </div>
-                  <div className="w-20">
-                    <Input 
-                      type="number" 
-                      placeholder="Cant." 
-                      value={item.quantity} 
-                      onChange={(e) => {
-                        const isDecimalAllowed = item.product?.allow_decimal_sale;
-                        const value = isDecimalAllowed ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
-                        handleUpdateItem(index, 'quantity', value || 0);
-                      }}
-                      min={item.product?.allow_decimal_sale ? 0.01 : 1}
-                      step={item.product?.allow_decimal_sale ? 0.01 : 1}
-                      disabled={item.service_id !== null}
-                    />
-                  </div>
-                  <div className="w-28">
-                    <Input type="number" placeholder="Precio" value={item.price} onChange={(e) => handleUpdateItem(index, 'price', parseFloat(e.target.value))} min={0} step="0.01" />
-                  </div>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><X className="h-4 w-4" /></Button>
-                </div>
+                )
               ))}
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={isCreating || isUpdating}>{combo ? "Actualizar Combo" : "Crear Combo"}</Button>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={isCreating || isUpdating || !hasChanges()}>{combo ? "Actualizar Combo" : "Crear Combo"}</Button>
           </div>
         </form>
       </DialogContent>

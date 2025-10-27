@@ -35,10 +35,18 @@ interface EquipmentDialogProps {
   trigger?: React.ReactNode;
   equipment?: Equipment;
   onSuccess?: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equipment, onSuccess }) => {
+export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equipment, onSuccess, onOpenChange }) => {
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (onOpenChange) {
+      onOpenChange(isOpen);
+    }
+  };
   const { types: equipmentTypes, loading: typesLoading } = useEquipmentTypes();
   const { brands: equipmentBrands, loading: brandsLoading } = useEquipmentBrands();
   const { toast } = useToast();
@@ -122,7 +130,7 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           {trigger || (
             <Button>
@@ -131,7 +139,7 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
             </Button>
           )}
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent onInteractOutside={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenChange(false); }} className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>{equipment ? 'Editar Equipo' : 'Añadir Equipo'}</DialogTitle>
           </DialogHeader>

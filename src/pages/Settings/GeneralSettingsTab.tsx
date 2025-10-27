@@ -1,15 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { SearchableSelect } from '@/components/ui/searchable-select';
-import { useTimezones } from '@/hooks/useTimezones';
-import { useLocalizations, useCountries } from '@/hooks/useLocalization';
-import { useCurrencies } from '@/hooks/useCurrencies';
-import { useTenantById, useUpdateTenant } from '@/hooks/useTenants';
+import { useUpdateTenant } from '@/hooks/useTenants';
+import { useTenantSettingsData, TenantSettingsData } from '@/hooks/useTenantSettingsData';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
@@ -19,6 +12,12 @@ import { Save, Building } from 'lucide-react';
 import { TenantAdminGeneralView } from './TenantAdminGeneralView';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePublicRegistrationData } from '@/hooks/usePublicRegistrationData';
+import { z } from 'zod';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { FilterableSelect } from '@/components/FilterableSelect';
 
 const formSchema = z.object({
   name: z.string().min(2, "El nombre comercial es requerido."),
@@ -74,15 +73,13 @@ const SettingsFormSkeleton = () => (
   </Card>
 );
 
-const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
+import { TenantSettingsData } from '@/hooks/useTenantSettingsData';
+
+const SuperAdminGeneralSettingsView = ({ tenantId, settingsData, isLoading: isLoadingTenant }: { tenantId: string, settingsData: TenantSettingsData | undefined, isLoading: boolean }) => {
   const { toast } = useToast();
-  const { data: tenant, isLoading: isLoadingTenant } = useTenantById(tenantId);
   const updateTenantMutation = useUpdateTenant();
-  const { data: timezones } = useTimezones();
-  const { data: localizations } = useLocalizations();
-  const { data: currencies } = useCurrencies();
-  const { data: countries } = useCountries();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  const { tenant, countries, languages, currencies } = settingsData || {};
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -93,54 +90,83 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
   const watchedLat = form.watch('latitude');
   const watchedLng = form.watch('longitude');
 
-  const activeCountryOptions = useMemo(() => countries?.filter(c => c.is_active).map(c => ({ value: c.id, label: c.name })) || [], [countries]);
-  const activeLocalizationOptions = useMemo(() => localizations?.filter(l => l.is_active).map(l => ({ value: l.iso_code, label: l.name })) || [], [localizations]);
-  const activeCurrencyOptions = useMemo(() => currencies?.filter(c => c.is_active).map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` })) || [], [currencies]);
-  const timezoneOptions = useMemo(() => timezones?.map(t => ({ value: t.name, label: t.name })) || [], [timezones]);
   const countryRestriction = useMemo(() => {
-    if (!watchedCountryId || !countries) return '';
-    return countries.find(c => c.id === watchedCountryId)?.iso_code || '';
+    if (!watchedCountryId || !countries) return null;
+    const selectedCountry = countries.find(c => c.id === watchedCountryId);
+    return selectedCountry?.iso_code || null;
+  }, [watchedCountryId, countries]);
+
+  const activeCountryOptions = useMemo(() => countries?.map(c => ({ value: c.id, label: c.name })) || [], [countries]);
+  const activeLocalizationOptions = useMemo(() => {
+    if (!languages || !watchedCountryId || !countries) return [];
+    const selectedCountry = countries.find(c => c.id === watchedCountryId);
+    if (!selectedCountry) return [];
+    const countryIsoCode = selectedCountry.iso_code;
+    return languages
+        .filter(l => l.iso_code.endsWith(`-${countryIsoCode}`))
+        .map(l => ({ value: l.iso_code, label: l.name }));
+  }, [languages, watchedCountryId, countries]);
+
+  const activeCurrencyOptions = useMemo(() => {
+    if (!currencies) return [];
+    return currencies.map(c => ({ value: c.id, label: `${c.name} (${c.symbol})` }));
+  }, [currencies]);
+  const timezoneOptions = useMemo(() => {
+    if (!watchedCountryId || !countries) return [];
+    const selectedCountry = countries.find(c => c.id === watchedCountryId);
+    return selectedCountry?.timezones?.map(tz => ({ value: tz, label: tz })) || [];
   }, [watchedCountryId, countries]);
 
   useEffect(() => {
-    if (tenant) {
-      form.reset({
-        name: tenant.name || '',
-        country_id: tenant.country_id || '',
-        default_language_code: tenant.default_language_code || '',
-        default_currency_id: tenant.default_currency_id || '',
-        default_timezone: tenant.default_timezone || '',
-        contact_phone: tenant.contact_phone || '',
-        whatsapp_phone: tenant.whatsapp_phone || '',
-        commercial_email: tenant.commercial_email || '',
-        legal_name: tenant.legal_name || '',
-        tax_id: tenant.tax_id || '',
-        billing_address: tenant.billing_address || '',
-        einvoicing_email: tenant.einvoicing_email || '',
-        physical_address_line1: tenant.physical_address_line1 || '',
-        physical_address_line2: tenant.physical_address_line2 || '',
-        physical_city: tenant.physical_city || '',
-        physical_state: tenant.physical_state || '',
-        physical_postal_code: tenant.physical_postal_code || '',
-        website: tenant.website || '',
+    if (tenant && countries && languages) {
+      const valuesToSet: Partial<z.infer<typeof formSchema>> = {
+        name: tenant.name,
+        country_id: tenant.country_id,
+        default_language_code: tenant.default_language_code,
+        default_currency_id: tenant.default_currency_id,
+        default_timezone: tenant.default_timezone,
+        contact_phone: tenant.contact_phone,
+        whatsapp_phone: tenant.whatsapp_phone,
+        commercial_email: tenant.commercial_email,
+        legal_name: tenant.legal_name,
+        tax_id: tenant.tax_id,
+        billing_address: tenant.billing_address,
+        einvoicing_email: tenant.einvoicing_email,
+        physical_address_line1: tenant.physical_address_line1,
+        physical_address_line2: tenant.physical_address_line2,
+        physical_city: tenant.physical_city,
+        physical_state: tenant.physical_state,
+        physical_postal_code: tenant.physical_postal_code,
+        website: tenant.website,
         latitude: tenant.latitude || null,
         longitude: tenant.longitude || null,
-      });
-      setIsInitialLoad(false);
-    }
-  }, [tenant, form]);
+      };
 
-  useEffect(() => {
-    if (!isInitialLoad && watchedCountryId && countries && localizations) {
-      const country = countries.find(c => c.id === watchedCountryId);
-      if (country) {
-        const localization = localizations.find(l => l.id === country.default_localization_id);
-        if (localization) form.setValue('default_language_code', localization.iso_code, { shouldDirty: true });
-        if (country.default_currency_id) form.setValue('default_currency_id', country.default_currency_id, { shouldDirty: true });
-        if (country.timezone) form.setValue('default_timezone', country.timezone, { shouldDirty: true });
+      const countryId = tenant.country_id;
+      if (countryId) {
+        const country = countries.find(c => c.id === countryId);
+        if (country) {
+            if (!valuesToSet.default_language_code) {
+                const localization = languages.find(l => l.id === country.default_localization_id);
+                if (localization) {
+                  valuesToSet.default_language_code = localization.iso_code;
+                }
+            }
+            if (!valuesToSet.default_currency_id) {
+                if (country.default_currency_id) {
+                  valuesToSet.default_currency_id = country.default_currency_id;
+                }
+            }
+            if (!valuesToSet.default_timezone) {
+                if (country.timezones && country.timezones.length > 0) {
+                  valuesToSet.default_timezone = country.timezones[0];
+                }
+            }
+        }
       }
+      form.reset(valuesToSet);
     }
-  }, [watchedCountryId, countries, localizations, form, isInitialLoad]);
+  }, [tenant, countries, languages, form]);
 
   const handlePlaceSelected = (place: google.maps.places.PlaceResult) => {
     const get = (type: string) => place.address_components?.find(c => c.types.includes(type))?.long_name || '';
@@ -166,7 +192,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
     });
   };
 
-  if (isLoadingTenant) return <SettingsFormSkeleton />;
+  if (isLoadingTenant || !settingsData) return <SettingsFormSkeleton />;
 
   return (
     <Card>
@@ -197,10 +223,37 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Controller name="country_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>País</FormLabel><SearchableSelect options={activeCountryOptions} value={activeCountryOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un país" /></FormItem>)} />
-                  <Controller name="default_language_code" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><SearchableSelect options={activeLocalizationOptions} value={activeLocalizationOptions.find(l => l.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona un idioma" /></FormItem>)} />
-                  <Controller name="default_currency_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><SearchableSelect options={activeCurrencyOptions} value={activeCurrencyOptions.find(c => c.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una moneda" /></FormItem>)} />
-                  <Controller name="default_timezone" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><SearchableSelect options={timezoneOptions} value={timezoneOptions.find(t => t.value === field.value) || null} onChange={(option) => field.onChange(option ? option.value : '')} placeholder="Selecciona una zona" /></FormItem>)} />
+                  <Controller
+                    name="country_id"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>País</FormLabel>
+                        <FilterableSelect
+                          options={activeCountryOptions}
+                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            if (value && countries && languages) {
+                              const country = countries.find(c => c.id === value);
+                              if (country) {
+                                const localization = languages.find(l => l.id === country.default_localization_id);
+                                if (localization) form.setValue('default_language_code', localization.iso_code, { shouldDirty: true });
+                                if (country.default_currency_id) form.setValue('default_currency_id', country.default_currency_id, { shouldDirty: true });
+                                if (country.timezones && country.timezones.length > 0) {
+                                    form.setValue('default_timezone', country.timezones[0], { shouldDirty: true });
+                                }
+                              }
+                            }
+                          }}
+                          placeholder="Selecciona un país"
+                        />
+                      </FormItem>
+                    )}
+                  />
+                  <Controller name="default_language_code" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Idioma</FormLabel><FilterableSelect options={activeLocalizationOptions} value={field.value} onValueChange={field.onChange} placeholder="Selecciona un idioma" /></FormItem>)} />
+                  <Controller name="default_currency_id" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Moneda</FormLabel><FilterableSelect options={activeCurrencyOptions} value={field.value} onValueChange={field.onChange} placeholder="Selecciona una moneda" /></FormItem>)} />
+                  <Controller name="default_timezone" control={form.control} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Zona Horaria</FormLabel><FilterableSelect options={timezoneOptions} value={field.value} onValueChange={field.onChange} placeholder="Selecciona una zona" /></FormItem>)} />
                 </div>
               </CardContent>
             </Card>
@@ -212,8 +265,8 @@ const SuperAdminGeneralSettingsView = ({ tenantId }: { tenantId: string }) => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryId={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="contact_phone" render={({ field }) => (<FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="whatsapp_phone" render={({ field }) => (<FormItem><FormLabel>WhatsApp</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryRestriction} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="commercial_email" render={({ field }) => (<FormItem><FormLabel>Email Comercial</FormLabel><FormControl><Input autoComplete="off" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
               </CardContent>
@@ -277,12 +330,14 @@ export function GeneralSettingsTab() {
   const userRole = currentAssignment?.role_name;
   const isSuperAdmin = userRole === 'tenant_super_admin';
 
+  const { data: settingsData, isLoading: isLoadingTenant } = useTenantSettingsData(tenantId);
+
   if (!tenantId) {
     return <div>Cargando...</div>;
   }
 
   if (isSuperAdmin) {
-    return <SuperAdminGeneralSettingsView tenantId={tenantId} />;
+    return <SuperAdminGeneralSettingsView tenantId={tenantId} settingsData={settingsData} isLoading={isLoadingTenant} />;
   }
 
   return <TenantAdminGeneralView />;

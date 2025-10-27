@@ -6,14 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
   Search, 
   Edit, 
   Share2, 
@@ -28,16 +20,18 @@ import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { ComboDialog } from "@/components/ComboDialog";
 import { ManageComboInBranchesDialog } from "@/components/ManageComboInBranchesDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useScreenSize } from "@/hooks/useScreenSize";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDialog, handleOpenAssignDialog, handleDelete, calculateBasePrice }) => {
+const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenAssignDialog, handleDelete, calculateBasePrice, onSuccess }) => {
   const navigate = useNavigate();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDialogOpen) return;
+
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -65,10 +59,17 @@ const ComboCard = ({ combo, formatPrice, handleToggleStatus, handleOpenComboDial
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleOpenComboDialog(combo)}>
-                <Edit className="w-4 h-4 mr-2" />
-                Edición rápida
-              </DropdownMenuItem>
+              <ComboDialog 
+                combo={combo} 
+                onOpenChange={setIsDialogOpen}
+                onSuccess={onSuccess}
+                trigger={
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edición rápida
+                  </DropdownMenuItem>
+                }
+              />
               <DropdownMenuItem onClick={() => navigate(`/app/combos/edit/${combo.id}`)}>
                 <FileEdit className="w-4 h-4 mr-2" />
                 Edición Completa
@@ -154,47 +155,19 @@ const ComboCardSkeleton = () => (
   </Card>
 );
 
-const ComboTableSkeleton = () => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Nombre</TableHead>
-        <TableHead>SKU</TableHead>
-        <TableHead>Nº de Ítems</TableHead>
-        <TableHead>Precio Base</TableHead>
-        <TableHead>Activo</TableHead>
-        <TableHead>Acciones</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {[...Array(5)].map((_, i) => (
-        <TableRow key={i}>
-          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-          <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
+
 
 const CombosPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showInactive, setShowInactive] = useState(false);
-  const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null);
+  const [selectedComboForAssign, setSelectedComboForAssign] = useState<Combo | null>(null);
 
   const navigate = useNavigate();
   const { data: combos, isLoading, refetch } = useGetCombos();
   const { mutate: updateCombo } = useUpdateCombo();
   const { mutate: deleteCombo } = useDeleteCombo();
   const { formatPrice } = usePriceFormat();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
 
   const handleToggleStatus = (combo: Combo) => {
     updateCombo({ id: combo.id, is_active: !combo.is_active });
@@ -205,19 +178,9 @@ const CombosPage = () => {
     return combo.combo_items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const handleOpenComboDialog = (combo: Combo | null = null) => {
-    setSelectedCombo(combo);
-    setIsComboDialogOpen(true);
-  };
-
   const handleOpenAssignDialog = (combo: Combo) => {
-    setSelectedCombo(combo);
+    setSelectedComboForAssign(combo);
     setIsAssignDialogOpen(true);
-  };
-
-  const handleDialogSuccess = () => {
-    setIsComboDialogOpen(false);
-    refetch();
   };
 
   const handleDelete = (comboId: string) => {
@@ -234,7 +197,11 @@ const CombosPage = () => {
 
   const renderContent = () => {
     if (isLoading) {
-      return isMobile ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <ComboCardSkeleton key={i} />)}</div> : <ComboTableSkeleton />;
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+          {[...Array(6)].map((_, i) => <ComboCardSkeleton key={i} />)}
+        </div>
+      );
     }
 
     if (filteredCombos?.length === 0) {
@@ -243,128 +210,37 @@ const CombosPage = () => {
           Icon={Combine}
           title="No se encontraron combos"
           description="Intenta cambiar los filtros o crea un nuevo combo."
-          action={<Button onClick={() => handleOpenComboDialog()}>Nuevo Combo</Button>}
+          action={<ComboDialog onSuccess={refetch} trigger={<Button>Nuevo Combo</Button>} />}
         />
       );
     }
 
-    return isMobile ? (
-      <div className="space-y-4 p-4">
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
         {filteredCombos?.map((combo: Combo) => (
           <ComboCard
             key={combo.id}
             combo={combo}
             formatPrice={formatPrice}
             handleToggleStatus={handleToggleStatus}
-            handleOpenComboDialog={handleOpenComboDialog}
             handleOpenAssignDialog={handleOpenAssignDialog}
             handleDelete={handleDelete}
             calculateBasePrice={calculateBasePrice}
+            onSuccess={refetch}
           />
         ))}
       </div>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>SKU</TableHead>
-            <TableHead>Nº de Ítems</TableHead>
-            <TableHead>Precio Base</TableHead>
-            <TableHead>Activo</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredCombos?.map((combo: Combo) => (
-            <TableRow 
-              key={combo.id}
-              onClick={(e) => {
-                const target = e.target as HTMLElement;
-                if (
-                  target.closest('button') || 
-                  target.closest('[role="switch"]') || 
-                  target.closest('[data-radix-dropdown-menu-content]') ||
-                  target.closest('[role="menuitem"]')
-                ) {
-                  return;
-                }
-                navigate(`/app/combos/edit/${combo.id}`);
-              }}
-              className="cursor-pointer hover:bg-muted/50"
-            >
-              <TableCell className="font-medium">{combo.name}</TableCell>
-              <TableCell>{combo.sku || 'N/A'}</TableCell>
-              <TableCell>
-                <Badge variant="secondary">{combo.combo_items?.length || 0} Ítems</Badge>
-              </TableCell>
-              <TableCell>{formatPrice(calculateBasePrice(combo))}</TableCell>
-              <TableCell>
-                <Switch
-                  checked={combo.is_active || false}
-                  onCheckedChange={() => handleToggleStatus(combo)}
-                />
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleOpenComboDialog(combo)}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edición rápida
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate(`/app/combos/edit/${combo.id}`)}>
-                        <FileEdit className="w-4 h-4 mr-2" />
-                        Edición Completa
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleOpenAssignDialog(combo)}>
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Asignar a Sucursales
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Eliminar
-                            </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará el combo permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(combo.id)} className="bg-red-600 hover:bg-red-700">
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     );
   };
 
   return (
     <div className="space-y-8">
       <PageHeader title="Combos" subtitle="Crea y edita los combos o kits de tu negocio.">
-        <Button size="sm" onClick={() => handleOpenComboDialog()}>
-          <Plus className="w-4 h-4" /><span className="hidden sm:inline ml-2">Nuevo Combo</span>
-        </Button>
+        <ComboDialog onSuccess={refetch} trigger={
+          <Button size="sm">
+            <Plus className="w-4 h-4" /><span className="hidden sm:inline ml-2">Nuevo Combo</span>
+          </Button>
+        } />
       </PageHeader>
 
       <Card>
@@ -392,19 +268,12 @@ const CombosPage = () => {
           {renderContent()}
         </CardContent>
       </Card>
-      
-      <ComboDialog 
-        isOpen={isComboDialogOpen}
-        onOpenChange={setIsComboDialogOpen}
-        combo={selectedCombo}
-        onSuccess={handleDialogSuccess}
-      />
 
-      {selectedCombo && (
+      {selectedComboForAssign && (
         <ManageComboInBranchesDialog 
           isOpen={isAssignDialogOpen}
           onOpenChange={setIsAssignDialogOpen}
-          combo={selectedCombo}
+          combo={selectedComboForAssign}
         />
       )}
     </div>

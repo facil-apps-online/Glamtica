@@ -15,21 +15,21 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Trash2, FileText } from 'lucide-react';
 import { DocumentTypeDialog } from '@/components/DocumentTypeDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import { ContactTypesSettingsTab } from './ContactTypesSettingsTab';
-import { useScreenSize } from '@/hooks/useScreenSize';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export function DocumentTypesSettingsTab() {
   const [activeType, setActiveType] = useState('client'); // 'client' or 'supplier'
   const { data: documentTypes, isLoading, error } = useGetDocumentTypes(activeType);
   const deleteMutation = useDeleteDocumentType();
   const { toast } = useToast();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id, {
@@ -58,7 +58,12 @@ export function DocumentTypesSettingsTab() {
             <TableRow key={docType.id}>
               <TableCell className="font-medium">{docType.name}</TableCell>
               <TableCell>{docType.abbreviation}</TableCell>
-              <TableCell>{docType.applies_to.join(', ')}</TableCell>
+              <TableCell>
+                <div className="flex gap-2">
+                  {docType.applies_to.includes('client') && <Badge variant="outline">Cliente</Badge>}
+                  {docType.applies_to.includes('supplier') && <Badge variant="outline">Proveedor</Badge>}
+                </div>
+              </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -155,7 +160,11 @@ export function DocumentTypesSettingsTab() {
           </CardHeader>
           <CardContent>
             <p><strong>Abreviatura:</strong> {docType.abbreviation}</p>
-            <p><strong>Aplica a:</strong> {docType.applies_to.join(', ')}</p>
+            <p><strong>Aplica a:</strong></p>
+            <div className="flex gap-2">
+              {docType.applies_to.includes('client') && <Badge variant="outline">Cliente</Badge>}
+              {docType.applies_to.includes('supplier') && <Badge variant="outline">Proveedor</Badge>}
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -164,24 +173,49 @@ export function DocumentTypesSettingsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Tipos de Documento</h3>
-        <DocumentTypeDialog>
-          <Button size="sm">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Añadir Tipo
-          </Button>
-        </DocumentTypeDialog>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <FileText className="h-5 w-5" />
+            Parametrización
+          </CardTitle>
+          <CardDescription>
+            Gestiona los tipos de documento y de contacto que se pueden asociar a clientes y proveedores.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Card>
+                        <CardHeader className="flex flex-row items-baseline justify-between">
+                          <div>
+                            <CardTitle className="text-lg">Tipos de Documento</CardTitle>
+                            <CardDescription>Gestiona los tipos de documento que se pueden asociar a clientes y proveedores.</CardDescription>
+                          </div>
+                          <DocumentTypeDialog>
+                            <Button size="sm">
+                              <PlusCircle className="w-4 h-4" />
+                              <span className="hidden sm:inline ml-2">Añadir Tipo</span>
+                            </Button>
+                          </DocumentTypeDialog>
+                        </CardHeader>
+            <CardContent>
 
-      {/* TODO: Add toggle for client/supplier */}
 
-      {isLoading && <p>Cargando...</p>}
-      {error && <p className="text-red-500">Error: {error.message}</p>}
+              {/* TODO: Add toggle for client/supplier */}
 
-      {isMobile ? renderMobileView() : renderDesktopView()}
+              {isLoading && <p>Cargando...</p>}
+              {error && <p className="text-red-500">Error: {error.message}</p>}
 
-      <ContactTypesSettingsTab />
+              <div className="hidden md:block">
+                {renderDesktopView()}
+              </div>
+              <div className="md:hidden">
+                {renderMobileView()}
+              </div>
+            </CardContent>
+          </Card>
+          <ContactTypesSettingsTab />
+        </CardContent>
+      </Card>
     </div>
   );
 }

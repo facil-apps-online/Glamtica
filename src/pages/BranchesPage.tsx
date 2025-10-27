@@ -31,7 +31,7 @@ export default function BranchesPage() {
   
   const queryClient = useQueryClient();
   const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const pendingBranches = useMemo(() => {
     return branches?.filter(b => b.status === 'pending_activation') || [];

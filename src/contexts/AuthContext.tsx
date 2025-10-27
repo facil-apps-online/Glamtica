@@ -226,7 +226,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
 
     if (data.session) {
       await supabaseClient.auth.setSession(data.session);
-      await processSession(data.session);
+
+      // Always refresh metadata on login
+      const { error: refreshError } = await supabaseClient.functions.invoke('user-actions', {
+        body: {
+          action: 'refresh-user-metadata',
+          payload: { userId: data.session.user.id, platformId: platformId }
+        }
+      });
+
+      if (refreshError) {
+        // Log the error but don't block the login
+        console.error(`Error al rehidratar metadatos: ${refreshError.message}`);
+      }
+
+      // The onAuthStateChange will handle the rest
+      await supabaseClient.auth.refreshSession();
+      
       navigate('/app');
     } else {
       throw new Error("No se recibieron datos de sesión válidos del servidor.");

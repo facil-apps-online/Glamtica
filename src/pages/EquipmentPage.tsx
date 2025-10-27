@@ -13,10 +13,8 @@ import { MaintenanceHistoryDialog } from '@/components/MaintenanceHistoryDialog'
 import { AssignEquipmentDialog } from '@/components/AssignEquipmentDialog';
 import { EquipmentTypeManagementDialog } from '@/components/EquipmentTypeManagementDialog';
 import { EquipmentBrandManagementDialog } from '@/components/EquipmentBrandManagementDialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PageHeader } from '@/components/PageHeader';
-import { useScreenSize } from '@/hooks/useScreenSize';
 
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,39 +42,15 @@ const EquipmentCardSkeleton = () => (
   </Card>
 );
 
-const EquipmentTableSkeleton = () => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Nombre</TableHead>
-        <TableHead>Tipo</TableHead>
-        <TableHead>Marca</TableHead>
-        <TableHead>Asignado a</TableHead>
-        <TableHead>Sucursal</TableHead>
-        <TableHead>Activo</TableHead>
-        <TableHead className="text-right">Acciones</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {[...Array(5)].map((_, i) => (
-        <TableRow key={i}>
-          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-          <TableCell className="text-right"><Skeleton className="h-8 w-8" /></TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
+
 
 const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => {
   const navigate = useNavigate();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDialogOpen) return;
+
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -102,7 +76,12 @@ const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => {
             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <EquipmentDialog equipment={item} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Edición Rápida</DropdownMenuItem>} onSuccess={refreshEquipment} />
+            <EquipmentDialog 
+              equipment={item} 
+              trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Edición Rápida</DropdownMenuItem>} 
+              onSuccess={refreshEquipment} 
+              onOpenChange={setIsDialogOpen}
+            />
             <DropdownMenuItem onClick={() => navigate(`/app/equipment/edit/${item.id}`)}>
               <FileEdit className="w-4 h-4 mr-2" />
               Edición Completa
@@ -140,78 +119,23 @@ const EquipmentPage: React.FC = () => {
   const { equipment, loading, refreshEquipment, updateEquipment } = useEquipment(confirmedSearchTerm, showInactive, confirmedFilterType, confirmedFilterBrand);
   const { types: equipmentTypes } = useEquipmentTypes();
   const { brands: equipmentBrands } = useEquipmentBrands();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'mobile';
-  const navigate = useNavigate();
-
-
-  const handleToggleStatus = async (item: Equipment) => {
-    try {
-      await updateEquipment({ equipmentId: item.id, equipmentData: { is_active: !item.is_active } });
-      refreshEquipment();
-    } catch (error) {
-      console.error("Error toggling equipment status:", error);
-    }
-  };
-
   const renderContent = () => {
     if (loading) {
-      return isMobile ? <div className="space-y-4 p-4">{[...Array(5)].map((_, i) => <EquipmentCardSkeleton key={i} />)}</div> : <EquipmentTableSkeleton />;
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+          {[...Array(6)].map((_, i) => <EquipmentCardSkeleton key={i} />)}
+        </div>
+      );
     }
 
     if (!equipment || equipment.length === 0) {
       return <EmptyState Icon={Briefcase} title="No hay equipos" description="Añade tu primer equipo para empezar a gestionarlo." action={<EquipmentDialog trigger={<Button>Añadir Equipo</Button>} onSuccess={refreshEquipment} />} />;
     }
 
-    return isMobile ? (
-      <div className="space-y-4 p-4">
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
         {equipment.map((item) => <EquipmentCard key={item.id} item={item} handleToggleStatus={handleToggleStatus} refreshEquipment={refreshEquipment} />)}
       </div>
-    ) : (
-      <Table>
-        <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Tipo</TableHead><TableHead>Marca</TableHead><TableHead>Asignado a</TableHead><TableHead>Sucursal</TableHead><TableHead>Activo</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-        <TableBody>
-          {equipment.map((item) => (
-            <TableRow 
-              key={item.id}
-              onClick={(e) => {
-                const target = e.target as HTMLElement;
-                if (
-                  target.closest('button') || 
-                  target.closest('[role="switch"]') || 
-                  target.closest('[data-radix-dropdown-menu-content]') ||
-                  target.closest('[role="menuitem"]')
-                ) {
-                  return;
-                }
-                navigate(`/app/equipment/edit/${item.id}`);
-              }}
-              className="cursor-pointer hover:bg-muted/50"
-            >
-              <TableCell className="font-medium">{item.name}</TableCell>
-              <TableCell>{item.type_name}</TableCell>
-              <TableCell>{item.brand_name}</TableCell>
-              <TableCell>{item.assigned_user_name ? <Badge variant="secondary">{item.assigned_user_name}</Badge> : <Badge variant="outline">Sin asignar</Badge>}</TableCell>
-              <TableCell>{item.assigned_branch_name ? <Badge variant="secondary">{item.assigned_branch_name}</Badge> : <Badge variant="outline">N/A</Badge>}</TableCell>
-              <TableCell><Switch checked={item.is_active} onCheckedChange={() => handleToggleStatus(item)} /></TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <EquipmentDialog equipment={item} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Edit className="w-4 h-4 mr-2" />Edición Rápida</DropdownMenuItem>} onSuccess={refreshEquipment} />
-                    <DropdownMenuItem onClick={() => navigate(`/app/equipment/edit/${item.id}`)}>
-                      <FileEdit className="w-4 h-4 mr-2" />
-                      Edición Completa
-                    </DropdownMenuItem>
-                    <MaintenanceHistoryDialog equipmentId={item.id} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><History className="w-4 h-4 mr-2" />Historial</DropdownMenuItem>} />
-                    <AssignEquipmentDialog equipmentId={item.id} onAssignmentSuccess={refreshEquipment} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Briefcase className="w-4 h-4 mr-2" />Asignar</DropdownMenuItem>} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     );
   };
 

@@ -122,6 +122,8 @@ const ProductEditPage = () => {
   const { data: productCategories, isLoading: isLoadingCategories } = useProductCategories();
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState("details");
+
   const [productData, setProductData] = useState<Partial<MasterProduct> | null>(null);
 
   const product = products?.find(p => p.id === id);
@@ -189,60 +191,119 @@ const ProductEditPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="details">Detalles</TabsTrigger>
-              <TabsTrigger value="images">Imágenes</TabsTrigger>
-              <TabsTrigger value="prices">Precios</TabsTrigger>
-              <TabsTrigger value="commissions">Comisiones</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details">
-              <Card>
-                <CardHeader><CardTitle>Detalles del Producto</CardTitle></CardHeader>
-                <CardContent>
-                  {productData && (
-                    <ProductDetailsForm 
-                      product={productData} 
-                      onFormChange={handleFormChange} 
-                      onSave={handleSave} 
-                      isSaving={isUpdating} 
-                      unitsOfMeasure={unitsOfMeasure}
-                      brands={brands}
-                      productCategories={productCategories}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+          <div className="md:hidden">
+            <Select onValueChange={setActiveTab} value={activeTab}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar una sección..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="details">Detalles</SelectItem>
+                <SelectItem value="images">Imágenes</SelectItem>
+                <SelectItem value="prices">Precios</SelectItem>
+                <SelectItem value="commissions">Comisiones</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="pt-4">
+              {activeTab === 'details' && (
+                <Card>
+                  <CardHeader><CardTitle>Detalles del Producto</CardTitle></CardHeader>
+                  <CardContent>
+                    {productData && (
+                      <ProductDetailsForm 
+                        product={productData} 
+                        onFormChange={handleFormChange} 
+                        onSave={handleSave} 
+                        isSaving={isUpdating} 
+                        unitsOfMeasure={unitsOfMeasure}
+                        brands={brands}
+                        productCategories={productCategories}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'images' && (
+                <Card>
+                  <CardHeader><CardTitle>Imágenes del Producto</CardTitle></CardHeader>
+                  <CardContent>
+                    <ProductImageGallery productId={id} />
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'prices' && (
+                <Card>
+                  <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
+                  <CardContent>
+                    <ProductPricesManager productId={id} />
+                  </CardContent>
+                </Card>
+              )}
+              {activeTab === 'commissions' && (
+                <Card>
+                  <CardHeader><CardTitle>Comisiones del Producto</CardTitle></CardHeader>
+                  <CardContent>
+                    <ProductCommissionsManager productId={id} productName={product.name} />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <Tabs defaultValue="details" onValueChange={setActiveTab} value={activeTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="details">Detalles</TabsTrigger>
+                <TabsTrigger value="images">Imágenes</TabsTrigger>
+                <TabsTrigger value="prices">Precios</TabsTrigger>
+                <TabsTrigger value="commissions">Comisiones</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details">
+                <Card>
+                  <CardHeader><CardTitle>Detalles del Producto</CardTitle></CardHeader>
+                  <CardContent>
+                    {productData && (
+                      <ProductDetailsForm 
+                        product={productData} 
+                        onFormChange={handleFormChange} 
+                        onSave={handleSave} 
+                        isSaving={isUpdating} 
+                        unitsOfMeasure={unitsOfMeasure}
+                        brands={brands}
+                        productCategories={productCategories}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="images">
-              <Card>
-                <CardHeader><CardTitle>Imágenes del Producto</CardTitle></CardHeader>
-                <CardContent>
-                  <ProductImageGallery productId={id} />
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="images">
+                <Card>
+                  <CardHeader><CardTitle>Imágenes del Producto</CardTitle></CardHeader>
+                  <CardContent>
+                    <ProductImageGallery productId={id} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="prices">
-              <Card>
-                <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
-                <CardContent>
-                  <ProductPricesManager productId={id} />
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="prices">
+                <Card>
+                  <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
+                  <CardContent>
+                    <ProductPricesManager productId={id} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="commissions">
-              <Card>
-                <CardHeader><CardTitle>Comisiones del Producto</CardTitle></CardHeader>
-                <CardContent>
-                  <ProductCommissionsManager productId={id} productName={product.name} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="commissions">
+                <Card>
+                  <CardHeader><CardTitle>Comisiones del Producto</CardTitle></CardHeader>
+                  <CardContent>
+                    <ProductCommissionsManager productId={id} productName={product.name} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
         <div>
           <ChatterBox resourceType="products" resourceId={product.id} tenantId={product.tenant_id} containerClassName="h-[calc(100vh-22rem)]" />

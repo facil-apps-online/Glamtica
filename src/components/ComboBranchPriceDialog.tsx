@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Combo, useGetComboBranchDetails, useUpdateComboBranchPrices, PriceOverride } from "@/hooks/useCombos";
 import { Branch } from "@/hooks/useBranches";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
+import { useScreenSize } from "@/hooks/useScreenSize";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ComboBranchPriceDialogProps {
   combo: Combo | null;
@@ -19,6 +21,8 @@ export const ComboBranchPriceDialog = ({ combo, branch, isOpen, onOpenChange }: 
   const { formatPrice } = usePriceFormat();
   const { data: details, isLoading } = useGetComboBranchDetails(combo?.id || "", branch?.id || "");
   const { mutate: updatePrices, isPending } = useUpdateComboBranchPrices();
+  const screenSize = useScreenSize();
+  const isSmallScreen = screenSize === 'sm' || screenSize === 'md';
 
   const [priceOverrides, setPriceOverrides] = useState<Record<string, number | string>>({});
 
@@ -66,7 +70,7 @@ export const ComboBranchPriceDialog = ({ combo, branch, isOpen, onOpenChange }: 
         <div className="py-4">
           {isLoading ? (
             <p>Cargando detalles...</p>
-          ) : (
+          ) : !isSmallScreen ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -97,6 +101,38 @@ export const ComboBranchPriceDialog = ({ combo, branch, isOpen, onOpenChange }: 
                 })}
               </TableBody>
             </Table>
+          ) : (
+            <div className="space-y-4">
+              {details?.items.map(item => {
+                const itemId = item.product_id || item.service_id;
+                if (!itemId) return null;
+
+                return (
+                  <Card key={itemId}>
+                    <CardHeader>
+                      <CardTitle>{item.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <Label>Precio Base</Label>
+                        <span>{formatPrice(item.base_price)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor={`price-${itemId}`}>Precio en Sucursal</Label>
+                        <Input 
+                          id={`price-${itemId}`}
+                          type="number"
+                          value={priceOverrides[itemId] ?? ''}
+                          onChange={(e) => handlePriceChange(itemId, e.target.value)}
+                          placeholder="Precio..."
+                          className="w-32"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
         <DialogFooter>
