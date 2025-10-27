@@ -64,7 +64,14 @@ export function ProductCategoryManagementDialog({ trigger }: { trigger: React.Re
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
             />
-            <ProductCategoryDialog />
+            <ProductCategoryDialog
+              trigger={              
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nueva Categoría
+                </Button>
+              }
+            />
           </div>
 
           <Card>

@@ -26,6 +26,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PhoneInput } from '@/components/PhoneInput';
 import { useTenantCountry } from '@/hooks/useTenantCountry';
 import { useCountries } from "@/hooks/useCountries";
+import { ChatterBox } from "@/components/ChatterBox";
+import { useScreenSize, type ScreenSize } from "@/hooks/useScreenSize";
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
@@ -77,6 +79,9 @@ interface SupplierDialogProps {
 
 export const SupplierDialog = ({ supplier: initialSupplier, trigger, onOpenChange }: SupplierDialogProps) => {
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
+  const screenSize: ScreenSize = useScreenSize();
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -184,6 +189,11 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger, onOpenChang
   };
 
   const availableProducts = allProducts?.filter(p => !supplierProducts?.some(sp => sp.product_id === p.id));
+  const tabs = [
+    { value: "general", label: "General", disabled: false },
+    { value: "products", label: "Productos", disabled: false },
+    { value: "activity", label: "Actividad", disabled: !initialSupplier },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -197,11 +207,31 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger, onOpenChang
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <Tabs defaultValue="general">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="products">Productos</TabsTrigger>
-              </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              {isMobile ? (
+                <div className="px-1 mb-4">
+                  <Select value={activeTab} onValueChange={setActiveTab}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una sección" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tabs.map(tab => (
+                        <SelectItem key={tab.value} value={tab.value} disabled={tab.disabled}>
+                          {tab.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <TabsList className="grid w-full grid-cols-3">
+                  {tabs.map(tab => (
+                    <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              )}
 
               <TabsContent value="general" className="pt-4 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -281,6 +311,16 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger, onOpenChang
                       <p className="text-center text-slate-500">No hay productos asociados a este proveedor.</p>
                     )}
                   </>
+                )}
+              </TabsContent>
+              <TabsContent value="activity">
+                {initialSupplier && tenantId && (
+                  <ChatterBox
+                    resourceType="suppliers"
+                    resourceId={initialSupplier.id}
+                    tenantId={tenantId}
+                    containerClassName="h-[50vh]"
+                  />
                 )}
               </TabsContent>
             </Tabs>

@@ -50,11 +50,11 @@ Este documento sigue el progreso de las tareas de desarrollo activas.
     - [x] Productos (Maestro)
     - [x] Servicios (Maestro)
     - [x] Combos (Maestro)
-    - [ ] Categorías (Productos y Servicios)
+    - [x] Categorías (Productos y Servicios)
     - [ ] Marcas de Productos
     - [ ] Impuestos
 - **Gestión de Inventario y Proveedores:**
-    - [ ] Proveedores
+    - [x] Proveedores
     - [ ] Compras
     - [ ] Transferencias de Productos
 - **Gestión de Personal y Sucursales:**
