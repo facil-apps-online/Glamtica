@@ -99,7 +99,8 @@ const PasswordRequirement = ({ isValid, text }: { isValid: boolean; text: string
 export default function RegisterTenant() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data: publicData, isLoading, isError } = usePublicRegistrationData();
+  const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+  const { data: publicData, isLoading, isError } = usePublicRegistrationData(platformId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usePhysicalAsBilling, setUsePhysicalAsBilling] = useState(true);
   const [userExists, setUserExists] = useState(false);

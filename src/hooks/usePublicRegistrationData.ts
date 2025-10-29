@@ -35,31 +35,23 @@ export interface PublicRegistrationData {
   currencies: PublicCurrency[];
 }
 
-/**
- * Obtiene los datos públicos necesarios para el formulario de registro.
- * Llama a una función RPC de Supabase que no requiere autenticación.
- */
-const fetchPublicRegistrationData = async (): Promise<PublicRegistrationData> => {
-  const { data, error } = await supabase.rpc('get_public_registration_data');
+const fetchPublicRegistrationData = async (platformId: string): Promise<PublicRegistrationData> => {
+  const { data, error } = await supabase.rpc('get_public_registration_data', { p_platform_id: platformId });
 
   if (error) {
     console.error('Error fetching public registration data:', error);
     throw new Error(error.message);
   }
 
-  // La función RPC devuelve un único objeto con todas las listas
   return data;
 };
 
-/**
- * Hook para acceder a los datos de registro públicos (países, monedas, etc.).
- * Utiliza react-query para cachear los datos y gestionar los estados de carga/error.
- */
-export const usePublicRegistrationData = () => {
+export const usePublicRegistrationData = (platformId?: string) => {
   return useQuery<PublicRegistrationData, Error>({
-    queryKey: ['publicRegistrationData'],
-    queryFn: fetchPublicRegistrationData,
+    queryKey: ['publicRegistrationData', platformId],
+    queryFn: () => fetchPublicRegistrationData(platformId!),
+    enabled: !!platformId, // Solo ejecutar si platformId está presente
     staleTime: 1000 * 60 * 60, // Cachear los datos durante 1 hora
-    refetchOnWindowFocus: false, // No es necesario recargar en cada foco
+    refetchOnWindowFocus: false,
   });
 };

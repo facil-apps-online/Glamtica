@@ -51,8 +51,8 @@ const FeatureCard = ({ icon, title, description }) => (
 
 export default function LandingPage() {
   const [selectedCountryId, setSelectedCountryId] = useState('');
-  const { data: publicData, isLoading: isLoadingCountries } = usePublicRegistrationData();
   const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID; // Get platform ID from environment
+  const { data: publicData, isLoading: isLoadingCountries } = usePublicRegistrationData(platformId);
   const { data: plans, isLoading: isLoadingPlans } = usePublicSubscriptionPlans(selectedCountryId, platformId);
 
   // Derive publicCurrencyId and publicCurrencyDetails for usePriceFormat
