@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import Logo from '@/assets/images/glamtica.app.png';
-import { CheckCircle, Star, Zap } from 'lucide-react';
+import { CheckCircle, Star, Zap, LogIn, UserPlus } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 
 import { usePublicRegistrationData } from '@/hooks/usePublicRegistrationData';
@@ -102,11 +102,28 @@ export default function LandingPage() {
         <div className="flex items-center">
           <span className="text-2xl font-bold text-purple-700">Glamtica.app</span>
         </div>
-        <nav className="space-x-4">
-          <Link to="/auth" className="text-gray-600 hover:text-purple-700" onClick={() => trackGtagEvent('login_click', { event_category: 'engagement', event_label: 'Header Login' })}>Iniciar Sesión</Link>
-          <Link to="/register-tenant">
-            <Button onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Header Register' })}>Regístrate</Button>
-          </Link>
+        <nav className="flex items-center space-x-2 text-sm md:space-x-4 md:text-base">
+          {/* Desktop/Tablet Navigation */}
+          <span className="hidden sm:block">
+            <Link to="/auth" className="text-gray-600 hover:text-purple-700 whitespace-nowrap" onClick={() => trackGtagEvent('login_click', { event_category: 'engagement', event_label: 'Header Login' })}>Iniciar Sesión</Link>
+          </span>
+          <span className="hidden sm:block">
+            <Link to="/register-tenant">
+              <Button className="whitespace-nowrap" onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Header Register' })}>Regístrate</Button>
+            </Link>
+          </span>
+
+          {/* Mobile Navigation */}
+          <span className="sm:hidden">
+            <Link to="/auth" aria-label="Iniciar Sesión" onClick={() => trackGtagEvent('login_click', { event_category: 'engagement', event_label: 'Header Login' })}>
+              <Button variant="ghost" size="icon"><LogIn className="h-5 w-5" /></Button>
+            </Link>
+          </span>
+          <span className="sm:hidden">
+            <Link to="/register-tenant" aria-label="Regístrate" onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Header Register' })}>
+              <Button variant="ghost" size="icon"><UserPlus className="h-5 w-5" /></Button>
+            </Link>
+          </span>
         </nav>
       </header>
 
@@ -117,7 +134,7 @@ export default function LandingPage() {
           <img src="/glamtica.app.png" alt="Glamtica.app Logo" className="w-32 h-32 mx-auto mb-4" />
           <h1 className="text-5xl font-extrabold mb-6 leading-tight">Gestiona tu Negocio de Belleza con <span className="text-yellow-300">Glamtica.app</span></h1>
           <p className="text-xl mb-8 opacity-90">La plataforma todo en uno diseñada para salones de belleza, spas y barberías. Simplifica tu administración, deleita a tus clientes y haz crecer tu negocio.</p>
-          <div className="space-x-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Link to="/register-tenant">
               <Button size="lg" className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-lg px-8 py-3 rounded-full shadow-lg" onClick={() => trackGtagEvent('register_click', { event_category: 'engagement', event_label: 'Hero Register' })}>Empieza Gratis</Button>
             </Link>
