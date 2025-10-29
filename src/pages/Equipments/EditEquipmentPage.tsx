@@ -16,11 +16,8 @@ import { useEquipmentBrands } from '@/hooks/useEquipmentBrands';
 import { Switch } from "@/components/ui/switch";
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useMaintenanceHistory } from '@/hooks/useMaintenanceHistory';
-import { MaintenanceRecordFormDialog } from '@/components/MaintenanceRecordFormDialog';
-import { ConfirmationDialog } from '@/components/ConfirmationDialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useEquipmentAssignments } from '@/hooks/useEquipmentAssignments';
+import { MaintenanceHistoryTab } from '@/components/MaintenanceHistoryTab';
+import { EquipmentAssignmentHistoryTab } from '@/components/EquipmentAssignmentHistoryTab';
 import { AssignEquipmentDialog } from '@/components/AssignEquipmentDialog';
 
 const EquipmentDetailsForm = ({ equipment, onFormChange, onSave, isSaving, equipmentTypes, equipmentBrands }) => {
@@ -112,154 +109,9 @@ const EquipmentDetailsForm = ({ equipment, onFormChange, onSave, isSaving, equip
   );
 }
 
-const MaintenanceHistoryTab = ({ equipmentId }) => {
-  const { history, loading, deleteMaintenanceRecord, refreshHistory } = useMaintenanceHistory(equipmentId);
-  const { toast } = useToast();
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteMaintenanceRecord(id);
-    } catch (error: any) {
-      toast({ title: "Error", description: `Error al eliminar: ${error.message}`, variant: "destructive" });
-    }
-  };
 
-  return (
-    <div className="space-y-4 py-4">
-      <div className="flex justify-end">
-        <MaintenanceRecordFormDialog
-          equipmentId={equipmentId}
-          onSuccess={refreshHistory}
-          trigger={
-            <Button variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Registro
-            </Button>
-          }
-        />
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Notas</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={3} className="text-center">Cargando...</TableCell></TableRow>
-            ) : (
-              history.map(record => (
-                <TableRow key={record.id}>
-                  <TableCell>
-                    {new Date(record.maintenance_date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{record.notes}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <MaintenanceRecordFormDialog
-                        equipmentId={equipmentId}
-                        record={record}
-                        onSuccess={refreshHistory}
-                        trigger={
-                          <Button variant="outline" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        }
-                      />
-                      <ConfirmationDialog
-                        onConfirm={() => handleDelete(record.id)}
-                        title="Confirmar Eliminación"
-                        description="¿Estás seguro de que quieres eliminar este registro de mantenimiento? Esta acción no se puede deshacer."
-                        trigger={
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        }
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-            {!loading && history.length === 0 && (
-              <TableRow><TableCell colSpan={3} className="text-center">No hay registros de mantenimiento.</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-}
 
-const AssignmentsTab = ({ equipmentId }) => {
-  const { assignments, loading, fetchEquipmentAssignments, returnEquipment } = useEquipmentAssignments();
-
-  useEffect(() => {
-    if (equipmentId) {
-      fetchEquipmentAssignments(equipmentId);
-    }
-  }, [equipmentId, fetchEquipmentAssignments]);
-
-  const handleReturn = async (assignmentId: string) => {
-    await returnEquipment(assignmentId);
-    fetchEquipmentAssignments(equipmentId);
-  };
-
-  return (
-    <div className="space-y-4 py-4">
-      <div className="flex justify-end">
-        <AssignEquipmentDialog
-          equipmentId={equipmentId}
-          onAssignmentSuccess={() => fetchEquipmentAssignments(equipmentId)}
-          trigger={
-            <Button variant="outline">
-              <Briefcase className="w-4 h-4 mr-2" />
-              Asignar Equipo
-            </Button>
-          }
-        />
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Sucursal</TableHead>
-              <TableHead>Fecha de Asignación</TableHead>
-              <TableHead>Fecha de Devolución</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center">Cargando...</TableCell></TableRow>
-            ) : (
-              assignments.map(assignment => (
-                <TableRow key={assignment.id}>
-                  <TableCell>{assignment.user_name}</TableCell>
-                  <TableCell>{assignment.branch_name}</TableCell>
-                  <TableCell>{new Date(assignment.assignment_date).toLocaleDateString()}</TableCell>
-                  <TableCell>{assignment.return_date ? new Date(assignment.return_date).toLocaleDateString() : 'Asignado'}</TableCell>
-                  <TableCell className="text-right">
-                    {!assignment.return_date && (
-                      <Button variant="outline" size="sm" onClick={() => handleReturn(assignment.id)}>Devolver</Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-            {!loading && assignments.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-center">No hay historial de asignaciones.</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-}
 
 const EditEquipmentPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -374,7 +226,24 @@ const EditEquipmentPage = () => {
                 <Card>
                   <CardHeader><CardTitle>Historial de Asignaciones</CardTitle></CardHeader>
                   <CardContent>
-                    <AssignmentsTab equipmentId={equipment.id} />
+                    {!equipment.assigned_user_name && (
+                      <div className="flex justify-end mb-4">
+                        <AssignEquipmentDialog
+                          equipmentId={equipment.id}
+                          onSuccess={() => {
+                            queryClient.invalidateQueries({ queryKey: ['equipment', equipment.id] });
+                            queryClient.invalidateQueries({ queryKey: ['equipment'] });
+                          }}
+                          trigger={
+                            <Button variant="outline">
+                              <Briefcase className="w-4 h-4 mr-2" />
+                              Asignar Equipo
+                            </Button>
+                          }
+                        />
+                      </div>
+                    )}
+                    <EquipmentAssignmentHistoryTab equipmentId={equipment.id} />
                   </CardContent>
                 </Card>
               )}
@@ -419,7 +288,24 @@ const EditEquipmentPage = () => {
                 <Card>
                   <CardHeader><CardTitle>Historial de Asignaciones</CardTitle></CardHeader>
                   <CardContent>
-                    <AssignmentsTab equipmentId={equipment.id} />
+                    {!equipment.assigned_user_name && (
+                      <div className="flex justify-end mb-4">
+                        <AssignEquipmentDialog
+                          equipmentId={equipment.id}
+                          onSuccess={() => {
+                            queryClient.invalidateQueries({ queryKey: ['equipment', equipment.id] });
+                            queryClient.invalidateQueries({ queryKey: ['equipment'] });
+                          }}
+                          trigger={
+                            <Button variant="outline">
+                              <Briefcase className="w-4 h-4 mr-2" />
+                              Asignar Equipo
+                            </Button>
+                          }
+                        />
+                      </div>
+                    )}
+                    <EquipmentAssignmentHistoryTab equipmentId={equipment.id} />
                   </CardContent>
                 </Card>
               </TabsContent>

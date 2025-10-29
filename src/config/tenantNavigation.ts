@@ -10,7 +10,8 @@ import {
   Warehouse,
   TrendingUp,
   Store,
-  HardHat
+  HardHat,
+  Plane
 } from 'lucide-react';
 
 export const tenantNavigationConfig = [
@@ -47,15 +48,9 @@ export const tenantNavigationConfig = [
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       {
-        title: "Gestión de Ausencias",
+        title: "Ausencias",
         url: "/app/time-off-management",
-        icon: UserCheck,
-        roles: ['tenant_super_admin', 'tenant_admin']
-      },
-      {
-        title: "Historial de Ausencias",
-        url: "/app/time-off-history",
-        icon: UserCheck,
+        icon: Plane,
         roles: ['tenant_super_admin', 'tenant_admin']
       }
     ]

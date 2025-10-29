@@ -19,6 +19,7 @@ export interface Equipment {
   is_active: boolean;
   assigned_user_name?: string | null;
   branch_name?: string | null;
+  current_assignment_id?: string | null;
 }
 
 // Helper function to call tenant-actions
@@ -40,12 +41,15 @@ export const useEquipment = (searchTerm?: string, showInactive?: boolean, typeId
     queryKey: ['equipment', currentAssignment?.tenant_id, searchTerm, showInactive, typeId, brandId], // Include tenant_id and other filters in query key
     queryFn: async () => {
       if (!currentAssignment?.tenant_id) return [];
-      return callTenantAction('get_equipment', {
+      const data = await callTenantAction('get_equipment', {
         searchTerm: searchTerm || null,
         showInactive: showInactive || false,
         typeId: typeId || null,
         brandId: brandId || null
       });
+
+      const uniqueEquipment = Array.from(new Map(data.map(item => [item.id, item])).values());
+      return uniqueEquipment;
     },
     enabled: !!currentAssignment?.tenant_id, // Enable only when tenant_id is available
   });

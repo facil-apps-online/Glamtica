@@ -79,6 +79,15 @@ export const useAttentions = (userId?: string, statusFilter?: string, dateRange?
       });
       return data;
     },
+    select: (data) => {
+      if (!data) return [];
+      return data.map(att => ({
+        ...att,
+        attention_combos: att.attention_combos || [],
+        attention_products: att.attention_products || [],
+        attention_services: att.attention_services || [],
+      }));
+    },
     enabled: !!tenantId && !!dateRange?.from && !!dateRange?.to,
   });
 };

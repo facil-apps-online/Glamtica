@@ -129,7 +129,7 @@ const UserCard = ({ user, handleToggleIsSchedulable, isUpdating }) => {
                 <UserScheduleDialog userId={user.user_id} userName={`${user.first_name} ${user.last_name}`} targetUserAssignments={[user]} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><CalendarCheck className="mr-2 h-4 w-4" />Horarios</DropdownMenuItem>} />
                 <TimeOffRequestDialog userId={user.user_id} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><UserX className="mr-2 h-4 w-4" />Ausencias</DropdownMenuItem>} />
                 <UserCommissionsDialog userId={user.user_id} userName={`${user.first_name} ${user.last_name}`} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Percent className="mr-2 h-4 w-4" />Comisiones</DropdownMenuItem>} />
-                <AssignEquipmentDialog userId={user.user_id} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Briefcase className="mr-2 h-4 w-4" />Asignar Equipo</DropdownMenuItem>} />
+                <AssignEquipmentDialog userId={user.user_id} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['userAssignedEquipment', tenantId, user.user_id]})} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Briefcase className="mr-2 h-4 w-4" />Asignar Equipo</DropdownMenuItem>} />
               </>
             )}
           </DropdownMenuContent>

@@ -7,7 +7,6 @@ import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { useUserTimeOff, useUpdateTimeOffRequest, TimeOffRequest } from "@/hooks/useUserTimeOff";
 import { useAuth } from "@/contexts/AuthContext";
-import { useScreenSize } from "@/hooks/useScreenSize";
 import { TimeOffCardSkeleton } from "./TimeOffCardSkeleton";
 import { TimeOffTableSkeleton } from "./TimeOffTableSkeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -29,18 +28,16 @@ const STATUS_CONFIG = {
   rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
-export const TimeOffRequestsList = ({ 
-  canApprove = false, 
-  branchId, 
-  statusFilter = 'pending', 
-  typeFilter, 
-  dateRange, 
+export const TimeOffRequestsList = ({
+  canApprove = false,
+  branchId,
+  statusFilter = 'pending',
+  typeFilter,
+  dateRange,
   searchTerm,
-  userId
+  userId,
 }: TimeOffRequestsListProps) => {
   const { profile, currentAssignment } = useAuth();
-  const screenSize = useScreenSize();
-  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   let branchIdToUse: string | undefined = undefined;
 
@@ -95,7 +92,16 @@ export const TimeOffRequestsList = ({
   };
 
   if (isLoading) {
-    return isMobile ? <TimeOffCardSkeleton /> : <TimeOffTableSkeleton />;
+    return (
+      <>
+        <div className="md:hidden">
+          <TimeOffCardSkeleton />
+        </div>
+        <div className="hidden md:block">
+          <TimeOffTableSkeleton />
+        </div>
+      </>
+    );
   }
 
   if (!requests || requests.length === 0) {
@@ -108,9 +114,9 @@ export const TimeOffRequestsList = ({
     );
   }
 
-  if (isMobile) {
-    return (
-      <div className="space-y-4">
+  return (
+    <>
+      <div className="md:hidden space-y-4">
         {requests.map((request) => {
           const StatusIcon = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG]?.icon || AlertCircle;
           const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG];
@@ -118,8 +124,8 @@ export const TimeOffRequestsList = ({
           return (
             <Card key={request.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Solicitud de Permiso {request.user_name ? `de ${request.user_name}` : ''}</CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="text-lg min-w-0">Solicitud de Permiso {request.user_name ? `de ${request.user_name}` : ''}</CardTitle>
                   {request.branch_name && <p className="text-sm text-muted-foreground">Sucursal: {request.branch_name}</p>}
                   <Badge className={statusConfig?.color || 'bg-gray-100 text-gray-800'}>
                     <StatusIcon className="w-3 h-3 mr-1" />
@@ -134,13 +140,6 @@ export const TimeOffRequestsList = ({
                     {formatTimeOffPeriod(request)}
                   </span>
                 </div>
-
-                {request.reason && (
-                  <div>
-                    <p className="text-sm font-medium">Motivo:</p>
-                    <p className="text-sm text-muted-foreground">{request.reason}</p>
-                  </div>
-                )}
 
                 {canApprove && request.status === 'pending' && (
                   <div className="flex gap-2 pt-2">
@@ -169,66 +168,65 @@ export const TimeOffRequestsList = ({
           );
         })}
       </div>
-    );
-  }
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Empleado</TableHead>
-          <TableHead>Sucursal</TableHead>
-          <TableHead>Periodo</TableHead>
-          <TableHead>Motivo</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {requests.map((request) => {
-          const StatusIcon = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG]?.icon || AlertCircle;
-          const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG];
-
-          return (
-            <TableRow key={request.id}>
-              <TableCell>{request.user_name || '-'}</TableCell>
-              <TableCell>{request.branch_name || '-'}</TableCell>
-              <TableCell>{formatTimeOffPeriod(request)}</TableCell>
-              <TableCell>{request.reason || '-'}</TableCell>
-              <TableCell>
-                <Badge className={statusConfig?.color || 'bg-gray-100 text-gray-800'}>
-                  <StatusIcon className="w-3 h-3 mr-1" />
-                  {statusConfig?.label || request.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                {canApprove && request.status === 'pending' && (
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApproval(request.id!, 'approved')}
-                      disabled={updateRequestMutation.isPending}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Aprobar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleApproval(request.id!, 'rejected')}
-                      disabled={updateRequestMutation.isPending}
-                    >
-                      <XCircle className="w-4 h-4 mr-1" />
-                      Rechazar
-                    </Button>
-                  </div>
-                )}
-              </TableCell>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Empleado</TableHead>
+              <TableHead>Sucursal</TableHead>
+              <TableHead>Periodo</TableHead>
+              <TableHead>Motivo</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+          </TableHeader>
+          <TableBody>
+            {requests.map((request) => {
+              const StatusIcon = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG]?.icon || AlertCircle;
+              const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG];
+
+              return (
+                <TableRow key={request.id}>
+                  <TableCell>{request.user_name || '-'}</TableCell>
+                  <TableCell>{request.branch_name || '-'}</TableCell>
+                  <TableCell>{formatTimeOffPeriod(request)}</TableCell>
+                  <TableCell>{request.reason || '-'}</TableCell>
+                  <TableCell>
+                    <Badge className={statusConfig?.color || 'bg-gray-100 text-gray-800'}>
+                      <StatusIcon className="w-3 h-3 mr-1" />
+                      {statusConfig?.label || request.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {canApprove && request.status === 'pending' && (
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproval(request.id!, 'approved')}
+                          disabled={updateRequestMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Aprobar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleApproval(request.id!, 'rejected')}
+                          disabled={updateRequestMutation.isPending}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Rechazar
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 };

@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useSaveClientConsentRecord } from '@/hooks/useClientConsentRecords';
 import { ClientConsentRecord } from '@/hooks/useClientConsentRecords';
+import { useScreenSize } from '@/hooks/useScreenSize';
 
 interface ConsentManagerDialogProps {
   open: boolean;
@@ -35,6 +36,8 @@ export const ConsentManagerDialog: React.FC<ConsentManagerDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const { mutate: saveConsentRecord, isLoading: isSavingConsent } = useSaveClientConsentRecord();
+  const screenSize = useScreenSize();
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const [signatureData, setSignatureData] = useState<string | undefined>(initialSignatureData);
   const [imageConsent, setImageConsent] = useState<boolean>(initialImageConsent ?? false);
@@ -119,6 +122,7 @@ export const ConsentManagerDialog: React.FC<ConsentManagerDialogProps> = ({
                 id="general-signature-pad"
                 data={signatureData}
                 onSave={(data) => setSignatureData(data)}
+                isMobile={isMobile}
               />
             </div>
           )}

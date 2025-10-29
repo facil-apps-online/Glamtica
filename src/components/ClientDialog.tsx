@@ -198,6 +198,7 @@ export const ClientDialog = ({
     { value: "branches", label: "Sucursales", disabled: !isEdit },
     { value: "family", label: "Familiares", disabled: !isEdit },
     { value: "forms-consents", label: "Formularios", disabled: !isEdit },
+    { value: "chatter", label: "Actividad", disabled: !isEdit },
   ];
 
   return (
@@ -228,9 +229,9 @@ export const ClientDialog = ({
               </Select>
             </div>
           ) : (
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="flex flex-wrap h-auto justify-start">
               {tabs.map(tab => (
-                <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
+                <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled} className="whitespace-normal text-center h-auto">
                   {tab.label}
                 </TabsTrigger>
               ))}
@@ -336,6 +337,14 @@ export const ClientDialog = ({
                 <p className="text-sm text-slate-500">No hay registros de consentimiento para este cliente.</p>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="chatter" className="mt-4">
+            <ChatterBox
+              resourceType="clients"
+              resourceId={client?.id || ''}
+              tenantId={tenant?.id || ''}
+            />
           </TabsContent>
 
 

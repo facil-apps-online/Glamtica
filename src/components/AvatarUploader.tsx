@@ -103,12 +103,12 @@ export const AvatarUploader = React.memo(({
 
   return (
     <>
-      <div className="flex items-center gap-6 flex-col md:flex-row">
+      <div className="flex flex-col items-center gap-4">
         <Avatar className={currentAvatarSizeClass}>
           <AvatarImage src={croppedPreviewUrl || userAvatarDisplayUrl} alt="Avatar" />
           <AvatarFallback>{getInitials()}</AvatarFallback>
         </Avatar>
-        <div className="space-y-2 flex flex-col items-center md:items-start">
+        <div className="space-y-2 flex flex-col items-center">
           <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg" className="hidden" onClick={(e) => { (e.target as HTMLInputElement).value = '' }} />
           {/* CORRECCIÓN: Añadir type="button" para evitar el envío del formulario */}
           <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isSaving}>Cambiar Avatar</Button>

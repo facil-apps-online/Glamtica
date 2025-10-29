@@ -31,21 +31,22 @@ interface AttentionCalendarViewProps {
   isLoading?: boolean;
   userColorMap?: Map<string, string>;
   allUsers?: any[];
+  screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
-const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({ 
-  events, 
+const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
+  events,
   initialView = 'timeGridWeek',
   currentDate,
-  onDateSelect, 
-  onEventClick, 
-  onDateChange, 
+  onDateSelect,
+  onEventClick,
+  onDateChange,
   onViewChange,
   isLoading,
   userColorMap,
-  allUsers
-}) => {
-  const calendarRef = useRef<FullCalendar>(null);
+  allUsers,
+  screenSize
+}) => {  const calendarRef = useRef<FullCalendar>(null);
   const isProgrammaticNavigation = useRef(false);
 
   useEffect(() => {
@@ -146,10 +147,14 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        headerToolbar={{
+        headerToolbar={screenSize === 'sm' || screenSize === 'md' ? {
+          left: 'prev,next',
+          center: 'title',
+          right: 'today'
+        } : {
           left: 'prev,next today',
           center: 'title',
-          right: 'timeGridWeek,timeGridDay'
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
         }}
         initialView={initialView}
         weekends={true}

@@ -8,6 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { useEquipment, Equipment } from '@/hooks/useEquipment';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useEquipmentBrands } from '@/hooks/useEquipmentBrands';
+import { useEquipmentAssignments } from '@/hooks/useEquipmentAssignments';
+
+
 import { EquipmentDialog } from '@/components/EquipmentDialog';
 import { MaintenanceHistoryDialog } from '@/components/MaintenanceHistoryDialog';
 import { AssignEquipmentDialog } from '@/components/AssignEquipmentDialog';
@@ -47,6 +50,14 @@ const EquipmentCardSkeleton = () => (
 const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { assignments, returnEquipment } = useEquipmentAssignments(item.id);
+
+  const handleReturn = () => {
+    const activeAssignment = assignments?.find(a => !a.return_date);
+    if (activeAssignment) {
+      returnEquipment(activeAssignment.id);
+    }
+  };
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isDialogOpen) return;
@@ -87,7 +98,14 @@ const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => {
               Edición Completa
             </DropdownMenuItem>
             <MaintenanceHistoryDialog equipmentId={item.id} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><History className="w-4 h-4 mr-2" />Historial</DropdownMenuItem>} />
-            <AssignEquipmentDialog equipmentId={item.id} onAssignmentSuccess={refreshEquipment} trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Briefcase className="w-4 h-4 mr-2" />Asignar</DropdownMenuItem>} />
+            {!item.assigned_user_name ? (
+              <AssignEquipmentDialog equipmentId={item.id} onAssignmentSuccess={refreshEquipment} onOpenChange={setIsDialogOpen} trigger={<DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); }}><Briefcase className="w-4 h-4 mr-2" />Asignar</DropdownMenuItem>} />
+            ) : (
+              <DropdownMenuItem onClick={handleReturn}>
+                <Briefcase className="w-4 h-4 mr-2" />
+                Devolver
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -100,6 +118,13 @@ const EquipmentCard = ({ item, handleToggleStatus, refreshEquipment }) => {
       <div className="flex justify-between">
         <span className="text-muted-foreground">Sucursal</span>
         <span>{item.assigned_branch_name ? <Badge variant="secondary">{item.assigned_branch_name}</Badge> : <Badge variant="outline">N/A</Badge>}</span>
+      </div>
+      <div className="h-10 w-full mt-4 rounded-md border flex items-center justify-between p-3">
+        <span className="text-sm font-medium">Estado</span>
+        <Switch
+          checked={item.is_active}
+          onCheckedChange={() => handleToggleStatus(item)}
+        />
       </div>
     </CardContent>
   </Card>
@@ -119,6 +144,14 @@ const EquipmentPage: React.FC = () => {
   const { equipment, loading, refreshEquipment, updateEquipment } = useEquipment(confirmedSearchTerm, showInactive, confirmedFilterType, confirmedFilterBrand);
   const { types: equipmentTypes } = useEquipmentTypes();
   const { brands: equipmentBrands } = useEquipmentBrands();
+
+  const handleToggleStatus = async (item: Equipment) => {
+    await updateEquipment({
+      equipmentId: item.id,
+      equipmentData: { is_active: !item.is_active },
+    });
+  };
+
   const renderContent = () => {
     if (loading) {
       return (

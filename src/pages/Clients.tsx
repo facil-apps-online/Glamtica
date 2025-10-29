@@ -67,7 +67,8 @@ const ClientCard = ({ client, handleDelete, handleToggleStatus }) => {
       target.closest('button') ||
       target.closest('[role="switch"]') ||
       target.closest('[data-radix-dropdown-menu-content]') ||
-      target.closest('[role="menuitem"]')
+      target.closest('[role="menuitem"]') ||
+      target.closest('[role="dialog"]')
     ) {
       return;
     }

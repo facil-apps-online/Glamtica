@@ -513,6 +513,7 @@ export default function Attentions() {
             isLoading={isLoading}
             userColorMap={userColorMap}
             allUsers={users}
+            screenSize={screenSize}
           />
         </TabsContent>
       </Tabs>
@@ -618,7 +619,14 @@ interface AttentionCardProps {
 }
 
 const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, screenSize, branchId }: Omit<AttentionCardProps, 'onOpenPaymentDetails'>) => {
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
   const updateStatusMutation = useUpdateAttentionStatus();
+
+  const attentionDate = useMemo(() => {
+    if (!attention.attention_datetime) return null;
+    const date = parseISO(attention.attention_datetime);
+    return !isNaN(date.getTime()) ? date : null;
+  }, [attention.attention_datetime]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -690,11 +698,11 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, sc
             <div className={`flex flex-wrap items-start gap-x-4 gap-y-1 text-sm text-muted-foreground`}>
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {attention.attention_datetime && format(parseISO(attention.attention_datetime), "dd 'de' MMMM, yyyy", { locale: es })}
+                {attentionDate ? format(attentionDate, "dd 'de' MMMM, yyyy", { locale: es }) : 'Fecha inválida'}
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                {attention.attention_datetime && format(parseISO(attention.attention_datetime), "HH:mm")}
+                {attentionDate ? format(attentionDate, "HH:mm") : ''}
               </div>
               <div className="flex items-center gap-1">
                 <Phone className="w-4 h-4" />

@@ -111,7 +111,7 @@ const ChatterEventItem: React.FC<{ event: ChatterEvent }> = ({ event }) => {
         if (event.event_type === 'comment') {
             return (
                 <div>
-                    <div className="text-sm text-gray-800 whitespace-pre-wrap prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: event.payload.text }}></div>
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap prose dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={{ __html: event.payload.text }}></div>
                     {event.chatter_attachments && event.chatter_attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                             {event.chatter_attachments.map(attachment => (
@@ -160,8 +160,7 @@ const ChatterEventItem: React.FC<{ event: ChatterEvent }> = ({ event }) => {
                     {changes.map(({ field, old_value, new_value }) => (
                         <div key={field} className="text-sm text-gray-600 pl-4">
                             Campo <strong>{field}</strong> actualizado:
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-red-600 line-through bg-red-50 px-2 py-1 rounded text-xs max-w-xs truncate">{String(old_value) || 'vacío'}</span>
+                                                            <div className="flex flex-wrap items-center gap-2 mt-1">                                <span className="text-red-600 line-through bg-red-50 px-2 py-1 rounded text-xs max-w-xs truncate">{String(old_value) || 'vacío'}</span>
                                 <span>→</span>
                                 <span className="text-green-600 bg-green-50 px-2 py-1 rounded text-xs max-w-xs truncate">{String(new_value) || 'vacío'}</span>
                             </div>

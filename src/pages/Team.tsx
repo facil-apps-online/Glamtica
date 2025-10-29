@@ -7,13 +7,14 @@ import { UserScheduleDialog } from "@/components/UserScheduleDialog";
 import { TimeOffRequestDialog } from "@/components/TimeOffRequestDialog";
 import { UserCommissionsDialog } from "@/components/UserCommissionsDialog";
 import { AssignEquipmentDialog } from '@/components/AssignEquipmentDialog';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { invokeTenantAction, TenantUserAssignment } from '@/hooks/useTenantUsers';
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
+import { EditProfileDialog } from "@/components/EditProfileDialog";
 
 const TeamMemberCardSkeleton = () => (
   <Card>
@@ -44,7 +45,7 @@ const TeamMemberCardSkeleton = () => (
   </Card>
 );
 
-const TeamMemberCard = ({ user, allUserAssignments }: { user: SchedulableUser, allUserAssignments: TenantUserAssignment[] }) => {
+const TeamMemberCard = ({ user, allUserAssignments, queryClient, tenantId }: { user: SchedulableUser, allUserAssignments: TenantUserAssignment[], queryClient: QueryClient, tenantId: string }) => {
   const { displayUrl } = useGoogleDriveImage(user.avatar_url);
   const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
   const userSpecificAssignments = allUserAssignments?.filter(
@@ -113,6 +114,10 @@ const TeamMemberCard = ({ user, allUserAssignments }: { user: SchedulableUser, a
             <UserCommissionsDialog userId={user.id} userName={userName} />
             <AssignEquipmentDialog
               userId={user.id}
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['userAssignedEquipment', tenantId, user.id] });
+                queryClient.invalidateQueries({ queryKey: ['equipment'] });
+              }}
               trigger={
                 <Button variant="outline" size="sm" className="flex-1">
                   <Briefcase className="w-4 h-4 mr-1" />
@@ -122,10 +127,15 @@ const TeamMemberCard = ({ user, allUserAssignments }: { user: SchedulableUser, a
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1" disabled>
-              <Edit className="w-4 h-4 mr-1" />
-              Editar Perfil
-            </Button>
+            <EditProfileDialog 
+              user={user}
+              trigger={
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Edit className="w-4 h-4 mr-1" />
+                  Editar Perfil
+                </Button>
+              }
+            />
           </div>
         </div>
       </CardContent>
@@ -136,7 +146,8 @@ const TeamMemberCard = ({ user, allUserAssignments }: { user: SchedulableUser, a
 export default function Team() {
   const { data: users, isLoading } = useSchedulableUsers();
   const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const tenantId = currentAssignment?.tenant_id || '';
+  const queryClient = useQueryClient();
 
   const { data: allUserAssignments, isLoading: isLoadingAssignments } = useQuery<TenantUserAssignment[], Error>({
     queryKey: ['all-tenant-user-assignments', tenantId],
@@ -173,7 +184,7 @@ export default function Team() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map((user) => (
-          <TeamMemberCard key={user.id} user={user} allUserAssignments={allUserAssignments || []} />
+          <TeamMemberCard key={user.id} user={user} allUserAssignments={allUserAssignments || []} queryClient={queryClient} tenantId={tenantId} />
         ))}
       </div>
     );

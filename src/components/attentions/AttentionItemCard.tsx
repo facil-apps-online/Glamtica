@@ -29,7 +29,7 @@ interface AttentionItemCardProps {
   attentionStatus: string;
   details?: string[];
   is_parallel?: boolean;
-  screenSize: 'mobile' | 'tablet' | 'desktop';
+  screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   branchId: string;
 }
 
@@ -96,7 +96,7 @@ export const AttentionItemCard = ({
   const finishServiceMutation = useFinishService();
   const [isEvidenceDialogOpen, setIsEvidenceDialogOpen] = useState(false);
 
-  const isMobile = screenSize === 'mobile';
+  const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const iconMap = {
     service: <Scissors className="w-4 h-4 text-muted-foreground" />,

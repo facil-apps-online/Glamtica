@@ -8,11 +8,14 @@ interface SignaturePadProps {
   onSave: (signature: string) => void;
   initialSignature?: string; // Para cargar una firma existente en modo lectura
   readOnly?: boolean;
+  isMobile?: boolean;
 }
 
-export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSignature, readOnly = false }) => {
+export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSignature, readOnly = false, isMobile = false }) => {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [isEmpty, setIsEmpty] = useState(true);
+  const canvasWidth = isMobile ? 300 : 400;
+  const canvasHeight = isMobile ? 150 : 200;
 
   useEffect(() => {
     if (initialSignature && sigCanvas.current) {
@@ -42,7 +45,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSigna
       <div className="border border-gray-300 rounded-md overflow-hidden">
         <SignatureCanvas
           ref={sigCanvas}
-          canvasProps={{ width: 400, height: 200, className: 'signature-canvas bg-white' }}
+          canvasProps={{ width: canvasWidth, height: canvasHeight, className: 'signature-canvas bg-white' }}
           onEnd={saveSignature}
           minWidth={0.5}
           maxWidth={2.5}

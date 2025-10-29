@@ -4,7 +4,7 @@ import { TenantUserAssignment } from "@/hooks/useTenantUsers";
 interface UserSelectorProps {
   selectedUserId: string;
   onUserChange: (userId: string) => void;
-  users: TenantUserAssignment[];
+  users: any[];
   label?: string;
 }
 
@@ -18,7 +18,7 @@ export const UserSelector = ({ selectedUserId, onUserChange, users, label = "Pro
   const userOptions = [
     { value: "all", label: "Todos los usuarios" },
     ...(sortedUsers?.map(user => ({
-      value: user.user_id,
+      value: user.id || user.user_id,
       label: `${user.first_name || ''} ${user.last_name || ''}`.trim()
     })) || [])
   ];

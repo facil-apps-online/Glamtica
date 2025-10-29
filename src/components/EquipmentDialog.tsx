@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Equipment, useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentBrands } from '@/hooks/useEquipmentBrands';
+import { useScreenSize } from '@/hooks/useScreenSize';
+import { EquipmentAssignmentHistoryTab } from './EquipmentAssignmentHistoryTab';
+import { MaintenanceHistoryTab } from './MaintenanceHistoryTab';
+import { ChatterBox } from './ChatterBox';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
@@ -40,6 +45,10 @@ interface EquipmentDialogProps {
 
 export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equipment, onSuccess, onOpenChange }) => {
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('details');
+  const screenSize = useScreenSize();
+  const isSmallScreen = screenSize === 'sm';
+
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -143,122 +152,160 @@ export const EquipmentDialog: React.FC<EquipmentDialogProps> = ({ trigger, equip
           <DialogHeader>
             <DialogTitle>{equipment ? 'Editar Equipo' : 'Añadir Equipo'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre *</Label>
-                <Input id="name" {...register('name')} />
-                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo *</Label>
-                <div className="flex gap-2">
-                  <Controller
-                    name="type_id"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value} disabled={typesLoading}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar tipo..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {equipmentTypes.map(type => (
-                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
+          <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="block sm:hidden mb-4">
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar pestaña..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="details">Detalles</SelectItem>
+                  <SelectItem value="assignments" disabled={!equipment}>Asignaciones</SelectItem>
+                  <SelectItem value="maintenance" disabled={!equipment}>Mantenimientos</SelectItem>
+                  <SelectItem value="activity" disabled={!equipment}>Actividad</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <TabsList className="hidden sm:flex">
+              <TabsTrigger value="details">Detalles</TabsTrigger>
+              <TabsTrigger value="assignments" disabled={!equipment}>Asignaciones</TabsTrigger>
+              <TabsTrigger value="maintenance" disabled={!equipment}>Mantenimientos</TabsTrigger>
+              <TabsTrigger value="activity" disabled={!equipment}>Actividad</TabsTrigger>
+            </TabsList>
+            <TabsContent value="details">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nombre *</Label>
+                    <Input id="name" {...register('name')} />
+                    {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo *</Label>
+                    <div className="flex gap-2">
+                      <Controller
+                        name="type_id"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value} disabled={typesLoading}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar tipo..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {equipmentTypes.map(type => (
+                                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                    {errors.type_id && <p className="text-red-500 text-sm mt-1">{errors.type_id.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Marca</Label>
+                    <div className="flex gap-2">
+                      <Controller
+                        name="brand_id"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value} disabled={brandsLoading}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar marca..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {equipmentBrands.map(brand => (
+                                <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">Modelo</Label>
+                    <Input id="model" {...register('model')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serial_number">Número de Serie</Label>
+                    <Input id="serial_number" {...register('serial_number')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="purchase_date">Fecha de Compra</Label>
+                    <Input id="purchase_date" type="date" {...register('purchase_date')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_maintenance_date">Último Mantenimiento</Label>
+                    <Input id="last_maintenance_date" type="date" {...register('last_maintenance_date')} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="maintenance_frequency">Frec. Mantenimiento</Label>
+                      <Input id="maintenance_frequency" type="number" {...register('maintenance_frequency')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maintenance_frequency_unit">Unidad</Label>
+                      <Controller
+                        name="maintenance_frequency_unit"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="days">Días</SelectItem>
+                              <SelectItem value="weeks">Semanas</SelectItem>
+                              <SelectItem value="months">Meses</SelectItem>
+                              <SelectItem value="years">Años</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
                 </div>
-                {errors.type_id && <p className="text-red-500 text-sm mt-1">{errors.type_id.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Marca</Label>
-                <div className="flex gap-2">
-                  <Controller
-                    name="brand_id"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value} disabled={brandsLoading}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar marca..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {equipmentBrands.map(brand => (
-                            <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="model">Modelo</Label>
-                <Input id="model" {...register('model')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="serial_number">Número de Serie</Label>
-                <Input id="serial_number" {...register('serial_number')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="purchase_date">Fecha de Compra</Label>
-                <Input id="purchase_date" type="date" {...register('purchase_date')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_maintenance_date">Último Mantenimiento</Label>
-                <Input id="last_maintenance_date" type="date" {...register('last_maintenance_date')} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="maintenance_frequency">Frec. Mantenimiento</Label>
-                  <Input id="maintenance_frequency" type="number" {...register('maintenance_frequency')} />
+                  <Label htmlFor="notes">Notas</Label>
+                  <Textarea id="notes" {...register('notes')} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maintenance_frequency_unit">Unidad</Label>
-                   <Controller
-                    name="maintenance_frequency_unit"
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    name="is_active"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="days">Días</SelectItem>
-                          <SelectItem value="weeks">Semanas</SelectItem>
-                          <SelectItem value="months">Meses</SelectItem>
-                          <SelectItem value="years">Años</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Switch id="is_active" checked={field.value} onCheckedChange={field.onChange} />
                     )}
                   />
+                  <Label htmlFor="is_active">Activo</Label>
                 </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea id="notes" {...register('notes')} />
-            </div>
-             <div className="flex items-center space-x-2">
-              <Controller
-                name="is_active"
-                control={control}
-                render={({ field }) => (
-                  <Switch id="is_active" checked={field.value} onCheckedChange={field.onChange} />
-                )}
-              />
-              <Label htmlFor="is_active">Activo</Label>
-            </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={equipmentMutating}>
-                Guardar
-              </Button>
-            </div>
-          </form>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={equipmentMutating}>
+                    Guardar
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+            <TabsContent value="assignments">
+              {equipment && <EquipmentAssignmentHistoryTab equipmentId={equipment.id} />}
+            </TabsContent>
+            <TabsContent value="maintenance">
+              {equipment && <MaintenanceHistoryTab equipmentId={equipment.id} />}
+            </TabsContent>
+            <TabsContent value="activity">
+              {equipment && session?.user?.app_metadata?.assignments?.[0]?.tenant_id && (
+                <ChatterBox
+                  resourceType="equipment"
+                  resourceId={equipment.id}
+                  tenantId={session.user.app_metadata.assignments[0].tenant_id}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
       </>

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export interface EquipmentAssignment {
   id: string;
@@ -9,48 +10,41 @@ export interface EquipmentAssignment {
   branch_name: string;
   assignment_date: string; // Date string (YYYY-MM-DD)
   return_date: string | null; // Date string (YYYY-MM-DD) or null
+  created_at: string;
 }
 
-export const useEquipmentAssignments = () => {
-  const [assignments, setAssignments] = useState<EquipmentAssignment[]>([]);
-  const [loading, setLoading] = useState(false);
+export const useEquipmentAssignments = (equipmentId?: string) => {
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { session, currentAssignment } = useAuth();
+  const queryClient = useQueryClient();
 
-  const fetchEquipmentAssignments = useCallback(async (equipmentId?: string) => {
-    if (!session?.user?.app_metadata?.assignments?.[0]?.tenant_id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
+  const tenantId = currentAssignment?.tenant_id;
+
+  const { data: assignments, isLoading: loading, refetch: refreshAssignments } = useQuery<EquipmentAssignment[], Error>({
+    queryKey: ['equipmentAssignments', tenantId, equipmentId],
+    queryFn: async () => {
+      if (!tenantId || !equipmentId) return [];
       const { data, error } = await supabase.functions.invoke('tenant-actions', {
         body: {
           action: 'get_equipment_assignments',
-          payload: { equipmentId: equipmentId || null },
+          payload: { tenantId, equipmentId },
         },
       });
 
       if (error) throw error;
-      setAssignments(data as EquipmentAssignment[]);
-    } catch (error: any) {
-      console.error('Error fetching equipment assignments:', error.message);
-      toast({
-        title: 'Error',
-        description: `Failed to load equipment assignments: ${error.message}`,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [session, toast]);
+      // Sort assignments by created_at in descending order
+      const sortedData = (data as EquipmentAssignment[]).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return sortedData;
+    },
+    enabled: !!tenantId && !!equipmentId,
+  });
 
   const assignEquipment = useCallback(async (equipmentId: string, userId: string, branchId: string): Promise<boolean> => {
     if (!session?.user?.app_metadata?.assignments?.[0]?.tenant_id) {
       toast({ title: 'Error', description: 'Tenant ID not found.', variant: 'destructive' });
       return false;
     }
-    setLoading(true);
+    // setLoading(true); // Removed as useMutation handles loading state
     try {
       const { error } = await supabase.functions.invoke('tenant-actions', {
         body: {
@@ -71,8 +65,9 @@ export const useEquipmentAssignments = () => {
         description: 'Equipo asignado correctamente.',
         variant: 'success',
       });
-      // Optionally refetch assignments if needed immediately after assignment
-      // await fetchEquipmentAssignments(equipmentId);
+      queryClient.invalidateQueries({ queryKey: ['equipmentAssignments', tenantId, equipmentId] });
+      queryClient.invalidateQueries({ queryKey: ['userAssignedEquipment'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
       return true;
     } catch (error: any) {
       console.error('Error assigning equipment:', error);
@@ -83,22 +78,23 @@ export const useEquipmentAssignments = () => {
       });
       return false;
     } finally {
-      setLoading(false);
+      // setLoading(false); // Removed as useMutation handles loading state
     }
-  }, [session, toast]);
+  }, [session, toast, queryClient, tenantId, equipmentId]);
 
   const returnEquipment = useCallback(async (assignmentId: string): Promise<boolean> => {
     if (!session?.user?.app_metadata?.assignments?.[0]?.tenant_id) {
       toast({ title: 'Error', description: 'Tenant ID not found.', variant: 'destructive' });
       return false;
     }
-    setLoading(true);
+    // setLoading(true); // Removed as useMutation handles loading state
     try {
       const { error } = await supabase.functions.invoke('tenant-actions', {
         body: {
           action: 'return_equipment',
           payload: {
             assignmentId,
+            tenant_id: session.user.app_metadata.assignments[0].tenant_id,
             returnDate: new Date().toISOString().split('T')[0], // Current date
           },
         },
@@ -110,8 +106,9 @@ export const useEquipmentAssignments = () => {
         description: 'Equipo devuelto correctamente.',
         variant: 'success',
       });
-      // Optionally refetch assignments if needed immediately after return
-      // await fetchEquipmentAssignments();
+      queryClient.invalidateQueries({ queryKey: ['equipmentAssignments', tenantId, equipmentId] });
+      queryClient.invalidateQueries({ queryKey: ['userAssignedEquipment'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
       return true;
     } catch (error: any) {
       console.error('Error returning equipment:', error);
@@ -122,9 +119,9 @@ export const useEquipmentAssignments = () => {
       });
       return false;
     } finally {
-      setLoading(false);
+      // setLoading(false); // Removed as useMutation handles loading state
     }
-  }, [session, toast]);
+  }, [session, toast, queryClient, tenantId, equipmentId]);
 
-  return { assignments, loading, fetchEquipmentAssignments, assignEquipment, returnEquipment };
+  return { assignments: assignments || [], loading, refreshAssignments, assignEquipment, returnEquipment };
 };
