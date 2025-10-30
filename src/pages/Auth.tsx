@@ -216,16 +216,7 @@ const AuthPage: React.FC = () => {
                   >
                     {loading ? "Cargando..." : "Iniciar Sesión"}
                   </Button>
-                  {/* Nuevo botón para confirmar email */}
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full mt-2" 
-                    onClick={handleConfirmEmail}
-                    disabled={confirmLoading}
-                  >
-                    {confirmLoading ? "Enviando..." : "Confirmar Email"}
-                  </Button>
+
                 </form>
               </CardContent>
               <CardFooter className="flex justify-center text-sm">
