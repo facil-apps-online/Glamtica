@@ -1,6 +1,6 @@
 {
  "short_name": "Glamtica",
- "name": "Glamtica.app",
+ "name": "Glamtica",
  "description": "Software de gestión todo en uno para salones de belleza, spas y barberías.",
  "icons": [
   {
@@ -27,7 +27,6 @@
    "type": "image/png",
    "density": "2.0"
   },
-
   {
    "src": "/android-icon-192x192.png",
    "sizes": "192x192",
@@ -35,7 +34,7 @@
    "density": "4.0"
   }
  ],
- "start_url": ".",
+ "start_url": "/app",
  "display": "standalone",
  "theme_color": "#ffffff",
  "background_color": "#ffffff"
