@@ -4,6 +4,8 @@ import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
 import { useScreenSize } from "@/hooks/useScreenSize"
+import { useAuth } from "@/contexts/AuthContext";
+import { useTenantStorageUsage } from "@/hooks/useTenantStorageUsage";
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +18,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+const formatBytes = (bytes: number, decimals = 2) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -361,13 +372,28 @@ const SidebarFooter = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
 >(({ className, ...props }, ref) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const { data: storageUsage, isLoading: isLoadingStorage } = useTenantStorageUsage(tenantId || '');
+
+  console.log('SidebarFooter: tenantId', tenantId);
+  console.log('SidebarFooter: isLoadingStorage', isLoadingStorage);
+  console.log('SidebarFooter: storageUsage', storageUsage);
+
   return (
     <div
       ref={ref}
       data-sidebar="footer"
       className={cn("flex flex-col gap-2 p-2", className)}
       {...props}
-    />
+    >
+      {tenantId && !isLoadingStorage && storageUsage && (
+        <div className="text-xs text-muted-foreground p-2 border rounded-md">
+          <p>Almacenamiento:</p>
+          <p className="font-medium">{formatBytes(storageUsage.totalSize)} / {formatBytes(storageUsage.storageLimit)}</p>
+        </div>
+      )}
+    </div>
   )
 })
 SidebarFooter.displayName = "SidebarFooter"

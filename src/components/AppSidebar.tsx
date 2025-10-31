@@ -17,6 +17,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBranches } from "@/hooks/useBranches";
 import { Skeleton } from "./ui/skeleton";
 import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
+import { useTenantStorageUsage } from "@/hooks/useTenantStorageUsage";
+
+// Helper function to format bytes (re-used from sidebar.tsx)
+const formatBytes = (bytes: number, decimals = 2) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
 
 // --- TIPOS (sin cambios) ---
 interface NavItem {
@@ -36,40 +47,45 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   subtitle?: string;
 }
 
-// --- COMPONENTE FOOTER (para mostrar la sucursal) ---
-const BranchFooter: React.FC = () => {
+// --- COMPONENTE FOOTER (para mostrar la sucursal y el uso de almacenamiento) ---
+const TenantInfoFooter: React.FC = () => {
   const { currentAssignment } = useAuth();
-  const { data: branches, isLoading } = useBranches(currentAssignment?.tenant_id || '');
+  const tenantId = currentAssignment?.tenant_id;
+  const userRole = currentAssignment?.role_name;
 
-  if (isLoading) {
-    return (
-      <SidebarFooter>
-        <div className="p-2">
-          <Skeleton className="h-8 w-full" />
-        </div>
-      </SidebarFooter>
-    );
-  }
+  const { data: branches, isLoading: isLoadingBranches } = useBranches(tenantId || '');
+  const { data: storageUsage, isLoading: isLoadingStorage } = useTenantStorageUsage(tenantId || '');
 
   const currentBranch = branches?.find(b => b.id === currentAssignment?.branch_id);
 
-  if (!currentBranch) {
-    return null;
-  }
-
   return (
     <SidebarFooter>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton className="cursor-default hover:bg-transparent">
-            <Building2 />
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate text-xs text-muted-foreground">Sucursal</span>
-              <span className="truncate font-semibold">{currentBranch.name}</span>
+      {tenantId && (
+        <div className="flex flex-col gap-2">
+          {/* Branch Info (only for tenant_admin or tenant_user) */}
+          {(userRole === 'tenant_admin' || userRole === 'tenant_user') && !isLoadingBranches && currentBranch && (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton className="cursor-default hover:bg-transparent">
+                  <Building2 />
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate text-xs text-muted-foreground">Sucursal</span>
+                    <span className="truncate font-semibold">{currentBranch.name}</span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          )}
+
+          {/* Storage Usage (for all tenant roles) */}
+          {!isLoadingStorage && storageUsage && (
+            <div className="text-xs text-muted-foreground p-2 border rounded-md">
+              <p>Almacenamiento:</p>
+              <p className="font-medium">{formatBytes(storageUsage.totalSize)} / {formatBytes(storageUsage.storageLimit)}</p>
             </div>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
+          )}
+        </div>
+      )}
     </SidebarFooter>
   );
 };
@@ -139,7 +155,7 @@ export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", 
         })}
       </SidebarContent>
 
-      { (userRole === 'tenant_admin' || userRole === 'tenant_user') && <BranchFooter />}
+      <TenantInfoFooter />
     </Sidebar>
   );
 }

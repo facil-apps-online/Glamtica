@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { MapDisplay } from '@/components/MapDisplay';
 import { ShieldAlert } from 'lucide-react';
+import { useTenantStorageUsage } from '@/hooks/useTenantStorageUsage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -55,13 +56,23 @@ export function TenantAdminGeneralView() {
 
 const TenantAdminGeneralViewContent = ({ tenantId }: { tenantId: string }) => {
   const { data: tenant, isLoading, isError, error } = useTenantById(tenantId);
+  const { data: storageUsage, isLoading: isLoadingStorage, isError: isErrorStorage } = useTenantStorageUsage(tenantId);
 
-  if (isLoading) {
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
+
+  if (isLoading || isLoadingStorage) {
     return <TenantAdminViewSkeleton />;
   }
 
-  if (isError) {
-    return <div className="p-4">Error al cargar los datos: {error.message}</div>;
+  if (isError || isErrorStorage) {
+    return <div className="p-4">Error al cargar los datos: {error?.message || isErrorStorage?.message}</div>;
   }
 
   return (
@@ -110,25 +121,6 @@ const TenantAdminGeneralViewContent = ({ tenantId }: { tenantId: string }) => {
               <DetailItem label="ID Fiscal (NIT, CUIT, etc.)" value={tenant?.tax_id} />
               <DetailItem label="Dirección de Facturación" value={tenant?.billing_address} />
               <DetailItem label="Email para Facturación Electrónica" value={tenant?.einvoicing_email} />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-primary">Dirección Física</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <DetailItem label="Dirección" value={`${tenant?.physical_address_line1 || ''} ${tenant?.physical_address_line2 || ''}`} />
-              <DetailItem label="Ciudad" value={tenant?.physical_city} />
-              <DetailItem label="Estado / Provincia" value={tenant?.physical_state} />
-              <DetailItem label="Código Postal" value={tenant?.physical_postal_code} />
-              {tenant?.latitude && tenant.longitude && (
-                <div className="w-full h-64 rounded-lg overflow-hidden mt-4">
-                  <MapDisplay latitude={tenant.latitude} longitude={tenant.longitude} />
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
