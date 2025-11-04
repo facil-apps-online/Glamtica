@@ -1,72 +1,49 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 
-// This interface now matches the detailed structure returned by the final RPC function.
-export interface TenantUserAssignment {
-  assignment_id: string;
-  user_id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role_id: string | null;
-  role_name: string | null;
-  role_display_name: string | null;
-  branch_id: string | null;
-  branch_name: string | null;
-  status: string;
-  avatar_url: string | null;
-  base_salary: number | null;
-  default_product_commission_rate: number | null;
-  default_service_commission_rate: number | null;
-}
+// Generic action invoker
+export const invokeTenantAction = async (action: string, payload: any) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Session not available for tenant action.");
 
-// Helper function to invoke the superadmin-actions Edge Function
-export const invokeTenantAction = async (action: string, payload?: any) => {
-  const { data, error } = await supabase.functions.invoke('tenant-actions', {
-    body: { action, payload },
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action, payload }),
   });
-  if (error) throw new Error(error.message);
-  if (data.success === false) {
-    throw new Error(data.message);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+    throw new Error(errorData.error || `Failed to invoke action: ${action}`);
   }
-  return data;
+
+  return response.json();
 };
 
-// --- GET Users and their Assignments for the current Tenant ---
-const fetchTenantUsers = async (tenantId: string): Promise<TenantUserAssignment[]> => {
-  // The RPC function now expects a tenant_id to be passed in the payload
-  const response = await invokeTenantAction('get_users_for_tenant', { tenantId });
-  return response; // The raw response is the array of users.
-};
 
-export const useTenantUsers = (tenantId: string) => {
-  return useQuery<TenantUserAssignment[], Error>({
-    queryKey: ['tenantUsers', tenantId],
-    queryFn: () => fetchTenantUsers(tenantId),
-    enabled: !!tenantId, // This ensures the query doesn't run if tenantId is not yet available
+// Hook to get users
+export interface TenantUser {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role_name: string;
+  branch_name: string;
+}
+
+export const useTenantUsers = () => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  return useQuery<TenantUser[], Error>({
+    queryKey: ['tenant_users', tenantId],
+    queryFn: () => {
+      if (!tenantId) return [];
+      return invokeTenantAction('get_users_for_tenant', { tenantId });
+    },
+    enabled: !!tenantId,
   });
 };
-
-// --- UPDATE User Status (Superadmin View) ---
-// Note: This logic needs to be updated to modify assignments, not a user's global status.
-// This is a placeholder and will likely need a new RPC like 'update_user_assignment_status'.
-const updateUserStatus = async (userId: string, isActive: boolean): Promise<any> => {
-    const { data, error } = await supabase.rpc('update_user_active_status', {
-        target_user_id: userId,
-        p_is_active: isActive,
-        p_user_role: 'super_admin'
-    });
-
-    if (error) throw new Error(error.message);
-    return data;
-}
-
-export const useUpdateUserStatus = () => {
-    const queryClient = useQueryClient();
-    return useMutation<any, Error, { userId: string, isActive: boolean, tenantId: string }>({
-        mutationFn: ({ userId, isActive }) => updateUserStatus(userId, isActive),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tenantUsers'] });
-        }
-    });
-}

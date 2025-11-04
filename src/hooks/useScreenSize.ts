@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 const breakpoints = {
@@ -10,8 +9,8 @@ const breakpoints = {
 
 type ScreenSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
-export function useScreenSize(): ScreenSize {
-  const [screenSize, setScreenSize] = useState<ScreenSize>('lg');
+export function useScreenSize(): ScreenSize | null {
+  const [screenSize, setScreenSize] = useState<ScreenSize | null>(null);
 
   useEffect(() => {
     function handleResize() {

@@ -11,7 +11,8 @@ import {
   TrendingUp,
   Store,
   HardHat,
-  Plane
+  Plane,
+  Landmark
 } from 'lucide-react';
 
 export const tenantNavigationConfig = [
@@ -52,6 +53,12 @@ export const tenantNavigationConfig = [
         url: "/app/time-off-management",
         icon: Plane,
         roles: ['tenant_super_admin', 'tenant_admin']
+      },
+      {
+        title: "Comisiones",
+        url: "/app/commissions",
+        icon: Landmark,
+        roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user']
       }
     ]
   },

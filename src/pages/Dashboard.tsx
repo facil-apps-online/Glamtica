@@ -2,7 +2,7 @@
 import { StatsCard } from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, DollarSign, Users, Clock, TrendingUp, Scissors } from "lucide-react";
-import { useDashboardStats, useTodayAttentions, useTopServices, TodayAttention, TopService } from "@/hooks/useDashboardStats";
+import { useDashboardStats, useTodayAttentions, useTopServices, usePendingCommissions, TodayAttention, TopService } from "@/hooks/useDashboardStats";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useMemo } from "react";
@@ -15,6 +15,7 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: todayAttentions, isLoading: attentionsLoading } = useTodayAttentions();
   const { data: topServices, isLoading: servicesLoading } = useTopServices();
+  const { data: pendingCommissions, isLoading: pendingCommissionsLoading } = usePendingCommissions();
   const { formatPrice } = usePriceFormat();
 
   const getStatusColor = (status: string) => {
@@ -77,6 +78,13 @@ export default function Dashboard() {
               value={(stats?.activeStylists || 0).toString()}
               change="Disponibles hoy"
               icon={Users}
+              trend="up"
+            />
+            <StatsCard
+              title="Comisiones Pendientes"
+              value={formatPrice(pendingCommissions || 0)}
+              change={pendingCommissionsLoading ? "Cargando..." : "Total pendiente"}
+              icon={DollarSign}
               trend="up"
             />
           </div>

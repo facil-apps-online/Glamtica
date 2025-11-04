@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { invokeTenantAction } from './useTenantUsers'; // Re-using invokeTenantAction
+import { invokeTenantAction } from './useTenantUsers';
 
 export interface TenantStorageUsage {
   totalSize: number; // Size in bytes

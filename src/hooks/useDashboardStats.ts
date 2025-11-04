@@ -97,3 +97,29 @@ export const useTopServices = (days: number = 30) => {
     refetchInterval: 10 * 60 * 1000, // Refrescar cada 10 minutos
   });
 };
+
+export const usePendingCommissions = () => {
+  const { currentAssignment, user } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const roleName = currentAssignment?.role_name;
+  const branchId = currentAssignment?.branch_id;
+  const userId = user?.id;
+
+  return useQuery<number, Error>({
+    queryKey: ['pending-commissions', tenantId, roleName, branchId, userId],
+    queryFn: async () => {
+      if (!tenantId) throw new Error("Tenant ID not available.");
+
+      const { data, error } = await supabase.rpc('get_pending_commissions', {
+        p_tenant_id: tenantId,
+        p_branch_id: roleName === 'tenant_super_admin' ? null : branchId,
+        p_user_id: roleName === 'tenant_user' ? userId : null,
+      });
+
+      if (error) throw new Error(error.message);
+      return data[0].total_pending_commissions || 0;
+    },
+    enabled: !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId),
+    refetchInterval: 5 * 60 * 1000, // Refrescar cada 5 minutos
+  });
+};

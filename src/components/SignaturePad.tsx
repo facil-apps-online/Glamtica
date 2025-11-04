@@ -1,52 +1,52 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 interface SignaturePadProps {
-  onSave: (signature: string) => void;
   initialSignature?: string; // Para cargar una firma existente en modo lectura
   readOnly?: boolean;
-  isMobile?: boolean;
 }
 
-export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSignature, readOnly = false, isMobile = false }) => {
-  const sigCanvas = useRef<SignatureCanvas>(null);
+export const SignaturePad = React.forwardRef<SignatureCanvas, SignaturePadProps>(({ initialSignature, readOnly = false }, ref) => {
   const [isEmpty, setIsEmpty] = useState(true);
-  const canvasWidth = isMobile ? 300 : 400;
-  const canvasHeight = isMobile ? 150 : 200;
 
   useEffect(() => {
-    if (initialSignature && sigCanvas.current) {
-      sigCanvas.current.fromDataURL(initialSignature);
-      setIsEmpty(false);
+    if (initialSignature && ref && (ref as React.MutableRefObject<SignatureCanvas>).current) {
+      const canvas = (ref as React.MutableRefObject<SignatureCanvas>).current.getCanvas();
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const img = new Image();
+        img.src = initialSignature;
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          setIsEmpty(false);
+        };
+      }
     }
-  }, [initialSignature]);
+  }, [initialSignature, ref]);
 
   const clearSignature = () => {
-    if (sigCanvas.current) {
-      sigCanvas.current.clear();
+    if (ref && (ref as React.MutableRefObject<SignatureCanvas>).current) {
+      (ref as React.MutableRefObject<SignatureCanvas>).current.clear();
       setIsEmpty(true);
-      onSave(''); // Notificar que la firma ha sido borrada
     }
   };
 
-  const saveSignature = () => {
-    if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-      onSave(sigCanvas.current.toDataURL());
-      setIsEmpty(false);
+  const handleSignatureEnd = () => {
+    if (ref && (ref as React.MutableRefObject<SignatureCanvas>).current) {
+      setIsEmpty((ref as React.MutableRefObject<SignatureCanvas>).current.isEmpty());
     }
   };
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col h-full">
       <Label>Firma Digital</Label>
-      <div className="border border-gray-300 rounded-md overflow-hidden">
+      <div className="relative flex-grow w-full h-full mt-2 border border-gray-300 rounded-md overflow-hidden">
         <SignatureCanvas
-          ref={sigCanvas}
-          canvasProps={{ width: canvasWidth, height: canvasHeight, className: 'signature-canvas bg-white' }}
-          onEnd={saveSignature}
+          ref={ref}
+          canvasProps={{ className: 'w-full h-full bg-white' }}
+          onEnd={handleSignatureEnd}
           minWidth={0.5}
           maxWidth={2.5}
           penColor='black'
@@ -54,21 +54,20 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSigna
         />
       </div>
       {!readOnly && (
-        <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={clearSignature} disabled={isEmpty}>
+        <div className="flex justify-end mt-2">
+          <Button variant="outline" onClick={clearSignature} disabled={isEmpty} size="sm">
             Limpiar
-          </Button>
-          <Button onClick={saveSignature} disabled={isEmpty}>
-            Guardar Firma
           </Button>
         </div>
       )}
       {readOnly && initialSignature && (
-        <p className="text-sm text-slate-500">Firma registrada.</p>
+        <p className="text-sm text-slate-500 mt-2">Firma registrada.</p>
       )}
       {readOnly && !initialSignature && (
-        <p className="text-sm text-slate-500">No hay firma registrada.</p>
+        <p className="text-sm text-slate-500 mt-2">No hay firma registrada.</p>
       )}
     </div>
   );
-};
+});
+
+SignaturePad.displayName = 'SignaturePad';

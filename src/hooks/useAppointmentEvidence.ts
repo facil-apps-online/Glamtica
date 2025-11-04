@@ -106,6 +106,6 @@ export const useUploadEvidence = () => {
 
 // Function to get the proxied Google Drive image URL
 export const getEvidenceUrl = (googleDriveFile_fileId: string) => {
-  const functionUrl = `${supabase.functions.getURL('proxy-google-drive-image')}?fileId=${googleDriveFile_fileId}`;
+  const functionUrl = `${supabase.functions.url}/proxy-google-drive-image?fileId=${googleDriveFile_fileId}`;
   return functionUrl;
 };

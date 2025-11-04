@@ -29,6 +29,7 @@ import { PurchasesPage } from "@/pages/Inventory/PurchasesPage";
 import { TransfersPage } from "@/pages/Inventory/TransfersPage";
 import TimeOffManagementPage from "@/pages/TimeOffManagementPage";
 import TimeOffHistoryPage from "@/pages/TimeOffHistoryPage";
+import CommissionsPage from "@/pages/CommissionsPage";
 import EquipmentPage from "@/pages/EquipmentPage";
 import EditEquipmentPage from "@/pages/Equipments/EditEquipmentPage";
 
@@ -117,6 +118,7 @@ function App() {
                   <Route path="translations" element={<TranslationAdmin />} />
                   <Route path="time-off-management" element={<TimeOffManagementPage />} />
                   <Route path="time-off-history" element={<TimeOffHistoryPage />} />
+                  <Route path="commissions" element={<CommissionsPage />} />
                   
                   {/* Ruta de desarrollo para el UI Kit */}
                   <Route path="dev/uikit" element={<UIKit />} />
