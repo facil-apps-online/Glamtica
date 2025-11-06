@@ -1,26 +1,44 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useTenantSubscriptionPlans } from '@/hooks/useUserSubscriptionPlans';
-import { useSubscriptionStatus } from '@/hooks/useActiveSubscription';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { useWompiCheckout } from '@/hooks/useWompiCheckout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertTriangle, Info, CreditCard } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, CreditCard, FileText, Users, Archive } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { supabase } from '@/lib/supabaseClient';
+import { useSubscriptionUsage } from '@/hooks/useSubscriptionUsage';
+import { StatsCard } from "@/components/StatsCard";
 
-// New component to display the current subscription status
+const formatBytes = (bytes: number, decimals = 2) => {
+  if (!+bytes) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
+
+const AssetIcon = ({ assetKey }: { assetKey: string }) => {
+  switch (assetKey) {
+    case 'electronic_invoices':
+      return FileText;
+    case 'users':
+      return Users;
+    default:
+      return Archive;
+  }
+};
+
 const CurrentSubscriptionStatus = () => {
   const { currentAssignment } = useAuth();
-  const { data: subscriptionArray, isLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
-  const subscription = subscriptionArray?.[0];
+  const { data: subscription, isLoading } = useSubscriptionUsage(currentAssignment?.tenant_id);
 
   if (isLoading) {
-    return <Skeleton className="h-24 w-full mb-8" />;
+    return <Skeleton className="h-40 w-full mb-8" />;
   }
 
   if (!subscription || !subscription.plan_name) {
@@ -39,21 +57,42 @@ const CurrentSubscriptionStatus = () => {
     );
   }
 
-  const daysRemaining = subscription.end_date ? differenceInDays(new Date(subscription.end_date), new Date()) : null;
+  const daysRemaining = subscription.billing_period_end ? differenceInDays(new Date(subscription.billing_period_end), new Date()) : null;
 
   return (
-    <Card className="mb-8 bg-blue-50 border-blue-200">
-      <CardHeader className="flex flex-row items-center gap-4">
-        <Info className="h-8 w-8 text-blue-500" />
+    <Card className="mb-8">
+      <CardHeader className="flex flex-row items-center gap-4 bg-slate-50 rounded-t-lg">
+        <Info className="h-8 w-8 text-slate-500" />
         <div>
-          <CardTitle className="text-blue-800">Tu Plan Actual: {subscription.plan_name}</CardTitle>
-          <CardDescription className="text-blue-700">
+          <CardTitle className="text-slate-800">Tu Plan Actual: {subscription.plan_name}</CardTitle>
+          <CardDescription className="text-slate-700">
             {daysRemaining !== null 
-              ? `Tu suscripción vence en ${daysRemaining} días, el ${format(new Date(subscription.end_date!), "d 'de' MMMM 'de' yyyy", { locale: es })}.`
+              ? `Tu ciclo de facturación termina en ${daysRemaining} días, el ${format(new Date(subscription.billing_period_end!), "d 'de' MMMM 'de' yyyy", { locale: es })}.`
               : 'Esta suscripción no tiene fecha de vencimiento.'}
           </CardDescription>
         </div>
       </CardHeader>
+      <CardContent className="pt-6">
+        <h3 className="text-lg font-semibold mb-4 text-slate-700">Consumo del Periodo Actual</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {subscription.usage.map(item => {
+            const isStorage = item.asset_purpose_key === 'storage';
+            const displayValue = isStorage
+              ? `${formatBytes(item.used)} / ${formatBytes(item.limit)}`
+              : `${item.used} / ${item.limit === -1 ? '∞' : item.limit}`;
+
+            return (
+              <StatsCard
+                key={item.asset_key}
+                title={item.asset_name}
+                value={displayValue}
+                change={item.asset_description}
+                icon={AssetIcon({ assetKey: item.asset_key })}
+              />
+            );
+          })}
+        </div>
+      </CardContent>
     </Card>
   );
 };
@@ -63,8 +102,6 @@ export function SubscriptionTab() {
   const { profile, currentAssignment, loading: isAuthLoading } = useAuth();
   const { data: plans, isLoading: arePlansLoading } = useTenantSubscriptionPlans();
   
-  
-
   const { formatPrice } = usePriceFormat();
   const { toast } = useToast();
   
