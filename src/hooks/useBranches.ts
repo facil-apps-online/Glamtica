@@ -50,6 +50,7 @@ export const useBranches = (tenantIdParam?: string, activeOnly = false) => {
       });
 
       const json = await response.json();
+      console.log('Branches response:', json);
 
       if (!response.ok) {
         throw new Error(json.error || 'Failed to fetch branches');

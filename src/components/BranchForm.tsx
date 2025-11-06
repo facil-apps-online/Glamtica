@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateBranch, useUpdateBranch, Branch } from '@/hooks/useBranches';
+import { useTenantSettingsData } from '@/hooks/useTenantSettingsData';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
 import { Save, Store } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { SearchableSelect } from './ui/searchable-select';
+import { FilterableSelect } from '@/components/FilterableSelect';
 import { useTenantById } from '@/hooks/useTenants';
 import { PhoneInput } from '@/components/PhoneInput';
 import { usePublicRegistrationData } from '@/hooks/usePublicRegistrationData';
@@ -46,9 +47,8 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
   const { toast } = useToast();
   const createBranchMutation = useCreateBranch(tenantId);
   const updateBranchMutation = useUpdateBranch(tenantId);
-  const { data: tenant } = useTenantById(tenantId);
-  const { data: publicData } = usePublicRegistrationData();
-  const countries = publicData?.countries;
+  const { data: settingsData, isLoading: isLoadingSettings } = useTenantSettingsData(tenantId);
+  const { tenant, countries } = settingsData || {};
 
   const countryRestriction = useMemo(() => {
     if (!tenant?.country_id || !countries) return '';
@@ -88,7 +88,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
     if (branchToEdit) {
       form.reset({
         name: branchToEdit.name || '',
-        timezone: branchToEdit.timezone || '',
+        timezone: branchToEdit.timezone || tenant?.default_timezone || '',
         address: branchToEdit.address || '',
         contact_phone: branchToEdit.contact_phone || '',
         whatsapp_phone: branchToEdit.whatsapp_phone || '',
@@ -209,10 +209,10 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
                   <Controller name="timezone" control={form.control} render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Zona Horaria</FormLabel>
-                      <SearchableSelect 
+                      <FilterableSelect 
                         options={timezoneOptions} 
-                        value={timezoneOptions.find(t => t.value === field.value) || null} 
-                        onChange={(option) => field.onChange(option ? option.value : '')} 
+                        value={field.value} 
+                        onValueChange={field.onChange} 
                         placeholder="Selecciona una zona horaria"
                       />
                       <FormMessage />

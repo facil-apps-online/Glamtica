@@ -201,10 +201,11 @@ const ProductCatalog = () => {
   const [isProductCommissionsDialogOpen, setIsProductCommissionsDialogOpen] = useState(false);
   const [selectedProductForCommissions, setSelectedProductForCommissions] = useState<MasterProduct | null>(null);
 
-  const { data: products, isLoading } = useMasterProducts(confirmedSearchTerm, showInactive, filterCategory, filterBrand);
+  const { data: products, isLoading, refetch } = useMasterProducts(confirmedSearchTerm, showInactive, filterCategory, filterBrand);
   const { data: brands } = useBrands();
   const { data: productCategories } = useProductCategories();
   const { mutate: updateProduct } = useUpdateMasterProduct();
+  const { mutate: deleteProduct } = useDeleteMasterProduct();
   const { formatPrice } = usePriceFormat();
   const navigate = useNavigate();
 
@@ -213,13 +214,23 @@ const ProductCatalog = () => {
   };
 
   const handleOpenAssignProductDialog = (product: MasterProduct) => {
-    setSelectedProductForBranches(product);
+    setSelectedProductForAssignment(product);
     setIsAssignProductDialogOpen(true);
+  };
+
+  const handleAssignProductSuccess = () => {
+    setIsAssignProductDialogOpen(false);
+    refetch();
   };
 
   const handleOpenManagePricesDialog = (product: MasterProduct) => {
     setSelectedProductForPrices(product);
     setIsManagePricesDialogOpen(true);
+  };
+
+  const handleManagePricesSuccess = () => {
+    setIsManagePricesDialogOpen(false);
+    refetch();
   };
 
   const handleOpenProductCommissionsDialog = (product: MasterProduct) => {
@@ -228,8 +239,7 @@ const ProductCatalog = () => {
   };
 
   const handleDelete = (productId: string) => {
-    // TODO: Implement delete product logic
-    console.log("Delete product", productId);
+    deleteProduct(productId);
   };
 
   const handleProductCommissionsSuccess = () => {
