@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTenantClientSettings, useUpdateTenantClientSettings, TenantClientSettings } from "@/hooks/useTenantClientSettings";
 import { useClientDocumentTemplates } from "@/hooks/useClientDocumentTemplates";
 import { ManageFormTemplatesDialog } from '@/components/ManageFormTemplatesDialog';
+import { ManageConsentTemplatesDialog } from '@/components/dialogs/ManageConsentTemplatesDialog'; // Import the new dialog
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { Users } from 'lucide-react';
@@ -20,6 +21,7 @@ export function ClientsTab() {
 
   const [formState, setFormState] = useState<Partial<Omit<TenantClientSettings, 'id' | 'created_at' | 'updated_at'>>>({});
   const [isManageTemplatesOpen, setManageTemplatesOpen] = useState(false);
+  const [isManageConsentDialogOpen, setManageConsentDialogOpen] = useState(false); // Add state for the new dialog
 
   useEffect(() => {
     if (settings) {
@@ -145,6 +147,16 @@ export function ClientsTab() {
                         onCheckedChange={(checked) => setFormState(prev => ({ ...prev, require_image_consent: checked }))}
                       />
                     </div>
+
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="consent-templates" className="text-base">Plantillas de Consentimiento Informado</Label>
+                        <p className="text-sm text-slate-600">
+                          Crea y administra las plantillas para los consentimientos que solicitas a tus clientes.
+                        </p>
+                      </div>
+                      <Button variant="outline" onClick={() => setManageConsentDialogOpen(true)}>Gestionar Plantillas</Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -159,6 +171,7 @@ export function ClientsTab() {
         </CardContent>
       </Card>
       <ManageFormTemplatesDialog open={isManageTemplatesOpen} onOpenChange={setManageTemplatesOpen} />
+      <ManageConsentTemplatesDialog open={isManageConsentDialogOpen} onOpenChange={setManageConsentDialogOpen} />
     </>
   );
 }

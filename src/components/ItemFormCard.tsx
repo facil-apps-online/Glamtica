@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, Trash2, UploadCloud, Clock } from "lucide-react";
+import { Link, Trash2, UploadCloud, Clock, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { FilterableSelect } from "./FilterableSelect";
 import { useProductSellers } from "@/hooks/useProductSellers";
 import { useGetComboBranchDetails } from "@/hooks/useCombos";
@@ -18,6 +20,9 @@ import { useStartService, useFinishService, useCallClient } from "@/hooks/useAtt
 import { ServiceTimer } from "./ServiceTimer";
 import { EvidenceUploadDialog } from "./EvidenceUpload";
 import { debounce } from "@/lib/utils";
+import { AssignConsentDialog } from "@/components/dialogs/AssignConsentDialog";
+import { ViewConsentDialog } from '@/components/dialogs/ViewConsentDialog';
+import { useSignedConsentsForAttention, useDeleteSignedConsent, useSignConsent, SignedConsent } from "@/hooks/useConsentTemplates";
 
 // --- SUB-COMPONENTE PARA ITEMS DENTRO DE UN COMBO ---
 
@@ -123,6 +128,7 @@ export interface ItemForm {
   user_name?: string;
   is_existing: boolean;
   status?: string;
+  status_history?: any[];
   start_time: string;
   end_time: string;
   is_parallel: boolean;
@@ -147,6 +153,8 @@ export interface ItemFormCardProps {
   isAttentionEditable: boolean;
   tenantId?: string;
   screenSize: 'mobile' | 'tablet' | 'desktop';
+  attentionId: string; // ADD THIS LINE
+  attention: any;
 }
 
 const ItemFormCard = ({
@@ -162,6 +170,8 @@ const ItemFormCard = ({
   availableServicesAndCombos,
   availableBranchProducts,
   isAttentionEditable,
+  attentionId, // ADD THIS LINE
+  attention,
 }: ItemFormCardProps) => {
   const [evidenceDialogService, setEvidenceDialogService] = useState<ItemForm | null>(null);
   const [professionalSearchTerm, setProfessionalSearchTerm] = useState("");
@@ -171,6 +181,7 @@ const ItemFormCard = ({
   const startServiceMutation = useStartService();
   const finishServiceMutation = useFinishService();
   const callClientMutation = useCallClient();
+  const [isAssignConsentDialogOpen, setIsAssignConsentDialogOpen] = useState(false); // State for consent dialog
 
   const getStatusBadge = (status: ItemForm['status']) => {
     switch (status) {
@@ -571,14 +582,21 @@ const ItemFormCard = ({
                                 {finishServiceMutation.isPending ? 'Finalizando...' : 'Finalizar Servicio'}
                             </Button>
                         )}
-                        <ServiceTimer startTime={item.start_time} endTime={item.end_time} status={item.status || 'Pendiente'} />
+                        <ServiceTimer status={item.status || 'Pendiente'} statusHistory={item.status_history} />
                         {item.status === 'Finalizado' && <p className="text-sm text-green-600 p-2 bg-green-50 rounded-md">Servicio finalizado.</p>}
                         {item.status === 'Llamado' && <p className="text-sm text-blue-600 p-2 bg-blue-50 rounded-md">Profesional llamado.</p>}
                         <Button type="button" size="sm" variant="outline" onClick={() => setEvidenceDialogService(item)}>
                           <UploadCloud className="w-4 h-4 mr-2" />
                           Evidencia
                         </Button>
+                        {/* NEW: Asignar Consentimiento Button */}
+                        <Button type="button" size="sm" variant="outline" onClick={() => setIsAssignConsentDialogOpen(true)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Consentimiento
+                        </Button>
                     </div>
+                    {/* NEW: Display Signed Consents for this service */}
+                    <SignedConsentsDisplay attentionId={attentionId} attentionServiceId={item.id} branchId={branchId} attention={attention} />
                 </div>
             )}
 
@@ -591,7 +609,124 @@ const ItemFormCard = ({
       branchId={branchId || ''}
       onUploadComplete={() => setEvidenceDialogService(null)}
     />
+    {/* NEW: Assign Consent Dialog */}
+    {item.type === 'service' && (
+      <AssignConsentDialog
+        open={isAssignConsentDialogOpen}
+        onOpenChange={setIsAssignConsentDialogOpen}
+        attentionId={attentionId} // Corrected prop name
+        attentionServiceId={item.id}
+      />
+    )}
   </>
+  );
+};
+
+// NEW: Sub-component to display signed consents
+interface SignedConsentsDisplayProps {
+  attentionId: string;
+  attentionServiceId: string;
+  branchId?: string;
+  attention: any;
+}
+
+const SignedConsentsDisplay = ({ attentionId, attentionServiceId, branchId, attention }: SignedConsentsDisplayProps) => {
+  const { data: signedConsents, isLoading: isLoadingSignedConsents } = useSignedConsentsForAttention(attentionId, attentionServiceId);
+  const { mutate: deleteConsent, isPending: isDeleting } = useDeleteSignedConsent();
+  const { mutate: signConsent, isPending: isSigning } = useSignConsent();
+  const { toast } = useToast();
+  const [selectedConsent, setSelectedConsent] = useState<SignedConsent | null>(null);
+
+  const handleDelete = (consentId: string) => {
+    deleteConsent(consentId, {
+      onSuccess: () => {
+        toast({ title: "Éxito", description: "Consentimiento eliminado correctamente.", variant: "success" });
+      },
+      onError: (error) => {
+        toast({ title: "Error", description: `No se pudo eliminar el consentimiento: ${error.message}`, variant: "destructive" });
+      },
+    });
+  };
+
+  const handleSignConsent = (signatureDataUrl: string, observations: string, formData: any, signedContent: string) => {
+    if (!selectedConsent || !branchId) return;
+    signConsent({
+      signedConsentId: selectedConsent.id,
+      signatureDataUrl,
+      observations,
+      branchId, // Pass branchId here
+      formData,
+      signedContent,
+    }, {
+      onSuccess: () => {
+        toast({ title: "Éxito", description: "Consentimiento firmado correctamente.", variant: "success" });
+        setSelectedConsent(null);
+      },
+      onError: (error) => {
+        toast({ title: "Error", description: `No se pudo firmar el consentimiento: ${error.message}`, variant: "destructive" });
+      },
+    });
+  };
+
+  if (isLoadingSignedConsents) {
+    return <p className="text-sm text-muted-foreground mt-2">Cargando consentimientos...</p>;
+  }
+
+  if (!signedConsents || signedConsents.length === 0) {
+    return <p className="text-sm text-muted-foreground mt-2">No hay consentimientos asignados a este servicio.</p>;
+  }
+
+  return (
+    <>
+      <div className="mt-2 space-y-1">
+        <h5 className="text-xs font-semibold">Consentimientos Asignados:</h5>
+        {signedConsents.map(consent => (
+          <div key={consent.id} className="flex items-center justify-between text-xs p-1 border rounded-md bg-muted">
+            <span>{consent.template_name}</span>
+            <div className="flex items-center gap-2">
+              {consent.signed_at ? (
+                <span className="text-green-600">Firmado</span>
+              ) : (
+                <Button variant="link" className="text-orange-600 h-auto p-0" onClick={() => setSelectedConsent(consent)}>
+                  Pendiente
+                </Button>
+              )}
+              {!consent.signed_at && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" disabled={isDeleting}>
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Esto eliminará permanentemente el consentimiento asignado.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(consent.id)} disabled={isDeleting}>
+                        {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <ViewConsentDialog
+        open={!!selectedConsent}
+        onOpenChange={(isOpen) => !isOpen && setSelectedConsent(null)}
+        signedConsent={selectedConsent}
+        onConfirm={handleSignConsent}
+        isSigning={isSigning}
+        attention={attention}
+      />
+    </>
   );
 };
 

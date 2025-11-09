@@ -107,7 +107,7 @@ export const useStockReport = (dateFrom: string, dateTo: string) => {
 
       const { data, error } = await supabase.rpc('get_stock_report', { 
         p_tenant_id: tenantId,
-        p_date_from: dateFrom,
+        p_date_from: '2000-01-01',
         p_date_to: dateTo
       });
 

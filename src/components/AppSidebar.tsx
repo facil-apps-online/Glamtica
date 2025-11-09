@@ -12,12 +12,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Building2, Scissors } from "lucide-react";
+import { Building2, Scissors, HardDrive } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranches } from "@/hooks/useBranches";
 import { Skeleton } from "./ui/skeleton";
 import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
 import { useTenantStorageUsage } from "@/hooks/useTenantStorageUsage";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { StorageUsageChart } from "./StorageUsageChart";
 
 // Helper function to format bytes (re-used from sidebar.tsx)
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -57,11 +59,15 @@ const TenantInfoFooter: React.FC = () => {
   const { data: storageUsage, isLoading: isLoadingStorage } = useTenantStorageUsage(tenantId || '');
 
   const currentBranch = branches?.find(b => b.id === currentAssignment?.branch_id);
+  
+  const usagePercentage = storageUsage && storageUsage.storageLimit > 0
+    ? (storageUsage.totalSize / storageUsage.storageLimit) * 100
+    : 0;
 
   return (
     <SidebarFooter>
       {tenantId && (
-        <div className="flex flex-col gap-2">
+        <div className="relative flex flex-col gap-2 z-30">
           {/* Branch Info (only for tenant_admin or tenant_user) */}
           {(userRole === 'tenant_admin' || userRole === 'tenant_user') && !isLoadingBranches && currentBranch && (
             <SidebarMenu>
@@ -79,10 +85,34 @@ const TenantInfoFooter: React.FC = () => {
 
           {/* Storage Usage (for all tenant roles) */}
           {!isLoadingStorage && storageUsage && (
-            <div className="text-xs text-muted-foreground p-2 border rounded-md">
-              <p>Almacenamiento:</p>
-              <p className="font-medium">{formatBytes(storageUsage.totalSize)} / {formatBytes(storageUsage.storageLimit)}</p>
-            </div>
+            <Sheet>
+              <SheetTrigger asChild>
+                <div 
+                  className="text-xs text-muted-foreground p-2 border rounded-md cursor-pointer hover:bg-accent"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <HardDrive className="h-4 w-4" />
+                    <p className="font-semibold">Almacenamiento</p>
+                  </div>
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary mb-1">
+                    <div 
+                      className="h-full w-full flex-1 bg-primary transition-all" 
+                      style={{ transform: `translateX(-${100 - (usagePercentage || 0)}%)` }}
+                    />
+                  </div>
+                  <p className="font-medium text-center">{formatBytes(storageUsage.totalSize)} / {formatBytes(storageUsage.storageLimit)}</p>
+                </div>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-auto">
+                <SheetHeader>
+                  <SheetTitle>Desglose de Almacenamiento</SheetTitle>
+                  <SheetDescription>
+                    Uso de almacenamiento por tipo de archivo en el salón.
+                  </SheetDescription>
+                </SheetHeader>
+                {storageUsage.breakdown && <StorageUsageChart data={storageUsage.breakdown} />}
+              </SheetContent>
+            </Sheet>
           )}
         </div>
       )}

@@ -34,6 +34,7 @@ export type Attention = Tables<'attentions'> & {
     users: Tables<'users'>;
   })[];
   attention_payments: Tables<'attention_payments'>[];
+  informed_consent_id: string | null;
 };
 
 interface CreateAttentionParams {

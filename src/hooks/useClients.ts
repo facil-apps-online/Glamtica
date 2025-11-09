@@ -18,7 +18,7 @@ export interface Client {
   name: string;
   phone: string;
   email?: string;
-  document_type?: string;
+  document_types: { name: string } | null;
   document_type_id?: string;
   document_number?: string;
   parent_client_id?: string;

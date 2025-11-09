@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye, Loader2 } from "lucide-react";
+import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye, Loader2, FileText } from "lucide-react";
 import { callTenantAction } from '@/lib/tenantActions';
 import { TransactionReceiptDialog } from '@/components/TransactionReceiptDialog';
 import { useSaleDetails } from '@/hooks/useSaleDetails';
@@ -35,7 +35,8 @@ import { AttentionPaymentDialog } from "@/components/AttentionPaymentDialog";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { usePaymentEvidence } from "@/hooks/usePaymentEvidence";
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog";
-
+import { ExportInformedConsentDialog } from "@/components/attentions/ExportInformedConsentDialog";
+import { useSignedConsentsForAttention, SignedConsent } from "@/hooks/useConsentTemplates";
 
 
 const generateColorPalette = (count: number) => {
@@ -99,6 +100,9 @@ export default function Attentions() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [payingAttention, setPayingAttention] = useState<Attention | null>(null);
   const [viewingEvidenceForPaymentIds, setViewingEvidenceForPaymentIds] = useState<string[] | null>(null);
+  const [isExportInformedConsentDialogOpen, setIsExportInformedConsentDialogOpen] = useState(false);
+  const [attentionToExportConsent, setAttentionToExportConsent] = useState<Attention | null>(null);
+  const [selectedSignedConsentToExport, setSelectedSignedConsentToExport] = useState<SignedConsent | null>(null);
 
 
   const [initialDate, setInitialDate] = useState<Date | undefined>(undefined);
@@ -351,6 +355,12 @@ export default function Attentions() {
     setViewingPaymentsFor(attention);
   };
 
+  const handleExportInformedConsent = (signedConsent: SignedConsent, attention: Attention) => {
+    setSelectedSignedConsentToExport(signedConsent);
+    setAttentionToExportConsent(attention); // Keep attention for PDF generation context
+    setIsExportInformedConsentDialogOpen(true);
+  };
+
   const isMobile = screenSize === 'sm' || screenSize === 'md';
 
   const NewAttentionButton = (
@@ -419,6 +429,7 @@ export default function Attentions() {
                     formatPrice={formatPrice}
                     onEdit={handleEditFromDetailView}
                     onOpenPaymentDialog={handleOpenPaymentDialog}
+                    onExportInformedConsent={handleExportInformedConsent}
                     screenSize={screenSize}
                     branchId={viewingAttention.branch_id}
                   />
@@ -439,7 +450,12 @@ export default function Attentions() {
         attention={payingAttention}
       />
 
-
+      <ExportInformedConsentDialog
+        open={isExportInformedConsentDialogOpen}
+        onOpenChange={setIsExportInformedConsentDialogOpen}
+        signedConsent={selectedSignedConsentToExport}
+        attention={attentionToExportConsent}
+      />
 
       {viewingEvidenceForPaymentIds && (
           <EvidencePreview paymentIds={viewingEvidenceForPaymentIds} onClose={() => setViewingEvidenceForPaymentIds(null)} />
@@ -482,6 +498,7 @@ export default function Attentions() {
                     formatPrice={formatPrice} 
                     onEdit={handleEditAttention} 
                     onOpenPaymentDialog={handleOpenPaymentDialog}
+                    onExportInformedConsent={handleExportInformedConsent}
                     screenSize={screenSize} 
                     branchId={attention.branch_id} 
                   />
@@ -614,13 +631,15 @@ interface AttentionCardProps {
   formatPrice: (price: number) => string;
   onEdit: (attention: Attention) => void;
   onOpenPaymentDialog: (attention: Attention) => void;
+  onExportInformedConsent: (signedConsent: SignedConsent, attention: Attention) => void;
   screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   branchId: string;
 }
 
-const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, screenSize, branchId }: Omit<AttentionCardProps, 'onOpenPaymentDetails'>) => {
+const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, onExportInformedConsent, screenSize, branchId }: AttentionCardProps) => {
   const isMobile = screenSize === 'sm' || screenSize === 'md';
   const updateStatusMutation = useUpdateAttentionStatus();
+  const { data: signedConsents } = useSignedConsentsForAttention(attention.id);
 
   const attentionDate = useMemo(() => {
     if (!attention.attention_datetime) return null;
@@ -716,6 +735,19 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, sc
             {attention.status === 'Pagada' && (
               <ViewTransactionButton attentionId={attention.id} />
             )}
+
+            {signedConsents && signedConsents.filter(sc => sc.signed_at).map(signedConsent => (
+              <Tooltip delayDuration={0} key={signedConsent.id}>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={() => onExportInformedConsent(signedConsent, attention)}>
+                    <FileText className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Ver Consentimiento Informado</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
 
                 <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>

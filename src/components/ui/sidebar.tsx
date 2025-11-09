@@ -4,8 +4,6 @@ import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
 import { useScreenSize } from "@/hooks/useScreenSize"
-import { useAuth } from "@/contexts/AuthContext";
-import { useTenantStorageUsage } from "@/hooks/useTenantStorageUsage";
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -371,28 +369,15 @@ SidebarHeader.displayName = "SidebarHeader"
 const SidebarFooter = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
-  const { data: storageUsage, isLoading: isLoadingStorage } = useTenantStorageUsage(tenantId || '');
-
-  console.log('SidebarFooter: tenantId', tenantId);
-  console.log('SidebarFooter: isLoadingStorage', isLoadingStorage);
-  console.log('SidebarFooter: storageUsage', storageUsage);
-
+>(({ className, children, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("mt-auto flex flex-col gap-2 p-2", className)}
       {...props}
     >
-      {tenantId && !isLoadingStorage && storageUsage && (
-        <div className="text-xs text-muted-foreground p-2 border rounded-md">
-          <p>Almacenamiento:</p>
-          <p className="font-medium">{formatBytes(storageUsage.totalSize)} / {formatBytes(storageUsage.storageLimit)}</p>
-        </div>
-      )}
+      {children}
     </div>
   )
 })

@@ -29,6 +29,8 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { usePaymentEvidence } from "@/hooks/usePaymentEvidence";
 import { ImagePreviewDialog } from "./ImagePreviewDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AssignConsentDialog } from "./dialogs/AssignConsentDialog";
+import { useSignedConsentsForAttention } from "@/hooks/useConsentTemplates";
 
 registerLocale("es", es);
 
@@ -136,6 +138,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
   const createAttentionMutation = useCreateAttention();
   const updateAttentionItemsMutation = useUpdateAttentionItems();
   const { data: availablePaymentMethods } = usePaymentMethods(attention?.tenant_id);
+  const { data: signedConsents, isLoading: isLoadingSignedConsents } = useSignedConsentsForAttention(attention?.id); // ADD THIS LINE
 
   
   // --- Context and Other Hooks ---
@@ -188,6 +191,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
         status: s.status,
         start_time: s.start_time,
         end_time: s.end_time,
+        status_history: s.status_history,
         is_parallel: s.is_parallel,
         parallel_group_id: s.parallel_group_id,
         offset_minutes: s.offset_minutes,
@@ -689,6 +693,8 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
                   isAttentionEditable={isAttentionEditable}
                   tenantId={tenantId}
                   screenSize={screenSize}
+                  attention={attention} // Pass attention object
+                  attentionId={attention?.id || ''} // Pass attentionId
               />
           ))}
           </div>
