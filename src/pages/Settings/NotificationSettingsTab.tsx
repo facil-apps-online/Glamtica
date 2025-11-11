@@ -126,9 +126,9 @@ export function NotificationSettingsTab() {
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               {Object.entries(labels).map(([label, channels]) => (
-                <div key={label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-4 space-y-3 sm:space-y-0">
+                <div key={label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-4 gap-3">
                   <Label htmlFor={label} className="text-base font-semibold">{label}</Label>
-                  <div className="flex items-center space-x-6 self-end sm:self-center">
+                  <div className="flex items-center space-x-4 self-start sm:self-center">
                     {channels.email && (
                       <div className="flex items-center space-x-2">
                         <Switch

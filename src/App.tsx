@@ -42,6 +42,7 @@ import RegisterTenant from "@/pages/RegisterTenant";
 import TranslationAdmin from "@/components/TranslationAdmin";
 import AppInitializer from "@/components/AppInitializer";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SimpleProtectedRoute from "@/components/SimpleProtectedRoute";
 import AuthPage from "@/pages/Auth";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -78,11 +79,13 @@ function App() {
               <Route path="/tv" element={<TvDisplayPage />} />
               <Route path="/tv/:registrationCode" element={<TvDisplayPage />} />
 
-              {/* Rutas Protegidas */}
-              <Route element={<ProtectedRoute />}>
+              {/* Rutas Protegidas Simples (solo requieren login) */}
+              <Route element={<SimpleProtectedRoute />}>
                 <Route path="/register-tv/:registrationCode" element={<RegisterTvPage />} />
-                
-                {/* RUTA PADRE CON LAYOUT */}
+              </Route>
+
+              {/* Rutas Protegidas con Layout Principal */}
+              <Route element={<ProtectedRoute />}>
                 <Route path="/app" element={<Layout />}>
                   <Route index element={<Index />} /> {/* RUTA INDEX PARA LA PÁGINA DE INICIO */}
                   <Route path="profile-settings" element={<ProfileSettings />} />

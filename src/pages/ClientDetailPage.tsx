@@ -17,6 +17,7 @@ import { ClientDialog } from '@/components/ClientDialog';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, ArrowLeft, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTenantClientSettings } from "@/hooks/useTenantClientSettings";
+import { useAuth } from '@/contexts/AuthContext';
 import { useClientDocumentTemplates } from "@/hooks/useClientDocumentTemplates";
 import { useClientDocumentInstances, useSaveClientDocumentInstance } from "@/hooks/useClientDocumentInstances";
 import { useClientConsentRecords } from "@/hooks/useClientConsentRecords";
@@ -34,8 +35,8 @@ import { useClientAddresses, useClientContacts } from '@/hooks/useClientRelation
 import { ClientAddressesManager } from './Clients/components/ClientAddressesManager';
 import { ClientContactsManager, ClientContactDialog } from './Clients/components/ClientContactsManager';
 import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
-import { useTenantCountry } from '@/hooks/useTenantCountry';
 import { useCountries } from '@/hooks/useCountries';
+import { AttentionsCard } from '@/components/AttentionsCard';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,6 +45,7 @@ export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { tenant } = useAuth();
   const { data: client, isLoading, error } = useClientDetails(id || '');
   const { data: subClients, isLoading: isLoadingSubClients } = useSubClients(id || '');
   const updateMutation = useUpdateClient();
@@ -52,10 +54,10 @@ export default function ClientDetailPage() {
   const unassignClientFromBranch = useUnassignClientFromBranch();
   const queryClient = useQueryClient();
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('client');
-  const { data: countryId } = useTenantCountry(client?.tenant_id);
   const { data: countries } = useCountries();
   const [selectedBranchIds, setSelectedBranchIds] = React.useState<string[]>([]);
 
+  const countryId = tenant?.country_id;
   const countryIsoCode = countries?.find(c => c.id === countryId)?.iso_code;
 
   // State for Forms & Consents
@@ -252,7 +254,7 @@ export default function ClientDetailPage() {
         <div className="lg:col-span-2 space-y-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {isMobile ? (
-              <div className="px-4">
+              <div>
                 <Select onValueChange={setActiveTab} value={activeTab}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar una sección..." />
@@ -265,6 +267,7 @@ export default function ClientDetailPage() {
                     <SelectItem value="branches">Sucursales</SelectItem>
                     <SelectItem value="family">Familiares</SelectItem>
                     <SelectItem value="forms-consents">Formularios</SelectItem>
+                    <SelectItem value="attentions">Atenciones</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -289,6 +292,7 @@ export default function ClientDetailPage() {
                     <TabsTrigger type="button" value="branches">Sucursales</TabsTrigger>
                     <TabsTrigger type="button" value="family">Familiares</TabsTrigger>
                     <TabsTrigger type="button" value="forms-consents">Formularios</TabsTrigger>
+                    <TabsTrigger type="button" value="attentions">Atenciones</TabsTrigger>
                   </TabsList>
                 </div>
                 {showRightArrow && (
@@ -338,7 +342,7 @@ export default function ClientDetailPage() {
                       <FormField control={form.control} name="phone" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm font-medium">Teléfono</FormLabel>
-                <FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} /></FormControl>
+                <FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} placeholderType='movil' /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -471,7 +475,7 @@ export default function ClientDetailPage() {
                         <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} placeholderType='movil' /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@cliente.com" /></FormControl><FormMessage /></FormItem>)} />
                       </div>
                     </div>
@@ -515,6 +519,9 @@ export default function ClientDetailPage() {
                   <ClientContactsManager clientId={client.id} />
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="attentions" className="mt-4">
+              <AttentionsCard clientId={id} />
             </TabsContent>
           </Tabs>
           <div className="flex justify-end pt-8">

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface MediaPlaylist {
@@ -31,41 +32,75 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(currentPlaylistId);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { session } = useAuth();
 
   useEffect(() => {
     const fetchPlaylists = async () => {
-      const { data, error } = await supabase
-        .from('media_playlists')
-        .select('id, name');
-      if (error) {
+      if (!session) return;
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            action: 'get_media_playlists',
+          }),
+        });
+        const json = await response.json();
+        if (!response.ok) {
+          throw new Error(json.error || 'Failed to fetch media playlists');
+        }
+        setPlaylists(json as MediaPlaylist[]);
+      } catch (err: any) {
         toast({
           title: "Error",
           description: "No se pudieron cargar las playlists.",
           variant: "destructive",
         });
-      } else {
-        console.log("AssignPlaylistDialog - Fetched playlists:", data);
-        setPlaylists(data as MediaPlaylist[]);
       }
     };
+
     if (isOpen) {
       fetchPlaylists();
     }
-  }, [isOpen, toast]);
+  }, [isOpen, session, toast]);
 
   useEffect(() => {
     setSelectedPlaylistId(currentPlaylistId);
   }, [currentPlaylistId]);
 
   const handleAssign = async () => {
+    if (!session) {
+      toast({
+        title: "Error de autenticación",
+        description: "No se pudo verificar la sesión. Por favor, inicie sesión de nuevo.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('tv_displays')
-        .update({ media_playlist_id: selectedPlaylistId })
-        .eq('id', tvDisplayId);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'assign_playlist_to_tv',
+          payload: {
+            tv_display_id: tvDisplayId,
+            playlist_id: selectedPlaylistId,
+          },
+        }),
+      });
 
-      if (error) throw error;
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to assign playlist');
+      }
 
       toast({
         title: "Playlist Asignada",

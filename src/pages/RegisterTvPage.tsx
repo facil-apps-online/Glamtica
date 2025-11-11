@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,25 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+import { useBranches } from '@/hooks/useBranches';
+
 const RegisterTvPage: React.FC = () => {
   const { registrationCode } = useParams<{ registrationCode: string }>();
   const navigate = useNavigate();
-  const { currentAssignment, assignments } = useAuth();
+  const { currentAssignment } = useAuth();
+  const { data: activeBranches = [], isLoading: isLoadingBranches } = useBranches(undefined, true);
   const { toast } = useToast();
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const userBranches = assignments.filter(a => a.branch_id && a.branch_id !== '').map(a => ({ id: a.branch_id, name: a.branch_name }));
-
-  console.log("RegisterTvPage - selectedBranchId:", selectedBranchId);
-  console.log("RegisterTvPage - userBranches:", userBranches);
-
   useEffect(() => {
-    if (userBranches.length === 1) {
-      setSelectedBranchId(userBranches[0].id!);
+    if (activeBranches.length === 1) {
+      setSelectedBranchId(activeBranches[0].id);
     }
-  }, [assignments]);
+  }, [activeBranches]);
 
   const handleRegister = async () => {
     if (!registrationCode || !selectedBranchId || !currentAssignment) {
@@ -49,7 +47,7 @@ const RegisterTvPage: React.FC = () => {
       }
 
       toast({ title: "Éxito", description: "TV registrada correctamente.", variant: "success" });
-      navigate('/settings/tv-management');
+      navigate('/app/settings/tv-management');
     } catch (err: any) {
       setError("Error al registrar la TV: " + err.message);
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -73,24 +71,21 @@ const RegisterTvPage: React.FC = () => {
 
           <div className="space-y-2">
             <label htmlFor="branch-select" className="font-medium text-gray-700">Asociar a la Sucursal:</label>
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <Select value={selectedBranchId} onValueChange={setSelectedBranchId} disabled={isLoadingBranches}>
               <SelectTrigger id="branch-select" className="w-full">
-                <SelectValue placeholder="Selecciona una sucursal" />
+                <SelectValue placeholder={isLoadingBranches ? "Cargando sucursales..." : "Selecciona una sucursal"} />
               </SelectTrigger>
               <SelectContent>
-                {userBranches.map(branch => {
-                  console.log("RegisterTvPage - SelectItem branch:", branch);
-                  return (
-                    <SelectItem key={branch.id} value={branch.id!}>{branch.name}</SelectItem>
-                  );
-                })}
+                {activeBranches.map(branch => (
+                  <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
-          <Button onClick={handleRegister} disabled={loading || !selectedBranchId} className="w-full bg-purple-600 hover:bg-purple-700 text-white text-lg py-6 rounded-lg">
+          <Button onClick={handleRegister} disabled={loading || !selectedBranchId || isLoadingBranches} className="w-full bg-purple-600 hover:bg-purple-700 text-white text-lg py-6 rounded-lg">
             {loading ? 'Registrando...' : 'Confirmar y Activar TV'}
           </Button>
         </CardContent>

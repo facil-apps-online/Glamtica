@@ -3,10 +3,13 @@ import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useBranchFilterStore } from '@/stores/branchFilterStore';
+import { useQuery } from '@tanstack/react-query';
 
 // --- INTERFACES ---
 interface Tenant {
   id: string;
+  name: string;
+  country_id: string;
   logo_url: string | null;
   // ... otros campos del tenant que puedan ser útiles
 }
@@ -64,15 +67,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [tenant, setTenant] = useState<Tenant | null>(null); // Estado para el tenant
   const [assignments, setAssignments] = useState<UserAssignment[]>([]);
   const [currentAssignment, setCurrentAssignment] = useState<UserAssignment | null>(null);
   const [tenantBranches, setTenantBranches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // This now only tracks session loading
   const navigate = useNavigate();
   const { toast } = useToast();
   const previousAssignmentRef = useRef<UserAssignment | null>(null);
   const { setBranchId } = useBranchFilterStore();
+
+  const tenantId = currentAssignment?.tenant_id;
+  const { data: tenant, isLoading: isTenantLoading } = useQuery({
+    queryKey: ['tenant', tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient.functions.invoke('tenant-actions', {
+        body: { action: 'get-tenant-details' }
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!tenantId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
 
   const processSession = useCallback(async (sessionData: Session | null) => {
     try {
@@ -152,44 +169,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
         setProfile(null);
         setAssignments([]);
         setCurrentAssignment(null);
-        setTenant(null); // Limpiar tenant al cerrar sesión
       }
     } catch (error) {
       console.error("Error procesando la sesión:", error);
       setAssignments([]);
       setCurrentAssignment(null);
-      setTenant(null); // Limpiar tenant en caso de error
       await supabaseClient.auth.signOut();
       navigate('/auth');
     } finally {
       setLoading(false);
     }
   }, [supabaseClient, navigate]);
-
-  // Efecto para buscar los datos del tenant cuando cambia el currentAssignment
-  useEffect(() => {
-    const fetchTenantData = async () => {
-      if (currentAssignment?.tenant_id) {
-        const { data, error } = await supabaseClient
-          .from('tenants')
-          .select('*') // Seleccionar todos los campos del tenant
-          .eq('id', currentAssignment.tenant_id)
-          .single();
-
-        if (error) {
-          console.error("Error fetching tenant data:", error);
-          setTenant(null);
-        } else {
-          setTenant(data);
-        }
-      } else {
-        setTenant(null);
-      }
-    };
-
-    fetchTenantData();
-  }, [currentAssignment, supabaseClient]);
-
 
   useEffect(() => {
     setLoading(true);
@@ -227,7 +217,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     if (data.session) {
       await supabaseClient.auth.setSession(data.session);
 
-      // Always refresh metadata on login
       const { error: refreshError } = await supabaseClient.functions.invoke('user-actions', {
         body: {
           action: 'refresh-user-metadata',
@@ -236,11 +225,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
       });
 
       if (refreshError) {
-        // Log the error but don't block the login
         console.error(`Error al rehidratar metadatos: ${refreshError.message}`);
       }
 
-      // The onAuthStateChange will handle the rest
       await supabaseClient.auth.refreshSession();
       
       navigate('/app');
@@ -310,11 +297,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     }
   };
 
+  const overallLoading = loading || (!!tenantId && isTenantLoading);
+
   const contextValue = useMemo(() => ({
     session,
     user,
     profile,
-    tenant, // Exponer el objeto tenant
+    tenant: tenant || null,
     assignments,
     currentAssignment,
     tenantId: currentAssignment?.tenant_id,
@@ -324,9 +313,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     logout,
     switchAssignment,
     refreshUser,
-    loading,
+    loading: overallLoading,
     supabaseClient,
-  }), [session, user, profile, tenant, assignments, currentAssignment, tenantBranches, loading, refreshUser, supabaseClient]);
+  }), [session, user, profile, tenant, assignments, currentAssignment, tenantBranches, overallLoading, refreshUser, supabaseClient]);
 
   return (
     <AuthContext.Provider value={contextValue}>

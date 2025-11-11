@@ -65,6 +65,7 @@ export const useBranches = (tenantIdParam?: string, activeOnly = false) => {
       return branches;
     },
     enabled: !!tenantId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 
@@ -178,7 +179,14 @@ export const useDeleteBranch = (tenantIdParam?: string) => {
   return useMutation({
     mutationFn: async (p_branch_id: string) => {
       if (!tenantId) throw new Error("Tenant ID not available");
-      const { data, error } = await supabase.rpc('delete_branch', { p_tenant_id: tenantId, p_branch_id });
+      if (!session) throw new Error("Session not available");
+
+      const { data, error } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'delete-branch',
+          payload: { p_branch_id },
+        },
+      });
       if (error) throw new Error(error.message);
       return data;
     },
@@ -199,7 +207,14 @@ export const useArchiveBranch = (tenantIdParam?: string) => {
   return useMutation({
     mutationFn: async (p_branch_id: string) => {
       if (!tenantId) throw new Error("Tenant ID not available");
-      const { data, error } = await supabase.rpc('archive_branch', { p_tenant_id: tenantId, p_branch_id });
+      if (!session) throw new Error("Session not available");
+
+      const { data, error } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'archive-branch',
+          payload: { p_branch_id },
+        },
+      });
       if (error) throw new Error(error.message);
       return data;
     },
@@ -221,9 +236,13 @@ export const useActivateBranchesBatch = (tenantIdParam?: string) => {
       if (!p_branch_ids || p_branch_ids.length === 0) {
         throw new Error("No branch IDs provided for batch activation.");
       }
-      const { data, error } = await supabase.rpc('activate_branches_batch', { 
-        p_tenant_id: tenantId, 
-        p_branch_ids: p_branch_ids 
+      if (!session) throw new Error("Session not available");
+
+      const { data, error } = await supabase.functions.invoke('tenant-actions', {
+        body: {
+          action: 'activate-branches-batch',
+          payload: { p_branch_ids },
+        },
       });
       if (error) throw new Error(error.message);
       return data;

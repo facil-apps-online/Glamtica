@@ -12,25 +12,28 @@ import { CancelledBanner } from "./CancelledBanner";
 import { tenantNavigationConfig } from "@/config/tenantNavigation";
 import { useNotificationStore, Notification } from "@/stores/notificationStore";
 import { supabase } from "@/lib/supabaseClient";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export function Layout() {
   const { currentAssignment } = useAuth();
   const { data: subscription, isLoading: isSubscriptionLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
-  const { fetchNotifications, addNotification } = useNotificationStore();
+  const { setNotifications, addNotification } = useNotificationStore();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { data: notifications, isLoading: isNotificationsLoading } = useNotifications();
 
   const status = subscription?.status;
   const isAdmin = currentAssignment?.role_name === 'tenant_super_admin' || currentAssignment?.role_name === 'tenant_admin';
   const isReadOnly = status === 'suspendido' || status === 'cancelado';
   const showGraceBanner = status === 'gracia' && isAdmin;
 
-  // Fetch initial notifications on load
+  // Populates the store with data fetched from react-query
   React.useEffect(() => {
-    if (currentAssignment) {
-      fetchNotifications();
+    if (notifications) {
+      setNotifications(notifications);
     }
-  }, [currentAssignment, fetchNotifications]);
+  }, [notifications, setNotifications]);
 
   // Set up real-time listener for new notifications
   React.useEffect(() => {
@@ -63,7 +66,7 @@ export function Layout() {
     }
   }, [status, isSubscriptionLoading, location.pathname, navigate]);
 
-  if (isSubscriptionLoading) {
+  if (isSubscriptionLoading || isNotificationsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         Cargando...

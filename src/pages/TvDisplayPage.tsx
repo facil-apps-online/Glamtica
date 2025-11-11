@@ -70,43 +70,77 @@ const TvDisplayPage: React.FC = () => {
 
   useEffect(() => {
     const initializeTv = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        let tvData: TvDisplay | null = null;
-        if (registrationCode) {
-          const { data, error } = await supabase.rpc('get_tv_display_by_code', { p_registration_code: registrationCode });
-          if (error) throw error;
-          if (data && data.length > 0) {
-            tvData = data[0] as TvDisplay;
-            setTvDisplay(tvData);
-          } else {
-            // Si no se encuentra el código, podría ser un código antiguo o inválido.
-            // Opcionalmente, podríamos redirigir a la página de creación.
-            navigate('/tv');
+        const storedTvId = localStorage.getItem('tvDisplayId');
+
+        const url = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/public-actions`;
+        const body = {
+          action: 'public_get_or_create_tv_display',
+          payload: { 
+            p_id: storedTvId,
+            p_registration_code: registrationCode 
+          },
+        };
+
+        console.log('Calling public-actions (initializeTv):', { url, body: JSON.stringify(body) });
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const tvData = await response.json();
+        if (!response.ok) {
+          throw new Error(tvData.error || 'Failed to initialize TV display');
+        }
+
+        if (tvData) {
+          localStorage.setItem('tvDisplayId', tvData.id);
+          if (registrationCode !== tvData.registration_code) {
+            navigate(`/tv/${tvData.registration_code}`, { replace: true });
           }
+          setTvDisplay(tvData);
         } else {
-          // No hay código de registro, así que creamos uno nuevo.
-          const { data, error } = await supabase.rpc('create_unregistered_tv');
-          if (error) throw error;
-          
-          const newTv = data as TvDisplay;
-          if (newTv && newTv.registration_code) {
-            navigate(`/tv/${newTv.registration_code}`, { replace: true });
-          } else {
-            throw new Error('No se pudo crear un nuevo registro de TV.');
-          }
+          localStorage.removeItem('tvDisplayId');
+          navigate('/tv', { replace: true });
         }
       } catch (err: any) {
         setError("Error al inicializar la TV: " + err.message);
       } finally {
-        // Solo dejamos de cargar si no estamos redirigiendo
-        if (registrationCode) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     initializeTv();
   }, [registrationCode, navigate]);
+
+  useEffect(() => {
+    if (tvDisplay?.id) {
+      const tvChannel = supabase
+        .channel(`tv-display-${tvDisplay.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'tv_displays',
+            filter: `id=eq.${tvDisplay.id}`,
+          },
+          (payload) => {
+            console.log('TV Display updated!', payload);
+            setTvDisplay(payload.new as TvDisplay);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(tvChannel);
+      };
+    }
+  }, [tvDisplay?.id]);
 
   useEffect(() => {
     if (tvDisplay?.tenant_id) {
@@ -128,8 +162,18 @@ const TvDisplayPage: React.FC = () => {
 
   const fetchTurns = useCallback(async (branchId: string) => {
     try {
-      const { data, error } = await supabase.rpc('get_current_turns_for_branch', { p_branch_id: branchId });
-      if (error) throw error;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/public-actions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'public_get_current_turns',
+          payload: { p_branch_id: branchId },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch turns');
+      }
       setTurns(data as Turn[]);
     } catch (err: any) {
       console.error("Error fetching turns:", err.message);
@@ -138,9 +182,21 @@ const TvDisplayPage: React.FC = () => {
 
   const fetchPlaylistItems = useCallback(async (playlistId: string) => {
     try {
-      const { data, error } = await supabase.rpc('get_playlist_items', { p_playlist_id: playlistId });
-      if (error) throw error;
-      setPlaylistItems(data as PlaylistItem[]);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/public-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'public_get_playlist_items',
+          payload: { p_playlist_id: playlistId },
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to fetch playlist items');
+      }
+      setPlaylistItems(json as PlaylistItem[]);
     } catch (err: any) {
       console.error("Error fetching playlist items:", err.message);
     }

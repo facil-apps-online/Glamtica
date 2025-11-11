@@ -28,7 +28,6 @@ import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
 import { PhoneInput } from '@/components/PhoneInput';
-import { useTenantCountry } from '@/hooks/useTenantCountry';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
@@ -59,7 +58,6 @@ const EditSupplierPage = () => {
   const { mutateAsync: updateSupplier, isPending: isSaving } = useUpdateSupplier();
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-  const { data: countryId } = useTenantCountry(tenantId);
   const { data: branches } = useBranches(tenantId);
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');
 

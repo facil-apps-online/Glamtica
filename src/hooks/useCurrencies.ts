@@ -20,10 +20,23 @@ export const useCurrencies = () => {
   return useQuery<Currency[], Error>({
     queryKey: ['currencies'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('currencies').select('*').order('name');
-      if (error) throw error;
-      return data;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/public-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'get-currencies',
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.message || 'Failed to fetch currencies');
+      }
+      return json;
     },
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 };
 

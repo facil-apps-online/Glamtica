@@ -82,14 +82,14 @@ function SortableItem({ item, onEdit, onDelete }: { item: PlaylistItem, onEdit: 
   };
 
   return (
-    <li ref={setNodeRef} style={style} className="flex items-center justify-between p-2 border rounded-md gap-2 bg-white shadow-sm">
+    <li ref={setNodeRef} style={style} className="flex items-center justify-between p-2 border rounded-md gap-2 bg-muted shadow-sm">
       <div className="flex items-center gap-2 flex-grow overflow-hidden">
         <span {...attributes} {...listeners} className="cursor-grab touch-none p-1">
-          <GripVertical className="h-5 w-5 text-gray-400" />
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
         </span>
         <div className="flex-grow overflow-hidden">
-          <p className="text-sm font-medium truncate" title={item.video_title || item.media_url}>{item.video_title || item.media_url}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-medium truncate text-foreground" title={item.video_title || item.media_url}>{item.video_title || item.media_url}</p>
+          <p className="text-xs text-muted-foreground">
             Duración: {formatDuration(item.duration_seconds)} | Orden: {item.item_order}
           </p>
         </div>
@@ -135,7 +135,7 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [videosToImport, setVideosToImport] = useState<any[]>([]);
   const { toast } = useToast();
-  const { tenantId } = useAuth();
+  const { tenantId, session } = useAuth();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -157,28 +157,54 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
   }, [playlist, isOpen]);
 
   const fetchPlaylistItems = async () => {
-    if (!playlist?.id) return;
-    const { data, error } = await supabase.rpc('get_playlist_items', { p_playlist_id: playlist.id });
-    if (error) {
+    if (!playlist?.id || !session) return;
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: 'get_playlist_items',
+          payload: { p_playlist_id: playlist.id },
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to fetch playlist items');
+      }
+      setItems(json || []);
+    } catch (err: any) {
       toast({ title: "Error", description: "No se pudieron cargar los ítems de la playlist.", variant: "destructive" });
-    } else {
-      setItems(data || []);
     }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      if (!tenantId) throw new Error("No se pudo determinar el Tenant ID.");
-      if (playlist?.id) {
-        const { error } = await supabase.from('media_playlists').update({ name, description }).eq('id', playlist.id);
-        if (error) throw error;
-        toast({ title: "Playlist Actualizada", variant: "success" });
-      } else {
-        const { error } = await supabase.from('media_playlists').insert({ name, description, tenant_id: tenantId });
-        if (error) throw error;
-        toast({ title: "Playlist Creada", variant: "success" });
+      if (!tenantId || !session) throw new Error("No se pudo determinar el Tenant ID o la sesión.");
+      
+      const action = playlist?.id ? 'update_media_playlist' : 'create_media_playlist';
+      const payload = playlist?.id
+        ? { playlist_id: playlist.id, name, description }
+        : { name, description };
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action, payload }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || `Failed to ${action}`);
       }
+
+      toast({ title: playlist?.id ? "Playlist Actualizada" : "Playlist Creada", variant: "success" });
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -192,14 +218,28 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
     if (!videosToImport || videosToImport.length === 0 || !playlist?.id) return;
     setLoading(true);
     try {
-      const { data: maxOrderData, error: maxOrderError } = await supabase.from('playlist_items').select('item_order').eq('playlist_id', playlist.id).order('item_order', { ascending: false }).limit(1).single();
-      if (maxOrderError && maxOrderError.code !== 'PGRST116') throw maxOrderError;
-      const startingOrder = maxOrderData ? maxOrderData.item_order + 1 : 1;
-      const newItems = videosToImport.map((video: any, index: number) => ({ playlist_id: playlist.id, media_url: video.videoUrl, media_type: 'youtube', item_order: startingOrder + index, video_title: video.title, duration_seconds: video.durationSeconds }));
-      const { error: insertError } = await supabase.from('playlist_items').insert(newItems);
-      if (insertError) throw insertError;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'import_playlist_items',
+          payload: {
+            playlist_id: playlist.id,
+            videos: videosToImport,
+          },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || 'Failed to import playlist items');
+      }
+
       await fetchPlaylistItems();
-      toast({ title: "Playlist Importada", description: `${videosToImport.length} videos añadidos.`, variant: "success" });
+      toast({ title: "Playlist Importada", description: `${json.inserted} videos añadidos.`, variant: "success" });
     } catch (err: any) {
       toast({ title: "Error al importar playlist", description: err.message, variant: "destructive" });
     } finally {
@@ -232,31 +272,44 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
     }
     setLoading(true);
     try {
-      const { data: functionData, error: functionError } = await supabase.functions.invoke('resolve-youtube-playlist', { body: { videoUrl: currentItem.media_url } });
-      if (functionError) throw functionError;
-      const { videos } = functionData;
-      if (!videos || videos.length === 0) {
-        toast({ title: "Video no encontrado", description: "No se pudieron obtener detalles.", variant: "warning" });
-        setLoading(false);
-        return;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'add_playlist_item',
+          payload: {
+            playlist_id: playlist.id,
+            media_url: currentItem.media_url,
+          },
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to add playlist item');
       }
-      if (videos.length > 1) {
-        setVideosToImport(videos);
+
+      if (json.needs_confirmation) {
+        setVideosToImport(json.videos);
         setIsImportDialogOpen(true);
-        return;
+        return; // Let the import dialog handle loading state
       }
-      const video = videos[0];
-      const { data: maxOrderData, error: maxOrderError } = await supabase.from('playlist_items').select('item_order').eq('playlist_id', playlist.id).order('item_order', { ascending: false }).limit(1).single();
-      if (maxOrderError && maxOrderError.code !== 'PGRST116') throw maxOrderError;
-      const newItemOrder = maxOrderData ? maxOrderData.item_order + 1 : 1;
-      const { error: insertError } = await supabase.from('playlist_items').insert({ playlist_id: playlist.id, media_url: video.videoUrl, media_type: 'youtube', item_order: newItemOrder, video_title: video.title, duration_seconds: video.durationSeconds });
-      if (insertError) throw insertError;
-      await fetchPlaylistItems();
-      toast({ title: "Video Añadido", variant: "success" });
-      setIsItemFormOpen(false);
-      setCurrentItem(null);
+      
+      if (json.success) {
+        await fetchPlaylistItems(); // Refetch the whole list
+        toast({ title: "Video Añadido", variant: "success" });
+        setIsItemFormOpen(false);
+        setCurrentItem(null);
+        // No setLoading, dialog will close
+      } else {
+        toast({ title: "Información", description: json.message || 'Ocurrió un error', variant: "default" });
+        setLoading(false); // Set loading false on "soft" errors
+      }
     } catch (err: any) {
-      toast({ title: "Error al procesar URL", description: err.message, variant: "destructive" });
+      toast({ title: "Error al añadir ítem", description: err.message, variant: "destructive" });
       setLoading(false);
     }
   };
@@ -272,11 +325,24 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
   };
 
   const confirmDeleteItem = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || !session) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('playlist_items').delete().eq('id', itemToDelete.id);
-      if (error) throw error;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'delete_playlist_item',
+          payload: { item_id: itemToDelete.id },
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to delete playlist item');
+      }
       setItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
       toast({ title: "Ítem Eliminado", variant: "success" });
     } catch (err: any) {
@@ -297,14 +363,28 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
       setItems(newSortedItems);
 
       const itemsToUpdate = newSortedItems.map((item, index) => ({ id: item.id, item_order: index + 1 }));
-      const { error } = await supabase.rpc('update_playlist_items_order', { items_to_update: itemsToUpdate });
-
-      if (error) {
-        toast({ title: "Error al reordenar", description: "No se pudo guardar el nuevo orden.", variant: "destructive" });
-        setItems(items); // Revert to original order on error
-      } else {
+      
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            action: 'update_playlist_items_order',
+            payload: { items_to_update: itemsToUpdate },
+          }),
+        });
+        const json = await response.json();
+        if (!response.ok) {
+          throw new Error(json.error || 'Failed to reorder playlist items');
+        }
         toast({ title: "Orden actualizado", variant: "success" });
         await fetchPlaylistItems(); // Refetch to get the definitive state from DB
+      } catch (err: any) {
+        toast({ title: "Error al reordenar", description: "No se pudo guardar el nuevo orden.", variant: "destructive" });
+        setItems(items); // Revert to original order on error
       }
     }
   };

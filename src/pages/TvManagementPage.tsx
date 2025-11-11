@@ -52,7 +52,7 @@ const PlaylistCard = ({ playlist, handleEdit, openDeleteDialog }: { playlist: Me
 
 
 const TvManagementPage: React.FC = () => {
-  const { currentAssignment } = useAuth();
+  const { currentAssignment, session } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const screenSize = useScreenSize();
   const isMobile = screenSize === 'sm' || screenSize === 'md';
@@ -72,12 +72,90 @@ const TvManagementPage: React.FC = () => {
   const [playlistToDelete, setPlaylistToDelete] = useState<MediaPlaylist | null>(null);
 
   // fetch and handler functions
-  const fetchTvDisplays = useCallback(async () => { if (!tenantId) return; setLoadingTv(true); setErrorTv(null); try { const { data, error } = await supabase.rpc('get_managed_tvs', { p_tenant_id: tenantId }); if (error) { throw error; } setTvDisplays(data as TvDisplay[]); } catch (err: any) { setErrorTv(err.message); } finally { setLoadingTv(false); } }, [tenantId]);
-  const fetchMediaPlaylists = useCallback(async () => { setLoadingPlaylists(true); setErrorPlaylists(null); try { const { data, error } = await supabase.from('media_playlists').select('*'); if (error) { throw error; } setMediaPlaylists(data as MediaPlaylist[]); } catch (err: any) { setErrorPlaylists(err.message); } finally { setLoadingPlaylists(false); } }, []);
-  useEffect(() => { fetchTvDisplays(); fetchMediaPlaylists(); }, [fetchTvDisplays, fetchMediaPlaylists, tenantId]);
+  const fetchTvDisplays = useCallback(async () => {
+    if (!tenantId || !session) return;
+    setLoadingTv(true);
+    setErrorTv(null);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'get_managed_tvs',
+        }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to fetch managed TVs');
+      }
+      setTvDisplays(json as TvDisplay[]);
+    } catch (err: any) {
+      setErrorTv(err.message);
+    } finally {
+      setLoadingTv(false);
+    }
+  }, [tenantId, session]);
+  const fetchMediaPlaylists = useCallback(async () => {
+    if (!tenantId || !session) return;
+    setLoadingPlaylists(true);
+    setErrorPlaylists(null);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'get_media_playlists',
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to fetch media playlists');
+      }
+      setMediaPlaylists(json as MediaPlaylist[]);
+    } catch (err: any) {
+      setErrorPlaylists(err.message);
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  }, [tenantId, session]);
+  
+  useEffect(() => { fetchTvDisplays(); fetchMediaPlaylists(); }, [fetchTvDisplays, fetchMediaPlaylists]);
   const handleEditPlaylist = (playlist: MediaPlaylist) => { setSelectedPlaylist(playlist); setIsMediaPlaylistDialogOpen(true); };
   const openDeleteDialog = (playlist: MediaPlaylist) => { setPlaylistToDelete(playlist); setIsDeleteDialogOpen(true); };
-  const confirmDeletePlaylist = async () => { if (!playlistToDelete) return; try { const { error } = await supabase.from('media_playlists').delete().eq('id', playlistToDelete.id); if (error) { throw error; } toast({ title: 'Playlist Eliminada', description: `La playlist "${playlistToDelete.name}" ha sido eliminada.`, variant: 'success', }); fetchMediaPlaylists(); } catch (err: any) { toast({ title: 'Error al eliminar', description: err.message, variant: 'destructive', }); } finally { setIsDeleteDialogOpen(false); setPlaylistToDelete(null); } };
+  const confirmDeletePlaylist = async () => {
+    if (!playlistToDelete || !session) return;
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'delete_media_playlist',
+          payload: { playlist_id: playlistToDelete.id },
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to delete media playlist');
+      }
+      toast({ title: 'Playlist Eliminada', description: `La playlist "${playlistToDelete.name}" ha sido eliminada.`, variant: 'success', });
+      fetchMediaPlaylists();
+    } catch (err: any) {
+      toast({ title: 'Error al eliminar', description: err.message, variant: 'destructive', });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setPlaylistToDelete(null);
+    }
+  };
   const handleAssignPlaylist = (tvDisplay: TvDisplay) => { setSelectedTvDisplay(tvDisplay); setIsAssignPlaylistDialogOpen(true); };
 
   return (

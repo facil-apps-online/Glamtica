@@ -92,24 +92,26 @@ export function ClientsTab() {
                   </CardHeader>
                   <CardContent>
                     <Label htmlFor="intake-form">Ficha Técnica por Defecto</Label>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Select
-                        value={formState.default_intake_form_id?.toString() || 'none'}
-                        onValueChange={(value) => setFormState(prev => ({ ...prev, default_intake_form_id: value === 'none' ? null : value }))}
-                      >
-                        <SelectTrigger id="intake-form">
-                          <SelectValue placeholder="Selecciona una ficha..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Ninguno</SelectItem>
-                          {templates?.filter(t => t.is_active).map(template => (
-                            <SelectItem key={template.id} value={template.id.toString()}>
-                              {template.name} (v{template.version})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button variant="outline" onClick={() => setManageTemplatesOpen(true)}>Gestionar Plantillas</Button>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-2">
+                      <div className="w-full sm:w-auto flex-grow">
+                        <Select
+                          value={formState.default_intake_form_id?.toString() || 'none'}
+                          onValueChange={(value) => setFormState(prev => ({ ...prev, default_intake_form_id: value === 'none' ? null : value }))}
+                        >
+                          <SelectTrigger id="intake-form" className="w-full">
+                            <SelectValue placeholder="Selecciona una ficha..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Ninguno</SelectItem>
+                            {templates?.filter(t => t.is_active).map(template => (
+                              <SelectItem key={template.id} value={template.id.toString()}>
+                                {template.name} (v{template.version})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button variant="outline" onClick={() => setManageTemplatesOpen(true)} className="w-full sm:w-auto">Gestionar Plantillas</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -148,14 +150,14 @@ export function ClientsTab() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4">
                       <div className="space-y-0.5">
                         <Label htmlFor="consent-templates" className="text-base">Plantillas de Consentimiento Informado</Label>
                         <p className="text-sm text-slate-600">
                           Crea y administra las plantillas para los consentimientos que solicitas a tus clientes.
                         </p>
                       </div>
-                      <Button variant="outline" onClick={() => setManageConsentDialogOpen(true)}>Gestionar Plantillas</Button>
+                      <Button variant="outline" onClick={() => setManageConsentDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">Gestionar Plantillas</Button>
                     </div>
                   </CardContent>
                 </Card>

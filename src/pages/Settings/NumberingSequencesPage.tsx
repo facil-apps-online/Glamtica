@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -234,6 +234,46 @@ const TableSkeleton = () => (
   </div>
 );
 
+const SequenceCard = ({ sequence, branchMap, onEdit, onDelete }: { sequence: DocumentSequence, branchMap: Map<string, string>, onEdit: (seq: DocumentSequence) => void, onDelete: (id: string) => void }) => (
+    <Card>
+        <CardHeader>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle>{sequence.name}</CardTitle>
+                    <CardDescription>{branchMap.get(sequence.branch_id) || 'General (Todas)'}</CardDescription>
+                </div>
+                <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${sequence.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {sequence.is_active ? 'Activa' : 'Inactiva'}
+                </span>
+            </div>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Tipo de Documento</span>
+                <span className="font-medium">{sequence.document_type}</span>
+            </div>
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Siguiente Número</span>
+                <span className="font-medium">{sequence.current_number}</span>
+            </div>
+            <div className="space-y-1">
+                <span className="text-muted-foreground">Plantilla de Formato</span>
+                <code className="text-xs block w-full truncate bg-muted p-1 rounded-sm">{sequence.format_template || ''}</code>
+            </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2 bg-slate-50/50 p-3">
+            <Button variant="outline" size="sm" onClick={() => onEdit(sequence)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
+            </Button>
+            <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => onDelete(sequence.id)}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar
+            </Button>
+        </CardFooter>
+    </Card>
+);
+
 export default function NumberingSequencesPage() {
   const { data: sequences = [], isLoading, error } = useDocumentSequences();
   const { data: branches = [] } = useBranches();
@@ -286,49 +326,72 @@ export default function NumberingSequencesPage() {
             <div>
                 <CardTitle className="flex items-center gap-2 text-primary">
                   <FileDigit className="h-5 w-5" />
-                  Secuencias de Numeración
+                  <span className="sm:hidden">Sec. de Numeración</span>
+                  <span className="hidden sm:inline">Secuencias de Numeración</span>
                 </CardTitle>
                 <CardDescription>Define los formatos y contadores para tus documentos.</CardDescription>
             </div>
             <Button onClick={() => handleOpenForm()}>
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Nueva Secuencia
+                <Plus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Crear Nueva Secuencia</span>
             </Button>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Sucursal</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Plantilla</TableHead>
-                  <TableHead>Siguiente #</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={7}><TableSkeleton /></TableCell></TableRow>
-                ) : sequences.map((seq) => (
-                  <TableRow key={seq.id}>
-                    <TableCell className="font-medium">{seq.name}</TableCell>
-                    <TableCell>{branchMap.get(seq.branch_id) || 'General (Todas)'}</TableCell>
-                    <TableCell>{seq.document_type}</TableCell>
-                    <TableCell><code className="text-xs">{seq.format_template || ''}</code></TableCell>
-                    <TableCell>{seq.current_number}</TableCell>
-                    <TableCell>{seq.is_active ? 'Activa' : 'Inactiva'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenForm(seq)}><Edit className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="text-red-500" onClick={() => openDeleteConfirm(seq.id)}><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    </TableCell>
+            {/* Mobile View: Grid of Cards */}
+            <div className="grid grid-cols-1 gap-4 sm:hidden">
+              {isLoading ? (
+                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
+              ) : sequences.map((seq) => (
+                <SequenceCard 
+                  key={seq.id}
+                  sequence={seq}
+                  branchMap={branchMap}
+                  onEdit={handleOpenForm}
+                  onDelete={openDeleteConfirm}
+                />
+              ))}
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Sucursal</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Plantilla</TableHead>
+                    <TableHead>Siguiente #</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={7}><TableSkeleton /></TableCell></TableRow>
+                  ) : sequences.map((seq) => (
+                    <TableRow key={seq.id}>
+                      <TableCell className="font-medium">{seq.name}</TableCell>
+                      <TableCell>{branchMap.get(seq.branch_id) || 'General (Todas)'}</TableCell>
+                      <TableCell>{seq.document_type}</TableCell>
+                      <TableCell><code className="text-xs">{seq.format_template || ''}</code></TableCell>
+                      <TableCell>{seq.current_number}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${seq.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {seq.is_active ? 'Activa' : 'Inactiva'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleOpenForm(seq)}><Edit className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-red-500" onClick={() => openDeleteConfirm(seq.id)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

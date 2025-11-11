@@ -24,7 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PhoneInput } from '@/components/PhoneInput';
-import { useTenantCountry } from '@/hooks/useTenantCountry';
 import { useCountries } from "@/hooks/useCountries";
 import { ChatterBox } from "@/components/ChatterBox";
 import { useScreenSize, type ScreenSize } from "@/hooks/useScreenSize";
@@ -103,9 +102,9 @@ export const SupplierDialog = ({ supplier: initialSupplier, trigger, onOpenChang
   });
 
   const { toast } = useToast();
-  const { currentAssignment } = useAuth();
+  const { currentAssignment, tenant } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-  const { data: countryId } = useTenantCountry(tenantId);
+  const countryId = tenant?.country_id;
   const { data: countries } = useCountries();
   const { data: branches } = useBranches(tenantId);
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('supplier');

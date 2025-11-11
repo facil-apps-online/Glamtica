@@ -18,8 +18,7 @@ export interface Notification {
 interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
-  isLoading: boolean;
-  fetchNotifications: () => Promise<void>;
+  setNotifications: (notifications: Notification[]) => void;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   addNotification: (notification: Notification) => void;
@@ -29,31 +28,10 @@ interface NotificationState {
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
-  isLoading: false,
 
-  fetchNotifications: async () => {
-    set({ isLoading: true });
-    try {
-      // Usamos la acción que creamos en la Edge Function
-      const { data, error } = await supabase.functions.invoke('tenant-actions', {
-        body: { 
-          action: 'GET_NOTIFICATIONS', 
-          payload: { page: 1, pageSize: 100 } // Por ahora, pedimos las últimas 100
-        }
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        const notifications = data.data as Notification[];
-        const count = notifications.filter(n => !n.read_at).length;
-        set({ notifications, unreadCount: count, isLoading: false });
-      }
-
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-      set({ isLoading: false });
-    }
+  setNotifications: (notifications: Notification[]) => {
+    const count = notifications.filter(n => !n.read_at).length;
+    set({ notifications, unreadCount: count });
   },
 
   markAsRead: async (notificationId: string) => {
