@@ -1,22 +1,11 @@
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useTenantSettings, useUpdateTenantSettings } from '@/hooks/useTenantSettings';
-import { Button } from '@/components/ui/button';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
+import React from 'react';
+import { useTenantSettings } from '@/hooks/useTenantSettings';
 import { LogoUploader } from '@/components/LogoUploader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Palette } from 'lucide-react';
-
-const identitySchema = z.object({
-  logo_url: z.string().optional(),
-});
-
-type IdentityFormValues = z.infer<typeof identitySchema>;
+import { useQueryClient } from '@tanstack/react-query';
 
 const IdentitySkeleton = () => (
   <Card>
@@ -29,44 +18,18 @@ const IdentitySkeleton = () => (
         <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-32 w-32 rounded-full" />
       </div>
-      <div className="flex justify-end mt-8">
-        <Skeleton className="h-9 w-28" />
-      </div>
     </CardContent>
   </Card>
 );
 
 export function IdentitySettingsTab() {
+  const { tenantId, refreshUser } = useAuth();
   const { data: settings, isLoading } = useTenantSettings();
-  const { mutate: updateSettings, isPending: isUpdating } = useUpdateTenantSettings();
-  const { toast } = useToast();
-  const { refreshUser } = useAuth();
+  const queryClient = useQueryClient();
 
-  const form = useForm<IdentityFormValues>({
-    resolver: zodResolver(identitySchema),
-    defaultValues: {
-      logo_url: '',
-    },
-  });
-
-  useEffect(() => {
-    if (settings) {
-      form.reset({
-        logo_url: settings.logo_url || '',
-      });
-    }
-  }, [settings, form]);
-
-  const onSubmit = (values: IdentityFormValues) => {
-    updateSettings(values, {
-      onSuccess: () => {
-        toast({ title: 'Éxito', description: 'Configuración de identidad guardada correctamente.', variant: 'success' });
-        refreshUser();
-      },
-      onError: (error) => {
-        toast({ title: 'Error', description: `No se pudo guardar la configuración de identidad: ${error.message}`, variant: 'destructive' });
-      },
-    });
+  const handleSaveSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['tenant_settings', tenantId] });
+    queryClient.invalidateQueries({ queryKey: ['tenant', tenantId] });
   };
 
   if (isLoading) {
@@ -85,34 +48,10 @@ export function IdentitySettingsTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="logo_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Logo de la Empresa</FormLabel>
-                  <FormControl>
-                    <LogoUploader 
-                      initialLogoUrl={field.value}
-                      onUploadSuccess={(newFileId) => {
-                        form.setValue('logo_url', newFileId, { shouldDirty: true, shouldValidate: true });
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isUpdating || !form.formState.isDirty}>
-                {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+        <LogoUploader 
+          initialLogoUrl={settings?.logo_url}
+          onSaveSuccess={handleSaveSuccess}
+        />
       </CardContent>
     </Card>
   );

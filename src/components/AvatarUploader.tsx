@@ -84,6 +84,23 @@ export const AvatarUploader = React.memo(({
       if (updateError) throw updateError;
       if (!updateData.success) throw new Error(updateData.message);
 
+      // If an old avatar was replaced, delete it from Google Drive
+      if (updateData.oldAvatarFileId) {
+        console.log(`Deleting old avatar file: ${updateData.oldAvatarFileId}`);
+        const { error: deleteError } = await supabase.functions.invoke('google-drive-delete', {
+          body: { 
+            fileId: updateData.oldAvatarFileId, 
+            tenantId: currentAssignment.tenant_id, // Pass the current tenantId
+            uploadContext: 'Avatars' // Indicate that this is an avatar deletion
+          }
+        });
+        if (deleteError) {
+          console.error('Error deleting old avatar from Google Drive:', deleteError.message);
+          // Do not throw error here, as the new avatar was successfully uploaded and saved.
+          // Log it for debugging, but let the user experience be positive.
+        }
+      }
+
       toast({ title: 'Éxito', description: 'Avatar actualizado correctamente.', variant: 'success' });
       await refreshUser();
       setCroppedPreviewUrl(null);

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 // import { AttentionEvidence } from '@/hooks/useClientAttentions'; // No longer needed
 import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Image } from 'lucide-react'; // Using lucide-react for a placeholder icon
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 
 // New interface for evidences
 export interface AttentionEvidence {
@@ -40,6 +41,11 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ evidences }) =
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-[90vw] h-[90vh] flex items-center justify-center">
+          <DialogHeader>
+            <DialogTitle>
+              <VisuallyHidden>Vista Previa de la Evidencia</VisuallyHidden>
+            </DialogTitle>
+          </DialogHeader>
           {selectedImage && (
             <img src={selectedImage} alt="Evidencia" className="max-w-full max-h-full object-contain" />
           )}
