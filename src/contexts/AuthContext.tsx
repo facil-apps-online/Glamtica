@@ -90,6 +90,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; supabaseClient:
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  const { data: fetchedTenantBranches } = useQuery({
+    queryKey: ['tenantBranches', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabaseClient.functions.invoke('tenant-actions', {
+        body: {
+          action: 'get_branches',
+          payload: { tenantId: tenantId }
+        }
+      });
+      if (error) {
+        console.error('Error fetching tenant branches:', error);
+        return [];
+      }
+      return data;
+    },
+    enabled: !!tenantId,
+    staleTime: 1000 * 60 * 15, // 15 minutes
+  });
+
+  useEffect(() => {
+    if (fetchedTenantBranches) {
+      setTenantBranches(fetchedTenantBranches);
+    }
+  }, [fetchedTenantBranches]);
+
 
   const processSession = useCallback(async (sessionData: Session | null) => {
     try {

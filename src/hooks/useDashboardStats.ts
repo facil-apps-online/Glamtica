@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemo } from 'react';
 
 export interface DashboardStats {
   todayRevenue: number;
@@ -30,14 +31,27 @@ export interface TopService {
 }
 
 export const useDashboardStats = () => {
-  const { currentAssignment, user } = useAuth();
+  const { currentAssignment, user, tenant, tenantBranches, loading: authLoading } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const roleName = currentAssignment?.role_name;
   const branchId = currentAssignment?.branch_id;
   const userId = user?.id;
 
+  const timezone = useMemo(() => {
+    if (branchId && tenantBranches.length > 0) {
+      const currentBranch = tenantBranches.find(b => b.id === branchId);
+      if (currentBranch?.timezone) {
+        return currentBranch.timezone;
+      }
+    }
+    if (tenant?.default_timezone) {
+      return tenant.default_timezone;
+    }
+    return 'UTC'; // Fallback
+  }, [branchId, tenant, tenantBranches]);
+
   return useQuery<DashboardStats, Error>({
-    queryKey: ['dashboard-stats', tenantId, roleName, branchId, userId],
+    queryKey: ['dashboard-stats', tenantId, roleName, branchId, userId, timezone],
     queryFn: async () => {
       if (!tenantId) throw new Error("Tenant ID not available.");
 
@@ -48,6 +62,7 @@ export const useDashboardStats = () => {
             p_tenant_id: tenantId,
             p_branch_id: roleName === 'tenant_super_admin' ? null : branchId,
             p_user_id: roleName === 'tenant_user' ? userId : null,
+            p_timezone: timezone,
           }
         }
       });
@@ -55,20 +70,33 @@ export const useDashboardStats = () => {
       if (error) throw new Error(error.message);
       return data;
     },
-    enabled: !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId),
+    enabled: !authLoading && !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId) && timezone !== 'UTC',
     refetchInterval: 5 * 60 * 1000, // Refrescar cada 5 minutos
   });
 };
 
 export const useTodayAttentions = () => {
-  const { currentAssignment, user } = useAuth();
+  const { currentAssignment, user, tenant, tenantBranches, loading: authLoading } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const roleName = currentAssignment?.role_name;
   const branchId = currentAssignment?.branch_id;
   const userId = user?.id;
 
+  const timezone = useMemo(() => {
+    if (branchId && tenantBranches.length > 0) {
+      const currentBranch = tenantBranches.find(b => b.id === branchId);
+      if (currentBranch?.timezone) {
+        return currentBranch.timezone;
+      }
+    }
+    if (tenant?.default_timezone) {
+      return tenant.default_timezone;
+    }
+    return 'UTC'; // Fallback
+  }, [branchId, tenant, tenantBranches]);
+
   return useQuery<TodayAttention[], Error>({
-    queryKey: ['today-attentions', tenantId, roleName, branchId, userId],
+    queryKey: ['today-attentions', tenantId, roleName, branchId, userId, timezone],
     queryFn: async () => {
       if (!tenantId) throw new Error("Tenant ID not available.");
 
@@ -79,6 +107,7 @@ export const useTodayAttentions = () => {
             p_tenant_id: tenantId,
             p_branch_id: roleName === 'tenant_super_admin' ? null : branchId,
             p_user_id: roleName === 'tenant_user' ? userId : null,
+            p_timezone: timezone,
           }
         }
       });
@@ -86,20 +115,33 @@ export const useTodayAttentions = () => {
       if (error) throw new Error(error.message);
       return data || [];
     },
-    enabled: !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId),
+    enabled: !authLoading && !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId) && timezone !== 'UTC',
     refetchInterval: 2 * 60 * 1000, // Refrescar cada 2 minutos
   });
 };
 
 export const useTopServices = (days: number = 30) => {
-  const { currentAssignment, user } = useAuth();
+  const { currentAssignment, user, tenant, tenantBranches, loading: authLoading } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const roleName = currentAssignment?.role_name;
   const branchId = currentAssignment?.branch_id;
   const userId = user?.id;
 
+  const timezone = useMemo(() => {
+    if (branchId && tenantBranches.length > 0) {
+      const currentBranch = tenantBranches.find(b => b.id === branchId);
+      if (currentBranch?.timezone) {
+        return currentBranch.timezone;
+      }
+    }
+    if (tenant?.default_timezone) {
+      return tenant.default_timezone;
+    }
+    return 'UTC'; // Fallback
+  }, [branchId, tenant, tenantBranches]);
+
   return useQuery<TopService[], Error>({
-    queryKey: ['top-services', tenantId, roleName, branchId, userId, days],
+    queryKey: ['top-services', tenantId, roleName, branchId, userId, days, timezone],
     queryFn: async () => {
       if (!tenantId) throw new Error("Tenant ID not available.");
 
@@ -110,7 +152,8 @@ export const useTopServices = (days: number = 30) => {
             p_tenant_id: tenantId,
             p_branch_id: roleName === 'tenant_super_admin' ? null : branchId,
             p_user_id: roleName === 'tenant_user' ? userId : null,
-            p_days: days
+            p_days: days,
+            p_timezone: timezone,
           }
         }
       });
@@ -118,7 +161,7 @@ export const useTopServices = (days: number = 30) => {
       if (error) throw new Error(error.message);
       return data || [];
     },
-    enabled: !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId),
+    enabled: !authLoading && !!tenantId && !!roleName && (roleName !== 'tenant_user' || !!userId) && timezone !== 'UTC',
     refetchInterval: 10 * 60 * 1000, // Refrescar cada 10 minutos
   });
 };

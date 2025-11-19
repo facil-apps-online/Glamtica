@@ -157,7 +157,7 @@ export default function Reports() {
                 ? isMobile 
                   ? <ReportCardSkeleton rows={3} /> 
                   : <ReportTableSkeleton headers={["Servicio", "Cantidad", "Ingresos"]} cells={3} />
-                : !serviceReport || serviceReport.length === 0
+                : !serviceReport || !Array.isArray(serviceReport) || serviceReport.length === 0
                   ? <EmptyState Icon={ClipboardList} title="Sin datos de servicios" description="No hay datos de servicios para el período de fechas seleccionado." />
                   : (
                     isMobile ? (
@@ -196,7 +196,7 @@ export default function Reports() {
                 ? isMobile 
                   ? <ReportCardSkeleton rows={3} /> 
                   : <ReportTableSkeleton headers={["Usuario", "Atenciones", "Ingresos por Servicios", "Ingresos por Productos"]} cells={4} />
-                : !userPerformanceReport || userPerformanceReport.length === 0
+                : !userPerformanceReport || !Array.isArray(userPerformanceReport) || userPerformanceReport.length === 0
                   ? <EmptyState Icon={UsersIcon} title="Sin datos de rendimiento" description="No hay datos de rendimiento de equipo para el período de fechas seleccionado." />
                   : (
                     isMobile ? (
@@ -239,7 +239,7 @@ export default function Reports() {
                 ? isMobile 
                   ? <ReportCardSkeleton rows={3} /> 
                   : <ReportTableSkeleton headers={["Sucursal", "Producto", "Cantidad", "Costo Unitario", "Valor Total Stock"]} cells={5} />
-                : !stockReport || stockReport.length === 0
+                : !stockReport || !Array.isArray(stockReport) || stockReport.length === 0
                   ? <EmptyState Icon={Archive} title="Sin datos de stock" description="No hay datos de stock para el período de fechas seleccionado." />
                   : (
                     isMobile ? (

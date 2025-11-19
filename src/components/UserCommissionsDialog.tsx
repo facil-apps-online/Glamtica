@@ -99,23 +99,6 @@ export const UserCommissionsDialog = ({ userId, userName, trigger }: UserCommiss
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
 
   // --- DATA FETCHING ---
-  const { data: userAssignments, isLoading: isLoadingUserAssignments } = useUserAssignments(userId, tenantId);
-
-  // Crear una lista de sucursales activas para el Select
-  const activeUserBranchesForSelect = useMemo(() => {
-    if (!userAssignments) return [];
-
-    // Filtrar asignaciones activas y únicas por branch_id
-    const uniqueActiveBranches = new Map<string, { id: string, name: string }>();
-    userAssignments.forEach(assignment => {
-      if (assignment.status === 'active' && assignment.branch_id !== null && assignment.branch_name !== null) {
-        uniqueActiveBranches.set(assignment.branch_id, { id: assignment.branch_id, name: assignment.branch_name });
-      }
-    });
-    return Array.from(uniqueActiveBranches.values());
-  }, [userAssignments]);
-
-  // --- DATA FETCHING ---
   const { data: productCommissionData, isLoading: isLoadingProducts, error: productError } = useUserProductCommissionData(userId);
   const { data: serviceCommissionData, isLoading: isLoadingServices, error: serviceError } = useUserServiceCommissionData(userId);
   const updateCommissionMutation = useUpdateCommission();
@@ -280,7 +263,7 @@ export const UserCommissionsDialog = ({ userId, userName, trigger }: UserCommiss
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las sucursales</SelectItem>
-                {activeUserBranchesForSelect.map((branch) => (
+                {tenantBranches.map((branch) => (
                   <SelectItem key={branch.id} value={branch.id}>
                     {branch.name}
                   </SelectItem>

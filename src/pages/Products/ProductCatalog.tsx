@@ -9,7 +9,6 @@ import {
   Package, 
   Search, 
   Edit, 
-  Store, 
   Share2, 
   DollarSign, 
   Tag, 
@@ -24,11 +23,7 @@ import {
 import { useMasterProducts, useUpdateMasterProduct, useDeleteMasterProduct, MasterProduct } from "@/hooks/useProducts";
 import { useBrands } from "@/hooks/useBrands";
 import { useProductCategories } from "@/hooks/useProductCategories";
-import { usePriceFormat } from "@/hooks/usePriceFormat";
 import { MasterProductDialog } from "@/components/MasterProductDialog";
-import { ManageProductInBranchDialog } from "@/components/ManageProductInBranchDialog";
-import { ProductCategoryManagementDialog } from "@/components/ProductCategoryManagementDialog";
-import { BrandManagementDialog } from "@/components/BrandManagementDialog";
 import AssignProductToBranchesDialog from "@/components/AssignProductToBranchesDialog";
 import ManageProductPricesDialog from "@/components/ManageProductPricesDialog";
 import { ManageProductCommissionsDialog } from "@/components/ManageProductCommissionsDialog";
@@ -48,19 +43,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { ProductCategoryManagementDialog } from "@/components/ProductCategoryManagementDialog";
+import { BrandManagementDialog } from "@/components/BrandManagementDialog";
+import { ProductImageCarousel } from "@/components/product/ProductImageCarousel";
 
-const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog, navigate, handleDelete }) => {
+const ProductCard = ({ product, brand, handleToggleStatus, handleOpenAssignProductDialog, handleOpenManagePricesDialog, handleOpenProductCommissionsDialog, navigate, handleDelete }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDialogOpen) return;
-
+  const handleNavigate = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Evita la navegación si el clic fue en un botón, switch, o menú
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
       target.closest('[role="switch"]') ||
       target.closest('[data-radix-dropdown-menu-content]') ||
-      target.closest('[role="menuitem"]')
+      target.closest('[role="menuitem"]') ||
+      target.closest('.embla') // Evita la navegación al hacer clic en el carrusel
     ) {
       return;
     }
@@ -68,98 +66,112 @@ const ProductCard = ({ product, brand, category, formatPrice, handleToggleStatus
   };
 
   return (
-  <Card onClick={handleCardClick} className="cursor-pointer transition-colors hover:bg-muted/50">
-    <CardHeader>
-      <div className="flex justify-between items-start">
-        <div>
-          <CardTitle>{product.name}</CardTitle>
-          {product.sku && <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>}
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <MasterProductDialog 
-              product={product} 
-              onOpenChange={setIsDialogOpen}
-              trigger={
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                <Edit className="w-4 h-4 mr-2" />
-                <span>Edición rápida</span>
-              </DropdownMenuItem>
-            } />
-            <DropdownMenuItem onClick={() => navigate(`/app/products/${product.id}`)}>
-              <FileEdit className="w-4 h-4 mr-2" />
-              Edición Completa
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
-              <Share2 className="w-4 h-4 mr-2" />
-              Asignar a Sucursales
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(product)}>
-              <DollarSign className="w-4 h-4 mr-2" />
-              Gestionar Precios
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleOpenProductCommissionsDialog(product)}>
-              <Percent className="w-4 h-4 mr-2" />
-              Gestionar Comisiones
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Eliminar
+  <Card className="overflow-hidden flex flex-col">
+    <ProductImageCarousel images={product.product_images} productName={product.name} />
+    <div onClick={handleNavigate} className="cursor-pointer transition-colors hover:bg-muted/50 flex-grow flex flex-col">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>{product.name}</CardTitle>
+            {product.sku && <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <MasterProductDialog 
+                product={product} 
+                onOpenChange={setIsDialogOpen}
+                trigger={
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Edición rápida</span>
                 </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    ¿Estás seguro de que quieres eliminar <strong>{product.name}</strong>? Esta acción no se puede deshacer.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDelete(product.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              } />
+              <DropdownMenuItem onClick={() => navigate(`/app/products/${product.id}`)}>
+                <FileEdit className="w-4 h-4 mr-2" />
+                Edición Completa
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleOpenAssignProductDialog(product)}>
+                <Share2 className="w-4 h-4 mr-2" />
+                Asignar a Sucursales
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenManagePricesDialog(product)}>
+                <DollarSign className="w-4 h-4 mr-2" />
+                Gestionar Precios
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenProductCommissionsDialog(product)}>
+                <Percent className="w-4 h-4 mr-2" />
+                Gestionar Comisiones
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      ¿Estás seguro de que quieres eliminar <strong>{product.name}</strong>? Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(product.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 flex-grow">
+        <div className="flex justify-between items-start gap-4">
+          <span className="text-muted-foreground">Descripción</span>
+          <span className="text-sm text-right">{product.description || "-"}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Marca</span>
+          <span>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Categoría(s)</span>
+          <div className="flex flex-wrap gap-1 justify-end">
+            {product.product_categories && product.product_categories.length > 0 ? (
+              product.product_categories.map(cat => (
+                <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+              ))
+            ) : (
+              <span className="text-sm">N/A</span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+      <div className="p-4 pt-0">
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <label className="text-sm font-medium">Activo</label>
+          <Switch
+            checked={product.is_active || false}
+            onCheckedChange={() => handleToggleStatus(product)}
+          />
+        </div>
       </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between items-start gap-4">
-        <span className="text-muted-foreground">Descripción</span>
-        <span className="text-sm text-right">{product.description || "-"}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Marca</span>
-        <span>{brand ? <Badge variant="outline">{brand.name}</Badge> : "N/A"}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Categoría</span>
-        <span>{product.category ? <Badge variant="secondary">{product.category}</Badge> : "N/A"}</span>
-      </div>
-      <div className="flex items-center justify-between rounded-md border p-3 mt-4">
-        <label className="text-sm font-medium">Activo</label>
-        <Switch
-          checked={product.is_active || false}
-          onCheckedChange={() => handleToggleStatus(product)}
-        />
-      </div>
-    </CardContent>
+    </div>
   </Card>
   );
 }
 
 const ProductCardSkeleton = () => (
-  <Card>
+  <Card className="overflow-hidden">
+    <Skeleton className="aspect-square w-full" />
     <CardHeader>
       <div className="flex justify-between items-start">
         <div className="space-y-2 w-full">
@@ -206,7 +218,6 @@ const ProductCatalog = () => {
   const { data: productCategories } = useProductCategories();
   const { mutate: updateProduct } = useUpdateMasterProduct();
   const { mutate: deleteProduct } = useDeleteMasterProduct();
-  const { formatPrice } = usePriceFormat();
   const navigate = useNavigate();
 
   const handleToggleStatus = (product: MasterProduct) => {
@@ -246,27 +257,16 @@ const ProductCatalog = () => {
     refetch();
   };
 
-  const filteredProducts = products?.filter(product => {
-    const searchMatch = confirmedSearchTerm.toLowerCase() === '' ||
-      product.name.toLowerCase().includes(confirmedSearchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(confirmedSearchTerm.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(confirmedSearchTerm.toLowerCase());
-    const activityMatch = showInactive ? true : product.is_active;
-    const categoryMatch = !filterCategory || product.category_id === productCategories?.find(c => c.name === filterCategory)?.id;
-    const brandMatch = !filterBrand || product.brand_id === filterBrand;
-    return searchMatch && activityMatch && categoryMatch && brandMatch;
-  });
-
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-          {[...Array(6)].map((_, i) => <ProductCardSkeleton key={i} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
+          {[...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)}
         </div>
       );
     }
 
-    if (filteredProducts?.length === 0) {
+    if (products?.length === 0) {
       return (
         <EmptyState
           Icon={Package}
@@ -278,17 +278,14 @@ const ProductCatalog = () => {
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-        {filteredProducts?.map((product: MasterProduct) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
+        {products?.map((product: MasterProduct) => {
           const brand = brands?.find(b => b.id === product.brand_id);
-          const category = productCategories?.find(c => c.id === product.category_id);
           return (
             <ProductCard
               key={product.id}
               product={product}
               brand={brand}
-              category={category}
-              formatPrice={formatPrice}
               handleToggleStatus={handleToggleStatus}
               handleOpenAssignProductDialog={handleOpenAssignProductDialog}
               handleOpenManagePricesDialog={handleOpenManagePricesDialog}
@@ -336,7 +333,7 @@ const ProductCatalog = () => {
               >
                 <option value="">Todas las categorías</option>
                 {productCategories?.map(category => (
-                  <option key={category.id} value={category.name}>{category.name}</option>
+                  <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
               <select

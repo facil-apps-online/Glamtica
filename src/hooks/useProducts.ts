@@ -6,6 +6,18 @@ import { useBranchFilterStore } from "@/stores/branchFilterStore";
 
 // --- INTERFACES ---
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+}
+
+// Interfaz para las imágenes de un producto maestro
+export interface MasterProductImage {
+  id: string;
+  image_url: string; 
+  sort_order: number;
+}
+
 // Interfaz para el producto maestro (catálogo general)
 export interface MasterProduct {
   id: string;
@@ -15,13 +27,14 @@ export interface MasterProduct {
   last_purchase_cost?: number;
   average_cost?: number;
   is_active?: boolean;
-  category?: string;
   brand_id?: string;
   barcode?: string;
   sku?: string;
   tenant_id: string;
   created_at: string;
   updated_at: string;
+  product_images?: MasterProductImage[];
+  product_categories?: ProductCategory[];
 }
 
 // Interfaz para el producto específico de una sucursal
@@ -60,13 +73,13 @@ export const useBranchProducts = (branchIdParam?: string, searchTerm?: string) =
 };
 
 // Hook para obtener todos los productos maestros (el catálogo general)
-export const useMasterProducts = (searchTerm?: string, showInactive?: boolean, category?: string, brandId?: string) => {
+export const useMasterProducts = (searchTerm?: string, showInactive?: boolean, categoryId?: string, brandId?: string) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useQuery({
-    queryKey: ['master_products', tenantId, searchTerm, showInactive, category, brandId],
-    queryFn: () => callTenantAction('get_master_products', { searchTerm, showInactive, category, brandId }),
+  return useQuery<MasterProduct[], Error>({
+    queryKey: ['master_products', tenantId, searchTerm, showInactive, categoryId, brandId],
+    queryFn: () => callTenantAction('get_master_products', { searchTerm, showInactive, categoryId, brandId }),
     enabled: !!tenantId,
   });
 };

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductImageGallery } from '@/components/ProductImageGallery';
+import { ManageProductImagesDialog } from '@/components/product/ManageProductImagesDialog';
 import { ChatterBox } from '@/components/ChatterBox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,10 @@ import ProductPricesManager from '@/components/ProductPricesManager';
 import { ProductCommissionsManager } from '@/components/ProductCommissionsManager';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Este será el formulario de detalles básicos
+import { MultiSelect } from "@/components/ui/MultiSelect";
+import { callTenantAction } from '@/hooks/useProducts';
+
+// ... (rest of imports)
 
 const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMeasure, brands, productCategories }) => {
   const [formData, setFormData] = useState(product);
@@ -34,6 +38,13 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCategoryChange = (selectedIds: string[]) => {
+    const selectedCategories = selectedIds.map(id => 
+      productCategories.find(cat => cat.id === id)
+    ).filter(Boolean); // Filter out undefined if a category is not found
+    setFormData(prev => ({ ...prev, product_categories: selectedCategories }));
   };
 
   return (
@@ -54,13 +65,13 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
       </div>
        <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="category">Categoría</Label>
-          <Select value={formData.category} onValueChange={(value) => handleChange('category', value)}>
-            <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-            <SelectContent>
-              {productCategories?.map((cat) => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="category">Categoría(s)</Label>
+          <MultiSelect
+            options={productCategories?.map(cat => ({ value: cat.id, label: cat.name })) || []}
+            selected={formData.product_categories?.map(cat => cat.id) || []}
+            onSelectedChange={handleCategoryChange}
+            placeholder="Seleccionar categorías..."
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="brand">Marca</Label>
@@ -142,30 +153,57 @@ const ProductEditPage = () => {
     setProductData(updatedData);
   };
 
-  const handleSave = () => {
-    if (!id || !productData) return;
-    
-    const changedData = Object.keys(productData).reduce((acc, key) => {
-      if (productData[key] !== product[key]) {
-        acc[key] = productData[key];
+  const handleSave = async () => {
+    if (!id || !productData || !product) return;
+
+    let hasChanges = false;
+    const { product_categories, ...otherData } = productData;
+    const { product_categories: original_categories, ...originalOtherData } = product;
+
+    // 1. Check for changes in simple fields
+    const changedData = Object.keys(otherData).reduce((acc, key) => {
+      if (otherData[key] !== originalOtherData[key]) {
+        acc[key] = otherData[key];
       }
       return acc;
     }, {});
 
     if (Object.keys(changedData).length > 0) {
-        updateProduct({ id, updates: changedData }, {
+      hasChanges = true;
+      updateProduct({ id, updates: changedData }, {
         onSuccess: () => {
-          toast({ title: "Éxito", description: "Producto actualizado correctamente.", variant: "success" });
+          toast({ title: "Éxito", description: "Detalles del producto actualizados.", variant: "success" });
           queryClient.invalidateQueries({ queryKey: ['chatter', 'products', id] });
         },
         onError: (error) => {
-          toast({ title: "Error", description: error.message, variant: "destructive" });
+          toast({ title: "Error", description: `Error al actualizar detalles: ${error.message}`, variant: "destructive" });
         }
       });
-    } else {
+    }
+
+    // 2. Check for changes in category assignments
+    const originalCategoryIds = (original_categories || []).map(c => c.id).sort();
+    const newCategoryIds = (product_categories || []).map(c => c.id).sort();
+
+    if (JSON.stringify(originalCategoryIds) !== JSON.stringify(newCategoryIds)) {
+      hasChanges = true;
+      try {
+        await callTenantAction('update_product_category_assignments', {
+          product_id: id,
+          category_ids: newCategoryIds,
+        });
+        toast({ title: "Éxito", description: "Categorías del producto actualizadas.", variant: "success" });
+        queryClient.invalidateQueries({ queryKey: ['master_products'] }); // Invalidate list to show new categories
+      } catch (error: any) {
+        toast({ title: "Error", description: `Error al actualizar categorías: ${error.message}`, variant: "destructive" });
+      }
+    }
+
+    if (!hasChanges) {
       toast({ title: "Información", description: "No se han detectado cambios.", variant: "info" });
     }
   };
+
 
   const isLoading = isLoadingProducts || isLoadingUoM || isLoadingBrands || isLoadingCategories;
 
@@ -278,7 +316,14 @@ const ProductEditPage = () => {
 
               <TabsContent value="images">
                 <Card>
-                  <CardHeader><CardTitle>Imágenes del Producto</CardTitle></CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Imágenes del Producto</CardTitle>
+                    <ManageProductImagesDialog
+                      productId={id}
+                      productName={product.name}
+                      trigger={<Button variant="outline">Gestionar Imágenes</Button>}
+                    />
+                  </CardHeader>
                   <CardContent>
                     <ProductImageGallery productId={id} />
                   </CardContent>
