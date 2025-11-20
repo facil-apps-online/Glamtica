@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useCreateMasterProduct, useUpdateMasterProduct, MasterProduct } from "@/hooks/useProducts";
+import { useCreateMasterProduct, useUpdateMasterProduct, MasterProduct, callTenantAction } from "@/hooks/useProducts";
 import { useProductTaxTypes, useAddProductTaxType, useRemoveProductTaxType } from "@/hooks/useProductTaxTypes";
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "./ProductForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductImageGallery } from "./ProductImageGallery";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface MasterProductDialogProps {
   product?: MasterProduct;
@@ -18,6 +19,7 @@ interface MasterProductDialogProps {
 export const MasterProductDialog = ({ product, trigger, onOpenChange }: MasterProductDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -36,11 +38,13 @@ export const MasterProductDialog = ({ product, trigger, onOpenChange }: MasterPr
     }
   }, [open, refetchProductTaxTypes]);
 
-  const handleSubmit = (formData: any, selectedTaxIds: string[]) => {
+  const handleSubmit = (formData: any, selectedCategoryIds: string[], selectedTaxIds: string[]) => {
     const handleSuccess = (productId: string) => {
       handleTaxTypeUpdates(productId, selectedTaxIds);
+      handleCategoryUpdates(productId, selectedCategoryIds);
       setOpen(false);
       toast({ title: "Éxito", description: `Producto ${product ? 'actualizado' : 'creado'} correctamente.`, variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ['master_products'] });
     };
 
     if (product) {
@@ -55,6 +59,22 @@ export const MasterProductDialog = ({ product, trigger, onOpenChange }: MasterPr
       });
     }
   };
+
+  const handleCategoryUpdates = async (productId: string, newCategoryIds: string[]) => {
+    const originalCategoryIds = (product?.product_categories || []).map(c => c.id).sort();
+    const sortedNewCategoryIds = [...newCategoryIds].sort();
+
+    if (JSON.stringify(originalCategoryIds) !== JSON.stringify(sortedNewCategoryIds)) {
+        try {
+            await callTenantAction('update_product_category_assignments', {
+              product_id: productId,
+              category_ids: newCategoryIds,
+            });
+        } catch (error: any) {
+            toast({ title: "Error", description: `Error al actualizar categorías: ${error.message}`, variant: "destructive" });
+        }
+    }
+  }
 
   const handleTaxTypeUpdates = (currentProductId: string, selectedTaxIds: string[]) => {
     if (!currentProductId) return;

@@ -17,11 +17,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface Supplier {
   id: string;
   name: string;
-  identification_type: string;
   identification_number: string;
   email?: string;
   phone?: string;
   is_active: boolean;
+  document_types: {
+    name: string;
+  } | null;
 }
 
 const SupplierCardSkeleton = () => (
@@ -98,7 +100,7 @@ const SupplierCard = ({ supplier, handleToggleStatus, onDelete }) => {
             </CardHeader>
             <CardContent className="space-y-4">
             <div className="text-sm text-muted-foreground">
-                {supplier.identification_type}: {supplier.identification_number}
+                {(supplier.document_types?.name || 'N/A')}: {supplier.identification_number}
             </div>
             {supplier.phone && (
                 <div className="flex items-center gap-2 text-sm">

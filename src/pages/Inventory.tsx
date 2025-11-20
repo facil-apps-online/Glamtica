@@ -146,11 +146,11 @@ export default function Inventory() {
 
       {/* Métricas principales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Valor Total</p>
+                <p className="text-sm font-medium text-muted-foreground">Valor Total</p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatPrice(totalInventoryValue)}
                 </p>
@@ -160,11 +160,11 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Productos Activos</p>
+                <p className="text-sm font-medium text-muted-foreground">Productos Activos</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {products?.filter(p => p.is_branch_active).length || 0}
                 </p>
@@ -174,11 +174,11 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Stock Bajo</p>
+                <p className="text-sm font-medium text-muted-foreground">Stock Bajo</p>
                 <p className="text-2xl font-bold text-orange-600">
                   {lowStockProducts?.length || 0}
                 </p>
@@ -188,11 +188,11 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Sin Stock</p>
+                <p className="text-sm font-medium text-muted-foreground">Sin Stock</p>
                 <p className="text-2xl font-bold text-red-600">
                   {outOfStockProducts?.length || 0}
                 </p>
@@ -229,10 +229,10 @@ export default function Inventory() {
                 ) : (
                   <div className="space-y-3">
                     {lowStockProducts?.slice(0, 5).map((product) => (
-                      <div key={product.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                      <div key={product.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/50 rounded-lg">
                         <div>
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-slate-600">
+                          <p className="font-medium text-orange-900 dark:text-orange-200">{product.name}</p>
+                          <p className="text-sm text-orange-700 dark:text-orange-400">
                             Stock: {product.stock_quantity} | Mínimo: {product.min_stock}
                           </p>
                         </div>
@@ -262,10 +262,10 @@ export default function Inventory() {
                 ) : (
                   <div className="space-y-3">
                     {outOfStockProducts?.slice(0, 5).map((product) => (
-                      <div key={product.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div key={product.id} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/50 rounded-lg">
                         <div>
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-slate-600">
+                          <p className="font-medium text-red-900 dark:text-red-200">{product.name}</p>
+                          <p className="text-sm text-red-700 dark:text-red-400">
                             Precio: {formatPrice(product.selling_price)}
                           </p>
                         </div>

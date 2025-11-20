@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ProductFormProps {
   product?: MasterProduct;
-  onSubmit: (data: any, selectedTaxIds: string[]) => void;
+  onSubmit: (data: any, selectedCategoryIds: string[], selectedTaxIds: string[]) => void;
   onCancel: () => void;
   isSaving: boolean;
 }
@@ -25,7 +25,7 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [costPrice, setCostPrice] = useState<number | string>("");
-  const [category, setCategory] = useState("");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [brandId, setBrandId] = useState("");
   const [barcode, setBarcode] = useState("");
   const [sku, setSku] = useState("");
@@ -44,7 +44,7 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
       setName(product.name || "");
       setDescription(product.description || "");
       setCostPrice(product.cost_price || "");
-      setCategory(product.category || "");
+      setSelectedCategoryIds(product.product_categories?.map(c => c.id) || []);
       setBrandId(product.brand_id || "");
       setBarcode(product.barcode || "");
       setSku(product.sku || "");
@@ -68,7 +68,6 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
       name,
       description: description || undefined,
       cost_price: Number(costPrice) || 0,
-      category: category || undefined,
       brand_id: brandId || undefined,
       barcode: barcode || undefined,
       sku: sku || undefined,
@@ -76,14 +75,14 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
       package_content_quantity: Number(packageContentQuantity) || 1,
       allow_decimal_sale: allowDecimalSale,
     };
-    onSubmit(productData, selectedTaxTypeIds);
+    onSubmit(productData, selectedCategoryIds, selectedTaxTypeIds);
   };
 
   const resetForm = () => {
     setName("");
     setDescription("");
     setCostPrice("");
-    setCategory("");
+    setSelectedCategoryIds([]);
     setBrandId("");
     setBarcode("");
     setSku("");
@@ -92,6 +91,10 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
     setPackageContentQuantity(1);
     setAllowDecimalSale(false);
   };
+
+  const categoryOptions = useMemo(() => {
+    return productCategories?.map(cat => ({ value: cat.id, label: cat.name })) || [];
+  }, [productCategories]);
 
   const taxTypeOptions = useMemo(() => {
     return taxTypes?.map(tt => ({ value: tt.id, label: tt.name })) || [];
@@ -115,13 +118,13 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="category">Categoría</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-            <SelectContent>
-              {productCategories?.map((cat) => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="category">Categoría(s)</Label>
+          <MultiSelect
+            options={categoryOptions}
+            selected={selectedCategoryIds}
+            onSelectedChange={setSelectedCategoryIds}
+            placeholder="Seleccionar categorías..."
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="brand">Marca</Label>

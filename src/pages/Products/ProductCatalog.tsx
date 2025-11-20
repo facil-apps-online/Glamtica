@@ -56,8 +56,11 @@ const ProductCard = ({ product, brand, handleToggleStatus, handleOpenAssignProdu
     if (
       target.closest('button') ||
       target.closest('[role="switch"]') ||
+      target.closest('[role="dialog"]') ||
       target.closest('[data-radix-dropdown-menu-content]') ||
+      target.closest('[data-radix-popover-content]') ||
       target.closest('[role="menuitem"]') ||
+      target.closest('[role="option"]') ||
       target.closest('.embla') // Evita la navegación al hacer clic en el carrusel
     ) {
       return;

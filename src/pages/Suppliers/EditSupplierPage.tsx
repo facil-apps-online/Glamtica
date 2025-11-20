@@ -28,6 +28,7 @@ import { useGetDocumentTypes } from '@/hooks/useDocumentTypes';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import { MapDisplay } from '@/components/MapDisplay';
 import { PhoneInput } from '@/components/PhoneInput';
+import { useCountries } from '@/hooks/useCountries';
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
@@ -124,9 +125,24 @@ const EditSupplierPage = () => {
   const onSubmit = async (values: SupplierFormValues) => {
     if (!id) return;
     try {
-      await updateSupplier({ id, ...values });
+      const allowedSupplierProps = [
+        'name', 'document_type_id', 'identification_number', 'phone', 'email', 'branch_ids',
+        'address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude'
+      ];
+      const updatesToSend: Partial<Supplier> = {};
+      for (const key in values) {
+        if (allowedSupplierProps.includes(key as keyof Supplier)) {
+          (updatesToSend as any)[key] = (values as any)[key];
+        }
+      }
+      if (updatesToSend.document_type_id === '') {
+        updatesToSend.document_type_id = null;
+      }
+
+      await updateSupplier({ id, ...updatesToSend });
       toast({ title: "Éxito", description: "Proveedor actualizado correctamente." });
       queryClient.invalidateQueries({ queryKey: ['chatter', 'suppliers', id] });
+      form.reset(values); // Resetea el form con los nuevos valores para limpiar el estado 'isDirty'
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -134,6 +150,9 @@ const EditSupplierPage = () => {
 
   const watchedLat = form.watch('latitude');
   const watchedLng = form.watch('longitude');
+  const { data: countries } = useCountries();
+  const countryId = useAuth().tenant?.country_id;
+  const countryIsoCode = countries?.find(c => c.id === countryId)?.iso_code;
 
   if (isLoadingSupplier) {
     return (
@@ -250,7 +269,7 @@ const EditSupplierPage = () => {
                                                 <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><Input {...field} placeholder="+57 1 234-5678" /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} placeholderType='movil' /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@proveedor.com" /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <div className="w-full mt-4 md:mt-0">
