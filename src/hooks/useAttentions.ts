@@ -13,6 +13,7 @@ export type AttentionService = Tables<'attention_services'> & {
     status: string;
     created_at: string;
   }[];
+  survey_rating?: { rating: number; comments: string } | null;
 };
 
 export type Attention = Tables<'attentions'> & {
@@ -35,6 +36,8 @@ export type Attention = Tables<'attentions'> & {
   })[];
   attention_payments: Tables<'attention_payments'>[];
   informed_consent_id: string | null;
+  survey_token?: string | null;
+  survey_status?: string | null;
 };
 
 interface CreateAttentionParams {

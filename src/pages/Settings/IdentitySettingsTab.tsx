@@ -1,11 +1,12 @@
 import React from 'react';
-import { useTenantSettings } from '@/hooks/useTenantSettings';
+import { useTenantSettingsData } from '@/hooks/useTenantSettingsData';
 import { LogoUploader } from '@/components/LogoUploader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Palette } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { TenantSlugForm } from '@/components/TenantSlugForm';
 
 const IdentitySkeleton = () => (
   <Card>
@@ -18,18 +19,21 @@ const IdentitySkeleton = () => (
         <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-32 w-32 rounded-full" />
       </div>
+      <div className="space-y-2 mt-6">
+        <Skeleton className="h-4 w-1/4" />
+        <Skeleton className="h-10 w-full" />
+      </div>
     </CardContent>
   </Card>
 );
 
 export function IdentitySettingsTab() {
-  const { tenantId, refreshUser } = useAuth();
-  const { data: settings, isLoading } = useTenantSettings();
+  const { tenantId } = useAuth();
+  const { data: settingsData, isLoading } = useTenantSettingsData(tenantId || '');
   const queryClient = useQueryClient();
 
   const handleSaveSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['tenant_settings', tenantId] });
-    queryClient.invalidateQueries({ queryKey: ['tenant', tenantId] });
+    queryClient.invalidateQueries({ queryKey: ['tenantSettingsData', tenantId] });
   };
 
   if (isLoading) {
@@ -37,22 +41,29 @@ export function IdentitySettingsTab() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <Palette className="h-5 w-5" />
-          Identidad Visual
-        </CardTitle>
-        <CardDescription>
-          Gestiona el logo de tu marca. Este logo aparecerá en diferentes partes de la aplicación.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LogoUploader 
-          initialLogoUrl={settings?.logo_url}
-          onSaveSuccess={handleSaveSuccess}
-        />
-      </CardContent>
-    </Card>
+    <div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Palette className="h-5 w-5" />
+            Identidad Visual
+          </CardTitle>
+          <CardDescription>
+            Gestiona el logo de tu marca para que aparezca en tus recibos, encuestas y micrositio.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LogoUploader 
+            initialLogoUrl={settingsData?.tenant?.logo_url}
+            onSaveSuccess={handleSaveSuccess}
+          />
+        </CardContent>
+      </Card>
+      
+      <TenantSlugForm 
+        tenant={settingsData?.tenant || null} 
+        countries={settingsData?.countries || []} 
+      />
+    </div>
   );
 }

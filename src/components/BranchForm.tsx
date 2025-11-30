@@ -33,6 +33,7 @@ const formSchema = z.object({
   physical_postal_code: z.string().optional().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
+  google_place_id: z.string().optional().nullable(),
 });
 
 type BranchFormValues = z.infer<typeof formSchema>;
@@ -78,6 +79,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
       physical_postal_code: '',
       latitude: null,
       longitude: null,
+      google_place_id: '',
     },
   });
 
@@ -101,6 +103,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
         physical_postal_code: branchToEdit.physical_postal_code || '',
         latitude: branchToEdit.latitude || null,
         longitude: branchToEdit.longitude || null,
+        google_place_id: branchToEdit.google_place_id || '',
       });
     } else if (tenant) {
       form.setValue('timezone', tenant.default_timezone);
@@ -118,6 +121,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
       form.setValue('longitude', place.geometry.location.lng());
     }
     form.setValue('address', place.formatted_address || '');
+    form.setValue('google_place_id', place.place_id || '');
   };
 
   const onSubmit = async (values: BranchFormValues) => {
@@ -139,6 +143,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
           p_physical_postal_code: values.physical_postal_code,
           p_latitude: values.latitude,
           p_longitude: values.longitude,
+          p_google_place_id: values.google_place_id,
         });
         toast({ title: 'Éxito', description: 'Sucursal actualizada correctamente.', variant: 'success' });
       } else {
@@ -157,6 +162,7 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
           p_physical_postal_code: values.physical_postal_code,
           p_latitude: values.latitude,
           p_longitude: values.longitude,
+          p_google_place_id: values.google_place_id,
         });
         toast({ title: 'Éxito', description: 'Sucursal creada correctamente.', variant: 'success' });
       }
@@ -259,13 +265,6 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
                 <CardDescription>Ubicación de tu sucursal para mapas y búsquedas locales.</CardDescription>
               </CardHeader>
               <CardContent>
-                <FormField control={form.control} name="address" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dirección (General)</FormLabel>
-                    <FormControl><Input {...field} readOnly /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 <div className="space-y-2 mt-4">
                   <FormItem>
                     <FormLabel>Buscar Dirección (Autocompletado de Google)</FormLabel>
@@ -274,6 +273,20 @@ export function BranchForm({ branchToEdit, onSuccess, tenantId }: BranchFormProp
                     </FormControl>
                     <FormMessage />
                   </FormItem>
+                  <FormField control={form.control} name="google_place_id" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Google Place ID</FormLabel>
+                      <FormControl><Input {...field} placeholder="Introduce o selecciona un Google Place ID" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="address" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dirección (General)</FormLabel>
+                      <FormControl><Input {...field} readOnly /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <FormField control={form.control} name="physical_address_line1" render={({ field }) => (<FormItem><FormLabel>Línea 1</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="physical_address_line2" render={({ field }) => (<FormItem><FormLabel>Línea 2 (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

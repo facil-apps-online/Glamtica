@@ -26,6 +26,7 @@ export interface Branch {
   physical_postal_code?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  google_place_id?: string | null;
 }
 
 // GET branches by calling the RPC function
@@ -91,6 +92,7 @@ export const useCreateBranch = (tenantIdParam?: string) => {
       p_latitude?: number | null;
       p_longitude?: number | null;
       p_timezone?: string | null;
+      p_google_place_id?: string | null;
     }) => {
       if (!tenantId) throw new Error("Tenant ID not available");
       if (!session) throw new Error("Session not available");
@@ -142,6 +144,7 @@ export const useUpdateBranch = (tenantIdParam?: string) => {
       p_latitude?: number | null;
       p_longitude?: number | null;
       p_timezone?: string | null;
+      p_google_place_id?: string | null;
     }) => {
       if (!tenantId) throw new Error("Tenant ID not available");
       if (!session) throw new Error("Session not available");

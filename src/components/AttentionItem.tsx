@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { EvidenceGallery } from './EvidenceGallery'; // Will create this next
 import { ConsentViewerTrigger } from './ConsentViewerTrigger'; // Will create this next
+import { Star } from 'lucide-react';
 
 interface AttentionItemProps {
   attention: Attention;
@@ -24,9 +25,26 @@ export const AttentionItem: React.FC<AttentionItemProps> = ({ attention }) => {
         {attention.attention_services && attention.attention_services.length > 0 && (
           <div>
             <h4 className="text-md font-semibold mb-1">Servicios:</h4>
-            <ul className="list-disc pl-5 text-sm">
+            <ul className="list-disc pl-5 text-sm space-y-2">
               {attention.attention_services.map((service) => (
-                <li key={service.id}>{service.services?.name || 'Servicio Desconocido'}</li>
+                <li key={service.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-1">
+                  <span>{service.services?.name || 'Servicio Desconocido'}</span>
+                  {service.survey_rating && (
+                    <div className="flex flex-col items-start sm:items-end mt-1 sm:mt-0">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${i < service.survey_rating.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                          />
+                        ))}
+                      </div>
+                      {service.survey_rating.comments && (
+                        <p className="text-xs text-gray-500 italic mt-1 sm:mt-0">"{service.survey_rating.comments}"</p>
+                      )}
+                    </div>
+                  )}
+                </li>
               ))}
             </ul>
           </div>

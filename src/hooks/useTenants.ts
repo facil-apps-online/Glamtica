@@ -31,6 +31,7 @@ export interface Tenant {
   latitude?: number | null;
   longitude?: number | null;
   countries?: { name: string; iso_code: string } | null;
+  slug?: string | null;
 }
 
 // --- React Query Hooks for Tenant Users ---
@@ -95,5 +96,73 @@ export const useUpdateTenant = () => {
       // Invalidate the query for the current tenant to refetch the updated data
       queryClient.invalidateQueries({ queryKey: ['tenant', tenantId] });
     },
+  });
+};
+
+export const useUpdateTenantSlug = () => {
+  const queryClient = useQueryClient();
+  const { tenantId, session } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ slug }: { slug: string }) => {
+      if (!tenantId || !session) throw new Error("User not authenticated or tenant not found.");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'update_tenant_slug',
+          payload: { slug },
+        }),
+      });
+
+      // The RPC returns no data on success, so we just check the status
+      if (!response.ok) {
+        const json = await response.json();
+        if (json.error?.includes('slug_already_taken')) {
+          throw new Error('Este alias (slug) ya está en uso. Por favor, elige otro.');
+        }
+        if (json.error?.includes('invalid_slug_format')) {
+          throw new Error('El alias (slug) tiene un formato inválido. Usa solo letras minúsculas, números y guiones.');
+        }
+        throw new Error(json.error || 'Failed to update slug');
+      }
+      return response.status;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['tenant_settings', tenantId] }); 
+    },
+  });
+};
+
+export const useCheckSlugAvailability = (slug: string, countryId: string) => {
+  return useQuery<boolean, Error>({
+    queryKey: ['slugAvailability', slug, countryId],
+    queryFn: async () => {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'check_slug_availability',
+          payload: { slug, countryId },
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to check slug availability');
+      }
+      return json;
+    },
+    enabled: !!slug && !!countryId && slug.length > 2,
+    staleTime: 1000 * 60, // 1 minute
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 };

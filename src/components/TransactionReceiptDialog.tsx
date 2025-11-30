@@ -35,6 +35,7 @@ const MobileReceiptContent = ({ saleData }: { saleData: SaleDetails }) => {
     <div className="space-y-4 text-sm">
       {/* Header */}
       <div className="text-center">
+        <h2 className="font-bold text-xl">{saleData.tenant?.name}</h2>
         <h3 className="font-semibold text-lg">{saleData.branch.name}</h3>
         <p className="text-xs text-muted-foreground">Recibo #: {saleData.sale_number}</p>
         <p className="text-xs text-muted-foreground">{new Date(saleData.sale_date).toLocaleString()}</p>
@@ -130,6 +131,7 @@ const DesktopReceiptContent = ({ saleData }: { saleData: SaleDetails }) => {
           {saleData.client.phone && <p>Tel: {saleData.client.phone}</p>}
         </div>
         <div className="text-right">
+          <h2 className="font-bold text-xl">{saleData.tenant?.name}</h2>
           <h3 className="font-semibold">{saleData.branch.name}</h3>
           <p>Recibo #: {saleData.sale_number}</p>
           <p>Fecha: {new Date(saleData.sale_date).toLocaleString()}</p>
@@ -209,7 +211,7 @@ export const TransactionReceiptDialog: React.FC<TransactionReceiptDialogProps> =
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl w-full">
+      <DialogContent className="w-[95%] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Recibo de Transacción</DialogTitle>
         </DialogHeader>

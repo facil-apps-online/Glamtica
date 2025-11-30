@@ -58,6 +58,8 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import FeaturesPage from "@/pages/FeaturesPage";
 import UIKit from "@/pages/Dev/UIKit";
+import SurveyPage from "@/pages/SurveyPage";
+import MicrositePage from "@/pages/MicrositePage";
 
 function App() {
   return (
@@ -78,6 +80,8 @@ function App() {
               <Route path="/integrations/google/callback" element={<GoogleCallbackPage />} />
               <Route path="/tv" element={<TvDisplayPage />} />
               <Route path="/tv/:registrationCode" element={<TvDisplayPage />} />
+              <Route path="/survey/:surveyToken" element={<SurveyPage />} />
+              <Route path="/:countryIso/:slug" element={<MicrositePage />} />
 
               {/* Rutas Protegidas Simples (solo requieren login) */}
               <Route element={<SimpleProtectedRoute />}>

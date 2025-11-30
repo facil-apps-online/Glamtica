@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePriceFormat } from "@/hooks/usePriceFormat";
-import { DollarSign, User, Hash, Box, Scissors, Link, MoreHorizontal, UploadCloud } from "lucide-react";
+import { DollarSign, User, Hash, Box, Scissors, Link, MoreHorizontal, UploadCloud, Star } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,7 @@ interface AttentionItemCardProps {
   is_parallel?: boolean;
   screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   branchId: string;
+  surveyRating?: { rating: number; comments: string } | null;
 }
 
 const getStatusBadge = (status: ItemStatus, attentionStatus: string) => {
@@ -89,6 +90,7 @@ export const AttentionItemCard = ({
   is_parallel = false,
   screenSize,
   branchId,
+  surveyRating,
 }: AttentionItemCardProps) => {
   const { formatPrice } = usePriceFormat();
   const callClientMutation = useCallClient();
@@ -199,6 +201,22 @@ export const AttentionItemCard = ({
                     ))}
                 </ul>
             </div>
+        )}
+        {surveyRating && (
+          <div className="mt-2 flex items-center gap-2">
+            <p className="text-sm font-medium text-muted-foreground">Calificación:</p>
+            <div className="flex items-center">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-4 h-4 ${i < surveyRating.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                />
+              ))}
+            </div>
+            {surveyRating.comments && (
+              <p className="text-sm text-gray-500 italic">"{surveyRating.comments}"</p>
+            )}
+          </div>
         )}
     </div>
     <EvidenceUploadDialog

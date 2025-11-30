@@ -10,6 +10,7 @@ type Branch = Tables<'branches'>;
 export type SaleDetails = Tables<'sales'> & {
   client: Client;
   branch: Branch;
+  tenant?: { name?: string | null };
   items: SaleItem[];
   payments: Tables<'attention_payments'>[];
 };

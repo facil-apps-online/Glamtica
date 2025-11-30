@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye, Loader2, FileText } from "lucide-react";
+import { Plus, Calendar, Clock, User, Scissors, Phone, DollarSign, LayoutList, CalendarDays, Trash2, Package, Edit, CheckCircle, CreditCard, Calendar as CalendarIcon, Receipt, Eye, Loader2, FileText, Link } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { callTenantAction } from '@/lib/tenantActions';
 import { TransactionReceiptDialog } from '@/components/TransactionReceiptDialog';
 import { useSaleDetails } from '@/hooks/useSaleDetails';
@@ -637,9 +638,22 @@ interface AttentionCardProps {
 }
 
 const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, onExportInformedConsent, screenSize, branchId }: AttentionCardProps) => {
+  const { currentAssignment } = useAuth();
+  const { toast } = useToast();
   const isMobile = screenSize === 'sm' || screenSize === 'md';
   const updateStatusMutation = useUpdateAttentionStatus();
   const { data: signedConsents } = useSignedConsentsForAttention(attention.id);
+
+  const userRole = currentAssignment?.role_name;
+  const canSeeSurveyLink = ['tenant_super_admin', 'tenant_admin'].includes(userRole ?? '') && attention.survey_status !== 'completed';
+  const surveyLink = attention.survey_token ? `${window.location.origin}/survey/${attention.survey_token}` : null;
+
+  const copyToClipboard = () => {
+    if (surveyLink) {
+      navigator.clipboard.writeText(surveyLink);
+      toast({ title: "Enlace copiado", description: "El enlace a la encuesta ha sido copiado al portapapeles." });
+    }
+  };
 
   const attentionDate = useMemo(() => {
     if (!attention.attention_datetime) return null;
@@ -820,6 +834,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
                                             is_parallel={service.is_parallel}
                                             screenSize={screenSize}
                                             branchId={branchId}
+                                            surveyRating={service.survey_rating}
                                         />
                                     ))}
                                     {comboProducts.map((product, productIndex) => (
@@ -864,6 +879,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
                                 is_parallel={service.is_parallel}
                                 screenSize={screenSize}
                                 branchId={branchId}
+                                surveyRating={service.survey_rating}
                             />
                         );
                     })}
@@ -932,6 +948,18 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
           <div className="text-sm">
             <span className="text-muted-foreground">Notas:</span>
             <p>{attention.notes}</p>
+          </div>
+        )}
+
+        {canSeeSurveyLink && surveyLink && (
+          <div className="pt-4 border-t mt-4">
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><Link className="w-4 h-4" />Enlace de la Encuesta</h4>
+            <div className="flex items-center gap-2">
+              <Input value={surveyLink} readOnly className="text-sm h-8" />
+              <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                Copiar
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
