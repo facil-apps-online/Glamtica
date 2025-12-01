@@ -139,9 +139,9 @@ export const useUpdateTenantSlug = () => {
   });
 };
 
-export const useCheckSlugAvailability = (slug: string, countryId: string) => {
+export const useCheckSlugAvailability = (slug: string, countryId: string, platformId: string) => {
   return useQuery<boolean, Error>({
-    queryKey: ['slugAvailability', slug, countryId],
+    queryKey: ['slugAvailability', slug, countryId, platformId],
     queryFn: async () => {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
         method: 'POST',
@@ -151,7 +151,7 @@ export const useCheckSlugAvailability = (slug: string, countryId: string) => {
         },
         body: JSON.stringify({
           action: 'check_slug_availability',
-          payload: { slug, countryId },
+          payload: { slug, countryId, platformId },
         }),
       });
       const json = await response.json();
@@ -160,7 +160,7 @@ export const useCheckSlugAvailability = (slug: string, countryId: string) => {
       }
       return json;
     },
-    enabled: !!slug && !!countryId && slug.length > 2,
+    enabled: !!slug && !!countryId && !!platformId && slug.length > 2,
     staleTime: 1000 * 60, // 1 minute
     refetchOnWindowFocus: false,
     refetchOnMount: false,

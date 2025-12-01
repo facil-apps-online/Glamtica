@@ -92,6 +92,7 @@ const SurveyPage = () => {
         });
 
         if (data.survey_status === 'completed') {
+          setSurveyData(data);
           setAlreadyCompleted(true);
         } else {
           setSurveyData(data);
@@ -171,6 +172,11 @@ const SurveyPage = () => {
       <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-lg mx-auto bg-white text-gray-800 text-center">
           <CardHeader>
+            <img 
+              src={surveyData?.tenant?.logo_base64 || '/glamtica.app.png'} 
+              alt={surveyData?.tenant?.name || 'Logo'} 
+              className="w-24 h-24 mx-auto mb-4 rounded-full object-cover border"
+            />
             <CardTitle className="text-2xl text-purple-700">Encuesta Enviada Previamente</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -187,7 +193,14 @@ const SurveyPage = () => {
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-lg mx-auto bg-white text-gray-800 text-center">
-          <CardHeader><CardTitle className="text-2xl text-purple-700">¡Encuesta Enviada!</CardTitle></CardHeader>
+          <CardHeader>
+            <img 
+              src={surveyData?.tenant?.logo_base64 || '/glamtica.app.png'} 
+              alt={surveyData?.tenant?.name || 'Logo'} 
+              className="w-24 h-24 mx-auto mb-4 rounded-full object-cover border"
+            />
+            <CardTitle className="text-2xl text-purple-700">¡Encuesta Enviada!</CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
             <p className="text-gray-600">¡Muchas gracias por tu opinión!</p>
             {showGoogleReview && (

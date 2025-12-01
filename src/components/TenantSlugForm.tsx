@@ -6,6 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateTenantSlug, useCheckSlugAvailability, Tenant } from '@/hooks/useTenants';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, Save, Copy, CheckCircle, XCircle, Loader2 } from 'lucide-react';
@@ -38,6 +39,8 @@ interface TenantSlugFormProps {
 export function TenantSlugForm({ tenant, countries }: TenantSlugFormProps) {
   const { toast } = useToast();
   const updateSlugMutation = useUpdateTenantSlug();
+  const { currentAssignment } = useAuth();
+  const platformId = currentAssignment?.platform_id || '';
 
   const [debouncedSlug, setDebouncedSlug] = useState('');
 
@@ -49,7 +52,7 @@ export function TenantSlugForm({ tenant, countries }: TenantSlugFormProps) {
   
   const watchedSlug = form.watch('slug');
 
-  const { data: isAvailable, isLoading: isChecking } = useCheckSlugAvailability(debouncedSlug, tenant?.country_id || '');
+  const { data: isAvailable, isLoading: isChecking } = useCheckSlugAvailability(debouncedSlug, tenant?.country_id || '', platformId);
 
   useEffect(() => {
     const handler = setTimeout(() => {
