@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { useClientDocumentTemplates, useToggleDocumentTemplateStatus, ClientDocumentTemplate } from "@/hooks/useClientDocumentTemplates";
+import { useClientDocumentTemplates, useToggleDocumentTemplateStatus, useUpdateDocumentTemplate, ClientDocumentTemplate } from "@/hooks/useClientDocumentTemplates";
 import { FormBuilderDialog } from '@/components/FormBuilderDialog';
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Edit } from 'lucide-react';
@@ -17,16 +17,26 @@ interface ManageFormTemplatesDialogProps {
 export function ManageFormTemplatesDialog({ open, onOpenChange }: ManageFormTemplatesDialogProps) {
   const { toast } = useToast();
   const { data: templates, isLoading } = useClientDocumentTemplates();
-  const { mutate: toggleStatus, isLoading: isToggling } = useToggleDocumentTemplateStatus();
+  const { mutate: toggleStatus, isLoading: isTogglingStatus } = useToggleDocumentTemplateStatus();
+  const { mutate: updateTemplate, isLoading: isUpdatingTemplate } = useUpdateDocumentTemplate();
 
   const [isBuilderOpen, setBuilderOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ClientDocumentTemplate | null>(null);
 
   const handleToggleStatus = (template: ClientDocumentTemplate) => {
-    toast({ title: 'Actualizando estado...', description: `Cambiando estado de ${template.name}.`, variant: "success" });
+    toast({ title: 'Actualizando estado...', description: `Cambiando estado de ${template.name}.` });
     toggleStatus({ id: template.id, is_active: !template.is_active }, {
       onSuccess: () => toast({ title: 'Éxito', description: 'El estado de la plantilla ha sido actualizado.', variant: "success" }),
       onError: (error: any) => toast({ title: 'Error', description: `No se pudo actualizar: ${error.message}`, variant: 'destructive' })
+    });
+  };
+
+  const handleToggleFillOnAttention = (template: ClientDocumentTemplate) => {
+    toast({ title: 'Actualizando opción...', description: `Cambiando opción para ${template.name}.` });
+    const newStatus = !template.fill_on_attention;
+    updateTemplate({ id: template.id, updates: { fill_on_attention: newStatus } }, {
+      onSuccess: () => toast({ title: 'Éxito', description: 'La opción de llenado en atención ha sido actualizada.', variant: "success" }),
+      onError: (error: any) => toast({ title: 'Error', description: `No se pudo actualizar la opción: ${error.message}`, variant: 'destructive' })
     });
   };
 
@@ -64,18 +74,26 @@ export function ManageFormTemplatesDialog({ open, onOpenChange }: ManageFormTemp
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Versión</TableHead>
+                  <TableHead>Llenar en Atención</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={4} className="text-center">Cargando plantillas...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center">Cargando plantillas...</TableCell></TableRow>
                 ) : templates && templates.length > 0 ? (
                   templates.map(template => (
                     <TableRow key={template.id}>
                       <TableCell className="font-medium">{template.name}</TableCell>
                       <TableCell><Badge variant="outline">v{template.version}</Badge></TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={template.fill_on_attention ?? false}
+                          onCheckedChange={() => handleToggleFillOnAttention(template)}
+                          disabled={isUpdatingTemplate}
+                        />
+                      </TableCell>
                       <TableCell>
                           <Badge variant={template.is_active ? 'default' : 'destructive'}>
                               {template.is_active ? 'Activa' : 'Inactiva'}
@@ -85,7 +103,7 @@ export function ManageFormTemplatesDialog({ open, onOpenChange }: ManageFormTemp
                           <Switch
                               checked={template.is_active}
                               onCheckedChange={() => handleToggleStatus(template)}
-                              disabled={isToggling}
+                              disabled={isTogglingStatus}
                           />
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
                               <Edit className="h-4 w-4" />
@@ -94,7 +112,7 @@ export function ManageFormTemplatesDialog({ open, onOpenChange }: ManageFormTemp
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow><TableCell colSpan={4} className="text-center">No se encontraron plantillas.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center">No se encontraron plantillas.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

@@ -38,6 +38,10 @@ import { usePaymentEvidence } from "@/hooks/usePaymentEvidence";
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog";
 import { ExportInformedConsentDialog } from "@/components/attentions/ExportInformedConsentDialog";
 import { useSignedConsentsForAttention, SignedConsent } from "@/hooks/useConsentTemplates";
+import { FillFormInstanceDialog } from "@/components/FillFormInstanceDialog";
+import { ViewFichaTecnicaDialog } from "@/components/ViewFichaTecnicaDialog";
+import { useClientDocumentTemplates, useGetClientDocumentInstances, ClientDocumentTemplate, ClientDocumentInstance } from "@/hooks/useClientDocumentTemplates";
+import { FilePlus } from "lucide-react";
 
 
 const generateColorPalette = (count: number) => {
@@ -637,12 +641,41 @@ interface AttentionCardProps {
   branchId: string;
 }
 
+
+// ... (previous code in Attentions.tsx) ...
+
 const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, onExportInformedConsent, screenSize, branchId }: AttentionCardProps) => {
   const { currentAssignment } = useAuth();
   const { toast } = useToast();
   const isMobile = screenSize === 'sm' || screenSize === 'md';
   const updateStatusMutation = useUpdateAttentionStatus();
   const { data: signedConsents } = useSignedConsentsForAttention(attention.id);
+
+  // State for Fichas Técnicas
+  const [isFillFormOpen, setIsFillFormOpen] = useState(false);
+  const [isViewFormOpen, setIsViewFormOpen] = useState(false);
+  const [selectedTemplateToFill, setSelectedTemplateToFill] = useState<ClientDocumentTemplate | null>(null);
+  const [selectedInstanceToView, setSelectedInstanceToView] = useState<ClientDocumentInstance | null>(null);
+
+  // Fetching data for Fichas Técnicas
+  const { data: allTemplates } = useClientDocumentTemplates();
+  const { data: filledInstances } = useGetClientDocumentInstances({ attentionId: attention.id, clientId: attention.client_id });
+
+  const fillableTemplates = useMemo(() => {
+    if (!allTemplates) return [];
+    const filledTemplateIds = new Set(filledInstances?.map(i => i.template_id));
+    return allTemplates.filter(t => t.fill_on_attention && !filledTemplateIds.has(t.id));
+  }, [allTemplates, filledInstances]);
+
+  const handleOpenFillFormDialog = (template: ClientDocumentTemplate) => {
+    setSelectedTemplateToFill(template);
+    setIsFillFormOpen(true);
+  };
+
+  const handleOpenViewFormDialog = (instance: ClientDocumentInstance) => {
+    setSelectedInstanceToView(instance);
+    setIsViewFormOpen(true);
+  };
 
   const userRole = currentAssignment?.role_name;
   const canSeeSurveyLink = ['tenant_super_admin', 'tenant_admin'].includes(userRole ?? '') && attention.survey_status !== 'completed';
@@ -723,7 +756,10 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
   };
 
   return (
-    <Card className="overflow-hidden">
+    <>
+      <FillFormInstanceDialog open={isFillFormOpen} onOpenChange={setIsFillFormOpen} template={selectedTemplateToFill} attention={attention} />
+      <ViewFichaTecnicaDialog open={isViewFormOpen} onOpenChange={setIsViewFormOpen} instance={selectedInstanceToView} />
+      <Card className="overflow-hidden">
       <CardHeader className="pb-4">
         <div className="flex flex-wrap justify-between items-start gap-4">
           <div className="space-y-1">
@@ -950,6 +986,24 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
             <p>{attention.notes}</p>
           </div>
         )}
+        
+        {(fillableTemplates.length > 0 || (filledInstances && filledInstances.length > 0)) && (
+            <div className="pt-4 border-t mt-4">
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><FilePlus className="w-4 h-4" />Fichas Técnicas</h4>
+                <div className="flex flex-wrap gap-2">
+                    {filledInstances?.map(instance => (
+                        <Button key={instance.id} variant="outline" size="sm" onClick={() => handleOpenViewFormDialog(instance)}>
+                            Ver: {instance.template.name}
+                        </Button>
+                    ))}
+                    {fillableTemplates.map(template => (
+                        <Button key={template.id} variant="default" size="sm" onClick={() => handleOpenFillFormDialog(template)}>
+                            Llenar: {template.name}
+                        </Button>
+                    ))}
+                </div>
+            </div>
+        )}
 
         {canSeeSurveyLink && surveyLink && (
           <div className="pt-4 border-t mt-4">
@@ -964,5 +1018,6 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
         )}
       </CardContent>
     </Card>
+    </>
   );
 };

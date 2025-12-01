@@ -10,6 +10,7 @@ export interface ClientDocumentTemplate {
   schema: any; // O un tipo más específico si tienes la estructura del schema
   is_active: boolean;
   version: number;
+  fill_on_attention?: boolean;
 }
 
 // Hook para OBTENER las plantillas de documentos
@@ -107,6 +108,77 @@ export const useToggleDocumentTemplateStatus = () => {
     mutationFn: toggleStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientDocumentTemplates', currentAssignment?.tenant_id] });
+    }
+  });
+};
+
+export interface ClientDocumentInstance {
+  id: string;
+  client_id: string;
+  template_id: string;
+  attention_id?: string;
+  data: any;
+  created_at: string;
+  template: {
+    name: string;
+    description?: string;
+    version: number;
+    schema: any;
+  }
+}
+
+// Hook to GET document instances for a client or attention
+export const useGetClientDocumentInstances = ({ clientId, attentionId }: { clientId?: string, attentionId?: string }) => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  const fetchInstances = async () => {
+    if (!tenantId || (!clientId && !attentionId)) return [];
+
+    const { data, error } = await supabase.functions.invoke('tenant-actions', {
+      body: { 
+        action: 'get_client_document_instances',
+        payload: { client_id: clientId, attention_id: attentionId }
+      },
+    });
+
+    if (error) throw new Error(error.message);
+    return data as ClientDocumentInstance[];
+  };
+
+  return useQuery<ClientDocumentInstance[]>({
+    queryKey: ['clientDocumentInstances', { tenantId, clientId, attentionId }],
+    queryFn: fetchInstances,
+    enabled: !!tenantId && (!!clientId || !!attentionId),
+  });
+};
+
+// Hook to SAVE a document instance
+export const useSaveClientDocumentInstance = () => {
+  const queryClient = useQueryClient();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+
+  const saveInstance = async (instanceData: { client_id: string, template_id: string, attention_id?: string, data: any }) => {
+    const { data, error } = await supabase.functions.invoke('tenant-actions', {
+      body: { 
+        action: 'save_client_document_instance',
+        payload: instanceData
+      },
+    });
+
+    if (error) throw new Error(error.message);
+    return data;
+  };
+
+  return useMutation({
+    mutationFn: saveInstance,
+    onSuccess: (data, variables) => {
+      // Invalidate queries for both the client and the attention to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['clientDocumentInstances', { tenantId, clientId: variables.client_id }] });
+      if (variables.attention_id) {
+        queryClient.invalidateQueries({ queryKey: ['clientDocumentInstances', { tenantId, attentionId: variables.attention_id }] });
+      }
     }
   });
 };
