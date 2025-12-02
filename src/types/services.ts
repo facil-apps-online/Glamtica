@@ -1,3 +1,9 @@
+export interface MasterServiceImage {
+  id: string;
+  image_url: string;
+  is_primary: boolean;
+}
+
 export interface MasterService {
   id: string;
   name: string;
@@ -9,6 +15,7 @@ export interface MasterService {
   tenant_id: string;
   created_at: string;
   updated_at: string;
+  service_images?: MasterServiceImage[];
 }
 
 export interface BranchService extends MasterService {

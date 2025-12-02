@@ -15,6 +15,7 @@ import { ServiceForm } from '@/components/ServiceForm';
 import { ServicePricesTab } from '@/components/ServicePricesTab';
 import { ServiceCommissionsTab } from '@/components/ServiceCommissionsTab';
 import { ServiceAssignmentTab } from '@/components/ServiceAssignmentTab';
+import { ServiceImageGallery } from '@/components/ServiceImageGallery';
 import { ChatterBox } from '@/components/ChatterBox';
 import { MasterService } from '@/types/services';
 import { useToast } from "@/hooks/use-toast";
@@ -124,6 +125,7 @@ export default function ServiceDetailPage() {
               <SelectContent>
                 <SelectItem value="info">Información</SelectItem>
                 <SelectItem value="prices">Precios</SelectItem>
+                <SelectItem value="images">Imágenes</SelectItem>
                 <SelectItem value="commissions">Comisiones</SelectItem>
                 <SelectItem value="assignment">Asignación</SelectItem>
               </SelectContent>
@@ -152,6 +154,14 @@ export default function ServiceDetailPage() {
                   </CardContent>
                 </Card>
               )}
+              {activeTab === 'images' && (
+                <Card>
+                  <CardHeader><CardTitle>Imágenes del Servicio</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceImageGallery serviceId={id!} />
+                  </CardContent>
+                </Card>
+              )}
               {activeTab === 'commissions' && (
                 <Card>
                   <CardHeader><CardTitle>Comisiones</CardTitle></CardHeader>
@@ -172,9 +182,10 @@ export default function ServiceDetailPage() {
           </div>
           <div className="hidden md:block">
             <Tabs defaultValue="info" onValueChange={setActiveTab} value={activeTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="info">Información</TabsTrigger>
                 <TabsTrigger value="prices">Precios</TabsTrigger>
+                <TabsTrigger value="images">Imágenes</TabsTrigger>
                 <TabsTrigger value="commissions">Comisiones</TabsTrigger>
                 <TabsTrigger value="assignment">Asignación</TabsTrigger>
               </TabsList>
@@ -198,6 +209,14 @@ export default function ServiceDetailPage() {
                   <CardHeader><CardTitle>Precios por Sucursal</CardTitle></CardHeader>
                   <CardContent>
                     <ServicePricesTab service={service} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="images" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle>Imágenes del Servicio</CardTitle></CardHeader>
+                  <CardContent>
+                    <ServiceImageGallery serviceId={id!} />
                   </CardContent>
                 </Card>
               </TabsContent>
