@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface BreakdownData {
-  table_name: string;
+  table_name: string; // This will now contain the translated name from the RPC
   size: number;
 }
 
@@ -11,15 +11,8 @@ interface StorageUsageChartProps {
   data: BreakdownData[];
 }
 
-const TABLE_NAME_MAP: { [key: string]: string } = {
-  'product_images': 'Productos',
-  'attention_service_evidences': 'Evidencias',
-  'attention_payment_evidences': 'Pagos',
-  'commission_payment_evidences': 'Comisiones',
-  'consent_signatures': 'Consentimientos',
-};
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
+// COLORS array expanded to cover more categories if needed
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#775DD0', '#546E7A'];
 
 const formatBytes = (bytes: number, decimals = 2) => {
   if (bytes === 0) return '0 Bytes';
@@ -32,7 +25,7 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 export const StorageUsageChart: React.FC<StorageUsageChartProps> = ({ data }) => {
   const chartData = data.map(item => ({
-    name: TABLE_NAME_MAP[item.table_name] || item.table_name,
+    name: item.table_name, // Use the translated name directly from RPC
     value: item.size,
   }));
 
@@ -82,7 +75,7 @@ export const StorageUsageChart: React.FC<StorageUsageChartProps> = ({ data }) =>
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value: number) => [formatBytes(value), 'Uso']} />
+            <Tooltip formatter={(value: number, name: string) => [formatBytes(value), name]} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

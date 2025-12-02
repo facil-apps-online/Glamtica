@@ -15,6 +15,7 @@ import { debounce } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
 import { useNavigate } from "react-router-dom";
+import { ComboImageGallery } from "@/components/ComboImageGallery"; // Add this import
 
 interface ComboFormProps {
   combo?: Combo | null;
@@ -273,6 +274,14 @@ export const ComboForm = ({ combo, onSave, isSaving, pageTitle, pageSubtitle }: 
                 </div>
                 <div className="lg:col-span-1 space-y-6">
                     {/* Placeholder for future cards like status, etc. */}
+                    {combo && combo.id && ( // Only show if combo exists (editing mode)
+                      <Card>
+                          <CardHeader><CardTitle>Imágenes del Combo</CardTitle></CardHeader>
+                          <CardContent>
+                              <ComboImageGallery comboId={combo.id} />
+                          </CardContent>
+                      </Card>
+                    )}
                 </div>
             </div>
             <div className="flex justify-end gap-2 mt-8">

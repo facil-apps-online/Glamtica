@@ -1,29 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { MasterProductImage } from '@/hooks/useProducts'
+import { MasterCombo, ComboImage } from '@/types/combos' // Import ComboImage
 import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage'
 import useEmblaCarousel, { EmblaOptionsType } from 'embla-carousel-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type PropType = {
-  images?: MasterProductImage[]
-  productName: string
+  images?: ComboImage[]
+  comboName: string
   options?: EmblaOptionsType
 }
 
-const ImageSlide = ({ imageUrl, productName }) => {
+const ImageSlide = ({ imageUrl, comboName }) => {
   const { displayUrl, isLoading } = useGoogleDriveImage(imageUrl)
 
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-lg">
+    <div className="relative aspect-square w-full overflow-hidden rounded-t-lg">
       {isLoading && <Skeleton className="h-full w-full" />}
       {displayUrl && !isLoading && (
         <img
           src={displayUrl}
-          alt={`Imagen de ${productName}`}
+          alt={`Imagen de ${comboName}`}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
       )}
@@ -31,13 +30,13 @@ const ImageSlide = ({ imageUrl, productName }) => {
   )
 }
 
-export const ProductImageCarousel: React.FC<PropType> = ({ images, productName, options }) => {
+export const ComboImageCarousel: React.FC<PropType> = ({ images, comboName, options }) => {
   if (!images || images.length === 0) {
     return (
-      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-muted">
+      <div className="relative aspect-square w-full overflow-hidden rounded-t-lg bg-muted">
         <img
           src="/placeholder.svg"
-          alt="Imagen de producto no disponible"
+          alt="Imagen de combo no disponible"
           className="h-full w-full object-cover"
         />
       </div>
@@ -48,17 +47,17 @@ export const ProductImageCarousel: React.FC<PropType> = ({ images, productName, 
     <Dialog>
       <DialogTrigger asChild>
         <div className="embla group relative cursor-pointer">
-          <ImageSlide imageUrl={images[0].image_url} productName={productName} />
+          <ImageSlide imageUrl={images[0].google_drive_file_id} comboName={comboName} />
         </div>
       </DialogTrigger>
           <DialogContent className="max-w-3xl p-0">
-            <DialogTitle className="sr-only">Imágenes de {productName}</DialogTitle> {/* Added for accessibility */}
-            <CarouselContent images={images} productName={productName} options={options} />
+            <DialogTitle className="sr-only">Imágenes de {comboName}</DialogTitle> {/* Added for accessibility */}
+            <CarouselContent images={images} comboName={comboName} options={options} />
           </DialogContent>    </Dialog>
   )
 }
 
-const CarouselContent = ({ images, productName, options }) => {
+const CarouselContent = ({ images, comboName, options }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel(options)
   const [prevBtnDisabled, setPrevBtnDisabled] = useState(true)
   const [nextBtnDisabled, setNextBtnDisabled] = useState(true)
@@ -85,7 +84,7 @@ const CarouselContent = ({ images, productName, options }) => {
         <div className="embla__container flex">
           {images?.map((image) => (
             <div className="embla__slide relative aspect-video flex-[0_0_100%]" key={image.id}>
-              <ImageSlide imageUrl={image.image_url} productName={productName} />
+              <ImageSlide imageUrl={image.google_drive_file_id} comboName={comboName} />
             </div>
           ))}
         </div>

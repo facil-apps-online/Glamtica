@@ -100,8 +100,12 @@ export const useMasterServiceDetails = (serviceId: string) => {
 };
 
 // Hook para obtener todos los combos maestros (el catálogo general)
+import { MasterCombo } from "@/types/combos"; // Add this import
+
+// ... other imports ...
+
 export const useMasterCombos = () => {
-  return useQuery<any[], Error>({ // TODO: Definir un tipo MasterCombo
+  return useQuery<MasterCombo[], Error>({ // Use MasterCombo
     queryKey: ['master_combos'],
     queryFn: () => callTenantAction('get_master_combos', {}),
   });

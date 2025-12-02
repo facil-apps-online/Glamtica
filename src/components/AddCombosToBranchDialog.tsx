@@ -33,15 +33,7 @@ interface AddCombosToBranchDialogProps { // Cambiar nombre de la interfaz
   onSuccess: () => void;
 }
 
-// Definir un tipo básico para MasterCombo si no existe
-interface MasterCombo {
-  id: string;
-  name: string;
-  description?: string;
-  // Añadir otras propiedades relevantes de un combo maestro si las hay
-  // Por ejemplo, un precio base si los combos tienen un precio predefinido en el catálogo
-  base_price?: number; 
-}
+import { MasterCombo } from "@/types/combos";
 
 const AddCombosToBranchDialog: React.FC<AddCombosToBranchDialogProps> = ({
   isOpen,

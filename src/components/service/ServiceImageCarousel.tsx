@@ -3,7 +3,7 @@ import { MasterServiceImage } from '@/hooks/useServices'
 import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage'
 import useEmblaCarousel, { EmblaOptionsType } from 'embla-carousel-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -50,10 +50,10 @@ export const ServiceImageCarousel: React.FC<PropType> = ({ images, serviceName, 
           <ImageSlide imageUrl={images[0].google_drive_file_id} serviceName={serviceName} />
         </div>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl p-0">
-        <CarouselContent images={images} serviceName={serviceName} options={options} />
-      </DialogContent>
-    </Dialog>
+          <DialogContent className="max-w-3xl p-0">
+            <DialogTitle className="sr-only">Imágenes de {serviceName}</DialogTitle> {/* Added for accessibility */}
+            <CarouselContent images={images} serviceName={serviceName} options={options} />
+          </DialogContent>    </Dialog>
   )
 }
 
