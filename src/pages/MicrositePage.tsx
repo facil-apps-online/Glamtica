@@ -34,7 +34,7 @@ const MicrositePage = () => {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['microsite', countryIso, slug],
-    queryFn: () => fetchPublicAction('get_microsite_data', { country_iso_code: countryIso, slug }),
+    queryFn: () => fetchPublicAction('get_microsite_data', { country_iso_code: countryIso, slug, platform_id: import.meta.env.VITE_GLAMTICA_PLATFORM_ID }),
     enabled: !!countryIso && !!slug,
   });
 
