@@ -37,7 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type AddUserFormValues = z.infer<ReturnType<typeof createValidationSchema>>;
 
-const createValidationSchema = (userExists: boolean, roles: any[] = []) =>
+const createValidationSchema = (userExists: boolean, roles: any[] = [], branches: any[] = []) =>
   z.object({
     email: z.string().email({ message: 'Por favor, introduce un email válido.' }),
     password: z.string().optional(),
@@ -52,12 +52,20 @@ const createValidationSchema = (userExists: boolean, roles: any[] = []) =>
       });
     }
     const selectedRole = roles.find((r) => r.id === data.roleId);
-    if (selectedRole && selectedRole.name !== 'tenant_super_admin' && !data.branchId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Por favor, selecciona una sucursal.',
-        path: ['branchId'],
-      });
+    if (selectedRole && selectedRole.name !== 'tenant_super_admin') {
+      if (branches.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'No hay sucursales disponibles para asignar. Crea una sucursal primero.',
+          path: ['branchId'],
+        });
+      } else if (!data.branchId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Por favor, selecciona una sucursal.',
+          path: ['branchId'],
+        });
+      }
     }
   });
 
@@ -86,7 +94,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   );
 
   const form = useForm<AddUserFormValues>({
-    resolver: zodResolver(createValidationSchema(userExists, roles)),
+    resolver: zodResolver(createValidationSchema(userExists, roles, branches)),
     defaultValues: { email: '', password: '', roleId: '', branchId: '' },
   });
 
@@ -243,13 +251,23 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 <FormItem>
                   <FormLabel>Sucursal</FormLabel>
                   <Select
-                    onValuechange={field.onChange}
+                    onValueChange={field.onChange}
                     value={field.value}
-                    disabled={isSuperAdminSelected || isLoadingBranches}
+                    disabled={isSuperAdminSelected || isLoadingBranches || branches?.length === 0}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={isSuperAdminSelected ? "No aplica para este rol" : "Selecciona una sucursal"} />
+                        <SelectValue
+                          placeholder={
+                            isSuperAdminSelected
+                              ? "No aplica para este rol"
+                              : isLoadingBranches
+                                  ? "Cargando sucursales..."
+                                  : branches?.length === 0
+                                      ? "No hay sucursales disponibles"
+                                      : "Selecciona una sucursal"
+                          }
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

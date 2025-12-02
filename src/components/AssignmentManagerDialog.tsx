@@ -44,6 +44,7 @@ interface AssignmentManagerDialogProps {
   tenantId: string;
   userName: string;
   initialUserAssignments: TenantUserAssignment[];
+  onAssignmentsUpdate: () => void;
 }
 
 const LoadingSkeleton = () => (
@@ -71,6 +72,7 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
   tenantId,
   userName,
   initialUserAssignments,
+  onAssignmentsUpdate,
 }) => {
   const queryClient = useQueryClient();
   const { data: roles, isLoading: isLoadingRoles } = useRoles();
@@ -80,15 +82,16 @@ export const AssignmentManagerDialog: React.FC<AssignmentManagerDialogProps> = (
     mutationFn: async ({ userId, tenantId, assignments }) => {
       return invokeUserAction('update-assignments', { userId, tenantId, assignments });
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast({ title: 'Éxito', description: 'Asignaciones actualizadas correctamente.', variant: 'success' });
-      await queryClient.invalidateQueries({ queryKey: ['tenantUsers', tenantId] });
-      onOpenChange(false);
-      await refreshUser(); // Refresh user session to reflect changes
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
+    onSettled: () => {
+      onAssignmentsUpdate();
+      onOpenChange(false);
+    }
   });
   const { toast } = useToast();
   const screenSize = useScreenSize();
