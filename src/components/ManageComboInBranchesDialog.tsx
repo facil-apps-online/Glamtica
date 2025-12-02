@@ -13,9 +13,10 @@ interface ManageComboInBranchesDialogProps {
   combo: Combo | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onToggleMicrositeVisibility: (branchId: string, comboId: string, isVisible: boolean) => void; // New prop
 }
 
-export const ManageComboInBranchesDialog = ({ combo, isOpen, onOpenChange }: ManageComboInBranchesDialogProps) => {
+export const ManageComboInBranchesDialog = ({ combo, isOpen, onOpenChange, onToggleMicrositeVisibility }: ManageComboInBranchesDialogProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPriceDialogOpen, setIsPriceDialogOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
@@ -84,12 +85,14 @@ export const ManageComboInBranchesDialog = ({ combo, isOpen, onOpenChange }: Man
                   <TableRow>
                     <TableHead>Sucursal</TableHead>
                     <TableHead className="text-right">Asignado</TableHead>
+                    <TableHead className="text-right">Visible en Micrositio</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredBranches.map(branch => {
-                    const isAssigned = assignedBranchIds.has(branch.id);
+                    const assignedCombo = assignments?.find(a => a.branch_id === branch.id);
+                    const isAssigned = !!assignedCombo; // Check if assignedCombo is not undefined/null
                     return (
                       <TableRow key={branch.id}>
                         <TableCell className="font-medium">{branch.name}</TableCell>
@@ -97,6 +100,13 @@ export const ManageComboInBranchesDialog = ({ combo, isOpen, onOpenChange }: Man
                           <Switch
                             checked={isAssigned}
                             onCheckedChange={(isChecked) => handleAssignmentChange(branch.id, isChecked)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Switch
+                            checked={assignedCombo?.is_visible_on_microsite || false}
+                            onCheckedChange={(isChecked) => combo && onToggleMicrositeVisibility(branch.id, combo.id, isChecked)}
+                            disabled={!isAssigned}
                           />
                         </TableCell>
                         <TableCell className="text-right">

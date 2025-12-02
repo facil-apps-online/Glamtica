@@ -20,6 +20,13 @@ interface ServiceAssignmentTabProps {
   service: MasterService;
 }
 
+import { Switch } from './ui/switch';
+import { useUpdateBranchService } from '@/hooks/useServices';
+
+interface ServiceAssignmentTabProps {
+  service: MasterService;
+}
+
 export const ServiceAssignmentTab: React.FC<ServiceAssignmentTabProps> = ({ service }) => {
   const { toast } = useToast();
   const { data: allBranches, isLoading: isLoadingBranches } = useBranches();
@@ -27,13 +34,14 @@ export const ServiceAssignmentTab: React.FC<ServiceAssignmentTabProps> = ({ serv
   
   const { mutate: assignService, isPending: isAssigning } = useAssignServiceToBranch();
   const { mutate: removeService, isPending: isRemoving } = useRemoveServiceFromBranch();
+  const { mutate: updateBranchService, isPending: isUpdating } = useUpdateBranchService();
 
   const [searchTerm, setSearchTerm] = useState("");
 
   const branchAssignmentMap = useMemo(() => {
-    const map = new Map<string, { is_assigned: boolean; branch_service_id: string | null }>();
+    const map = new Map<string, { is_assigned: boolean; branch_service_id: string | null; is_visible_on_microsite: boolean }>();
     assignedBranchesData?.forEach(bp => {
-      map.set(bp.branch_id, { is_assigned: true, branch_service_id: bp.branch_service_id });
+      map.set(bp.branch_id, { is_assigned: true, branch_service_id: bp.branch_service_id, is_visible_on_microsite: bp.is_visible_on_microsite });
     });
     return map;
   }, [assignedBranchesData]);
@@ -75,7 +83,7 @@ export const ServiceAssignmentTab: React.FC<ServiceAssignmentTabProps> = ({ serv
   };
 
   const isLoading = isLoadingBranches || isLoadingAssigned;
-  const isMutating = isAssigning || isRemoving;
+  const isMutating = isAssigning || isRemoving || isUpdating;
 
   return (
     <div className="space-y-4">
@@ -101,18 +109,20 @@ export const ServiceAssignmentTab: React.FC<ServiceAssignmentTabProps> = ({ serv
               <TableRow>
                 <TableHead className="w-[50px]"></TableHead>
                 <TableHead>Nombre de Sucursal</TableHead>
+                <TableHead className="text-right">Visible en Micrositio</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredBranches.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
                     No se encontraron sucursales.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredBranches.map(branch => {
-                  const isAssigned = branchAssignmentMap.has(branch.id);
+                  const assignment = branchAssignmentMap.get(branch.id);
+                  const isAssigned = !!assignment;
                   return (
                     <TableRow key={branch.id}>
                       <TableCell>
@@ -123,6 +133,26 @@ export const ServiceAssignmentTab: React.FC<ServiceAssignmentTabProps> = ({ serv
                         />
                       </TableCell>
                       <TableCell className="font-medium">{branch.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Switch
+                          checked={assignment?.is_visible_on_microsite || false}
+                          onCheckedChange={(isChecked) => {
+                            if (assignment?.branch_service_id) {
+                              updateBranchService({
+                                id: assignment.branch_service_id,
+                                updates: { is_visible_on_microsite: isChecked }
+                              }, {
+                                onSuccess: () => {
+                                  toast({ title: "Visibilidad Actualizada", description: "La visibilidad en el micrositio ha sido actualizada.", variant: "success" });
+                                  refetch();
+                                },
+                                onError: (error) => toast({ title: "Error", description: error.message, variant: "destructive" }),
+                              });
+                            }
+                          }}
+                          disabled={!isAssigned || isMutating}
+                        />
+                      </TableCell>
                     </TableRow>
                   )
                 })

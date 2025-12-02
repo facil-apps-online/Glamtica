@@ -31,6 +31,7 @@ export interface Combo {
 export interface ComboAssignment {
     branch_id: string;
     is_active: boolean;
+    is_visible_on_microsite: boolean; // New field
     branches: { name: string };
 }
 
@@ -367,24 +368,25 @@ export const useGetComboAssignments = (comboId: string) => {
     const { toast } = useToast();
     const { session } = useAuth();
   
-    return useMutation<any, Error, { combo_id: string; branch_id: string; is_active: boolean }>({
-      mutationFn: async ({ combo_id, branch_id, is_active }) => {
-        if (!session) throw new Error("Session not available");
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-          body: JSON.stringify({ action: 'update_branch_combo_status', payload: { combo_id, branch_id, is_active } }),
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.error || 'Failed to update branch combo status');
-        return json;
-      },
-      onSuccess: (_, variables) => {
-        queryClient.invalidateQueries({ queryKey: ['branch_combos', variables.branch_id] });
-        toast({ title: "Estado Actualizado", description: "El estado del combo en la sucursal ha sido actualizado.", variant: "success" });
-      },
-      onError: (error) => {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      },
-    });
-  };
+      return useMutation<any, Error, { combo_id: string; branch_id: string; updates: { is_active?: boolean; is_visible_on_microsite?: boolean } }>({
+        mutationFn: async ({ combo_id, branch_id, updates }) => {
+          if (!session) throw new Error("Session not available");
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ action: 'update_branch_combo_status', payload: { combo_id, branch_id, updates } }),
+          });
+          const json = await response.json();
+          if (!response.ok) throw new Error(json.error || 'Failed to update branch combo status');
+          return json;
+        },
+            onSuccess: (_, variables) => {
+              queryClient.invalidateQueries({ queryKey: ['combo_assignments', variables.combo_id] }); // Invalidate assignments
+              queryClient.invalidateQueries({ queryKey: ['branch_combos', variables.branch_id] }); // Invalidate branch combos
+              queryClient.invalidateQueries({ queryKey: ['combo_branch_details', variables.combo_id, variables.branch_id] }); // Invalidate details
+              toast({ title: "Estado Actualizado", description: "El estado del combo en la sucursal ha sido actualizado.", variant: "success" });
+            },        onError: (error) => {
+          toast({ title: "Error", description: error.message, variant: "destructive" });
+        },
+      });
+    };

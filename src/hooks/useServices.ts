@@ -61,6 +61,7 @@ export const useBranchServicesAndCombos = (branchIdParam?: string, searchTerm?: 
           selling_price: totalPrice,
           duration_minutes: totalDuration,
           is_branch_active: combo.is_active_in_branch,
+          is_visible_on_microsite: combo.is_visible_on_microsite, // Add this line
           type: 'combo',
           items: items // <-- AÑADIDO
         };

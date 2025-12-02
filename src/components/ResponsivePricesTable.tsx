@@ -22,6 +22,7 @@ interface BranchPriceData {
   selling_price: number;
   stock_quantity?: number; // Make stock optional
   is_active: boolean;
+  is_visible_on_microsite: boolean; // New field
 }
 
 interface ResponsivePricesTableProps {

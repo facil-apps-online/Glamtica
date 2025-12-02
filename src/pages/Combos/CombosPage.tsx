@@ -162,6 +162,7 @@ const CombosPage = () => {
   const [showInactive, setShowInactive] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedComboForAssign, setSelectedComboForAssign] = useState<Combo | null>(null);
+  const [isNewComboDialogOpen, setIsNewComboDialogOpen] = useState(false);
 
   const navigate = useNavigate();
   const { data: combos, isLoading, refetch } = useGetCombos();
@@ -210,7 +211,11 @@ const CombosPage = () => {
           Icon={Combine}
           title="No se encontraron combos"
           description="Intenta cambiar los filtros o crea un nuevo combo."
-          action={<ComboDialog onSuccess={refetch} trigger={<Button>Nuevo Combo</Button>} />}
+          action={
+            <Button onClick={() => setIsNewComboDialogOpen(true)}>
+              Nuevo Combo
+            </Button>
+          }
         />
       );
     }
@@ -236,11 +241,9 @@ const CombosPage = () => {
   return (
     <div className="space-y-8">
       <PageHeader title="Combos" subtitle="Crea y edita los combos o kits de tu negocio.">
-        <ComboDialog onSuccess={refetch} trigger={
-          <Button size="sm">
-            <Plus className="w-4 h-4" /><span className="hidden sm:inline ml-2">Nuevo Combo</span>
-          </Button>
-        } />
+        <Button size="sm" onClick={() => setIsNewComboDialogOpen(true)}>
+          <Plus className="w-4 h-4" /><span className="hidden sm:inline ml-2">Nuevo Combo</span>
+        </Button>
       </PageHeader>
 
       <Card>
@@ -276,6 +279,15 @@ const CombosPage = () => {
           combo={selectedComboForAssign}
         />
       )}
+      <ComboDialog
+        combo={null}
+        isOpen={isNewComboDialogOpen}
+        onOpenChange={setIsNewComboDialogOpen}
+        onSuccess={() => {
+          refetch();
+          setIsNewComboDialogOpen(false);
+        }}
+      />
     </div>
   );
 };

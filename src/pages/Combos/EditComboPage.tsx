@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, ChevronsUpDown, Link, ArrowLeft, Save } from "lucide-react";
-import { useGetCombos, useUpdateCombo } from "@/hooks/useCombos";
+import { useGetCombos, useUpdateCombo, useUpdateBranchComboStatus, useCreateCombo } from "@/hooks/useCombos";
 import { useMasterProducts } from "@/hooks/useProducts";
 import { useMasterServices } from "@/hooks/useServices";
 import { useToast } from "@/hooks/use-toast";
@@ -52,6 +52,7 @@ const EditComboPage = () => {
 
     const debouncedSetItemSearchTerm = useMemo(() => debounce(setItemSearchTerm, 300), []);
 
+    const { mutate: createCombo, isPending: isCreating } = useCreateCombo();
     const { mutate: updateCombo, isPending: isUpdating } = useUpdateCombo();
 
     const { data: masterProducts, isLoading: isLoadingProducts } = useMasterProducts(itemSearchTerm, true, "", "");
@@ -66,7 +67,9 @@ const EditComboPage = () => {
     }, [masterProducts, masterServices]);
 
     useEffect(() => {
-        if (combo) {
+        if (id === 'new') {
+            setInitialComboState({ name: "", description: "", sku: "", items: [] });
+        } else if (combo) {
             setName(combo.name || "");
             setDescription(combo.description || "");
             setSku(combo.sku || "");
@@ -80,7 +83,7 @@ const EditComboPage = () => {
             setItems(initialItems);
             setInitialComboState({ name: combo.name || "", description: combo.description || "", sku: combo.sku || "", items: initialItems });
         }
-    }, [combo]);
+    }, [combo, id]);
 
     const handleAddItem = (item: SelectableItem) => {
         const newItem = {
@@ -128,6 +131,26 @@ const EditComboPage = () => {
         return false;
     };
 
+    const { mutate: updateBranchComboStatus } = useUpdateBranchComboStatus();
+
+    const handleToggleMicrositeVisibility = (branchId: string, comboId: string, isVisible: boolean) => {
+        updateBranchComboStatus({
+            combo_id: comboId,
+            branch_id: branchId,
+            updates: { is_visible_on_microsite: isVisible },
+        }, {
+            onSuccess: () => {
+                toast({ title: "Visibilidad Actualizada", description: "La visibilidad del combo en el micrositio ha sido actualizada.", variant: "success" });
+                queryClient.invalidateQueries({ queryKey: ['combo_assignments'] });
+                queryClient.invalidateQueries({ queryKey: ['branch_combos'] });
+                queryClient.invalidateQueries({ queryKey: ['combo_branch_details'] });
+            },
+            onError: (error) => {
+                toast({ title: "Error al Actualizar Visibilidad", description: error.message, variant: "destructive" });
+            },
+        });
+    };
+
     const handleSuccess = () => {
         toast({ title: "Éxito", description: "Combo actualizado correctamente.", variant: "success" });
         queryClient.invalidateQueries({ queryKey: ['chatter', 'combos', id] });
@@ -155,7 +178,14 @@ const EditComboPage = () => {
             is_parallel: is_parallel || false,
         }));
 
-        if (combo) {
+        if (id === 'new') {
+            createCombo({ ...comboData, items: finalItems }, {
+                onSuccess: (newCombo) => {
+                    toast({ title: "Éxito", description: "Combo creado correctamente.", variant: "success" });
+                    navigate(`/app/combos/${newCombo.id}`);
+                }
+            });
+        } else if (combo) {
             updateCombo({ id: combo.id, ...comboData, items: finalItems }, { onSuccess: handleSuccess });
         }
     };
@@ -177,14 +207,14 @@ const EditComboPage = () => {
         );
     }
 
-    if (!combo) {
+    if (id !== 'new' && !combo) {
         return <div>Combo no encontrado o no tienes permiso para verlo.</div>;
     }
 
     return (
         <div className="space-y-8">
             <PageHeader 
-                title={combo.name} 
+                title={id === 'new' ? 'Nuevo Combo' : combo?.name} 
                 subtitle="Gestiona todos los aspectos de tu combo."
                 backButton={
                     <Button variant="outline" size="icon" onClick={() => navigate('/app/combos')}>
@@ -382,15 +412,15 @@ const EditComboPage = () => {
                                 </CardContent>
                             </Card>
                             <div className="flex justify-end gap-2 mt-8">
-                                <Button type="submit" disabled={isUpdating || !hasChanges()}>
+                                <Button type="submit" disabled={isUpdating || isCreating || !hasChanges()}>
                                     <Save className="w-4 h-4 mr-2" />
-                                    {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
+                                    {isUpdating || isCreating ? 'Guardando...' : 'Guardar Cambios'}
                                 </Button>
                             </div>
                         </form>
                     )}
                     {activeTab === 'branches' && (
-                        <ComboBranchesTab combo={combo} />
+                        <ComboBranchesTab combo={combo} onToggleMicrositeVisibility={handleToggleMicrositeVisibility} />
                     )}
                 </div>
                 <div className="lg:col-span-1 space-y-6">
