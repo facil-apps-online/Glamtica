@@ -18,8 +18,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SocialNetworkManager } from './SocialNetworkManager';
 
-interface BranchPhotosManagerProps {
+interface BranchIdentityManagerProps {
   branchId: string;
 }
 
@@ -67,7 +68,7 @@ const PhotoCard = ({ photo, onSetPrimary, onDelete, isProcessing }: { photo: Bra
   );
 };
 
-const BranchPhotosManager: React.FC<BranchPhotosManagerProps> = ({ branchId }) => {
+export const BranchIdentityManager: React.FC<BranchIdentityManagerProps> = ({ branchId }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -125,60 +126,73 @@ const BranchPhotosManager: React.FC<BranchPhotosManagerProps> = ({ branchId }) =
   const isProcessing = setPrimaryMutation.isPending || deleteMutation.isPending;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gestionar Fotos de la Sucursal</CardTitle>
-        <CardDescription>
-          Sube, ordena y selecciona la foto principal para esta sucursal. Esta foto se mostrará en tu micrositio.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-end">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/png, image/jpeg, image/webp"
-          />
-          <Button onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending}>
-            {uploadMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4 mr-2" />
-            )}
-            Subir Foto
-          </Button>
-        </div>
-        
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="aspect-video w-full" />)}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Fotos de la Sucursal</CardTitle>
+          <CardDescription>
+            Sube, ordena y selecciona la foto principal para esta sucursal. Esta foto se mostrará en tu micrositio.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-end">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+              accept="image/png, image/jpeg, image/webp"
+            />
+            <Button onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending}>
+              {uploadMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              Subir Foto
+            </Button>
           </div>
-        ) : error ? (
-          <p className="text-red-500 text-center">Error al cargar las fotos: {error.message}</p>
-        ) : photos && photos.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map(photo => (
-              <PhotoCard 
-                key={photo.id} 
-                photo={photo} 
-                onSetPrimary={() => handleSetPrimary(photo.id)}
-                onDelete={() => handleDelete(photo.id)}
-                isProcessing={isProcessing}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <p className="text-gray-500">
-              No hay fotos para esta sucursal. ¡Sube la primera!
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => <Skeleton key={i} className="aspect-video w-full" />)}
+            </div>
+          ) : error ? (
+            <p className="text-red-500 text-center">Error al cargar las fotos: {error.message}</p>
+          ) : photos && photos.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {photos.map(photo => (
+                <PhotoCard 
+                  key={photo.id} 
+                  photo={photo} 
+                  onSetPrimary={() => handleSetPrimary(photo.id)}
+                  onDelete={() => handleDelete(photo.id)}
+                  isProcessing={isProcessing}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <p className="text-gray-500">
+                No hay fotos para esta sucursal. ¡Sube la primera!
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Redes Sociales</CardTitle>
+          <CardDescription>
+            Añade y gestiona los enlaces a las redes sociales de esta sucursal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SocialNetworkManager branchId={branchId} />
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
-export default BranchPhotosManager;

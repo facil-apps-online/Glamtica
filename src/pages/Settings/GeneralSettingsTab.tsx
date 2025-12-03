@@ -311,6 +311,7 @@ const SuperAdminGeneralSettingsView = ({ tenantId, settingsData, isLoading: isLo
                 </div>
               </CardContent>
             </Card>
+
             <div className="flex justify-end">
               <Button type="submit" disabled={updateTenantMutation.isPending}>
                 <Save className="w-4 h-4 mr-2" />

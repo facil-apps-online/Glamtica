@@ -9,7 +9,6 @@ interface MapDisplayProps {
 const containerStyle = {
   width: '100%',
   height: '100%',
-  minHeight: '300px',
   borderRadius: '0.5rem',
 };
 

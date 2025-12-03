@@ -8,13 +8,15 @@ import { useBranches } from '@/hooks/useBranches';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from "@/components/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function EditBranchPage() {
   const navigate = useNavigate();
   const { branchId } = useParams<{ branchId: string }>();
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
-  const { data: tenant } = useTenantById(tenantId!);
+  const { data: tenant } = useTenantById(tenantId!); // Use tenantId! as it's checked above
   const { data: countries } = useCountries();
   const { data: branches, isLoading: isLoadingBranches } = useBranches(tenantId);
 

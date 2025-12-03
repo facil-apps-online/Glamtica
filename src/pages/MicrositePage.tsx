@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPublicAction } from '@/lib/fetchPublicAction';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { Phone, Globe } from 'lucide-react';
+import { SocialIcon } from '@/components/SocialIcon';
+import { MapDisplay } from '@/components/MapDisplay';
 
 const MicrositePageSkeleton = () => (
   <div className="bg-gray-50 min-h-screen p-8">
@@ -36,6 +37,7 @@ const MicrositePage = () => {
     queryKey: ['microsite', countryIso, slug],
     queryFn: () => fetchPublicAction('get_microsite_data', { country_iso_code: countryIso, slug, platform_id: import.meta.env.VITE_GLAMTICA_PLATFORM_ID }),
     enabled: !!countryIso && !!slug,
+    staleTime: 0,
   });
 
   if (isLoading) {
@@ -65,6 +67,15 @@ const MicrositePage = () => {
             className="w-28 h-28 rounded-full mx-auto mb-4 object-cover border-4 border-white shadow-lg"
           />
           <h1 className="text-4xl font-bold tracking-tight text-gray-900">{tenant.name}</h1>
+          {tenant.social_networks && tenant.social_networks.length > 0 && (
+            <div className="flex justify-center items-center gap-4 mt-4">
+              {tenant.social_networks.map((social: any) => (
+                <a key={social.network} href={social.url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800">
+                  <SocialIcon networkName={social.network} className="h-6 w-6" />
+                </a>
+              ))}
+            </div>
+          )}
         </header>
 
         <div className="space-y-8">
@@ -79,24 +90,44 @@ const MicrositePage = () => {
                     className="w-full h-48 object-cover"
                   />
                 )}
-                <CardHeader>
-                  <CardTitle>{branch.name}</CardTitle>
-                  <CardDescription>{branch.address}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap items-center gap-4 text-sm">
-                  {branch.contact_phone && (
-                    <a href={`tel:${branch.contact_phone}`} className="flex items-center gap-2 text-gray-600 hover:text-purple-700">
-                      <Phone className="w-4 h-4" />
-                      {branch.contact_phone}
-                    </a>
+                <div className="md:flex md:divide-x">
+                  <div className="md:w-[70%] p-6 flex flex-col">
+                    <CardHeader className="p-0">
+                      <CardTitle>{branch.name}</CardTitle>
+                      <CardDescription>{branch.address}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 pt-4 flex flex-col gap-4 flex-grow">
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
+                        {branch.contact_phone && (
+                          <a href={`tel:${branch.contact_phone}`} className="flex items-center gap-2 text-gray-600 hover:text-purple-700">
+                            <Phone className="w-4 h-4" />
+                            {branch.contact_phone}
+                          </a>
+                        )}
+                        {branch.whatsapp_phone && (
+                          <a href={`https://wa.me/${branch.whatsapp_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-gray-600 hover:text-purple-700">
+                            <Globe className="w-4 h-4" />
+                            WhatsApp
+                          </a>
+                        )}
+                      </div>
+                      {branch.social_networks && branch.social_networks.length > 0 && (
+                        <div className="flex items-center gap-3">
+                          {branch.social_networks.map((social: any) => (
+                            <a key={social.network} href={social.url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800">
+                              <SocialIcon networkName={social.network} className="h-5 w-5" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </div>
+                  {branch.latitude && branch.longitude && (
+                    <div className="md:w-[30%] min-h-[200px]">
+                      <MapDisplay latitude={branch.latitude} longitude={branch.longitude} />
+                    </div>
                   )}
-                  {branch.whatsapp_phone && (
-                    <a href={`https://wa.me/${branch.whatsapp_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-gray-600 hover:text-purple-700">
-                      <Globe className="w-4 h-4" />
-                      WhatsApp
-                    </a>
-                  )}
-                </CardContent>
+                </div>
               </Card>
             ))
           ) : (

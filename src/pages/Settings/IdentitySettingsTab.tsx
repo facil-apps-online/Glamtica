@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Palette } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TenantSlugForm } from '@/components/TenantSlugForm';
+import { SocialNetworkManager } from '@/components/SocialNetworkManager';
 
 const IdentitySkeleton = () => (
   <Card>
@@ -57,6 +58,18 @@ export function IdentitySettingsTab() {
             initialLogoUrl={settingsData?.tenant?.logo_url}
             onSaveSuccess={handleSaveSuccess}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Redes Sociales</CardTitle>
+          <CardDescription>
+            Añade y gestiona los enlaces a las redes sociales de tu negocio para que aparezcan en tu micrositio.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SocialNetworkManager tenantId={tenantId} />
         </CardContent>
       </Card>
       

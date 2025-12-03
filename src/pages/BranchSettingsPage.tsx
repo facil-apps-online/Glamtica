@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Building, Package, Wrench, Boxes, Percent, Camera } from 'lucide-react';
-import BranchPhotosManager from '@/components/BranchPhotosManager';
+import { ArrowLeft, Building, Package, Wrench, Boxes, Percent, Camera, Palette } from 'lucide-react';
+import { BranchIdentityManager } from '@/components/BranchIdentityManager';
 
 const BranchSettingsPageSkeleton = () => (
   <div>
@@ -89,7 +89,7 @@ export default function BranchSettingsPage() {
 
   const tabs = [
     { value: "general", label: "General", icon: <Building className="h-4 w-4" />, component: tenantId ? <BranchForm branchToEdit={branchToEdit} onSuccess={handleSuccess} tenantId={tenantId} /> : null },
-    { value: "photos", label: "Fotos", icon: <Camera className="h-4 w-4" />, component: branchId ? <BranchPhotosManager branchId={branchId} /> : null },
+    { value: "identity", label: "Identidad", icon: <Palette className="h-4 w-4" />, component: branchId ? <BranchIdentityManager branchId={branchId} /> : null },
     { value: "products", label: "Productos", icon: <Package className="h-4 w-4" />, component: branchId ? <BranchProductsTabContent branchId={branchId} /> : null },
     { value: "services", label: "Servicios", icon: <Wrench className="h-4 w-4" />, component: branchId ? <BranchServicesTabContent branchId={branchId} /> : null },
     { value: "combos", label: "Combos", icon: <Boxes className="h-4 w-4" />, component: branchId ? <BranchCombosTabContent branchId={branchId} /> : null },
