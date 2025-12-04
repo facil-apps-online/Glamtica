@@ -6,6 +6,7 @@ export interface Branch {
   id: string;
   tenant_id: string;
   name: string;
+  description: string | null;
   address: string | null;
   created_at: string;
   updated_at: string;
@@ -130,7 +131,9 @@ export const useUpdateBranch = (tenantIdParam?: string) => {
   return useMutation({
     mutationFn: async (vars: {
       p_branch_id: string;
-      p_name: string;
+      p_tenant_id: string;
+      p_name?: string | null;
+      p_description?: string | null;
       p_address?: string | null;
       p_contact_phone?: string | null;
       p_whatsapp_phone?: string | null;

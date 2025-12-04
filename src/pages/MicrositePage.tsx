@@ -67,6 +67,7 @@ const MicrositePage = () => {
             className="w-28 h-28 rounded-full mx-auto mb-4 object-cover border-4 border-white shadow-lg"
           />
           <h1 className="text-4xl font-bold tracking-tight text-gray-900">{tenant.name}</h1>
+          {tenant.description && <div className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto" dangerouslySetInnerHTML={{ __html: tenant.description }} />}
           {tenant.social_networks && tenant.social_networks.length > 0 && (
             <div className="flex justify-center items-center gap-4 mt-4">
               {tenant.social_networks.map((social: any) => (
@@ -96,6 +97,7 @@ const MicrositePage = () => {
                       <CardTitle>{branch.name}</CardTitle>
                       <CardDescription>{branch.address}</CardDescription>
                     </CardHeader>
+                    {branch.description && <div className="text-gray-700 mt-4" dangerouslySetInnerHTML={{ __html: branch.description }} />}
                     <CardContent className="p-0 pt-4 flex flex-col gap-4 flex-grow">
                       <div className="flex flex-wrap items-center gap-4 text-sm">
                         {branch.contact_phone && (

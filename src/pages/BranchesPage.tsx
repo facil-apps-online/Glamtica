@@ -166,7 +166,7 @@ export default function BranchesPage() {
               <span className="hidden sm:inline sm:ml-2">Activar ({selectedBranchIds.length})</span>
             </Button>
           )}
-          <Button onClick={() => navigate('/branches/new')} size="sm">
+          <Button onClick={() => navigate('new')} size="sm">
             <PlusCircle className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Añadir Sucursal</span>
           </Button>

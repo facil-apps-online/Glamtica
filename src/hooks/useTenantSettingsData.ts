@@ -5,6 +5,7 @@ import { PublicCountry, PublicLanguage, PublicCurrency } from './usePublicRegist
 export interface TenantData {
     id: string;
     name: string;
+    description: string | null;
     country_id: string | null;
     default_language_code: string | null;
     default_currency_id: string | null;

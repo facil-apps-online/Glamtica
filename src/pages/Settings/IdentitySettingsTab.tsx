@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTenantSettingsData } from '@/hooks/useTenantSettingsData';
 import { LogoUploader } from '@/components/LogoUploader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,6 +8,10 @@ import { Palette } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TenantSlugForm } from '@/components/TenantSlugForm';
 import { SocialNetworkManager } from '@/components/SocialNetworkManager';
+import { GenericRichTextEditor } from '@/components/ui/GenericRichTextEditor';
+import { Button } from '@/components/ui/button';
+import { useUpdateTenantDescription } from '@/hooks/useTenantDescription';
+import { toast } from 'sonner';
 
 const IdentitySkeleton = () => (
   <Card>
@@ -32,9 +36,28 @@ export function IdentitySettingsTab() {
   const { tenantId } = useAuth();
   const { data: settingsData, isLoading } = useTenantSettingsData(tenantId || '');
   const queryClient = useQueryClient();
+  const { mutateAsync: updateTenantDescription, isPending: isUpdating } = useUpdateTenantDescription();
+  const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    if (settingsData?.tenant?.description) {
+      setDescription(settingsData.tenant.description);
+    }
+  }, [settingsData]);
 
   const handleSaveSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['tenantSettingsData', tenantId] });
+  };
+
+  const handleSaveDescription = async () => {
+    try {
+      await updateTenantDescription({ description });
+      toast.success('Descripción guardada con éxito.');
+      handleSaveSuccess();
+    } catch (error) {
+      toast.error('Error al guardar la descripción.');
+      console.error(error);
+    }
   };
 
   if (isLoading) {
@@ -58,6 +81,25 @@ export function IdentitySettingsTab() {
             initialLogoUrl={settingsData?.tenant?.logo_url}
             onSaveSuccess={handleSaveSuccess}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Descripción del Negocio</CardTitle>
+          <CardDescription>
+            Esta descripción aparecerá en tu micrositio. Habla sobre tu negocio, tu estilo y lo que te hace único.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <GenericRichTextEditor
+            value={description}
+            onChange={setDescription}
+            placeholder="Describe tu estudio aquí..."
+          />
+          <Button onClick={handleSaveDescription} disabled={isUpdating} className="mt-4">
+            {isUpdating ? 'Guardando...' : 'Guardar Descripción'}
+          </Button>
         </CardContent>
       </Card>
 

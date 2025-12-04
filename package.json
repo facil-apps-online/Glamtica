@@ -75,6 +75,7 @@
     "react-i18next": "^15.6.0",
     "react-icons": "^5.5.0",
     "react-image-crop": "^11.0.10",
+    "react-quill": "^2.0.0",
     "react-router-dom": "^6.26.2",
     "react-select": "^5.10.2",
     "react-signature-canvas": "^1.1.0-alpha.2",

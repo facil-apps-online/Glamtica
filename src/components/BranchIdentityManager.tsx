@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useBranchPhotos, useUploadBranchPhoto, useSetPrimaryBranchPhoto, useDeleteBranchPhoto, BranchPhoto } from '@/hooks/useBranchPhotos';
@@ -19,6 +19,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SocialNetworkManager } from './SocialNetworkManager';
+import { GenericRichTextEditor } from '@/components/ui/GenericRichTextEditor';
+import { useUpdateBranch, useBranches } from '@/hooks/useBranches';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast as sonnerToast } from 'sonner';
 
 interface BranchIdentityManagerProps {
   branchId: string;
@@ -71,11 +75,22 @@ const PhotoCard = ({ photo, onSetPrimary, onDelete, isProcessing }: { photo: Bra
 export const BranchIdentityManager: React.FC<BranchIdentityManagerProps> = ({ branchId }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { tenantId } = useAuth();
   
   const { data: photos, isLoading, error } = useBranchPhotos(branchId);
   const uploadMutation = useUploadBranchPhoto(branchId);
   const setPrimaryMutation = useSetPrimaryBranchPhoto(branchId);
   const deleteMutation = useDeleteBranchPhoto(branchId);
+  const { data: branches } = useBranches(tenantId);
+  const branchToEdit = branches?.find(b => b.id === branchId);
+  const { mutateAsync: updateBranch, isPending: isUpdating } = useUpdateBranch(tenantId);
+  const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    if (branchToEdit?.description) {
+      setDescription(branchToEdit.description);
+    }
+  }, [branchToEdit]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -121,6 +136,21 @@ export const BranchIdentityManager: React.FC<BranchIdentityManagerProps> = ({ br
       onSuccess: () => toast({ title: "Éxito", description: "La foto ha sido eliminada.", variant: "success" }),
       onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
     });
+  };
+
+  const handleSaveDescription = async () => {
+    if (!branchToEdit) return;
+    try {
+      await updateBranch({
+        p_branch_id: branchId,
+        p_tenant_id: tenantId,
+        p_description: description,
+      });
+      sonnerToast.success('Descripción de la sucursal guardada con éxito.');
+    } catch (error) {
+      sonnerToast.error('Error al guardar la descripción de la sucursal.');
+      console.error(error);
+    }
   };
 
   const isProcessing = setPrimaryMutation.isPending || deleteMutation.isPending;
@@ -181,6 +211,25 @@ export const BranchIdentityManager: React.FC<BranchIdentityManagerProps> = ({ br
         </CardContent>
       </Card>
       
+      <Card>
+        <CardHeader>
+          <CardTitle>Descripción de la Sucursal</CardTitle>
+          <CardDescription>
+            Esta descripción aparecerá en tu micrositio. Habla sobre lo que hace especial a esta sucursal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <GenericRichTextEditor
+            value={description}
+            onChange={setDescription}
+            placeholder="Describe la sucursal aquí..."
+          />
+          <Button onClick={handleSaveDescription} disabled={isUpdating} className="mt-4">
+            {isUpdating ? 'Guardando...' : 'Guardar Descripción'}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Redes Sociales</CardTitle>
