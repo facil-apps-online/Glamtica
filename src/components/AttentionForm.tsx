@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, forwardRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { invokeTenantAction } from "@/hooks/useTenantUsers";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,7 @@ import { ImagePreviewDialog } from "./ImagePreviewDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssignConsentDialog } from "./dialogs/AssignConsentDialog";
 import { useSignedConsentsForAttention } from "@/hooks/useConsentTemplates";
+import { AddTreatmentSessionDialog } from "./treatments/AddTreatmentSessionDialog";
 
 registerLocale("es", es);
 
@@ -142,9 +145,17 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
 
   
   // --- Context and Other Hooks ---
-  const { tenantId } = useAuth();
+  const { tenantId, currentAssignment } = useAuth();
+  const userRole = currentAssignment?.role_name;
   const { formatPrice } = usePriceFormat();
   const { setBranchId } = useBranchFilterStore();
+
+  // --- Fetch Sales Settings ---
+  const { data: salesSettings, isLoading: isLoadingSalesSettings } = useQuery({
+    queryKey: ['salesSettings', tenantId],
+    queryFn: () => invokeTenantAction('get_sales_settings', { tenantId }),
+    enabled: !!tenantId,
+  });
 
   useEffect(() => {
     if (isEditMode && attention) {
@@ -152,30 +163,29 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
 
       const comboMap = new Map();
 
-      const combos = (attention.attention_combos ?? []).map(c => {
-        const comboItem = {
-          id: c.id,
-          type: 'combo' as const,
-          item_id: c.combo_id,
-          user_id: c.user_id,
-          user_name: `${c.users?.first_name || ''} ${c.users?.last_name || ''}`.trim(),
-          price: c.price,
-          quantity: c.quantity || 1,
-          notes: c.notes || '', // Fallback to empty string
-          item_name: c.combos?.name,
-          is_existing: true,
-          status: c.status,
-          start_time: c.start_time || '', // Fallback to empty string
-          end_time: c.end_time || '', // Fallback to empty string
-          is_parallel: c.is_parallel || false, // Fallback to false
-          parallel_group_id: c.parallel_group_id || null, // Fallback to null
-          offset_minutes: c.offset_minutes || 0, // Fallback to 0
-          items: [], // Initialize with empty items
-        };
-        comboMap.set(c.id, comboItem);
-        return comboItem;
-      });
-
+                const combos = (attention.attention_combos ?? []).map(c => {
+                  const comboItem = {
+                    id: c.id,
+                    type: 'combo' as const,
+                    item_id: c.combo_id,
+                    // user_id: c.user_id, // Removed as per user clarification
+                    user_name: `${c.users?.first_name || ''} ${c.users?.last_name || ''}`.trim(),
+                    price: c.price,
+                    quantity: c.quantity || 1,
+                    notes: c.notes || '', // Fallback to empty string
+                    item_name: c.combos?.name,
+                    is_existing: true,
+                    status: c.status,
+                    start_time: c.start_time || '', // Fallback to empty string
+                    end_time: c.end_time || '', // Fallback to empty string
+                    is_parallel: c.is_parallel || false, // Fallback to false
+                    parallel_group_id: c.parallel_group_id || null, // Fallback to null
+                    offset_minutes: c.offset_minutes || 0, // Fallback to 0
+                    items: [], // Initialize with empty items
+                  };
+                  comboMap.set(c.id, comboItem);
+                  return comboItem;
+                });
       const services = (attention.attention_services ?? []).map(s => ({
         id: s.id,
         type: 'service' as const,
@@ -498,7 +508,86 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
     setIsSubmitting(true);
 
     if (isEditMode) {
-      // ... (la lógica de edición se mantiene, asumimos que se ajustará en un futuro si es necesario)
+      const payload = {
+        p_attention_id: attention.id,
+        p_branch_id: attention.branch_id,
+        p_services_to_upsert: [],
+        p_products_to_upsert: [],
+        p_combos_to_upsert: [],
+        p_service_ids_to_delete: deletedServiceIds,
+        p_product_ids_to_delete: deletedProductIds,
+        p_combo_ids_to_delete: deletedComboIds,
+      };
+
+      const initialItemsMap = new Map(initialItems.map(item => [item.id, item]));
+
+      items.forEach(item => {
+        const initialItem = initialItemsMap.get(item.id);
+        const hasChanged = !item.is_existing || (initialItem && JSON.stringify(item) !== JSON.stringify(initialItem));
+
+        if (hasChanged) {
+          switch (item.type) {
+            case 'service':
+              payload.p_services_to_upsert.push({
+                id: item.is_existing ? item.id : undefined,
+                service_id: item.item_id,
+                user_id: item.user_id,
+                price: item.price,
+                duration_minutes: item.duration,
+                notes: item.notes,
+                status: item.status,
+                is_parallel: item.is_parallel,
+                offset_minutes: item.offset_minutes,
+                attention_combo_id: item.attention_combo_id,
+              });
+              break;
+            case 'product':
+              payload.p_products_to_upsert.push({
+                id: item.is_existing ? item.id : undefined,
+                product_id: item.item_id,
+                quantity: item.quantity,
+                price: item.price,
+                user_id: item.commission_user_id || null,
+                attention_combo_id: item.attention_combo_id,
+              });
+              break;
+            case 'combo':
+               payload.p_combos_to_upsert.push({
+                id: item.is_existing ? item.id : undefined,
+                combo_id: item.item_id,
+                price: item.price,
+                quantity: item.quantity,
+                notes: item.notes,
+              });
+              item.items?.forEach(subItem => {
+                if (subItem.type === 'service') {
+                    payload.p_services_to_upsert.push({
+                        id: subItem.is_existing ? subItem.id : undefined,
+                        service_id: subItem.item_id,
+                        user_id: subItem.user_id,
+                        price: 0,
+                        duration_minutes: subItem.duration,
+                        notes: subItem.notes,
+                        status: subItem.status,
+                        is_parallel: subItem.is_parallel,
+                        offset_minutes: subItem.offset_minutes,
+                        attention_combo_id: item.id,
+                    });
+                }
+              });
+              break;
+          }
+        }
+      });
+      
+      try {
+        await updateAttentionItemsMutation.mutateAsync(payload);
+        onFinished();
+      } catch (error) {
+        console.error("Error updating attention:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       // --- Lógica de Creación ---
       const servicesPayload: any[] = [];
@@ -536,9 +625,6 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
               price: item.price * item.quantity,
               quantity: item.quantity,
               notes: item.notes,
-              is_parallel: item.is_parallel,
-              parallel_group_id: item.parallel_group_id,
-              offset_minutes: item.offset_minutes
             });
             // Y sus sub-items se añaden a los payloads de servicios/productos
             item.items?.forEach(subItem => {
@@ -672,6 +758,73 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
                 <Button type="button" onClick={() => addItem('service')} size="sm" variant="outline" disabled={!clientId || !attentionTime}><Plus className="w-4 h-4 mr-2" />Servicio</Button>
                 <Button type="button" onClick={() => addItem('product')} size="sm" variant="outline" disabled={!clientId || !attentionTime}><Plus className="w-4 h-4 mr-2" />Producto</Button>
                 <Button type="button" onClick={() => addItem('combo')} size="sm" variant="outline" disabled={!clientId || !attentionTime}><Plus className="w-4 h-4 mr-2" />Combo</Button>
+                <AddTreatmentSessionDialog
+                  clientId={clientId}
+                  onSessionSelected={(selectedSession) => {
+                    const newItemsFromSession: ItemForm[] = [];
+                    // Map items from the selected session to ItemForm structure
+                    selectedSession.items?.forEach((item: any) => {
+                        // For now, product_id/service_id need to be resolved to actual names.
+                        // Assuming the session object will eventually have item_name or we fetch it.
+                        // For simplicity, let's just use item_id as item_name for now.
+                        newItemsFromSession.push({
+                            id: uuidv4(),
+                            type: item.product_id ? 'product' : 'service',
+                            item_id: item.product_id || item.service_id,
+                            item_name: item.item_name || (item.product_id ? `Producto ${item.product_id.substring(0,4)}...` : `Servicio ${item.service_id.substring(0,4)}...`), // Placeholder
+                            quantity: item.quantity,
+                            price: 0, // Price will be resolved by ItemFormCard
+                            duration: 0, // Duration will be resolved by ItemFormCard
+                            notes: item.notes,
+                            is_existing: false,
+                            status: 'Pendiente',
+                            user_id: '',
+                            start_time: '',
+                            end_time: '',
+                            is_parallel: false,
+                            parallel_group_id: null,
+                            offset_minutes: 0,
+                            is_treatment_session_item: true,
+                            client_treatment_session_id: selectedSession.id,
+                            client_treatment_id: selectedSession.client_treatment_id, // This should come from selectedSession or AttentionForm context
+                        });
+                    });
+
+                    // Add a 'payment' item if there's an amount due for this session
+                    if (selectedSession.payment_due && selectedSession.payment_due.amount > 0) {
+                        newItemsFromSession.push({
+                            id: uuidv4(),
+                            type: 'payment',
+                            item_id: 'treatment-payment', // Special ID for payment type
+                            item_name: `Pago de Tratamiento (Sesión ${selectedSession.session_number})`,
+                            quantity: 1,
+                            price: selectedSession.payment_due.amount,
+                            is_existing: false,
+                            status: 'Pendiente',
+                            user_id: '',
+                            start_time: '',
+                            end_time: '',
+                            is_parallel: false,
+                            parallel_group_id: null,
+                            offset_minutes: 0,
+                            is_treatment_session_item: true,
+                            client_treatment_session_id: selectedSession.id,
+                            client_treatment_id: selectedSession.client_treatment_id,
+                        });
+                    }
+
+                    setItems(prevItems => [...prevItems, ...newItemsFromSession]);
+                    toast({
+                      title: "Sesión de Tratamiento Añadida",
+                      description: `Items de la sesión ${selectedSession.session_number} (${selectedSession.name}) agregados a la atención.`,
+                      variant: "success",
+                    });
+                  }}
+                >
+                  <Button type="button" size="sm" variant="outline" disabled={!clientId || !attentionTime}>
+                    <Stethoscope className="w-4 h-4 mr-2" />Tratamiento
+                  </Button>
+                </AddTreatmentSessionDialog>
               </div>
             )}
           </div>
@@ -695,6 +848,9 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
                   screenSize={screenSize}
                   attention={attention} // Pass attention object
                   attentionId={attention?.id || ''} // Pass attentionId
+                  salesSettings={salesSettings}
+                  userRole={userRole}
+                  isLoadingSalesSettings={isLoadingSalesSettings}
               />
           ))}
           </div>

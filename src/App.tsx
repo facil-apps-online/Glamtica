@@ -9,6 +9,8 @@ import ClientDetailPage from "@/pages/ClientDetailPage";
 import ServiceDetailPage from "@/pages/ServiceDetailPage";
 import ProductEditPage from "@/pages/Products/ProductEditPage"; // Añadido
 import EditComboPage from "@/pages/Combos/EditComboPage";
+import TreatmentsPage from "@/pages/treatments/TreatmentsPage";
+import EditTreatmentPage from "@/pages/treatments/EditTreatmentPage";
 import Services from "@/pages/Services";
 import Team from "@/pages/Team";
 import Reports from "@/pages/Reports";
@@ -100,6 +102,8 @@ function App() {
                   <Route path="products/:id" element={<ProductEditPage />} />
                   <Route path="combos" element={<Combos />} />
                   <Route path="combos/edit/:id" element={<EditComboPage />} />
+                  <Route path="treatments" element={<TreatmentsPage />} />
+                  <Route path="treatments/:treatmentId" element={<EditTreatmentPage />} />
                   <Route path="inventory">
                     <Route index element={<Inventory />} />
                     <Route path="suppliers" element={<SuppliersPage />} />

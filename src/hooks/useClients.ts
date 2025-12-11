@@ -26,6 +26,8 @@ export interface Client {
   updated_at: string;
   client_branches: ClientBranch[];
   branches?: Branch[]; // For useClientDetails
+  professional_ids?: string[]; // Para Profesionales
+  commercial_ids?: string[]; // Para Asesores Comerciales
 
   // Structured Address
   address_line_1?: string;
@@ -37,6 +39,28 @@ export interface Client {
   latitude?: number;
   longitude?: number;
 }
+
+// Hook to get assignable professionals
+export const useGetAssignableProfessionals = () => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  return useQuery<{ user_id: string; email: string; first_name: string; last_name: string }[], Error>({
+    queryKey: ['assignableProfessionals', tenantId],
+    queryFn: () => fetchTenantAction('get_assignable_professionals', {}),
+    enabled: !!tenantId,
+  });
+};
+
+// Hook to get assignable commercials (vendors)
+export const useGetAssignableCommercials = () => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  return useQuery<{ user_id: string; email: string; first_name: string; last_name: string }[], Error>({
+    queryKey: ['assignableCommercials', tenantId],
+    queryFn: () => fetchTenantAction('get_assignable_commercials', {}),
+    enabled: !!tenantId,
+  });
+};
 
 // Hook to get all clients for the tenant
 export const useClients = (searchTerm: string = '', showInactive: boolean = false) => {
@@ -118,7 +142,7 @@ export const useUpdateClient = () => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
-  return useMutation<Client, Error, { clientId: string; updates: Partial<Client> }>({
+  return useMutation<Client, Error, { clientId: string; updates: Partial<Client> & { professional_ids?: string[], commercial_ids?: string[] } }>({
     mutationFn: async ({ clientId, updates }) => {
       return fetchTenantAction('update_client', { clientId, updates });
     },

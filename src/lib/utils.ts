@@ -18,3 +18,20 @@ export function debounce<F extends (...args: any[]) => any>(func: F, waitFor: nu
 
   return debounced as (...args: Parameters<F>) => void;
 }
+
+export function formatCurrency(amount: number | undefined | null, currencyCode: string = 'COP', locale: string = 'es-CO'): string {
+  if (amount === undefined || amount === null || isNaN(amount)) {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(0);
+  }
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}

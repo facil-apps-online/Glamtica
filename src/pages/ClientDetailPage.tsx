@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useClientDetails, useUpdateClient, Client } from '@/hooks/useClients';
+import { useClientDetails, useUpdateClient, Client, useGetAssignableProfessionals, useGetAssignableCommercials } from '@/hooks/useClients';
 import { PageHeader } from '@/components/PageHeader';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { ClientForm } from '@/components/ClientForm';
 import { ChatterBox } from '@/components/ChatterBox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,14 +41,18 @@ import { AttentionsCard } from '@/components/AttentionsCard';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClientTreatmentsList } from '@/components/treatments/ClientTreatmentsList';
+import { useClientTreatments } from '@/hooks/useTreatments';
+import { AssignTreatmentDialog } from '@/components/treatments/AssignTreatmentDialog';
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { tenant } = useAuth();
+  const { tenant, currentAssignment } = useAuth();
   const { data: client, isLoading, error } = useClientDetails(id || '');
   const { data: subClients, isLoading: isLoadingSubClients } = useSubClients(id || '');
+  const { data: clientTreatments, isLoading: isLoadingClientTreatments } = useClientTreatments(id || '');
   const updateMutation = useUpdateClient();
   const { data: branches, isLoading: isLoadingBranches } = useBranches();
   const assignClientToBranch = useAssignClientToBranch();
@@ -56,6 +61,13 @@ export default function ClientDetailPage() {
   const { data: documentTypes, isLoading: isLoadingDocumentTypes } = useGetDocumentTypes('client');
   const { data: countries } = useCountries();
   const [selectedBranchIds, setSelectedBranchIds] = React.useState<string[]>([]);
+  const { data: professionals, isLoading: isLoadingProfessionals } = useGetAssignableProfessionals();
+  const { data: commercials, isLoading: isLoadingCommercials } = useGetAssignableCommercials();
+  const [selectedProfessionalIds, setSelectedProfessionalIds] = React.useState<string[]>([]);
+  const [selectedCommercialIds, setSelectedCommercialIds] = React.useState<string[]>([]);
+  const [initialProfessionalIds, setInitialProfessionalIds] = React.useState<string[]>([]);
+  const [initialCommercialIds, setInitialCommercialIds] = React.useState<string[]>([]);
+  const [isAssociationDirty, setIsAssociationDirty] = React.useState(false);
 
   const countryId = tenant?.country_id;
   const countryIsoCode = countries?.find(c => c.id === countryId)?.iso_code;
@@ -132,10 +144,24 @@ export default function ClientDetailPage() {
   });
 
   useEffect(() => {
-    if (client?.branches) {
-      setSelectedBranchIds(client.branches.map(b => b.id).filter(Boolean) as string[]);
+    if (client) {
+      if (client.branches) {
+        setSelectedBranchIds(client.branches.map(b => b.id).filter(Boolean) as string[]);
+      }
+      const profIds = client.professional_ids || [];
+      const commIds = client.commercial_ids || [];
+      setSelectedProfessionalIds(profIds);
+      setInitialProfessionalIds(profIds);
+      setSelectedCommercialIds(commIds);
+      setInitialCommercialIds(commIds);
     }
   }, [client]);
+
+  useEffect(() => {
+    const professionalsChanged = JSON.stringify(selectedProfessionalIds.sort()) !== JSON.stringify(initialProfessionalIds.sort());
+    const commercialsChanged = JSON.stringify(selectedCommercialIds.sort()) !== JSON.stringify(initialCommercialIds.sort());
+    setIsAssociationDirty(professionalsChanged || commercialsChanged);
+  }, [selectedProfessionalIds, selectedCommercialIds, initialProfessionalIds, initialCommercialIds]);
 
   useEffect(() => {
     if (client) {
@@ -174,21 +200,42 @@ export default function ClientDetailPage() {
       'name', 'phone', 'email', 'document_type_id', 'document_number', 'parent_client_id',
       'address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude'
     ];
-    const updatesToSend: Partial<Client> = {};
-    for (const key in data) {
+    const updatesToSend: Partial<Client> & { professional_ids?: string[], commercial_ids?: string[] } = {};
+    
+    // Copy only dirty fields from the form
+    const dirtyFields = form.formState.dirtyFields;
+    Object.keys(dirtyFields).forEach(key => {
       if (allowedClientProps.includes(key as keyof Client)) {
         (updatesToSend as any)[key] = (data as any)[key];
       }
-    }
+    });
 
+    // Always include association IDs if they have changed
+    if (isAssociationDirty) {
+      updatesToSend.professional_ids = selectedProfessionalIds;
+      updatesToSend.commercial_ids = selectedCommercialIds;
+    }
+    
     if (updatesToSend.document_type_id === '') {
         updatesToSend.document_type_id = null;
     }
 
+    // Only mutate if there are actual changes
+    if (Object.keys(updatesToSend).length === 0 && !isAssociationDirty) {
+      toast({ title: "Sin cambios", description: "No se han detectado cambios para guardar.", variant: "default" });
+      return;
+    }
+
     updateMutation.mutate({ clientId: id, updates: updatesToSend }, {
-      onSuccess: () => {
+      onSuccess: (updatedData) => {
         toast({ title: "Éxito", description: "Cliente actualizado correctamente.", variant: "success" });
         queryClient.invalidateQueries({ queryKey: ['chatter', 'clients', id] });
+        
+        // Reset form state with the latest data
+        form.reset(updatedData); 
+        setInitialProfessionalIds(updatedData.professional_ids || []);
+        setInitialCommercialIds(updatedData.commercial_ids || []);
+        setIsAssociationDirty(false);
       },
       onError: (error: any) => {
         toast({ title: "Error", description: `Error al actualizar cliente: ${error.message}`, variant: "destructive" });
@@ -268,6 +315,7 @@ export default function ClientDetailPage() {
                     <SelectItem value="family">Familiares</SelectItem>
                     <SelectItem value="forms-consents">Formularios</SelectItem>
                     <SelectItem value="attentions">Atenciones</SelectItem>
+                    <SelectItem value="treatments">Tratamientos</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -294,6 +342,7 @@ export default function ClientDetailPage() {
                     <TabsTrigger type="button" value="family">Familiares</TabsTrigger>
                     <TabsTrigger type="button" value="forms-consents">Formularios</TabsTrigger>
                     <TabsTrigger type="button" value="attentions">Atenciones</TabsTrigger>
+                    <TabsTrigger type="button" value="treatments">Tratamientos</TabsTrigger>
                   </TabsList>
                 </div>
                 {showRightArrow && (
@@ -355,6 +404,28 @@ export default function ClientDetailPage() {
                           <FormMessage />
                         </FormItem>
                       )} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Profesionales Asignados</FormLabel>
+                        <MultiSelect
+                          options={professionals?.map(p => ({ value: p.user_id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() })) || []}
+                          selected={selectedProfessionalIds}
+                          onSelectedChange={setSelectedProfessionalIds}
+                          placeholder="Seleccionar profesionales..."
+                          isLoading={isLoadingProfessionals}
+                        />
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Asesores Comerciales Asignados</FormLabel>
+                        <MultiSelect
+                          options={commercials?.map(c => ({ value: c.user_id, label: `${c.first_name || ''} ${c.last_name || ''}`.trim() })) || []}
+                          selected={selectedCommercialIds}
+                          onSelectedChange={setSelectedCommercialIds}
+                          placeholder="Seleccionar asesores..."
+                          isLoading={isLoadingCommercials}
+                        />
+                      </FormItem>
                     </div>
                   </div>
                 </CardContent>
@@ -525,9 +596,22 @@ export default function ClientDetailPage() {
             <TabsContent value="attentions" className="mt-4">
               <AttentionsCard clientId={id} />
             </TabsContent>
+            <TabsContent value="treatments" className="mt-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Tratamientos Asignados</CardTitle>
+                  <AssignTreatmentDialog client={client} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['client_treatments', id] })}>
+                    <Button size="sm"><PlusCircle className="w-4 h-4 mr-2" />Asignar Tratamiento</Button>
+                  </AssignTreatmentDialog>
+                </CardHeader>
+                <CardContent>
+                  <ClientTreatmentsList clientId={id || ''} />
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
           <div className="flex justify-end pt-8">
-              <Button type="submit" disabled={!form.formState.isDirty || updateMutation.isPending}>
+              <Button type="submit" disabled={(!form.formState.isDirty && !isAssociationDirty) || updateMutation.isPending}>
                   Guardar Cambios
               </Button>
           </div>

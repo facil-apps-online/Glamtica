@@ -116,18 +116,19 @@ const ComboSubItemCard = ({ subItem, subIndex, attentionDateTime, branchId, isAt
 
 export interface ItemForm {
   id: string;
-  type: 'service' | 'product' | 'combo';
-  item_id: string;
-  user_id: string;
-  commission_user_id?: string;
+  type: 'service' | 'product' | 'combo' | 'payment'; // 'payment' added
+  item_id: string; // ID del servicio, producto, combo o 'payment' para pagos de tratamiento
+  user_id: string; // Profesional asignado (para servicios)
+  commission_user_id?: string; // Para productos, si es diferente del user_id del servicio
   price: number;
+  original_price?: number;
   duration?: number;
   quantity: number;
   notes?: string;
   item_name?: string;
   user_name?: string;
-  is_existing: boolean;
-  status?: string;
+  is_existing: boolean; // Si ya existe en la base de datos (modo edición)
+  status?: string; // Estado del item de atención
   status_history?: any[];
   start_time: string;
   end_time: string;
@@ -135,7 +136,14 @@ export interface ItemForm {
   parallel_group_id: string | null;
   offset_minutes: number;
   attention_combo_id?: string | null;
+
+  // Para combos, lista de sub-items (servicios/productos)
   items?: ItemForm[];
+
+  // Campos para ítems de sesión de tratamiento
+  is_treatment_session_item?: boolean;
+  client_treatment_session_id?: string;
+  client_treatment_id?: string;
 }
 
 export interface ItemFormCardProps {
@@ -155,6 +163,13 @@ export interface ItemFormCardProps {
   screenSize: 'mobile' | 'tablet' | 'desktop';
   attentionId: string; // ADD THIS LINE
   attention: any;
+  salesSettings?: {
+    allow_price_modification?: boolean;
+    price_modification_role_ids?: string[];
+    enforce_minimum_price?: boolean;
+  };
+  userRole?: string;
+  isLoadingSalesSettings?: boolean;
 }
 
 const ItemFormCard = ({
@@ -172,6 +187,9 @@ const ItemFormCard = ({
   isAttentionEditable,
   attentionId, // ADD THIS LINE
   attention,
+  salesSettings,
+  userRole,
+  isLoadingSalesSettings,
 }: ItemFormCardProps) => {
   const [evidenceDialogService, setEvidenceDialogService] = useState<ItemForm | null>(null);
   const [professionalSearchTerm, setProfessionalSearchTerm] = useState("");
@@ -182,6 +200,36 @@ const ItemFormCard = ({
   const finishServiceMutation = useFinishService();
   const callClientMutation = useCallClient();
   const [isAssignConsentDialogOpen, setIsAssignConsentDialogOpen] = useState(false); // State for consent dialog
+  const { toast } = useToast();
+  const { formatPrice } = usePriceFormat();
+  const [originalPrice, setOriginalPrice] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (item.item_id && originalPrice === null) {
+      setOriginalPrice(item.price);
+    }
+  }, [item.item_id, item.price, originalPrice]);
+
+  const isPriceEditable = useMemo(() => {
+    if (isLoadingSalesSettings || !salesSettings || !userRole) return false;
+    return (
+      salesSettings.allow_price_modification &&
+      (salesSettings.price_modification_role_ids || []).includes(userRole)
+    );
+  }, [salesSettings, userRole, isLoadingSalesSettings]);
+
+  const handlePriceChange = (newPrice: number) => {
+    if (salesSettings?.enforce_minimum_price && originalPrice !== null && newPrice < originalPrice) {
+      toast({
+        title: "Precio no válido",
+        description: `El precio no puede ser menor al original de ${formatPrice(originalPrice)}.`,
+        variant: "warning",
+      });
+      onUpdate(index, { price: originalPrice });
+    } else {
+      onUpdate(index, { price: newPrice });
+    }
+  };
 
   const getStatusBadge = (status: ItemForm['status']) => {
     switch (status) {
@@ -198,7 +246,6 @@ const ItemFormCard = ({
     }
   };
 
-  const { formatPrice } = usePriceFormat();
   const { data: comboDetails, isLoading: isLoadingComboDetails } = useGetComboBranchDetails(
     (item.type === 'combo' && item.item_id && !item.is_existing) ? item.item_id : undefined,
     branchId
@@ -295,10 +342,13 @@ const ItemFormCard = ({
   const handleItemChange = (itemId: string) => {
     const selectedItem = [...availableBranchProducts, ...availableServicesAndCombos].find(i => i.id === itemId);
     if (selectedItem) {
+      const price = selectedItem.selling_price || 0;
+      setOriginalPrice(price);
       const updates: Partial<ItemForm> = {
         item_id: itemId,
         item_name: selectedItem.name,
-        price: selectedItem.selling_price || 0,
+        price: price,
+        original_price: price,
         quantity: 1,
         user_id: '',
       };
@@ -307,6 +357,7 @@ const ItemFormCard = ({
       } else if (selectedItem.type === 'combo') {
         updates.duration = 0;
         updates.price = 0;
+        updates.original_price = 0;
       }
       onUpdate(index, updates);
     }
@@ -388,8 +439,17 @@ const ItemFormCard = ({
                     <div className="p-2 bg-muted rounded-md text-sm text-right flex flex-col justify-center">
                         <div>
                             <span className="font-semibold">Unitario: </span>
-                            <span>{formatPrice(item.price)}</span>
-                        </div>
+                                                {isPriceEditable && item.type !== 'combo' ? (
+                                                  <Input
+                                                    type="number"
+                                                    value={item.price}
+                                                    onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                                                    className="inline-block w-24 h-8 ml-2 text-right"
+                                                    disabled={!isAttentionEditable || !item.item_id}
+                                                  />
+                                                ) : (
+                                                  <span>{formatPrice(item.price * item.quantity)}</span>
+                                                )}                        </div>
                         <div>
                             <span className="font-semibold">Total: </span>
                             <span>{formatPrice(item.price * item.quantity)}</span>
@@ -539,7 +599,17 @@ const ItemFormCard = ({
                 </div>
                 <div>
                     <span className="font-semibold">Valor: </span>
-                    <span>{formatPrice(item.price * item.quantity)}</span>
+                    {isPriceEditable && item.type !== 'combo' ? (
+                      <Input
+                        type="number"
+                        value={item.price}
+                        onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                        className="inline-block w-24 h-8 ml-2 text-right"
+                        disabled={!isAttentionEditable || !item.item_id}
+                      />
+                    ) : (
+                      <span>{formatPrice(item.price * item.quantity)}</span>
+                    )}
                 </div>
                 <div>
                     <span className="font-semibold">Inicia: </span>

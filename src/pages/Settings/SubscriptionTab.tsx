@@ -120,7 +120,7 @@ export function SubscriptionTab() {
 
     const checkoutRequest = {
       tenantId: currentAssignment.tenant_id,
-      redirectUrl: `${window.location.origin}/settings?tab=subscription&payment_status=success`,
+      redirectUrl: `${window.location.origin}/app/settings?tab=subscription&payment_status=success`,
       userId: profile.id,
       amountInCents: Math.round(plan.calculated_price * 100),
       currency: 'COP',
