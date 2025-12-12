@@ -27,7 +27,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({ treatment, onEdit,
   const { mutate: updateTreatment, isPending: isUpdatingStatus } = useUpdateTreatment();
   const { formatPrice } = usePriceFormat();
 
-  const sessionCount = treatment.session_count?.[0]?.count ?? 0;
+  const sessionCount = treatment.session_count ?? 0;
 
   const handleFullEdit = () => {
     navigate(`/app/treatments/${treatment.id}`);
@@ -116,12 +116,10 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({ treatment, onEdit,
 
             {treatment.categories && treatment.categories.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-2">
-                {treatment.categories.map(c => (
-                  c.treatment_categories && (
-                    <Badge key={c.treatment_categories.id} variant="secondary">
-                      {c.treatment_categories.name}
-                    </Badge>
-                  )
+                {treatment.categories.map(category => (
+                  <Badge key={category.id} variant="secondary">
+                    {category.name}
+                  </Badge>
                 ))}
               </div>
             )}

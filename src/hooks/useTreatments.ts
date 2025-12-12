@@ -28,15 +28,12 @@ export interface TreatmentImage {
   id: string;
   image_url: string;
   is_primary: boolean;
+  sort_order: number;
 }
 
 export interface TreatmentCategory {
   id: string;
   name: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Treatment {
@@ -47,11 +44,11 @@ export interface Treatment {
   upfront_price?: number;
   financed_price?: number;
   is_active: boolean;
-  default_payment_plan?: Array<{ session_number: number; percentage: number }>;
-  session_count?: { count: number }[]; // For list view
-  sessions?: TreatmentSession[]; // For detail view
+  session_count?: number; 
+  sessions?: TreatmentSession[];
+  cover_image_url?: string;
+  categories?: TreatmentCategory[];
   treatment_images?: TreatmentImage[];
-  categories?: { treatment_categories: TreatmentCategory }[];
   created_at: string;
   tenant_id: string;
 }
@@ -95,7 +92,10 @@ export interface ClientTreatmentDetails extends ClientTreatment {
 export const useTreatments = (tenantId: string, type: 'treatment' | 'project', categoryId?: string, showInactive?: boolean) => {
   return useQuery<Treatment[], Error>({
     queryKey: ['treatments', tenantId, type, categoryId, showInactive],
-    queryFn: () => fetchTenantAction('list_treatments', { tenant_id: tenantId, type: type, category_id: categoryId, show_inactive: showInactive }),
+    queryFn: async () => {
+      const result = await fetchTenantAction('list_treatments', { tenant_id: tenantId, type: type, category_id: categoryId, show_inactive: showInactive });
+      return result.data || [];
+    },
     enabled: !!tenantId,
   });
 };
@@ -104,7 +104,12 @@ export const useTreatments = (tenantId: string, type: 'treatment' | 'project', c
 export const useClientTreatments = (clientId: string) => {
   return useQuery<ClientTreatment[], Error>({
     queryKey: ['client_treatments', clientId],
-    queryFn: () => fetchTenantAction('get_client_treatments', { client_id: clientId }),
+    queryFn: async () => {
+      const result = await fetchTenantAction('get_client_treatments', { client_id: clientId });
+      // The RPC call returns an object with a 'data' property which is the array.
+      // We need to return the data property specifically.
+      return result.data || [];
+    },
     enabled: !!clientId,
   });
 };
@@ -113,7 +118,12 @@ export const useClientTreatments = (clientId: string) => {
 export const useTreatmentDetails = (treatmentId: string) => {
   return useQuery<Treatment, Error>({
     queryKey: ['treatment_details', treatmentId],
-    queryFn: () => fetchTenantAction('get_treatment_details', { treatment_id: treatmentId }),
+    queryFn: async () => {
+      const result = await fetchTenantAction('get_treatment_details', { treatment_id: treatmentId });
+      console.log('Result from get_treatment_details:', result);
+      // The RPC returns an array with a single object. We need to return that object.
+      return result.data?.[0] || null;
+    },
     enabled: !!treatmentId,
   });
 };
@@ -122,8 +132,50 @@ export const useTreatmentDetails = (treatmentId: string) => {
 export const useClientTreatmentDetails = (clientTreatmentId: string) => {
   return useQuery<ClientTreatmentDetails, Error>({
     queryKey: ['client_treatment_details', clientTreatmentId],
-    queryFn: () => fetchTenantAction('get_client_treatment_details', { client_treatment_id: clientTreatmentId }),
+    queryFn: async () => {
+      const result = await fetchTenantAction('get_client_treatment_details', { client_treatment_id: clientTreatmentId });
+      // The RPC returns an array with a single object. We need to return that object.
+      return result.data?.[0];
+    },
     enabled: !!clientTreatmentId,
+  });
+};
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  // Add other relevant product fields as needed from your database schema
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  // Add other relevant service fields as needed from your database schema
+}
+
+// Hook to get all active products for the tenant
+export const useProducts = (tenantId: string) => {
+  return useQuery<Product[], Error>({
+    queryKey: ['products', tenantId],
+    queryFn: async () => {
+      const result = await fetchTenantAction('list_products', { tenant_id: tenantId });
+      return result.data || [];
+    },
+    enabled: !!tenantId,
+  });
+};
+
+// Hook to get all active services for the tenant
+export const useServices = (tenantId: string) => {
+  return useQuery<Service[], Error>({
+    queryKey: ['services', tenantId],
+    queryFn: async () => {
+      const result = await fetchTenantAction('list_services', { tenant_id: tenantId });
+      return result.data || [];
+    },
+    enabled: !!tenantId,
   });
 };
 
@@ -271,7 +323,16 @@ export const useUpdateTreatmentImagesOrder = () => {
 
 // --- MUTATIONS ---
 
-// Assign a treatment to a client
+interface CustomSession {
+  session_number: number;
+  name: string;
+  description?: string;
+  items: TreatmentSessionItem[];
+  payment_percentage?: number | null;
+  fixed_payment_amount?: number | null;
+}
+
+// Assign a treatment to a client (and its sessions)
 export const useAssignTreatmentToClient = () => {
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -280,17 +341,32 @@ export const useAssignTreatmentToClient = () => {
     return useMutation({
         mutationFn: (payload: {
             client_id: string;
-            treatment_id: string; // Renamed
-            selected_price_type: 'upfront' | 'financed';
-            custom_final_price?: number;
+            treatment_id: string; // This is the prototype_id
+            name: string; // New: Custom name for the client treatment
+            payment_type: 'upfront' | 'financed'; // Changed from selected_price_type
+            final_price: number; // Changed from custom_final_price
             start_date: string;
-        }) => fetchTenantAction('assign_treatment_to_client', { ...payload, tenant_id: tenantId }), // Renamed action
+            sessions: CustomSession[];
+        }) => {
+            // The edge function expects the non-prefixed keys.
+            const fullPayload = {
+                client_id: payload.client_id,
+                treatment_id: payload.treatment_id, // This is the prototype_id
+                name: payload.name, // New: Pass custom name to edge function
+                payment_type: payload.payment_type,
+                final_price: payload.final_price,
+                start_date: payload.start_date,
+                sessions: payload.sessions,
+                tenant_id: tenantId, // Add tenantId directly to the payload
+            };
+            return fetchTenantAction('assign_treatment_to_client', fullPayload);
+        },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['client_treatments', variables.client_id] });
-            toast({ title: "Tratamiento Asignado", description: "El tratamiento ha sido asignado al cliente.", variant: "success" });
+            toast({ title: "Tratamiento Asignado", description: "El tratamiento y sus sesiones han sido asignados al cliente.", variant: "success" });
         },
         onError: (error: Error) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+            toast({ title: "Error", description: `Hubo un problema al asignar el tratamiento: ${error.message}`, variant: "destructive" });
         },
     });
 }
@@ -357,6 +433,33 @@ export const useDeleteTreatment = () => {
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// --- New Hook for Deleting a Client's Treatment ---
+export const useDeleteClientTreatment = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { tenantId } = useAuth();
+
+  return useMutation({
+    mutationFn: ({ client_treatment_id, client_id }: { client_treatment_id: string; client_id: string; }) => {
+        if (!tenantId) {
+            throw new Error("Tenant ID not found");
+        }
+        return fetchTenantAction('delete_client_treatment', { 
+            p_client_treatment_id: client_treatment_id,
+            p_tenant_id: tenantId 
+        });
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate the query for the client's treatments to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['client_treatments', variables.client_id] });
+      toast({ title: "Éxito", description: "El tratamiento asignado ha sido eliminado.", variant: "success" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `No se pudo eliminar el tratamiento: ${error.message}`, variant: "destructive" });
     },
   });
 };

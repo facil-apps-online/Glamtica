@@ -22,12 +22,7 @@ const sessionSchema = z.object({
   session_number: z.number().int().min(1).optional(),
   name: z.string().min(3, "El nombre de la sesión es requerido."),
   description: z.string().optional(),
-  payment_type: z.enum(['none', 'percentage', 'fixed']).optional().default('none'),
-  payment_percentage: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? null : Number(val),
-    z.number().min(0).max(100).nullable().optional()
-  ),
-  fixed_payment_amount: z.preprocess(
+  payment_amount: z.preprocess( // Renamed from fixed_payment_amount
     (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? null : Number(val),
     z.number().min(0).nullable().optional()
   ),
@@ -37,9 +32,6 @@ const sessionSchema = z.object({
     type: z.enum(["product", "service"], { required_error: "El tipo de ítem es requerido." }),
     quantity: z.number().int().min(1, "La cantidad debe ser al menos 1."),
   })).min(1, "Cada sesión debe tener al menos un ítem."),
-}).refine(data => !(data.payment_percentage && data.fixed_payment_amount), {
-  message: "Defina un porcentaje o un monto fijo, no ambos.",
-  path: ["payment_percentage"],
 });
 
 const formSchema = z.object({
@@ -55,17 +47,6 @@ const formSchema = z.object({
     z.number().min(0, "El precio no puede ser negativo.").optional()
   ),
   sessions: z.array(sessionSchema).min(1, "El tratamiento debe tener al menos una sesión."),
-}).superRefine((val, ctx) => {
-    if (val.financed_price && val.financed_price > 0) {
-      const totalPercentage = val.sessions.reduce((sum, s) => sum + (s.payment_percentage || 0), 0);
-      const totalFixed = val.sessions.reduce((sum, s) => sum + (s.fixed_payment_amount || 0), 0);
-
-      if (totalPercentage > 0 && totalFixed > 0) {
-        ctx.addIssue({ code: "custom", message: "No mezcle pagos por % y montos fijos.", path: ['sessions'] });
-      } else if (totalPercentage > 0 && totalPercentage !== 100) {
-        ctx.addIssue({ code: "custom", message: `La suma de porcentajes debe ser 100% (actual: ${totalPercentage}%).`, path: ['sessions'] });
-      }
-    }
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -104,40 +85,31 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
 
   useEffect(() => {
     if (treatment?.categories) {
-      setSelectedCategoryIds(treatment.categories.map(c => c.treatment_categories.id));
+      setSelectedCategoryIds(treatment.categories.map(c => c.id));
     }
   }, [treatment]);
 
   useEffect(() => {
+    // This effect now simply calculates the financed_price from the sum of session amounts
     if (sessions && Array.isArray(sessions)) {
-      const isFixedAmountMode = sessions.some(s => s.payment_type === 'fixed');
-      const isPercentageMode = sessions.some(s => s.payment_type === 'percentage');
-
-      if (isFixedAmountMode && !isPercentageMode) {
-        const totalFixed = sessions.reduce((sum, s) => sum + (s.fixed_payment_amount || 0), 0);
-        setValue('financed_price', totalFixed, { shouldValidate: true });
-      }
+      const totalFinanced = sessions.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
+      setValue('financed_price', totalFinanced, { shouldValidate: true });
     }
   }, [sessions, setValue]);
 
   useEffect(() => {
+    // This effect now just populates the form with treatment data, without percentage logic
     if (treatment) {
-      const resetSessions = treatment.sessions?.map(s => {
-        let payment_type: 'none' | 'percentage' | 'fixed' = 'none';
-        if (s.payment_percentage) payment_type = 'percentage';
-        else if (s.fixed_payment_amount) payment_type = 'fixed';
-        
-        return {
-          ...s,
-          payment_type,
-          items: s.items?.map(i => ({
-              item_id: i.product_id || i.service_id || '',
-              item_name: "Cargando...",
-              type: i.product_id ? 'product' : 'service',
-              quantity: i.quantity,
-          })) || []
-        };
-      }) || [];
+      const resetSessions = treatment.sessions?.map(s => ({
+        ...s,
+        payment_amount: s.fixed_payment_amount, // Map fixed_payment_amount to payment_amount
+        items: s.items?.map(i => ({
+            item_id: i.product_id || i.service_id || '',
+            item_name: "Cargando...",
+            type: i.product_id ? 'product' : 'service',
+            quantity: i.quantity,
+        })) || []
+      })) || [];
 
       reset({
         name: treatment.name,
@@ -159,8 +131,8 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
         sessions: data.sessions.map((s, index) => ({
             ...s,
             session_number: index + 1,
-            payment_percentage: s.payment_type === 'percentage' ? s.payment_percentage : null,
-            fixed_payment_amount: s.payment_type === 'fixed' ? s.fixed_payment_amount : null,
+            fixed_payment_amount: s.payment_amount, // Map form's payment_amount to backend's fixed_payment_amount
+            payment_percentage: null, // Always null now
             items: s.items.map(i => ({
                 product_id: i.type === 'product' ? i.item_id : null,
                 service_id: i.type === 'service' ? i.item_id : null,
@@ -170,8 +142,6 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
     };
     onSave(mappedData, selectedCategoryIds);
   };
-
-  const isFixedAmountMode = sessions?.some(s => s.payment_type === 'fixed') && !sessions?.some(s => s.payment_type === 'percentage');
 
   const categoryOptions = categories?.map(c => ({ value: c.id, label: c.name })) || [];
 
@@ -212,7 +182,7 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2"><Label>Precio de Contado</Label><Input type="number" step="0.01" {...register("upfront_price")} />{errors.upfront_price && <p className="text-red-500 text-sm">{errors.upfront_price.message}</p>}</div>
-        <div className="space-y-2"><Label>Precio Financiado</Label><Input type="number" step="0.01" {...register("financed_price")} disabled={isFixedAmountMode} />{errors.financed_price && <p className="text-red-500 text-sm">{errors.financed_price.message}</p>}</div>
+        <div className="space-y-2"><Label>Precio Financiado</Label><Input type="number" step="0.01" {...register("financed_price")} disabled={true} />{errors.financed_price && <p className="text-red-500 text-sm">{errors.financed_price.message}</p>}</div>
       </div>
       
       <div className="space-y-4">
@@ -227,10 +197,18 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
               <div className="space-y-2"><Label>Descripción Sesión</Label><Input {...register(`sessions.${sessionIndex}.description`)} /></div>
             </div>
             
-            <div className="bg-muted/50 rounded-lg space-y-3 p-4">
-              <Label>Cuota de Pago (para Precio Financiado)</Label>
-              <SessionPaymentFields sessionIndex={sessionIndex} control={control} register={register} setValue={setValue} />
-              {errors.sessions?.[sessionIndex]?.payment_percentage && <p className="text-red-500 text-sm">{errors.sessions?.[sessionIndex]?.payment_percentage?.message}</p>}
+            <div className="bg-muted/50 rounded-lg space-y-3">
+              <div className="space-y-2">
+                <Label>Valor Cuota (para Precio Financiado)</Label>
+                <Input 
+                  type="number" 
+                  placeholder="Monto" 
+                  step="0.01" 
+                  {...register(`sessions.${sessionIndex}.payment_amount`, { valueAsNumber: true })} 
+                  className="w-full"
+                />
+                {errors.sessions?.[sessionIndex]?.payment_amount && <p className="text-red-500 text-sm">{errors.sessions?.[sessionIndex]?.payment_amount?.message}</p>}
+              </div>
             </div>
             
             <div className="space-y-3 pt-3 border-t"><h5 className="font-semibold text-sm">Ítems de Sesión</h5><SessionItemsFieldArray sessionIndex={sessionIndex} control={control} register={register} setValue={setValue} /></div>
@@ -248,53 +226,7 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
   );
 }
 
-// Copied sub-components
-interface SessionPaymentFieldsProps {
-    sessionIndex: number;
-    control: any;
-    register: any;
-    setValue: any;
-}
 
-function SessionPaymentFields({ sessionIndex, control, register, setValue }: SessionPaymentFieldsProps) {
-    const paymentType = useWatch({
-        control,
-        name: `sessions.${sessionIndex}.payment_type`,
-        defaultValue: 'none'
-    });
-
-    return (
-        <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <Label>Tipo de Pago</Label>
-                <Controller
-                    name={`sessions.${sessionIndex}.payment_type`}
-                    control={control}
-                    render={({ field }) => (
-                        <Select onValueChange={(value) => {
-                            field.onChange(value);
-                            setValue(`sessions.${sessionIndex}.payment_percentage`, null);
-                            setValue(`sessions.${sessionIndex}.fixed_payment_amount`, null);
-                        }} value={field.value || 'none'}>
-                            <SelectTrigger><SelectValue placeholder="Tipo de cuota" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Sin Pago</SelectItem>
-                                <SelectItem value="percentage">Porcentaje (%)</SelectItem>
-                                <SelectItem value="fixed">Monto Fijo</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    )}
-                />
-            </div>
-            {paymentType === 'percentage' && (
-                <div className="space-y-2"><Label>Porcentaje</Label><Input type="number" placeholder="%" {...register(`sessions.${sessionIndex}.payment_percentage`, { valueAsNumber: true })} /></div>
-            )}
-            {paymentType === 'fixed' && (
-                <div className="space-y-2"><Label>Monto Fijo</Label><Input type="number" placeholder="Monto" step="0.01" {...register(`sessions.${sessionIndex}.fixed_payment_amount`, { valueAsNumber: true })} /></div>
-            )}
-        </div>
-    );
-}
 
 interface SessionItemsFieldArrayProps {
     sessionIndex: number;

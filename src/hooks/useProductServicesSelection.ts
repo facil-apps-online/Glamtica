@@ -16,11 +16,11 @@ export const useSelectableProducts = (searchTerm?: string) => {
   return useQuery<SelectableItem[], Error>({
     queryKey: ['selectable_products', tenantId, searchTerm],
     queryFn: async () => {
-      const products = await fetchTenantAction('get_master_products', { 
-        searchTerm, 
+      const products = await fetchTenantAction('get_master_products', {
+        searchTerm,
         showInactive: false, // Solo activos para selección
-        categoryId: null, 
-        brandId: null 
+        categoryId: null,
+        brandId: null
       });
       return products.map((p: any) => ({
         id: p.id,
@@ -40,10 +40,10 @@ export const useSelectableServices = (searchTerm?: string) => {
   return useQuery<SelectableItem[], Error>({
     queryKey: ['selectable_services', tenantId, searchTerm],
     queryFn: async () => {
-      const services = await fetchTenantAction('get_master_services', { 
-        searchTerm, 
+      const services = await fetchTenantAction('get_master_services', {
+        searchTerm,
         showInactive: false, // Solo activos para selección
-        categoryId: null 
+        categoryId: null
       });
       return services.map((s: any) => ({
         id: s.id,

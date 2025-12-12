@@ -1,14 +1,27 @@
 import React from 'react';
-import { useClientTreatments, useClientTreatmentDetails, ClientTreatment } from '@/hooks/useTreatments'; // Updated import
+import { useClientTreatments, useClientTreatmentDetails, ClientTreatment, useDeleteClientTreatment } from '@/hooks/useTreatments'; // Updated import
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency } from '@/lib/utils';
-import { CheckCircle2, Circle, LucideIcon } from 'lucide-react';
+import { usePriceFormat } from '@/hooks/usePriceFormat';
+import { CheckCircle2, Circle, LucideIcon, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const TreatmentDetailContent = ({ clientTreatmentId }: { clientTreatmentId: string }) => {
     const { data: details, isLoading, error } = useClientTreatmentDetails(clientTreatmentId);
+    const { formatPrice } = usePriceFormat();
 
     if (isLoading) return <div className="p-4"><p>Cargando detalles...</p></div>;
     if (error) return <div className="p-4 text-red-500"><p>Error: {error.message}</p></div>;
@@ -29,15 +42,14 @@ const TreatmentDetailContent = ({ clientTreatmentId }: { clientTreatmentId: stri
                             <p className="text-sm text-muted-foreground">{session.description}</p>
                         </div>
                     </div>
-                    {session.payment_due && (
-                        <div className="text-right">
-                            <p className="font-semibold">{formatCurrency(session.payment_due.amount)}</p>
-                            <Badge variant={session.payment_due.status === 'paid' ? 'success' : 'destructive'}>
-                                {session.payment_due.status === 'paid' ? 'Pagado' : 'Pendiente'}
-                            </Badge>
-                        </div>
-                    )}
-                </div>
+                                        {session.payment_due && (
+                                            <div className="text-right pr-4"> 
+                                                <p className="font-semibold">{formatPrice(session.payment_due.amount)}</p>
+                                                <Badge variant={session.payment_due.status === 'paid' ? 'success' : 'destructive'}>
+                                                    {session.payment_due.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                                                </Badge>
+                                            </div>
+                                        )}                </div>
             ))}
         </div>
     );
@@ -45,6 +57,7 @@ const TreatmentDetailContent = ({ clientTreatmentId }: { clientTreatmentId: stri
 
 export const ClientTreatmentsList = ({ clientId }: { clientId: string }) => {
     const { data: treatments, isLoading, error } = useClientTreatments(clientId);
+    const { mutate: deleteTreatment, isPending: isDeleting } = useDeleteClientTreatment();
 
     if (isLoading) {
         return (
@@ -75,9 +88,42 @@ export const ClientTreatmentsList = ({ clientId }: { clientId: string }) => {
                                         Progreso: {treatment.progress.completed} de {treatment.progress.total} sesiones
                                     </p>
                                 </div>
-                                <Badge variant={treatment.status === 'completed' ? 'success' : 'default'} className="capitalize">
-                                    {treatment.status}
-                                </Badge>
+                                <div className="flex items-center gap-4">
+                                    <Badge variant={treatment.status === 'completed' ? 'success' : 'default'} className="capitalize">
+                                        {treatment.status}
+                                    </Badge>
+                                    {treatment.progress.completed === 0 && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => e.stopPropagation()} // Prevent accordion from toggling
+                                                    disabled={isDeleting}
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Esta acción no se puede deshacer. Se eliminará permanentemente el tratamiento asignado y todos sus datos.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={() => deleteTreatment({ client_treatment_id: treatment.id, client_id: clientId })}
+                                                        disabled={isDeleting}
+                                                    >
+                                                        Eliminar
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </div>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>

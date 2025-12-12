@@ -27,7 +27,7 @@ const EditTreatmentPage = () => {
   const { mutate: updateTreatment, isPending: isUpdating } = useUpdateTreatment();
 
   const handleCategoryUpdates = async (newCategoryIds: string[]) => {
-    const originalCategoryIds = (treatment?.categories || []).map(c => c.treatment_categories.id).sort();
+    const originalCategoryIds = (treatment?.categories || []).map(c => c.id).sort();
     const sortedNewCategoryIds = [...newCategoryIds].sort();
 
     if (JSON.stringify(originalCategoryIds) !== JSON.stringify(sortedNewCategoryIds)) {
