@@ -11,25 +11,39 @@ import { useAvailableUsers } from "@/hooks/useAvailableUsers";
 import { useAddAttentionService } from "@/hooks/useAttentionServices";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import { Star } from "lucide-react";
 
 interface AddServiceDialogProps {
   children: React.ReactNode;
   attentionId: string;
+  clientId: string;
 }
 
-export const AddServiceDialog = ({ children, attentionId }: AddServiceDialogProps) => {
+export const AddServiceDialog = ({ children, attentionId, clientId }: AddServiceDialogProps) => {
   const [open, setOpen] = useState(false);
   const [serviceId, setServiceId] = useState("");
   const [userId, setUserId] = useState("");
   const [servicePrice, setServicePrice] = useState(0);
   const [notes, setNotes] = useState("");
   const [duration, setDuration] = useState(0);
+  const [itemType, setItemType] = useState<'service' | 'combo' | undefined>();
 
   const { currentAssignment } = useAuth();
   const { selectedBranchId } = useBranchFilterStore();
   const { data: branchServicesAndCombos } = useBranchServicesAndCombos();
   // TODO: La fecha y hora de la atención deben pasarse como props
-  const { data: availableUsers } = useAvailableUsers(serviceId, new Date().toISOString(), "12:00", duration);
+  const { data: availableUsers } = useAvailableUsers(
+    serviceId,
+    itemType,
+    new Date().toISOString().split('T')[0],
+    "12:00",
+    duration,
+    selectedBranchId && selectedBranchId !== 'all' ? selectedBranchId : undefined,
+    undefined,
+    undefined,
+    '',
+    clientId
+  );
   const addServiceMutation = useAddAttentionService();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -66,6 +80,7 @@ export const AddServiceDialog = ({ children, attentionId }: AddServiceDialogProp
     
     const selectedItem = branchServicesAndCombos?.find(item => item.id === value);
     if (selectedItem) {
+      setItemType(selectedItem.type);
       if (selectedItem.type === 'service') {
         setServicePrice(selectedItem.selling_price);
         setDuration(selectedItem.duration_minutes);
@@ -122,8 +137,11 @@ export const AddServiceDialog = ({ children, attentionId }: AddServiceDialogProp
                 </SelectTrigger>
                 <SelectContent>
                   {availableUsers?.map((user) => (
-                    <SelectItem key={user.user_id} value={user.user_id}>
-                      {user.users?.name} - Comisión: {user.commission_rate}%
+                    <SelectItem key={user.user_id} value={user.user_id} className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        {user.users?.name} - Comisión: {user.commission_rate}%
+                        {user.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

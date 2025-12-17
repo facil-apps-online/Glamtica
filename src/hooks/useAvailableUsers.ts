@@ -11,13 +11,14 @@ export const useAvailableUsers = (
   branchId?: string,
   assignedUserId?: string,
   attentionId?: string, // New parameter
-  searchTerm?: string
+  searchTerm?: string,
+  clientId?: string,
 ) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
 
   return useQuery({
-    queryKey: ['available-users', serviceId, itemType, appointmentDate, appointmentTime, duration, branchId, assignedUserId, attentionId, searchTerm],
+    queryKey: ['available-users', serviceId, itemType, appointmentDate, appointmentTime, duration, branchId, assignedUserId, attentionId, searchTerm, clientId],
     queryFn: () => callTenantAction('get_available_users', { 
       serviceId, 
       itemType,
@@ -28,7 +29,8 @@ export const useAvailableUsers = (
       tenantId,
       assignedUserId,
       attentionId, // Pasar el ID de la atención al backend
-      searchTerm
+      searchTerm,
+      clientId,
     }),
     enabled: !!serviceId && !!itemType && (duration > 0 || itemType === 'combo'),
     staleTime: 0, // Force refetch on every change

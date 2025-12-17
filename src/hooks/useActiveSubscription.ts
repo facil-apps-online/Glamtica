@@ -21,8 +21,8 @@ const fetchSubscriptionStatus = async (): Promise<SubscriptionInfo | null> => {
     throw new Error(error.message);
   }
   
-  // The Edge Function now handles the 'no data' case and returns a default object
-  return data as SubscriptionInfo;
+  // The RPC returns an array, so we extract the first element.
+  return (data && data.length > 0 ? data[0] : null) as SubscriptionInfo | null;
 };
 
 export const useSubscriptionStatus = (tenantId: string | null | undefined) => {
@@ -30,10 +30,10 @@ export const useSubscriptionStatus = (tenantId: string | null | undefined) => {
     queryKey: ['subscription_status', tenantId],
     queryFn: () => fetchSubscriptionStatus(),
     enabled: !!tenantId,
-    // Configuración para revalidación agresiva
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    // La configuración se hace más agresiva para detectar cambios de suscripción rápidamente.
+    staleTime: 0, // Los datos se consideran "stale" (viejos) inmediatamente.
+    refetchOnWindowFocus: true, // Se recarga si el usuario vuelve a la ventana.
+    refetchOnMount: true, // Se recarga siempre que el componente se monta.
   });
 
   return queryResult;

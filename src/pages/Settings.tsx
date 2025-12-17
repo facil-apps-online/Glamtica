@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { GeneralSettingsTab } from "./Settings/GeneralSettingsTab";
@@ -52,7 +53,8 @@ const SettingsPageSkeleton = () => (
 );
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("general");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "general");
 
   const { currentAssignment, loading } = useAuth();
   const userRole = currentAssignment?.role_name;
@@ -60,6 +62,7 @@ export default function Settings() {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    setSearchParams({ tab: value });
   };
 
   const tabs = [

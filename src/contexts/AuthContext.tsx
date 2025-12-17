@@ -30,7 +30,7 @@ interface UserProfile {
 export interface UserAssignment {
   assignment_id: string;
   tenant_id: string;
-  tenant_name: string;
+  tenant_name:string;
   platform_id: string;
   role_id: string;
   role_name: string;

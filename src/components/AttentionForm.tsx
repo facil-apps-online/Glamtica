@@ -13,6 +13,7 @@ import { useCreateAttention } from "@/hooks/useAttentions";
 import { useUpdateAttentionItems } from "@/hooks/useUpdateAttentionItems";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, Plus, Clock } from "lucide-react";
+import { useClientTreatments } from "@/hooks/useTreatments";
 import { FilterableSelect } from "./FilterableSelect";
 import { debounce } from "@/lib/utils";
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -110,6 +111,7 @@ TimePickerButton.displayName = "TimePickerButton";
 
 export const AttentionForm = ({ branchId, onFinished, initialDate, attention = null, screenSize }: AttentionFormProps) => {
   const { toast } = useToast();
+
   const isMobile = screenSize === 'sm' || screenSize === 'md';
   const isEditMode = !!attention;
 
@@ -135,6 +137,7 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
   const debouncedSetItemSearchTerm = useMemo(() => debounce(setItemSearchTerm, 300), []);
 
   // --- Data Fetching Hooks ---
+  const { data: clientTreatments, isLoading: isLoadingClientTreatments } = useClientTreatments(clientId);
   const { data: clients } = useClients(clientSearchTerm);
   const { data: branchServicesAndCombos, isLoading: isLoadingItems } = useBranchServicesAndCombos(branchId, itemSearchTerm);
   const { data: branchProducts } = useBranchProducts(branchId, itemSearchTerm);
@@ -821,8 +824,8 @@ export const AttentionForm = ({ branchId, onFinished, initialDate, attention = n
                     });
                   }}
                 >
-                  <Button type="button" size="sm" variant="outline" disabled={!clientId || !attentionTime}>
-                    <Stethoscope className="w-4 h-4 mr-2" />Tratamiento
+                  <Button type="button" size="sm" variant="outline" disabled={!clientId || !attentionTime || isLoadingClientTreatments || !clientTreatments || clientTreatments.length === 0}>
+                    <Plus className="w-4 h-4 mr-2" />Tratamiento
                   </Button>
                 </AddTreatmentSessionDialog>
               </div>

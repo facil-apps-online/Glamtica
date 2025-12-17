@@ -62,6 +62,7 @@ import FeaturesPage from "@/pages/FeaturesPage";
 import UIKit from "@/pages/Dev/UIKit";
 import SurveyPage from "@/pages/SurveyPage";
 import MicrositePage from "@/pages/MicrositePage";
+import SubscribePage from "@/pages/SubscribePage";
 
 function App() {
   return (
@@ -92,6 +93,7 @@ function App() {
 
               {/* Rutas Protegidas con Layout Principal */}
               <Route element={<ProtectedRoute />}>
+                <Route path="/app/subscribe" element={<SubscribePage />} />
                 <Route path="/app" element={<Layout />}>
                   <Route index element={<Index />} /> {/* RUTA INDEX PARA LA PÁGINA DE INICIO */}
                   <Route path="profile-settings" element={<ProfileSettings />} />

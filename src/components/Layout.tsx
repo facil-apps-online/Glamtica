@@ -61,8 +61,8 @@ export function Layout() {
   }, [currentAssignment, addNotification]);
 
   React.useEffect(() => {
-    if (!isSubscriptionLoading && status === 'suspendido' && location.pathname !== '/subscribe') {
-      navigate('/subscribe');
+    if (!isSubscriptionLoading && status === 'suspendido' && location.pathname !== '/app/subscribe') {
+      navigate('/app/subscribe');
     }
   }, [status, isSubscriptionLoading, location.pathname, navigate]);
 
@@ -88,11 +88,11 @@ export function Layout() {
             <Header />
             
             {showGraceBanner && <GracePeriodBanner />}
-            {status === 'cancelado' && <CancelledBanner />}
+            {isReadOnly && <ReadOnlyBanner />}
 
             <main className="flex-1 overflow-auto relative p-2 sm:p-4 md:p-6">
               <Outlet />
-              {status === 'cancelado' && (
+              {isReadOnly && (
                 <div 
                   className="absolute inset-0 bg-black bg-opacity-5 z-50 cursor-not-allowed"
                   title="La funcionalidad está restringida. Por favor, renueva tu suscripción."

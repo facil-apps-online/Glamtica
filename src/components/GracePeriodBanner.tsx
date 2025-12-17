@@ -17,7 +17,7 @@ export function GracePeriodBanner() {
         <span className="font-semibold">Tu suscripción ha vencido.</span> Tienes 3 días de gracia antes de que se restrinja el acceso.
       </div>
       <Button asChild size="sm" className="bg-orange-700 hover:bg-orange-800 text-white ml-4">
-        <Link to="/subscribe">Renovar Ahora</Link>
+        <Link to="/app/settings?tab=subscription">Renovar Ahora</Link>
       </Button>
       <button
         onClick={() => setIsVisible(false)}

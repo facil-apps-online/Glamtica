@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, Trash2, UploadCloud, Clock, Plus } from "lucide-react";
+import { Link, Trash2, UploadCloud, Clock, Plus, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -33,9 +33,10 @@ interface ComboSubItemCardProps {
   branchId?: string;
   isAttentionEditable: boolean;
   onUpdate: (subIndex: number, updates: Partial<ItemForm>) => void;
+  clientId?: string;
 }
 
-const ComboSubItemCard = ({ subItem, subIndex, attentionDateTime, branchId, isAttentionEditable, onUpdate }: ComboSubItemCardProps) => {
+const ComboSubItemCard = ({ subItem, subIndex, attentionDateTime, branchId, isAttentionEditable, onUpdate, clientId }: ComboSubItemCardProps) => {
   const [professionalSearchTerm, setProfessionalSearchTerm] = useState("");
   const debouncedSetProfessionalSearchTerm = useMemo(() => debounce(setProfessionalSearchTerm, 300), []);
 
@@ -49,7 +50,8 @@ const ComboSubItemCard = ({ subItem, subIndex, attentionDateTime, branchId, isAt
     branchId,
     subItem.is_existing ? subItem.user_id : undefined,
     subItem.is_existing ? subItem.id : undefined,
-    professionalSearchTerm
+    professionalSearchTerm,
+    clientId
   );
 
   // Hook para vendedores de productos
@@ -62,7 +64,12 @@ const ComboSubItemCard = ({ subItem, subIndex, attentionDateTime, branchId, isAt
     if (!availableUsers) return [];
     return availableUsers.map((user: any) => ({
       value: user.user_id,
-      label: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+      label: (
+        <div className="flex items-center gap-2">
+          {`${user.users?.name || `${user.first_name || ''} ${user.last_name || ''}`.trim()} - Comisión: ${user.commission_rate}%`}
+          {user.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
+        </div>
+      ),
     }));
   }, [availableUsers]);
 
@@ -268,51 +275,20 @@ const ItemFormCard = ({
     branchId,
     item.is_existing ? item.user_id : undefined,
     item.is_existing ? item.id : undefined,
-    professionalSearchTerm
+    professionalSearchTerm,
+    attention?.client_id
   );
-
-  useEffect(() => {
-    if (item.type === 'combo' && !item.is_existing && comboDetails) {
-      const newItems = comboDetails.items.map((ci: any) => ({
-        id: `temp-${ci.item_id}`,
-        type: ci.service_id ? 'service' : 'product',
-        item_id: ci.service_id || ci.product_id,
-        item_name: ci.name,
-        quantity: ci.quantity,
-        price: ci.final_price,
-        duration: ci.duration_minutes,
-        is_existing: false,
-        status: 'Pendiente',
-        user_id: '',
-        start_time: '',
-        end_time: '',
-        is_parallel: false,
-        parallel_group_id: null,
-        offset_minutes: ci.offset_minutes || 0,
-      }));
-
-      const baseDuration = newItems.reduce((acc, comboItem) => {
-        if (comboItem.type === 'service') {
-          return acc + (comboItem.duration || 0);
-        }
-        return acc;
-      }, 0);
-      
-      const basePrice = newItems.reduce((acc, comboItem) => acc + (comboItem.price || 0), 0);
-
-      onUpdate(index, {
-        duration: baseDuration,
-        price: basePrice,
-        items: newItems,
-      });
-    }
-  }, [comboDetails, item.type, item.is_existing, index, onUpdate]);
 
   const availableUsersOptions = useMemo(() => {
     if (!availableUsers) return [];
     return availableUsers.map((user: any) => ({
       value: user.user_id,
-      label: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+      label: (
+        <div className="flex items-center gap-2">
+          {`${user.users?.name || `${user.first_name || ''} ${user.last_name || ''}`.trim()} - Comisión: ${user.commission_rate}%`}
+          {user.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
+        </div>
+      ),
     }));
   }, [availableUsers]);
 
@@ -585,6 +561,7 @@ const ItemFormCard = ({
                                   branchId={branchId}
                                   isAttentionEditable={isAttentionEditable}
                                   onUpdate={handleUpdateSubItem}
+                                  clientId={attention?.client_id}
                                 />
                             ))}
                         </div>
