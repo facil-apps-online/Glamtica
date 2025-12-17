@@ -14,7 +14,7 @@ export interface TimeOffRequest {
   branch_name?: string; // Nuevo campo para el nombre de la sucursal
   start_date: Date;
   end_date: Date;
-  type: string;
+  absence_type_id: string;
   reason?: string;
   status?: 'pending' | 'approved' | 'rejected';
   approved_by?: string | null;
@@ -67,36 +67,27 @@ export const useUserTimeOff = (userId?: string, statusFilter?: TimeOffRequest['s
 // Hook to create a new time off request
 export const useCreateTimeOffRequest = () => {
   const queryClient = useQueryClient();
-  const { currentAssignment } = useAuth();
-  const tenantId = currentAssignment?.tenant_id;
+  const { supabaseClient } = useAuth();
 
-  return useMutation<TimeOffRequest, Error, Omit<TimeOffRequest, 'id' | 'created_at' | 'status' | 'approved_by' | 'approved_at' | 'notes' | 'branch_name'> & { is_partial_day: boolean }>({ // Añadido is_partial_day
+  return useMutation<TimeOffRequest, Error, Omit<TimeOffRequest, 'id' | 'created_at' | 'status' | 'approved_by' | 'user_name' | 'branch_name'>>({
     mutationFn: async (requestData) => {
-      if (!tenantId) {
-        throw new Error('Tenant ID is required to create a time off request.');
-      }
+      const { data, error } = await supabaseClient.functions.invoke('tenant-actions', {
+        body: {
+          action: 'create_user_time_off',
+          payload: {
+            ...requestData,
+            start_date: requestData.start_date.toISOString(),
+            end_date: requestData.end_date.toISOString(),
+          }
+        },
+      });
 
-      const { data, error } = await supabase
-        .from('user_time_off')
-        .insert([{ 
-          user_id: requestData.user_id,
-          start_date: requestData.start_date.toISOString(),
-          end_date: requestData.end_date.toISOString(),
-          type: requestData.type,
-          reason: requestData.reason,
-          status: 'pending',
-          is_partial_day: requestData.is_partial_day, // Añadido is_partial_day
-          tenant_id: tenantId,
-          branch_id: requestData.branch_id, // Añadido branch_id
-        }])
-        .select()
-        .single();
-      
       if (error) throw new Error(error.message);
       return { ...data, start_date: new Date(data.start_date), end_date: new Date(data.end_date) } as TimeOffRequest;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['user-time-off', variables.user_id] });
+      queryClient.invalidateQueries({ queryKey: ['user-time-off'] });
     },
   });
 };

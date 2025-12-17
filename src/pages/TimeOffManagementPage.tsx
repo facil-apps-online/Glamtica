@@ -17,15 +17,9 @@ import { subMonths } from 'date-fns';
 import { TimeOffRequest } from '@/hooks/useUserTimeOff';
 import DatePickerButtonInput from "@/components/DatePickerButtonInput";
 
-registerLocale("es", es);
+import { useGetAbsenceTypes } from '@/hooks/useAbsenceTypes';
 
-const TIME_OFF_TYPES = [
-  { value: 'vacation', label: 'Vacaciones' },
-  { value: 'sick', label: 'Enfermedad' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'training', label: 'Capacitación' },
-  { value: 'other', label: 'Otro' },
-];
+registerLocale("es", es);
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'Todos' },
@@ -46,6 +40,8 @@ const TimeOffManagementPage: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | undefined>(subMonths(new Date(), 1));
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [filterSearchTerm, setFilterSearchTerm] = useState<string>('');
+
+  const { data: absenceTypes, isLoading: isLoadingAbsenceTypes } = useGetAbsenceTypes(true);
 
   const isSuperAdmin = currentAssignment?.role_name === 'tenant_super_admin';
   const canApprovePending = isSuperAdmin || currentAssignment?.role_name === 'tenant_admin';
@@ -79,6 +75,25 @@ const TimeOffManagementPage: React.FC = () => {
       );
     }
   };
+
+  const typeFilterSelect = (
+    <div className="space-y-2">
+      <Label htmlFor="typeFilter">Tipo de Permiso</Label>
+      <Select value={selectedType} onValueChange={setSelectedType}>
+        <SelectTrigger id="typeFilter"><SelectValue placeholder="Filtrar por tipo" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          {isLoadingAbsenceTypes ? (
+            <SelectItem value="loading" disabled>Cargando...</SelectItem>
+          ) : (
+            absenceTypes?.map((type) => (
+              <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -123,16 +138,7 @@ const TimeOffManagementPage: React.FC = () => {
                         <SelectContent>{STATUS_FILTERS.map((status) => (<SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>))}</SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="typeFilter">Tipo de Permiso</Label>
-                      <Select value={selectedType} onValueChange={setSelectedType}>
-                        <SelectTrigger id="typeFilter"><SelectValue placeholder="Filtrar por tipo" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {TIME_OFF_TYPES.map((type) => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {typeFilterSelect}
                     <div className="space-y-2 md:col-span-2">
                       <Label>Rango de Fechas</Label>
                       <div className="flex items-center gap-2">
@@ -175,16 +181,7 @@ const TimeOffManagementPage: React.FC = () => {
                         <SelectContent>{STATUS_FILTERS.map((status) => (<SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>))}</SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="typeFilterDesktop">Tipo de Permiso</Label>
-                      <Select value={selectedType} onValueChange={setSelectedType}>
-                        <SelectTrigger id="typeFilterDesktop"><SelectValue placeholder="Filtrar por tipo" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {TIME_OFF_TYPES.map((type) => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {typeFilterSelect}
                     <div className="space-y-2 md:col-span-2">
                       <Label>Rango de Fechas</Label>
                       <div className="flex items-center gap-2 border rounded-md p-1">

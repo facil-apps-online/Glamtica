@@ -1,4 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { useGetAbsenceTypes } from "@/hooks/useAbsenceTypes";
+import { useCreateTimeOffRequest } from "@/hooks/useUserTimeOff";
+import { useBranchFilterStore } from "@/stores/branchFilterStore";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { registerLocale } from "react-datepicker";
+import es from "date-fns/locale/es";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,14 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
-import { useCreateTimeOffRequest } from "@/hooks/useUserTimeOff";
-import { formatInTimeZone } from 'date-fns-tz';
-import { useAuth } from "@/contexts/AuthContext";
-import { useBranchFilterStore } from "@/stores/branchFilterStore";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { registerLocale } from "react-datepicker";
-import es from "date-fns/locale/es";
 
 registerLocale("es", es);
 
@@ -21,14 +20,6 @@ interface TimeOffRequestDialogProps {
   userId: string;
   trigger?: React.ReactNode;
 }
-
-const TIME_OFF_TYPES = [
-  { value: 'vacation', label: 'Vacaciones' },
-  { value: 'sick', label: 'Enfermedad' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'training', label: 'Capacitación' },
-  { value: 'other', label: 'Otro' },
-];
 
 export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -38,23 +29,27 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
   const [endTime, setEndTime] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [isPartialDay, setIsPartialDay] = useState(false);
-  const [type, setType] = useState("");
-  const { currentAssignment } = useAuth();
+  const [absenceTypeId, setAbsenceTypeId] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { selectedBranchId } = useBranchFilterStore();
   const createRequestMutation = useCreateTimeOffRequest();
+  const { data: absenceTypes, isLoading: isLoadingAbsenceTypes } = useGetAbsenceTypes();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null); // Clear previous errors
     
     const branchIdToUse = selectedBranchId === 'all' ? null : selectedBranchId;
 
-    if (!startDate || !endDate || !type || !branchIdToUse) return;
+    if (!startDate || !endDate || !absenceTypeId || !branchIdToUse) {
+      setErrorMessage("Por favor, asegúrate de que todos los campos requeridos estén llenos y hayas seleccionado una sucursal.");
+      return;
+    }
 
     let finalStartDate = startDate;
     let finalEndDate = endDate;
 
     if (isPartialDay) {
-      // Combine date and time for partial day
       if (startTime) {
         const [hours, minutes] = startTime.split(':').map(Number);
         finalStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), hours, minutes);
@@ -64,7 +59,6 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
         finalEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), hours, minutes);
       }
     } else {
-      // For full day, set time to start/end of day
       finalStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
       finalEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
     }
@@ -74,7 +68,7 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
         user_id: userId,
         start_date: finalStartDate,
         end_date: finalEndDate,
-        type: type,
+        absence_type_id: absenceTypeId,
         reason: reason || undefined,
         is_partial_day: isPartialDay,
         branch_id: branchIdToUse,
@@ -86,10 +80,11 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
       setEndTime(null);
       setReason("");
       setIsPartialDay(false);
-      setType("");
+      setAbsenceTypeId("");
       setOpen(false);
     } catch (error) {
       console.error('Error creating time off request:', error);
+      setErrorMessage("Error al crear la solicitud de ausencia. Por favor, inténtalo de nuevo.");
     }
   };
 
@@ -107,20 +102,30 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
         <DialogHeader>
           <DialogTitle>Solicitar Ausencia</DialogTitle>
         </DialogHeader>
+        {errorMessage && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">¡Error! </strong>
+            <span className="block sm:inline">{errorMessage}</span>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           
           <div className="space-y-2">
             <Label>Tipo de Ausencia</Label>
-            <Select value={type} onValueChange={setType}>
+            <Select value={absenceTypeId} onValueChange={setAbsenceTypeId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona un tipo" />
               </SelectTrigger>
               <SelectContent>
-                {TIME_OFF_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
+                {isLoadingAbsenceTypes ? (
+                  <SelectItem value="loading" disabled>Cargando tipos...</SelectItem>
+                ) : (
+                  absenceTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -133,8 +138,8 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
                 onChange={(date: Date) => setStartDate(date)}
                 locale="es"
                 dateFormat="dd/MM/yyyy"
-                minDate={new Date()} // Disable past dates
-                className="w-full px-3 py-2 border border-input rounded-md" // Basic styling to match Input
+                minDate={new Date()}
+                className="w-full px-3 py-2 border border-input rounded-md"
               />
             </div>
             <div className="space-y-2">
@@ -144,8 +149,8 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
                 onChange={(date: Date) => setEndDate(date)}
                 locale="es"
                 dateFormat="dd/MM/yyyy"
-                minDate={startDate || new Date()} // Disable past dates, and ensure end date is not before start date
-                className="w-full px-3 py-2 border border-input rounded-md" // Basic styling to match Input
+                minDate={startDate || new Date()}
+                className="w-full px-3 py-2 border border-input rounded-md"
               />
             </div>
           </div>
@@ -197,7 +202,7 @@ export const TimeOffRequestDialog = ({ userId, trigger }: TimeOffRequestDialogPr
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={createRequestMutation.isPending || !startDate || !endDate || !type || (isPartialDay && (!startTime || !endTime))}>
+            <Button type="submit" disabled={createRequestMutation.isPending || !startDate || !endDate || !absenceTypeId || (isPartialDay && (!startTime || !endTime))}>
               {createRequestMutation.isPending ? 'Enviando...' : 'Enviar Solicitud'}
             </Button>
           </div>

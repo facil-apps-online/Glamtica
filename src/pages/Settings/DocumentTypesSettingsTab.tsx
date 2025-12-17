@@ -21,6 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ContactTypesSettingsTab } from './ContactTypesSettingsTab';
+import { AbsenceTypesSettingsTab } from './AbsenceTypesSettingsTab';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
@@ -214,6 +215,7 @@ export function DocumentTypesSettingsTab() {
             </CardContent>
           </Card>
           <ContactTypesSettingsTab />
+          <AbsenceTypesSettingsTab />
         </CardContent>
       </Card>
     </div>
