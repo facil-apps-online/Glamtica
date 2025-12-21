@@ -23,7 +23,6 @@ interface ExpenseProviderContactsManagerProps {
 export const ExpenseProviderContactsManager: React.FC<ExpenseProviderContactsManagerProps> = ({ providerId }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -38,7 +37,7 @@ export const ExpenseProviderContactsManager: React.FC<ExpenseProviderContactsMan
     mutationFn: (id: string) => fetchTenantAction("delete-expense-provider-contact", { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenseProviderContacts", providerId] });
-      toast({ title: "Contacto eliminado exitosamente.", variant: "success" });
+      toast({ title: "Éxito", description: "Contacto eliminado exitosamente.", variant: "success" });
       setIsDeleteDialogOpen(false);
       setSelectedContactId(null);
     },
@@ -58,25 +57,8 @@ export const ExpenseProviderContactsManager: React.FC<ExpenseProviderContactsMan
     setIsDeleteDialogOpen(true);
   };
 
-  const handleEditClick = (contact: Contact) => {
-    setEditingContact(contact);
-  };
-
-  const handleDialogSuccess = () => {
-    setEditingContact(null);
-  };
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Contactos</CardTitle>
-        <ExpenseProviderContactDialog providerId={providerId} onSuccess={() => {}}>
-            <Button size="sm">
-                <Plus className="w-4 h-4 mr-2" /> Añadir Contacto
-            </Button>
-        </ExpenseProviderContactDialog>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div>
         {isLoading && <p>Cargando contactos...</p>}
         {!isLoading && contacts?.length === 0 && (
           <p className="text-sm text-gray-500">No hay contactos registrados para este proveedor.</p>
@@ -90,33 +72,29 @@ export const ExpenseProviderContactsManager: React.FC<ExpenseProviderContactsMan
               {contact.phone && <p className="text-sm">{contact.phone}</p>}
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => handleEditClick(contact)}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(contact.id)}>
+              <ExpenseProviderContactDialog
+                providerId={providerId}
+                contact={contact}
+              >
+                <Button type="button" variant="ghost" size="icon">
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </ExpenseProviderContactDialog>
+              <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteClick(contact.id)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </div>
         ))}
-      </CardContent>
-      {editingContact && (
-        <ExpenseProviderContactDialog
-          providerId={providerId}
-          contact={editingContact}
-          onSuccess={handleDialogSuccess}
-          trigger={<div style={{ display: 'none' }} />} // Hidden trigger
-        />
-      )}
       <ConfirmationDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => !open && setIsDeleteDialogOpen(false)}
         onConfirm={() => selectedContactId && deleteMutation.mutate(selectedContactId)}
         title="¿Estás seguro?"
         description="Esta acción eliminará el contacto permanentemente."
         isConfirming={deleteMutation.isPending}
         variant="destructive"
       />
-    </Card>
+    </div>
   );
 };

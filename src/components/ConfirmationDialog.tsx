@@ -9,6 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -16,6 +18,8 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   title: string;
   description: string;
+  isConfirming?: boolean;
+  variant?: "default" | "destructive";
 }
 
 export const ConfirmationDialog = ({
@@ -24,6 +28,8 @@ export const ConfirmationDialog = ({
   onConfirm,
   title,
   description,
+  isConfirming = false,
+  variant = "default",
 }: ConfirmationDialogProps) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -33,8 +39,14 @@ export const ConfirmationDialog = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Confirmar</AlertDialogAction>
+          <AlertDialogCancel disabled={isConfirming}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isConfirming}
+            className={cn(buttonVariants({ variant }))}
+          >
+            {isConfirming ? "Confirmando..." : "Confirmar"}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

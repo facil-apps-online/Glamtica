@@ -31,17 +31,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchTenantAction } from "@/lib/fetchTenantAction";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit } from "lucide-react";
+import { useGetContactTypes } from "@/hooks/useContactTypes";
 
 interface ContactType {
   id: string;
   name: string;
+  is_for_supplier: boolean;
 }
 
 interface ExpenseProviderContactDialogProps {
   providerId: string;
   contact?: z.infer<typeof formSchema> & { id: string };
   onSuccess?: () => void;
-  trigger?: React.ReactNode;
+  children: React.ReactNode; // Changed from trigger?
 }
 
 const formSchema = z.object({
@@ -53,7 +55,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export const ExpenseProviderContactDialog: React.FC<ExpenseProviderContactDialogProps> = ({ providerId, contact, onSuccess, trigger }) => {
+export const ExpenseProviderContactDialog: React.FC<ExpenseProviderContactDialogProps> = ({ providerId, contact, onSuccess, children }) => { // Changed from trigger
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -68,10 +70,7 @@ export const ExpenseProviderContactDialog: React.FC<ExpenseProviderContactDialog
     },
   });
 
-  const { data: contactTypes, isLoading: isLoadingContactTypes } = useQuery<ContactType[]>({
-    queryKey: ["contactTypes", "expense_provider"],
-    queryFn: () => fetchTenantAction("get_contact_types", { applies_to: "expense_provider" }),
-  });
+  const { data: contactTypes, isLoading: isLoadingContactTypes } = useGetContactTypes();
 
   const mutation = useMutation({
     mutationFn: (newContact: FormValues & { expense_provider_id: string; id?: string }) => {
@@ -80,7 +79,7 @@ export const ExpenseProviderContactDialog: React.FC<ExpenseProviderContactDialog
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenseProviderContacts", providerId] });
-      toast({ title: `Contacto ${contact ? 'actualizado' : 'creado'} exitosamente.`, variant: "success" });
+      toast({ title: "Éxito", description: `Contacto ${contact ? 'actualizado' : 'creado'} exitosamente.`, variant: "success" });
       setIsOpen(false);
       onSuccess?.();
     },
@@ -105,13 +104,7 @@ export const ExpenseProviderContactDialog: React.FC<ExpenseProviderContactDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-            <Button size="sm">
-                <Plus className="w-4 h-4 mr-2" /> Añadir Contacto
-            </Button>
-        )}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{contact ? "Editar Contacto" : "Añadir Contacto"}</DialogTitle>
@@ -126,7 +119,7 @@ export const ExpenseProviderContactDialog: React.FC<ExpenseProviderContactDialog
                 <FormLabel>Tipo de Contacto</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingContactTypes}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger></FormControl>
-                  <SelectContent>{contactTypes?.map(type => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
+                  <SelectContent>{contactTypes?.filter(ct => ct.is_for_supplier).map(type => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>

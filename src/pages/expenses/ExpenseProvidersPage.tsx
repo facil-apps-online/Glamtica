@@ -213,7 +213,7 @@ export default function ExpenseProvidersPage() {
     <div className="space-y-4">
       <PageHeader
         title="Proveedores de Gastos"
-        description="Gestiona los proveedores de los gastos del estudio."
+        subtitle="Gestiona los proveedores de los gastos del salón."
         backButton={
           <Button variant="outline" size="icon" onClick={() => navigate('/app/expenses')}>
             <ArrowLeft className="h-4 w-4" />

@@ -321,18 +321,19 @@ export default function EditExpenseProviderPage() {
                                 </Card>
                             )}
                             {activeTab === 'addresses' && (
-                                <Card>
+                                <div>
                                     <CardHeader>
                                         <div className="flex justify-between items-center">
                                             <CardTitle>Direcciones Adicionales</CardTitle>
                                             <Button type="button" variant="outline" size="icon" onClick={() => setIsAddingAddress(!isAddingAddress)}>
-                                                                                                 <Plus className="h-4 w-4" />
-                                                                                             </Button>
-                                                                                         </div>
-                                                                                     </CardHeader>
-                                                                                     <CardContent className="pt-6">                                        <ExpenseProviderAddressesManager providerId={expenseProvider.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-6">
+                                        <ExpenseProviderAddressesManager providerId={expenseProvider.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
                                     </CardContent>
-                                </Card>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -444,20 +445,18 @@ export default function EditExpenseProviderPage() {
                                 </Card>
                             </TabsContent>
                             <TabsContent value="addresses">
-                                    <Card>
-                                        <CardHeader>
-                                            <div className="flex justify-between items-center">
-                                                <CardTitle>Direcciones Adicionales</CardTitle>
-                                                <Button type="button" variant="outline" onClick={() => setIsAddingAddress(!isAddingAddress)}>
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    Añadir Dirección
-                                                </Button>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <ExpenseProviderAddressesManager providerId={expenseProvider.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
-                                        </CardContent>
-                                    </Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <CardTitle>Direcciones Adicionales</CardTitle>
+                                        <Button type="button" variant="outline" onClick={() => setIsAddingAddress(!isAddingAddress)}>
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Añadir Dirección
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pt-6">
+                                    <ExpenseProviderAddressesManager providerId={expenseProvider.id} isAdding={isAddingAddress} setIsAdding={setIsAddingAddress} />
+                                </CardContent>
                             </TabsContent>
                         </Tabs>
                     </div>
