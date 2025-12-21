@@ -34,6 +34,9 @@ import TimeOffHistoryPage from "@/pages/TimeOffHistoryPage";
 import CommissionsPage from "@/pages/CommissionsPage";
 import EquipmentPage from "@/pages/EquipmentPage";
 import EditEquipmentPage from "@/pages/Equipments/EditEquipmentPage";
+import ExpensesPage from "@/pages/expenses/ExpensesPage";
+import ExpenseProvidersPage from "@/pages/expenses/ExpenseProvidersPage";
+import EditExpenseProviderPage from "@/pages/expenses/EditExpenseProviderPage";
 
 
 
@@ -132,6 +135,11 @@ function App() {
                   <Route path="time-off-management" element={<TimeOffManagementPage />} />
                   <Route path="time-off-history" element={<TimeOffHistoryPage />} />
                   <Route path="commissions" element={<CommissionsPage />} />
+                  <Route path="expenses">
+                    <Route index element={<ExpensesPage />} />
+                    <Route path="providers" element={<ExpenseProvidersPage />} />
+                    <Route path="providers/edit/:id" element={<EditExpenseProviderPage />} />
+                  </Route>
                   
                   {/* Ruta de desarrollo para el UI Kit */}
                   <Route path="dev/uikit" element={<UIKit />} />

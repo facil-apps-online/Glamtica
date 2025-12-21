@@ -13,7 +13,8 @@ import {
   HardHat,
   Plane,
   Landmark,
-  ClipboardPlus
+  ClipboardPlus,
+  Banknote
 } from 'lucide-react';
 
 export const tenantNavigationConfig = [
@@ -103,6 +104,17 @@ export const tenantNavigationConfig = [
         roles: ['tenant_super_admin', 'tenant_admin']
       },
       
+    ]
+  },
+  {
+    group: "Gastos",
+    items: [
+      {
+        title: "Gestión de Gastos",
+        url: "/app/expenses",
+        icon: Banknote,
+        roles: ['tenant_super_admin', 'tenant_admin']
+      }
     ]
   },
   {

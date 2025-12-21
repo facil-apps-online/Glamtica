@@ -28,7 +28,7 @@ export const ClientContactDialog = ({ clientId, contact, children }: { clientId:
     const [open, setOpen] = useState(false);
     const createMutation = useCreateClientContact();
     const updateMutation = useUpdateClientContact();
-    const { data: contactTypes, isLoading: isLoadingContactTypes } = useGetContactTypes();
+    const { data: contactTypes, isLoading: isLoadingContactTypes } = useGetContactTypes('client');
 
     const form = useForm<ContactFormValues>({
         resolver: zodResolver(contactFormSchema),
@@ -88,7 +88,7 @@ export const ClientContactDialog = ({ clientId, contact, children }: { clientId:
                                             {isLoadingContactTypes ? (
                                                 <SelectItem value="loading" disabled>Cargando...</SelectItem>
                                             ) : (
-                                                contactTypes?.filter(ct => ct.is_for_client).map(ct => (
+                                                contactTypes?.map(ct => (
                                                     <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>
                                                 ))
                                             )}

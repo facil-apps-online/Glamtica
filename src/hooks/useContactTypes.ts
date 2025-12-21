@@ -20,10 +20,10 @@ const callTenantAction = async (action: string, payload: any) => {
   return data;
 };
 
-export const useGetContactTypes = () => {
+export const useGetContactTypes = (applies_to?: 'client' | 'supplier') => {
   return useQuery<ContactType[], Error>({
-    queryKey: ['contact_types'],
-    queryFn: () => callTenantAction('get_contact_types', {}),
+    queryKey: ['contact_types', applies_to],
+    queryFn: () => callTenantAction('get_contact_types', { applies_to }),
   });
 };
 
