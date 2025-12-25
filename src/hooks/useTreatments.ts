@@ -62,6 +62,7 @@ export interface ClientTreatment {
     completed: number;
     total: number;
   };
+  has_scheduled_sessions: boolean;
 }
 
 export interface ClientTreatmentSession {
@@ -70,9 +71,10 @@ export interface ClientTreatmentSession {
     session_number: number;
     name: string;
     description: string;
-    status: 'pending' | 'completed';
+    status: 'pending' | 'completed' | 'Cita Asignada';
     completed_at: string | null;
     attention_id: string | null;
+    attention_datetime: string | null; // AÑADIR ESTA LÍNEA
     payment_due: {
         amount: number | null;
         percentage: number | null;
@@ -134,8 +136,8 @@ export const useClientTreatmentDetails = (clientTreatmentId: string) => {
     queryKey: ['client_treatment_details', clientTreatmentId],
     queryFn: async () => {
       const result = await fetchTenantAction('get_client_treatment_details', { client_treatment_id: clientTreatmentId });
-      // The RPC returns an array with a single object. We need to return that object.
-      return result.data?.[0];
+      // The RPC now returns a single JSON object.
+      return result.data;
     },
     enabled: !!clientTreatmentId,
   });
@@ -460,6 +462,41 @@ export const useDeleteClientTreatment = () => {
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: `No se pudo eliminar el tratamiento: ${error.message}`, variant: "destructive" });
+    },
+  });
+};
+
+export const useCancelTreatmentSession = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (sessionId: string) => 
+      fetchTenantAction('cancel_treatment_session', { p_session_id: sessionId }),
+    onSuccess: () => {
+      // Invalidate all client treatment details to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['client_treatment_details'] });
+      toast({ title: "Sesión Cancelada", description: "La sesión ha sido marcada como cancelada.", variant: "success" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `No se pudo cancelar la sesión: ${error.message}`, variant: "destructive" });
+    },
+  });
+};
+
+export const useReactivateTreatmentSession = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (sessionId: string) => 
+      fetchTenantAction('reactivate_treatment_session', { p_session_id: sessionId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client_treatment_details'] });
+      toast({ title: "Sesión Reactivada", description: "La sesión ahora está pendiente y puede ser asignada.", variant: "success" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `No se pudo reactivar la sesión: ${error.message}`, variant: "destructive" });
     },
   });
 };

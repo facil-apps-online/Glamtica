@@ -154,129 +154,291 @@ export interface ItemForm {
 }
 
 export interface ItemFormCardProps {
+
   item: ItemForm;
+
   index: number;
+
   attentionDateTime: Date | null;
+
   branchId?: string;
+
   onUpdate: (index: number, updates: Partial<ItemForm>) => void;
+
   onRemove: (index: number) => void;
+
   onSearchItems?: (searchTerm: string) => void;
+
   isLoadingItems?: boolean;
+
   canRemove: boolean;
+
   availableServicesAndCombos: any[];
+
   availableBranchProducts: any[];
+
   isAttentionEditable: boolean;
+
   tenantId?: string;
+
   screenSize: 'mobile' | 'tablet' | 'desktop';
+
   attentionId: string; // ADD THIS LINE
+
   attention: any;
+
+  clientId?: string;
+
   salesSettings?: {
+
     allow_price_modification?: boolean;
+
     price_modification_role_ids?: string[];
+
     enforce_minimum_price?: boolean;
+
   };
+
   userRole?: string;
+
   isLoadingSalesSettings?: boolean;
+
 }
 
+
+
 const ItemFormCard = ({
+
   item,
+
   index,
+
   attentionDateTime,
+
   branchId,
+
   onUpdate,
+
   onRemove,
+
   onSearchItems,
+
   isLoadingItems,
+
   canRemove,
+
   availableServicesAndCombos,
+
   availableBranchProducts,
+
   isAttentionEditable,
+
   attentionId, // ADD THIS LINE
+
   attention,
+
+  clientId,
+
   salesSettings,
+
   userRole,
+
   isLoadingSalesSettings,
+
 }: ItemFormCardProps) => {
+
   const [evidenceDialogService, setEvidenceDialogService] = useState<ItemForm | null>(null);
+
   const [professionalSearchTerm, setProfessionalSearchTerm] = useState("");
+
   const debouncedSetProfessionalSearchTerm = useMemo(() => debounce(setProfessionalSearchTerm, 300), []);
+
   const [sellerSearchTerm, setSellerSearchTerm] = useState("");
+
   const debouncedSetSellerSearchTerm = useMemo(() => debounce(setSellerSearchTerm, 300), []);
+
   const startServiceMutation = useStartService();
+
   const finishServiceMutation = useFinishService();
+
   const callClientMutation = useCallClient();
+
   const [isAssignConsentDialogOpen, setIsAssignConsentDialogOpen] = useState(false); // State for consent dialog
+
   const { toast } = useToast();
+
   const { formatPrice } = usePriceFormat();
+
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
 
+
+
+  // --- NEW: Specific rendering for 'payment' type ---
+
+  if (item.type === 'payment') {
+
+    return (
+
+      <Card className="relative mb-4 w-full bg-amber-50 border-amber-200">
+
+        <CardContent className="p-4 flex items-center justify-between">
+
+          <div>
+
+            <Label className="text-amber-800">Pago de Tratamiento</Label>
+
+            <p className="font-semibold">{item.item_name}</p>
+
+          </div>
+
+          <div className="text-right">
+
+            <p className="font-semibold text-lg">{formatPrice(item.price)}</p>
+
+          </div>
+
+        </CardContent>
+
+      </Card>
+
+    );
+
+  }
+
+
+
   useEffect(() => {
+
     if (item.item_id && originalPrice === null) {
+
       setOriginalPrice(item.price);
+
     }
+
   }, [item.item_id, item.price, originalPrice]);
 
+
+
   const isPriceEditable = useMemo(() => {
+
     if (isLoadingSalesSettings || !salesSettings || !userRole) return false;
+
     return (
+
       salesSettings.allow_price_modification &&
+
       (salesSettings.price_modification_role_ids || []).includes(userRole)
+
     );
+
   }, [salesSettings, userRole, isLoadingSalesSettings]);
 
+
+
   const handlePriceChange = (newPrice: number) => {
+
     if (salesSettings?.enforce_minimum_price && originalPrice !== null && newPrice < originalPrice) {
+
       toast({
+
         title: "Precio no válido",
+
         description: `El precio no puede ser menor al original de ${formatPrice(originalPrice)}.`,
+
         variant: "warning",
+
       });
+
       onUpdate(index, { price: originalPrice });
+
     } else {
+
       onUpdate(index, { price: newPrice });
+
     }
+
   };
+
+
 
   const getStatusBadge = (status: ItemForm['status']) => {
+
     switch (status) {
+
       case 'Pendiente':
+
         return <Badge variant="secondary">Pendiente</Badge>;
+
       case 'Llamado':
+
         return <Badge variant="default" className="bg-yellow-500">Llamado</Badge>;
+
       case 'En Proceso':
+
         return <Badge variant="default" className="bg-blue-500">En Proceso</Badge>;
+
       case 'Finalizado':
+
         return <Badge variant="default" className="bg-green-500">Finalizado</Badge>;
+
       default:
+
         return <Badge variant="outline">{status}</Badge>;
+
     }
+
   };
 
+
+
   const { data: comboDetails, isLoading: isLoadingComboDetails } = useGetComboBranchDetails(
+
     (item.type === 'combo' && item.item_id && !item.is_existing) ? item.item_id : undefined,
+
     branchId
+
   );
 
+
+
   const { data: productSellers, isLoading: isLoadingProductSellers } = useProductSellers(
+
     item.type === 'product' ? item.item_id : undefined,
+
     branchId,
+
     sellerSearchTerm
+
   );
+
+
 
   const totalItemDuration = (item.duration || 0) * item.quantity;
 
+
+
   const { data: availableUsers, isLoading: isLoadingAvailableUsers } = useAvailableUsers(
+
     item.type === 'service' ? item.item_id : undefined, // Only for individual services
+
     'service',
+
     attentionDateTime ? format(attentionDateTime, 'yyyy-MM-dd') : '',
+
     item.start_time || (attentionDateTime ? format(attentionDateTime, 'HH:mm') : undefined),
+
     totalItemDuration,
+
     branchId,
+
     item.is_existing ? item.user_id : undefined,
+
     item.is_existing ? item.id : undefined,
+
     professionalSearchTerm,
-    attention?.client_id
+
+    clientId
+
   );
 
   const availableUsersOptions = useMemo(() => {
@@ -459,6 +621,7 @@ const ItemFormCard = ({
               <div className="flex-shrink-0 flex items-center gap-1">
                 {canBeParallel && (
                   <Button 
+                      type="button"
                       variant="outline" 
                       size="icon" 
                       onClick={() => onUpdate(index, { is_parallel: !item.is_parallel })}
@@ -494,22 +657,19 @@ const ItemFormCard = ({
 
             {item.type === 'service' && (
               <div>
-                  {item.is_existing ? (
-                      <div>
-                          <Label>Asignado A:</Label>
-                          <Input value={item.user_name || 'No asignado'} disabled />
-                      </div>
-                  ) : (
+                  <Label>Asignado A:</Label>
+                  {isAttentionEditable && item.status === 'Pendiente' ? (
                       <FilterableSelect
-                          label="Asignado A:"
                           placeholder="Asignar profesional"
                           options={availableUsersOptions}
                           value={item.user_id}
                           onValueChange={(value) => onUpdate(index, { user_id: value })}
-                          disabled={isItemDisabled || isLoadingAvailableUsers || !item.item_id}
+                          disabled={isLoadingAvailableUsers || !item.item_id}
                           searchPlaceholder={isLoadingAvailableUsers ? "Verificando..." : "Buscar profesional..."}
                           onSearch={debouncedSetProfessionalSearchTerm}
                       />
+                  ) : (
+                      <Input value={item.user_name || 'No asignado'} disabled />
                   )}
                   {!item.is_existing && !isLoadingAvailableUsers && availableUsers?.length === 0 && item.item_id && (
                       <p className="text-xs text-red-500 mt-1">No hay personal disponible.</p>

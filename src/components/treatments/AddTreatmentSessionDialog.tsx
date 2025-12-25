@@ -27,6 +27,45 @@ export function AddTreatmentSessionDialog({ children, clientId, onSessionSelecte
     setOpen(false);
   };
 
+  const renderSessionStatusBadge = (status: string) => {
+    let variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' = 'outline';
+    let text = '';
+    switch (status) {
+        case 'pending':
+            variant = 'outline';
+            text = 'Pendiente';
+            break;
+        case 'Cita Asignada':
+            variant = 'default';
+            text = 'Agendada';
+            break;
+        case 'Cancelada':
+            variant = 'destructive';
+            text = 'Cancelada';
+            break;
+        case 'completed':
+            variant = 'success';
+            text = 'Finalizada';
+            break;
+        default:
+            return null; // No mostrar nada si el estado es desconocido
+    }
+    return <Badge variant={variant}>{text}</Badge>;
+  };
+
+  const getDisabledButtonText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Finalizada';
+      case 'Cita Asignada':
+        return 'Agendada';
+      case 'Cancelada':
+        return 'Cancelada';
+      default:
+        return 'No disponible';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -47,7 +86,7 @@ export function AddTreatmentSessionDialog({ children, clientId, onSessionSelecte
               <SelectContent>
                 {clientTreatments?.map(treatment => (
                   <SelectItem key={treatment.id} value={treatment.id}>
-                    {treatment.name} ({treatment.progress.completed}/{treatment.progress.total} completadas)
+                    {treatment.name} ({treatment.progress.completed}/{treatment.progress.total} con actividad)
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -58,28 +97,34 @@ export function AddTreatmentSessionDialog({ children, clientId, onSessionSelecte
 
           {treatmentDetails && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-lg">Sesiones Pendientes:</h4>
-              {treatmentDetails.sessions.filter(s => s.status === 'pending').length === 0 ? (
-                <p className="text-muted-foreground">No hay sesiones pendientes para este tratamiento.</p>
+              <h4 className="font-semibold text-lg">Sesiones del Tratamiento:</h4>
+              {treatmentDetails.sessions.length === 0 ? (
+                <p className="text-muted-foreground">No hay sesiones definidas para este tratamiento.</p>
               ) : (
                 <ul className="space-y-2">
-                  {treatmentDetails.sessions
-                    .filter(s => s.status === 'pending')
-                    .map((session, index) => (
+                  {treatmentDetails.sessions.map((session, index) => (
                       <li key={session.id} className="flex items-center justify-between p-3 border rounded-md">
-                        <div>
+                        {/* Contenedor Izquierdo (Info) */}
+                        <div className="flex-grow pr-4">
                           <p className="font-medium">Sesión {session.session_number}: {session.name}</p>
                           <p className="text-sm text-muted-foreground">{session.description}</p>
                           {session.payment_due && (
                             <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="secondary">Pago:</Badge>
-                                <span className="text-sm font-semibold">{formatCurrency(session.payment_due.amount)}</span>
+                                <span className="text-sm font-semibold">Pago: {formatCurrency(session.payment_due.amount)}</span>
                             </div>
                           )}
                         </div>
-                        <Button size="sm" onClick={() => handleSelectSession(session)}>
-                          <PlusCircle className="w-4 h-4 mr-2" />Añadir
-                        </Button>
+                        
+                        {/* Contenedor Derecho (Acción o Estado) */}
+                        <div className="flex-shrink-0 ml-4">
+                            {session.status === 'pending' ? (
+                                <Button size="sm" onClick={() => handleSelectSession(session)}>
+                                    <PlusCircle className="w-4 h-4 mr-2" />Añadir
+                                </Button>
+                            ) : (
+                                renderSessionStatusBadge(session.status)
+                            )}
+                        </div>
                       </li>
                     ))}
                 </ul>

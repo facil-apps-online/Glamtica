@@ -19,6 +19,7 @@ import { TreatmentCategoryDialog } from "./TreatmentCategoryDialog";
 
 // Schema definitions
 const sessionSchema = z.object({
+  id: z.string().uuid().optional(),
   session_number: z.number().int().min(1).optional(),
   name: z.string().min(3, "El nombre de la sesión es requerido."),
   description: z.string().optional(),
@@ -61,6 +62,7 @@ interface TreatmentFormProps {
 export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave, isSaving, submitButtonText = "Crear Tratamiento" }) => {
   const { data: categories, isLoading: isLoadingCategories } = useTreatmentCategories();
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [initialCategoryIds, setInitialCategoryIds] = useState<string[]>([]);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   
   const form = useForm<FormData>({
@@ -74,7 +76,7 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
     },
   });
   
-  const { control, register, handleSubmit, reset, setValue, formState: { errors } } = form;
+  const { control, register, handleSubmit, reset, setValue, formState: { errors, isDirty } } = form;
 
   const { fields: sessionFields, append: appendSession, remove: removeSession } = useFieldArray({
     control: control,
@@ -85,7 +87,9 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
 
   useEffect(() => {
     if (treatment?.categories) {
-      setSelectedCategoryIds(treatment.categories.map(c => c.id));
+      const initialIds = treatment.categories.map(c => c.id);
+      setSelectedCategoryIds(initialIds);
+      setInitialCategoryIds(initialIds.sort());
     }
   }, [treatment]);
 
@@ -144,6 +148,8 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
   };
 
   const categoryOptions = categories?.map(c => ({ value: c.id, label: c.name })) || [];
+
+  const areCategoriesDirty = JSON.stringify(initialCategoryIds) !== JSON.stringify([...selectedCategoryIds].sort());
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -217,7 +223,7 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
         <Button type="button" variant="outline" onClick={() => appendSession({ name: `Sesión ${sessionFields.length + 1}`, description: "", items: [] })}><PlusCircle className="w-4 h-4 mr-2" /> Añadir Sesión</Button>
       </div>
       <div className="flex justify-end">
-        <Button type="submit" disabled={isSaving}>
+        <Button type="submit" disabled={(!isDirty && !areCategoriesDirty) || isSaving}>
             <Save className="w-4 h-4 mr-2" />
             {submitButtonText}
         </Button>

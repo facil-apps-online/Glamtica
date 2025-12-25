@@ -6,6 +6,7 @@ import { callTenantAction } from "@/lib/tenantActions";
 interface UpdateAttentionItemsParams {
   p_attention_id: string;
   p_branch_id: string;
+  p_notes: string;
   p_services_to_upsert: any[];
   p_products_to_upsert: any[];
   p_combos_to_upsert: any[];

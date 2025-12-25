@@ -719,7 +719,8 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
   const totalServices = standaloneServices.reduce((sum, s) => sum + (s.service_price || 0), 0);
   const totalProducts = standaloneProducts.reduce((sum, p) => sum + (p.total_price || 0), 0);
   const totalCombos = attention.attention_combos?.reduce((sum, c) => sum + (c.price || 0) * (c.quantity || 1), 0) || 0;
-  const grandTotal = totalServices + totalProducts + totalCombos;
+  const itemsTotal = totalServices + totalProducts + totalCombos;
+  const treatmentPayment = attention.total_amount > itemsTotal ? attention.total_amount - itemsTotal : 0;
 
   const hasCombos = attention.attention_combos && attention.attention_combos.length > 0;
   const hasServices = standaloneServices.length > 0;
@@ -959,7 +960,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
             )}
             {canPayAttention && (
               <Button 
-                onClick={() => onOpenPaymentDialog({ ...attention, total_amount: grandTotal })}
+                onClick={() => onOpenPaymentDialog({ ...attention, total_amount: attention.total_amount })}
                 disabled={updateStatusMutation.isPending}
                 size="sm"
               >
@@ -973,9 +974,14 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
               <span>Total Servicios: {formatPrice(totalServices)}</span>
               <span className={!isMobile ? 'ml-2' : ''}>+ Productos: {formatPrice(totalProducts)}</span>
               <span className={!isMobile ? 'ml-2' : ''}>+ Combos: {formatPrice(totalCombos)}</span>
+              {treatmentPayment > 0 && (
+                <span className={`font-semibold text-purple-600 ${!isMobile ? 'ml-2' : ''}`}>
+                  + Pago Tratamiento: {formatPrice(treatmentPayment)}
+                </span>
+              )}
             </div>
             <div className="text-lg font-bold text-right">
-              Total: {formatPrice(grandTotal)}
+              Total: {formatPrice(attention.total_amount)}
             </div>
           </div>
         </div>

@@ -1,11 +1,13 @@
 import React from 'react';
-import { useClientTreatments, useClientTreatmentDetails, ClientTreatment, useDeleteClientTreatment } from '@/hooks/useTreatments'; // Updated import
+import { useClientTreatments, useClientTreatmentDetails, ClientTreatment, useDeleteClientTreatment, useCancelTreatmentSession, useReactivateTreatmentSession } from '@/hooks/useTreatments'; // Updated import
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePriceFormat } from '@/hooks/usePriceFormat';
-import { CheckCircle2, Circle, LucideIcon, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, LucideIcon, Trash2, CalendarClock, XCircle, Undo2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -22,38 +24,139 @@ import {
 const TreatmentDetailContent = ({ clientTreatmentId }: { clientTreatmentId: string }) => {
     const { data: details, isLoading, error } = useClientTreatmentDetails(clientTreatmentId);
     const { formatPrice } = usePriceFormat();
+    const { mutate: cancelSession, isPending: isCancelling } = useCancelTreatmentSession();
+    const { mutate: reactivateSession, isPending: isReactivating } = useReactivateTreatmentSession();
 
     if (isLoading) return <div className="p-4"><p>Cargando detalles...</p></div>;
     if (error) return <div className="p-4 text-red-500"><p>Error: {error.message}</p></div>;
     if (!details) return null;
 
+    const renderSessionIcon = (session: any) => {
+        const isActionPending = isCancelling || isReactivating;
+        switch (session.status) {
+            case 'completed':
+                return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+            case 'Cita Asignada':
+                return <CalendarClock className="h-5 w-5 text-blue-500" />;
+            case 'Cancelada':
+                return (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 cursor-pointer" disabled={isActionPending}>
+                                <Undo2 className="h-5 w-5 text-gray-400 hover:text-green-500" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Reactivar esta sesión?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    La sesión volverá al estado 'Pendiente' y podrá ser asignada a una nueva cita.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Volver</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => reactivateSession(session.id)} disabled={isActionPending}>
+                                    {isReactivating ? 'Reactivando...' : 'Confirmar Reactivación'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                );
+            case 'pending':
+                return (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 cursor-pointer" disabled={isActionPending}>
+                                <XCircle className="h-5 w-5 text-gray-400 hover:text-red-500" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Estás seguro de cancelar esta sesión?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción marcará la sesión como cancelada. Podrás reactivarla más tarde.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Volver</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => cancelSession(session.id)} disabled={isActionPending}>
+                                    {isCancelling ? 'Cancelando...' : 'Confirmar Cancelación'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                );
+            default:
+                return <Circle className="h-5 w-5 text-gray-400" />;
+        }
+    };
+
+    const renderSessionStatusBadge = (status: string) => {
+        let variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' = 'outline';
+        let text = '';
+        switch (status) {
+            case 'pending':
+                variant = 'outline'; // Blanco
+                text = 'Pendiente';
+                break;
+            case 'Cita Asignada':
+                variant = 'default'; // Azul
+                text = 'Agendada';
+                break;
+            case 'Cancelada':
+                variant = 'destructive'; // Rojo
+                text = 'Cancelada';
+                break;
+            case 'completed':
+                variant = 'success'; // Verde
+                text = 'Finalizada';
+                break;
+            default:
+                variant = 'outline';
+                text = status; // Fallback
+        }
+        return <Badge variant={variant}>{text}</Badge>;
+    };
+
     return (
         <div className="pl-4 space-y-3">
             {details.sessions.map((session, index) => (
                 <div key={session.id} className="flex items-start justify-between border-t py-3">
+                    {/* --- CONTENEDOR IZQUIERDO --- */}
                     <div className="flex items-start gap-3">
-                        {session.status === 'completed' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500 mt-1" />
-                        ) : (
-                            <Circle className="h-5 w-5 text-gray-400 mt-1" />
-                        )}
-                        <div>
+                        <div className="mt-1 flex-shrink-0">{renderSessionIcon(session)}</div>
+                        <div className="flex flex-col gap-1">
                             <p className="font-semibold">{index + 1}. {session.name}</p>
                             <p className="text-sm text-muted-foreground">{session.description}</p>
+                            
+                            {session.attention_datetime && (
+                                <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded-md mt-1 inline-block">
+                                    Cita: {format(new Date(session.attention_datetime), "d 'de' MMMM, h:mm a", { locale: es })}
+                                </div>
+                            )}
                         </div>
                     </div>
-                                        {session.payment_due && (
-                                            <div className="text-right pr-4"> 
-                                                <p className="font-semibold">{formatPrice(session.payment_due.amount)}</p>
-                                                <Badge variant={session.payment_due.status === 'paid' ? 'success' : 'destructive'}>
-                                                    {session.payment_due.status === 'paid' ? 'Pagado' : 'Pendiente'}
-                                                </Badge>
-                                            </div>
-                                        )}                </div>
+                    {/* --- CONTENEDOR DERECHO (PRECIO y BADGE ÚNICO) --- */}
+                    {(session.payment_due || session.status) && (
+                        <div className="text-right flex-shrink-0 pl-4 pr-4 flex flex-col items-end gap-1"> 
+                            {session.payment_due && (
+                                <p className="font-semibold">{formatPrice(session.payment_due.amount)}</p>
+                            )}
+                            
+                            {/* Lógica de Badge Único: Prioriza el estado 'Pagado' */}
+                            {session.payment_due?.status === 'paid' ? (
+                                <Badge variant='success'>Pagado</Badge>
+                            ) : (
+                                session.status && renderSessionStatusBadge(session.status)
+                            )}
+                        </div>
+                    )}
+                </div>
             ))}
         </div>
     );
 };
+
 
 export const ClientTreatmentsList = ({ clientId }: { clientId: string }) => {
     const { data: treatments, isLoading, error } = useClientTreatments(clientId);
@@ -92,17 +195,15 @@ export const ClientTreatmentsList = ({ clientId }: { clientId: string }) => {
                                     <Badge variant={treatment.status === 'completed' ? 'success' : 'default'} className="capitalize">
                                         {treatment.status}
                                     </Badge>
-                                    {treatment.progress.completed === 0 && (
+                                    {treatment.progress.completed === 0 && !treatment.has_scheduled_sessions && (
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={(e) => e.stopPropagation()} // Prevent accordion from toggling
-                                                    disabled={isDeleting}
+                                                <span
+                                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground h-10 w-10 cursor-pointer"
+                                                    onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
+                                                </span>
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>

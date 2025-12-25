@@ -30,6 +30,8 @@ export const useRescheduleAttention = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attentions"] });
       queryClient.invalidateQueries({ queryKey: ["attention-dates"] });
+      queryClient.invalidateQueries({ queryKey: ['client_treatments'] });
+      queryClient.invalidateQueries({ queryKey: ['client_treatment_details'] });
       toast({
         title: "Éxito",
         description: "Atención reprogramada correctamente.",

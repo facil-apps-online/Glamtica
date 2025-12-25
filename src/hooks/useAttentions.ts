@@ -47,6 +47,7 @@ interface CreateAttentionParams {
   p_services: any[];
   p_products: any[];
   p_combos: any[];
+  p_payments: any[]; // Añadir este campo
   p_branch_id: string; // branch_id is required
   p_total_amount: number;
 }
@@ -153,6 +154,7 @@ export const useCreateAttention = () => {
         p_services: params.p_services,
         p_products: params.p_products,
         p_combos: params.p_combos,
+        p_payments: params.p_payments, // Añadir este campo
         p_tenant_id: currentAssignment?.tenant_id,
         p_branch_id: params.p_branch_id,
         p_total_amount: params.p_total_amount,
@@ -162,6 +164,8 @@ export const useCreateAttention = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attentions'] });
       queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
+      queryClient.invalidateQueries({ queryKey: ['client_treatments'] });
+      queryClient.invalidateQueries({ queryKey: ['client_treatment_details'] });
       toast({ title: "Atención creada", description: "La atención ha sido creada exitosamente.", variant: "success" });
     },
     onError: (error) => {
@@ -179,6 +183,8 @@ export const useCancelAttention = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['attentions'] });
             queryClient.invalidateQueries({ queryKey: ['attention-dates'] });
+            queryClient.invalidateQueries({ queryKey: ['client_treatments'] });
+            queryClient.invalidateQueries({ queryKey: ['client_treatment_details'] });
             toast({
                 title: 'Atención Cancelada',
                 description: 'La atención ha sido cancelada correctamente.',
@@ -193,4 +199,28 @@ export const useCancelAttention = () => {
             });
         },
     });
+};
+
+export const useConfirmAttention = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { currentAssignment } = useAuth(); // Necesario para obtener tenantId si la RPC lo requiere (aunque para esta no)
+
+  return useMutation({
+    mutationFn: async (attentionId: string) => {
+      // callTenantAction ya maneja la autenticación y el tenantId
+      const response = await callTenantAction('confirm_attention', {
+        p_attention_id: attentionId,
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attentions'] }); // Invalidar cachés de atenciones
+      queryClient.invalidateQueries({ queryKey: ['attention-dates'] }); // Invalidar cachés de fechas de atenciones
+      toast({ title: "Atención Confirmada", description: "La atención ha sido confirmada exitosamente.", variant: "success" });
+    },
+    onError: (error) => {
+      toast({ title: "Error al confirmar atención", description: error.message, variant: "destructive" });
+    }
+  });
 };
