@@ -18,8 +18,8 @@ export interface TodayAttention {
   id: string;
   attention_time: string;
   client_name: string;
-  service_name: string;
-  stylist_name: string;
+  services: { id: string; name: string; }[];
+  stylists: { id: string; name: string; }[];
   status: string;
   total_price: number;
 }

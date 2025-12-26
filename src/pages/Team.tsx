@@ -52,37 +52,44 @@ const TeamMemberCard = ({ user, allUserAssignments, queryClient, tenantId }: { u
     (assignment) => assignment.user_id === user.id
   ) || [];
 
+  const cardClassName = `bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${!user.is_active ? 'opacity-60' : ''}`;
+  const textClassName = !user.is_active ? 'text-muted-foreground' : '';
+
   return (
-    <Card className="bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+    <Card className={cardClassName}>
       <CardHeader className="flex flex-row items-start justify-between">
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center overflow-hidden">
+          <div className={`w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center overflow-hidden ${!user.is_active ? 'grayscale' : ''}`}>
             {displayUrl ? (
               <img src={displayUrl} alt={`${userName}'s avatar`} className="w-full h-full object-cover" />
             ) : (
-              <User className="w-8 h-8 text-primary" />
+              <User className={`w-8 h-8 ${!user.is_active ? 'text-muted-foreground' : 'text-primary'}`} />
             )}
           </div>
           <div className="flex-1 min-w-0 min-h-[70px]">
-            <CardTitle className="text-xl text-primary whitespace-nowrap overflow-hidden text-ellipsis">{user.first_name || ''}</CardTitle>
+            <CardTitle className={`text-xl whitespace-nowrap overflow-hidden text-ellipsis ${!user.is_active ? 'text-muted-foreground' : 'text-primary'}`}>
+              {user.first_name || ''}
+            </CardTitle>
             {user.last_name && (
-              <p className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">{user.last_name}</p>
+              <p className={`text-sm whitespace-nowrap overflow-hidden text-ellipsis ${textClassName}`}>{user.last_name}</p>
             )}
             {user.branch_name && (
-              <p className="text-sm text-muted-foreground">{user.branch_name}</p>
+              <p className={`text-sm ${textClassName}`}>{user.branch_name}</p>
             )}
           </div>
         </div>
-        <Badge variant={user.is_active ? "default" : "secondary"}>
-          {user.is_active ? 'Activo' : 'Inactivo'}
-        </Badge>
+        {user.is_schedulable && (
+          <div className={`flex-shrink-0 ${!user.is_active ? 'opacity-60' : ''}`}>
+            <CalendarCheck className="w-5 h-5 text-green-500" />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-3">
           {user.email && (
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm">{user.email}</span>
+              <span className={`text-sm ${textClassName}`}>{user.email}</span>
             </div>
           )}
         </div>

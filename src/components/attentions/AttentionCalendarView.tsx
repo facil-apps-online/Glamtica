@@ -32,6 +32,8 @@ interface AttentionCalendarViewProps {
   userColorMap?: Map<string, string>;
   allUsers?: any[];
   screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  slotMinTime: string;
+  slotMaxTime: string;
 }
 
 const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
@@ -45,7 +47,9 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
   isLoading,
   userColorMap,
   allUsers,
-  screenSize
+  screenSize,
+  slotMinTime,
+  slotMaxTime
 }) => {  const calendarRef = useRef<FullCalendar>(null);
   const isProgrammaticNavigation = useRef(false);
 
@@ -154,7 +158,7 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
         } : {
           left: 'prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          right: 'timeGridDay'
         }}
         initialView={initialView}
         weekends={true}
@@ -171,6 +175,8 @@ const AttentionCalendarView: React.FC<AttentionCalendarViewProps> = ({
         contentHeight="auto"
         aspectRatio={1.5}
         allDaySlot={true}
+        slotMinTime={slotMinTime}
+        slotMaxTime={slotMaxTime}
         buttonText={{
           today: 'Hoy',
           month: 'Mes',

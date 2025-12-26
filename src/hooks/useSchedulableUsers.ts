@@ -8,40 +8,48 @@ interface SchedulableUser {
   last_name: string | null;
   email: string;
   is_active: boolean;
+  is_schedulable: boolean;
   avatar_url?: string;
   branch_name?: string | null;
 }
 
-export const useSchedulableUsers = (selectedBranchId?: string) => {
+export const useSchedulableUsers = (selectedBranchId?: string, options: { onlySchedulable: boolean } = { onlySchedulable: false }) => {
   const { currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
   const userRole = currentAssignment?.role_name;
 
   return useQuery<SchedulableUser[], Error>({
-    queryKey: ['schedulable-users', tenantId, selectedBranchId, userRole],
+    queryKey: ['schedulable-users', tenantId, selectedBranchId, userRole, options.onlySchedulable],
     queryFn: async () => {
       if (!tenantId) return [];
 
       const allAssignments: TenantUserAssignment[] = await invokeTenantAction('get_users_for_tenant', { tenantId });
+      
+      const assignmentsToProcess = options.onlySchedulable
+        ? allAssignments.filter(a => a.is_schedulable)
+        : allAssignments;
 
       const schedulableUsersMap = new Map<string, SchedulableUser>();
 
-      allAssignments.forEach(assignment => {
+      assignmentsToProcess.forEach(assignment => {
         if (assignment.status === 'active') {
-          if (!schedulableUsersMap.has(assignment.user_id)) {
-            schedulableUsersMap.set(assignment.user_id, {
+          let user = schedulableUsersMap.get(assignment.user_id);
+          if (!user) {
+            user = {
               id: assignment.user_id,
               first_name: assignment.first_name,
               last_name: assignment.last_name,
               email: assignment.email,
               is_active: true,
+              is_schedulable: assignment.is_schedulable,
               avatar_url: assignment.avatar_url || null,
               branch_name: assignment.branch_name || null,
-            });
-          }
-          const existingUser = schedulableUsersMap.get(assignment.user_id);
-          if (existingUser && !existingUser.is_active) {
-            existingUser.is_active = true;
+            };
+            schedulableUsersMap.set(assignment.user_id, user);
+          } else {
+            if (assignment.is_schedulable) {
+              user.is_schedulable = true;
+            }
           }
         }
       });
