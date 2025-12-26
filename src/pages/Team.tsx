@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, CalendarCheck, UserX, Briefcase, Edit } from "lucide-react";
+import { User, Mail, CalendarCheck, UserX, Briefcase, Edit, Image } from "lucide-react";
+import { StaffGalleryManager } from "@/components/StaffGalleryManager";
 import { useSchedulableUsers, SchedulableUser } from "@/hooks/useSchedulableUsers";
 import { UserScheduleDialog } from "@/components/UserScheduleDialog";
 import { TimeOffRequestDialog } from "@/components/TimeOffRequestDialog";
@@ -140,6 +141,17 @@ const TeamMemberCard = ({ user, allUserAssignments, queryClient, tenantId }: { u
                 <Button variant="outline" size="sm" className="flex-1">
                   <Edit className="w-4 h-4 mr-1" />
                   Editar Perfil
+                </Button>
+              }
+            />
+            {/* New Gallery Button */}
+            <StaffGalleryManager
+              staffId={user.id}
+              staffName={userName}
+              trigger={
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Image className="w-4 h-4 mr-1" />
+                  Galería
                 </Button>
               }
             />
