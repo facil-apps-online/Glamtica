@@ -16,6 +16,7 @@ import { ServicePricesTab } from '@/components/ServicePricesTab';
 import { ServiceCommissionsTab } from '@/components/ServiceCommissionsTab';
 import { ServiceAssignmentTab } from '@/components/ServiceAssignmentTab';
 import { ServiceImageGallery } from '@/components/ServiceImageGallery';
+import { ManageServiceImagesDialog } from '@/components/service/ManageServiceImagesDialog';
 import { ChatterBox } from '@/components/ChatterBox';
 import { MasterService } from '@/types/services';
 import { useToast } from "@/hooks/use-toast";
@@ -156,7 +157,14 @@ export default function ServiceDetailPage() {
               )}
               {activeTab === 'images' && (
                 <Card>
-                  <CardHeader><CardTitle>Imágenes del Servicio</CardTitle></CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Imágenes del Servicio</CardTitle>
+                    <ManageServiceImagesDialog
+                      serviceId={id!}
+                      serviceName={service.name}
+                      trigger={<Button variant="outline">Gestionar Imágenes</Button>}
+                    />
+                  </CardHeader>
                   <CardContent>
                     <ServiceImageGallery serviceId={id!} />
                   </CardContent>
@@ -214,7 +222,14 @@ export default function ServiceDetailPage() {
               </TabsContent>
               <TabsContent value="images" className="mt-4">
                 <Card>
-                  <CardHeader><CardTitle>Imágenes del Servicio</CardTitle></CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Imágenes del Servicio</CardTitle>
+                    <ManageServiceImagesDialog
+                      serviceId={id!}
+                      serviceName={service.name}
+                      trigger={<Button variant="outline">Gestionar Imágenes</Button>}
+                    />
+                  </CardHeader>
                   <CardContent>
                     <ServiceImageGallery serviceId={id!} />
                   </CardContent>

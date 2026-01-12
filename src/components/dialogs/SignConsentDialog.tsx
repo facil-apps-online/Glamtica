@@ -41,8 +41,8 @@ export const SignConsentDialog: React.FC<SignConsentDialogProps> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSigning}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={isSigning}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSigning}>Cancelar</Button>
+          <Button type="button" onClick={handleConfirm} disabled={isSigning}>
             {isSigning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Firmando...</> : 'Confirmar Firma'}
           </Button>
         </DialogFooter>

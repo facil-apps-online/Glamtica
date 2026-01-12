@@ -38,17 +38,19 @@ export interface Tenant {
 
 // GET the current user's tenant data
 const fetchTenantById = async (tenantId: string): Promise<Tenant> => {
-  const { data, error } = await supabase
-    .from('tenants')
-    .select(`
-      *,
-      countries (
-        name,
-        iso_code
-      )
-    `)
-    .eq('id', tenantId)
-    .single();
+  const response = await fetch('/functions/v1/tenant-actions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+    },
+    body: JSON.stringify({
+      action: 'get-tenant-details',
+      payload: { tenantId },
+    }),
+  });
+
+  const { data, error } = await response.json();
 
   if (error) {
     throw new Error(error.message);

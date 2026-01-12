@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { TreatmentCategoryDialog } from "./TreatmentCategoryDialog";
 
+
+
 // Schema definitions
 const sessionSchema = z.object({
   id: z.string().uuid().optional(),
@@ -153,6 +155,7 @@ export const TreatmentForm: React.FC<TreatmentFormProps> = ({ treatment, onSave,
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Nombre del Tratamiento</Label>

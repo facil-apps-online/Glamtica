@@ -82,7 +82,7 @@ export function Layout() {
             menuConfig={tenantNavigationConfig}
             homeUrl="/app"
             title={currentAssignment?.tenant_name || "Panel de Tenant"}
-            subtitle="Glamtica.app"
+            subtitle="Glamtica"
           />
           <div className="flex-1 flex flex-col">
             <Header />

@@ -3,13 +3,23 @@ import type { Database } from '@/integrations/supabase/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const CORE_SUPABASE_URL = import.meta.env.VITE_CORE_SUPABASE_URL;
+const CORE_SUPABASE_ANON_KEY = import.meta.env.VITE_CORE_SUPABASE_ANON_KEY;
 
-// Create a single, new, and clean Supabase client instance.
-// This removes the HMR logic to prevent using a stale client.
+
+// Client for the per-tenant database
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true, // Let Supabase handle session persistence.
+    persistSession: true,
     detectSessionInUrl: false,
+  },
+});
+
+// Client for the central Core database
+export const coreSupabase = createClient(CORE_SUPABASE_URL, CORE_SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false, // Core client typically won't manage user sessions
+    autoRefreshToken: false,
   },
 });
 
@@ -21,8 +31,11 @@ if (!supabase.global.headers) {
   supabase.global.headers = {};
 }
 
-
-
+// Ensure coreSupabase.global headers exist, copying auth from the main client
+if (!coreSupabase.global) {
+  coreSupabase.global = {};
+}
+coreSupabase.global.headers = supabase.global.headers;
 
 // The following utility functions remain unchanged.
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';

@@ -1,15 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 
-const fetchGoogleDriveImage = async (fileId: string, token: string | undefined) => {
-  if (!fileId) {
+const fetchGoogleDriveImage = async (fileId: string, tenantId: string, platformId: string) => {
+  if (!fileId || !tenantId || !platformId) {
     return undefined;
   }
 
-  const proxyUrl = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/proxy-google-drive-image?fileId=${fileId}`;
-  const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-  const response = await fetch(proxyUrl, { headers });
+  const proxyUrl = `${import.meta.env.VITE_CORE_SUPABASE_URL}/functions/v1/proxy-google-drive-image?fileId=${fileId}&tenantId=${tenantId}&platformId=${platformId}`;
+  
+  const response = await fetch(proxyUrl);
   if (!response.ok) {
     throw new Error(`Proxy fetch failed with status ${response.status} for fileId ${fileId}`);
   }
@@ -22,9 +21,10 @@ const fetchGoogleDriveImage = async (fileId: string, token: string | undefined) 
   return URL.createObjectURL(blob);
 };
 
-export const useGoogleDriveImage = (src?: string) => {
-  const { session } = useAuth();
-  const token = session?.access_token;
+export const useGoogleDriveImage = (src?: string, tenantIdFromProp?: string) => {
+  const { tenantId: tenantIdFromAuth } = useAuth();
+  const tenantId = tenantIdFromProp || tenantIdFromAuth;
+  const platformId = import.meta.env.VITE_PLATFORM_ID;
 
   let fileId: string | null = null;
   if (src) {
@@ -43,9 +43,9 @@ export const useGoogleDriveImage = (src?: string) => {
   }
 
   const { data: displayUrl, isLoading } = useQuery({
-    queryKey: ['googleDriveImage', fileId],
-    queryFn: () => fetchGoogleDriveImage(fileId!, token),
-    enabled: !!fileId,
+    queryKey: ['googleDriveImage', fileId, tenantId, platformId],
+    queryFn: () => fetchGoogleDriveImage(fileId!, tenantId!, platformId!),
+    enabled: !!fileId && !!tenantId && !!platformId,
     staleTime: 1000 * 60 * 60, // 1 hour
     cacheTime: 1000 * 60 * 60, // 1 hour
     refetchOnWindowFocus: false,

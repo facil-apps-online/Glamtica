@@ -59,7 +59,7 @@ const SurveyPage = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   
-  const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+  const platformId = import.meta.env.VITE_PLATFORM_ID;
 
   const servicesByProfessional = useMemo(() => {
     if (!surveyData?.services || !surveyData?.professionals) return {};

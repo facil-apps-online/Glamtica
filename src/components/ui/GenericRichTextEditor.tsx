@@ -17,16 +17,18 @@ const modules = {
   ],
 };
 
-export class GenericRichTextEditor extends React.Component<GenericRichTextEditorProps> {
-  render() {
+export const GenericRichTextEditor = React.forwardRef<ReactQuill, GenericRichTextEditorProps>(
+  ({ value, onChange, placeholder }, ref) => {
     return (
       <ReactQuill
+        ref={ref}
         theme="snow"
-        value={this.props.value}
-        onChange={this.props.onChange}
-        placeholder={this.props.placeholder}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
         modules={modules}
       />
     );
   }
-}
+);
+GenericRichTextEditor.displayName = 'GenericRichTextEditor';

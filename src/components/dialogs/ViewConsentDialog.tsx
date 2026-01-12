@@ -101,8 +101,8 @@ export const ViewConsentDialog: React.FC<ViewConsentDialogProps> = ({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSigning}>Cancelar</Button>
-            <Button onClick={() => setIsSignatureDialogOpen(true)} disabled={isSigning}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSigning}>Cancelar</Button>
+            <Button type="button" onClick={() => setIsSignatureDialogOpen(true)} disabled={isSigning}>
               Proceder a Firmar
             </Button>
           </DialogFooter>

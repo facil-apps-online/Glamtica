@@ -1,13 +1,15 @@
-import { useRef, useState } from "react";
-import imageCompression from 'browser-image-compression';
-import { ProductImage } from './ProductImage';
-import { useProductImages, useDeleteProductImage, useSetPrimaryProductImage, useUploadProductImage } from "@/hooks/useProductImages";
+import { useProductImages, useAssociateProductImage, useDeleteProductImage, useSetPrimaryProductImage } from "@/hooks/useProductImages";
+import { UploadResult } from "@/hooks/useUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trash, Star, Upload, X } from "lucide-react";
+import { Trash, Star, Loader2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { FileUploader } from "./FileUploader";
 import { ImagePreviewDialog } from './ImagePreviewDialog';
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import { useUploader } from "@/hooks/useUploader";
+import { ProductImage } from "./ProductImage";
 
 interface ProductImageGalleryProps {
   productId: string;
@@ -15,61 +17,51 @@ interface ProductImageGalleryProps {
 
 export const ProductImageGallery = ({ productId }: ProductImageGalleryProps) => {
   const { data: images, isLoading, isError, refetch: refetchImages } = useProductImages(productId);
-  const { mutate: deleteImage } = useDeleteProductImage();
+  const { mutate: deleteImage, isDeleting } = useDeleteProductImage();
   const { mutate: setPrimaryImage } = useSetPrimaryProductImage();
-  const { mutate: uploadImage, isPending: isUploading } = useUploadProductImage();
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const { mutate: associateImage, isPending: isAssociating } = useAssociateProductImage();
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const { deleteFile } = useUploader();
+  
   const [isPreviewOpen, setPreviewOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
   const handleOpenPreview = (imageUrl: string) => {
     setSelectedImageUrl(imageUrl);
     setPreviewOpen(true);
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    setSelectedFiles(prev => [...prev, ...imageFiles]);
+  const handleUploadComplete = (result: UploadResult) => {
+    associateImage({
+      productId,
+      google_drive_file_id: result.fileId
+    }, {
+      onSuccess: () => {
+        refetchImages();
+      },
+      onError: (error) => {
+        console.error("Error al asociar la imagen en la base de datos, eliminando de Google Drive:", error);
+        deleteFile(result.fileId);
+      }
+    });
   };
 
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0) return;
-
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1024,
-      useWebWorker: true,
-    };
-
-    try {
-      const uploadPromises = selectedFiles.map(async (file) => {
-        const compressedFile = await imageCompression(file, options);
-        return new Promise<void>((resolve, reject) => {
-          uploadImage({ productId, file: compressedFile }, {
-            onSuccess: () => resolve(),
-            onError: (error) => reject(error),
-          });
-        });
-      });
-
-      await Promise.all(uploadPromises);
-      
-      toast({ title: "Éxito", description: "Todas las imágenes han sido subidas.", variant: "success" });
-      setSelectedFiles([]); // Limpiar aquí, después del éxito
-      refetchImages(); // Refrescar la lista de imágenes existentes
-
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast({ title: "Error", description: "Ocurrió un error al subir una o más imágenes.", variant: "destructive" });
-    }
+  const handleDeleteClick = (imageToDeleteId: string, productId: string, google_drive_file_id: string) => {
+    setDeletingImageId(imageToDeleteId);
+    deleteImage(
+      { imageId: imageToDeleteId, productId, google_drive_file_id },
+      {
+        onSuccess: () => {
+          setDeletingImageId(null);
+          refetchImages();
+        },
+        onError: () => {
+          setDeletingImageId(null);
+        },
+      }
+    );
   };
 
   if (isLoading) return <div>Cargando imágenes...</div>;
@@ -79,89 +71,36 @@ export const ProductImageGallery = ({ productId }: ProductImageGalleryProps) => 
     <>
       <div className="space-y-6">
         <div className="space-y-4 p-4 border rounded-lg">
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            variant="outline"
-            className="w-full gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Seleccionar Fotos
-          </Button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-            onClick={(e) => { (e.target as HTMLInputElement).value = '' }}
+          <FileUploader
+            onUploadComplete={handleUploadComplete}
+            path_components={['tenant', tenantId, 'Products', productId].filter(Boolean) as string[]}
+            imageType="catalogo"
+            label="Subir nueva imagen"
+            disabled={isAssociating || !tenantId}
           />
-
-          {selectedFiles.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-medium text-sm">Nuevas para subir:</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {selectedFiles.map((file, index) => (
-                  <Card key={index} className="relative group overflow-hidden">
-                    <CardContent className="p-1">
-                      <div className="relative">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={file.name}
-                          className="w-full h-24 object-cover rounded"
-                        />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
-                          onClick={() => removeFile(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {selectedFiles.length > 0 && (
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button
-                variant="ghost"
-                onClick={() => setSelectedFiles([])}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleUpload}
-                disabled={isUploading}
-                className="gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                {isUploading ? "Subiendo..." : `Confirmar y Subir ${selectedFiles.length} archivo(s)`}
-              </Button>
-            </div>
-          )}
         </div>
-
         {images && images.length > 0 && (
           <div className="space-y-2 pt-4 border-t">
             <h3 className="font-medium">Imágenes existentes:</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {images.map((image) => (
                 <Card key={image.id} className="relative group overflow-hidden">
-                  <CardContent className="p-0 cursor-pointer" onClick={() => handleOpenPreview(image.image_url)}>
-                    <ProductImage imageUrl={image.image_url} altText={`Imagen de producto ${image.id}`} className="object-cover w-full h-32" />
+                  <CardContent
+                    className={`p-0 ${deletingImageId === image.id ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                    onClick={() => {
+                      if (deletingImageId !== image.id) {
+                        handleOpenPreview(image.google_drive_file_id);
+                      }
+                    }}
+                  >
+                    <ProductImage imageUrl={image.google_drive_file_id} altText={`Imagen de producto ${image.id}`} className="object-cover w-full h-32" />
                     {image.is_primary && (
                       <div className="absolute top-2 right-2 bg-yellow-400 text-white p-1 rounded-full">
                         <Star className="w-4 h-4" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center gap-2">
-                      {!image.is_primary && (
+                      {!image.is_primary && deletingImageId !== image.id && (
                         <Button
                           variant="outline"
                           size="icon"
@@ -178,8 +117,9 @@ export const ProductImageGallery = ({ productId }: ProductImageGalleryProps) => 
                               variant="destructive"
                               size="icon"
                               className="opacity-0 group-hover:opacity-100"
+                              disabled={deletingImageId === image.id}
                             >
-                              <Trash className="w-4 h-4" />
+                              {deletingImageId === image.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash className="w-4 h-4" />}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -190,9 +130,22 @@ export const ProductImageGallery = ({ productId }: ProductImageGalleryProps) => 
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteImage({ imageId: image.id, productId })}>
-                                Eliminar
+                              <AlertDialogCancel disabled={deletingImageId === image.id}>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => {
+                                  if (deletingImageId === image.id) return; 
+                                  handleDeleteClick(image.id, productId, image.google_drive_file_id);
+                                }}
+                                disabled={deletingImageId === image.id}
+                              >
+                                {deletingImageId === image.id ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Eliminando...
+                                  </>
+                                ) : (
+                                  "Eliminar"
+                                )}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -209,7 +162,7 @@ export const ProductImageGallery = ({ productId }: ProductImageGalleryProps) => 
       <ImagePreviewDialog
         isOpen={isPreviewOpen}
         onClose={() => setPreviewOpen(false)}
-        imageUrl={selectedImageUrl}
+        imageUrls={selectedImageUrl ? [selectedImageUrl] : []}
       />
     </>
   );

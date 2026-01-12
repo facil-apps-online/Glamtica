@@ -99,7 +99,7 @@ const PasswordRequirement = ({ isValid, text }: { isValid: boolean; text: string
 export default function RegisterTenant() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+  const platformId = import.meta.env.VITE_PLATFORM_ID;
   const { data: publicData, isLoading, isError } = usePublicRegistrationData(platformId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usePhysicalAsBilling, setUsePhysicalAsBilling] = useState(true);
@@ -164,7 +164,7 @@ export default function RegisterTenant() {
     }
     setIsCheckingUser(true);
     try {
-      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      const platformId = import.meta.env.VITE_PLATFORM_ID;
       if (!platformId) throw new Error("Platform ID no está configurado.");
 
       const { data, error } = await supabase.functions.invoke('user-actions', {
@@ -276,7 +276,7 @@ export default function RegisterTenant() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      const platformId = import.meta.env.VITE_PLATFORM_ID;
       if (!platformId) throw new Error("Platform ID no está configurado.");
 
       // Construir el payload explícitamente para que coincida con la Edge Function
@@ -345,8 +345,8 @@ export default function RegisterTenant() {
     >
       {/* Columna Izquierda - Panel de Bienvenida */}
       <div className="hidden lg:absolute lg:left-0 lg:top-0 lg:w-1/2 lg:h-full lg:flex lg:flex-col lg:items-center lg:justify-center p-10 text-white">
-        <img src={Logo} alt="Glamtica.app Logo" className="w-48 h-48 mb-6" />
-        <h1 className="text-4xl font-bold text-center">Crea tu Espacio en Glamtica.app</h1>
+        <img src={Logo} alt="Glamtica Logo" className="w-48 h-48 mb-6" />
+        <h1 className="text-4xl font-bold text-center">Crea tu Espacio en Glamtica</h1>
         <p className="mt-4 text-lg text-center text-gray-300">Únete a nuestra plataforma y lleva la gestión de tu negocio al siguiente nivel.</p>
       </div>
 
@@ -354,7 +354,7 @@ export default function RegisterTenant() {
       <div className="w-full lg:absolute lg:left-1/2 lg:w-1/2 lg:top-0 lg:h-full lg:overflow-y-auto flex items-start justify-center p-6 sm:p-12 lg:bg-background">
         <div className="w-full max-w-4xl">
           <div className="lg:hidden flex justify-center mb-8">
-            <img src={Logo} alt="Glamtica.app Logo" className="w-36 h-36" />
+            <img src={Logo} alt="Glamtica Logo" className="w-36 h-36" />
           </div>
           
           <Form {...form}>

@@ -42,7 +42,7 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({ children }) =>
       <header className="w-full bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center">
           <Link to="/">
-            <span className="text-2xl font-bold text-purple-700">Glamtica.app</span>
+            <span className="text-2xl font-bold text-purple-700">Glamtica</span>
           </Link>
         </div>
         <nav className="space-x-4">
@@ -61,7 +61,7 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({ children }) =>
       {/* Footer */}
       <footer className="bg-gray-800 text-gray-300 py-8 px-4 text-center text-sm mt-12">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          <p>&copy; {new Date().getFullYear()} Glamtica.app. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Glamtica. Todos los derechos reservados.</p>
           <nav className="space-x-4">
             <Link to="/privacy-policy" className="hover:text-white">Política de Privacidad</Link>
             <Link to="/terms-of-service" className="hover:text-white">Términos de Servicio</Link>

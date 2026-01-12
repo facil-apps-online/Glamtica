@@ -1,4 +1,4 @@
-# Welcome to Glamtica.app
+# Welcome to Glamtica
 
 ## Project info
 

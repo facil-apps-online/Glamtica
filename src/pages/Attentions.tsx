@@ -486,7 +486,7 @@ export default function Attentions() {
                 </div>
                 <DialogFooter className="pt-4 gap-2">
                   <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>Cerrar</Button>
-                  <Button onClick={handleEditFromDetailView}><Edit className="w-4 h-4 mr-2" /> Editar</Button>
+                  <Button onClick={handleEditFromDetailView} disabled={viewingAttention.status === 'Cancelada'}><Edit className="w-4 h-4 mr-2" /> Editar</Button>
                 </DialogFooter>
               </>
             )}
@@ -848,7 +848,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
 
                 <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(attention)}>
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(attention)} disabled={attention.status === 'Cancelada'}>
                             <Edit className="w-4 h-4" />
                         </Button>
                     </TooltipTrigger>
@@ -1039,7 +1039,7 @@ const AttentionCard = ({ attention, formatPrice, onEdit, onOpenPaymentDialog, on
           </div>
         )}
         
-        {(fillableTemplates.length > 0 || (filledInstances && filledInstances.length > 0)) && (
+        {attention.status !== 'Cancelada' && (fillableTemplates.length > 0 || (filledInstances && filledInstances.length > 0)) && (
             <div className="pt-4 border-t mt-4">
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><FilePlus className="w-4 h-4" />Fichas Técnicas</h4>
                 <div className="flex flex-wrap gap-2">

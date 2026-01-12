@@ -8,11 +8,9 @@ import { useClientDetails } from '@/hooks/useClients';
 import { useToast } from '@/hooks/use-toast';
 
 // Helper to fetch an image and convert it to a data URL
-const fetchImageAsDataURL = async (url: string, token: string) => {
+const fetchImageAsDataURL = async (url: string) => {
   try {
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
+    const response = await fetch(url);
     if (!response.ok) return null;
     const blob = await response.blob();
     return new Promise<string | null>((resolve, reject) => {
@@ -57,12 +55,12 @@ export const ExportInformedConsentDialog: React.FC<ExportInformedConsentDialogPr
     try {
       // 1. Fetch images as Base64
       const logoProxyUrl = tenant.logo_url
-        ? `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/proxy-google-drive-image?fileId=${tenant.logo_url}`
+        ? `${import.meta.env.VITE_CORE_SUPABASE_URL}/functions/v1/proxy-google-drive-image?fileId=${tenant.logo_url}&tenantId=${tenant.id}&platformId=${import.meta.env.VITE_PLATFORM_ID}`
         : '/glamtica.app.png';
       
-      const logoDataUrl = await fetchImageAsDataURL(logoProxyUrl, session.access_token);
+      const logoDataUrl = await fetchImageAsDataURL(logoProxyUrl);
       const signatureDataUrl = signatureDisplayUrl 
-        ? await fetchImageAsDataURL(signatureDisplayUrl, session.access_token) 
+        ? await fetchImageAsDataURL(signatureDisplayUrl) 
         : null;
 
       // 2. Construct full HTML for the new window

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTenantSettingsData } from '@/hooks/useTenantSettingsData';
 import { LogoUploader } from '@/components/LogoUploader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { GenericRichTextEditor } from '@/components/ui/GenericRichTextEditor';
 import { Button } from '@/components/ui/button';
 import { useUpdateTenantDescription } from '@/hooks/useTenantDescription';
 import { toast } from 'sonner';
+import ReactQuill from 'react-quill';
 
 const IdentitySkeleton = () => (
   <Card>
@@ -38,6 +39,7 @@ export function IdentitySettingsTab() {
   const queryClient = useQueryClient();
   const { mutateAsync: updateTenantDescription, isPending: isUpdating } = useUpdateTenantDescription();
   const [description, setDescription] = useState('');
+  const quillRef = useRef<ReactQuill>(null);
 
   useEffect(() => {
     if (settingsData?.tenant?.description) {
@@ -93,6 +95,7 @@ export function IdentitySettingsTab() {
         </CardHeader>
         <CardContent>
           <GenericRichTextEditor
+            ref={quillRef}
             value={description}
             onChange={setDescription}
             placeholder="Describe tu estudio aquí..."

@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js'; // Import Supabase client
 // Supabase client for error reporting
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY; // Use PUBLISHABLE_KEY for anon access
-const glamticaPlatformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+const glamticaPlatformId = import.meta.env.VITE_PLATFORM_ID;
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -26,7 +26,7 @@ const reportError = async (error: Error, info?: React.ErrorInfo) => {
       stack: error.stack,
       componentStack: info?.componentStack,
       userAgent: navigator.userAgent,
-      appVersion: 'Glamtica.app', // Or get from package.json
+      appVersion: 'Glamtica', // Or get from package.json
       timestamp: new Date().toISOString(),
     },
   };

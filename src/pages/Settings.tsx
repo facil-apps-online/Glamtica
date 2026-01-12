@@ -12,7 +12,8 @@ import { ClientsTab } from "./Settings/ClientsTab";
 import { DocumentTypesSettingsTab } from "./Settings/DocumentTypesSettingsTab";
 import { NotificationSettingsTab } from "./Settings/NotificationSettingsTab";
 import { IdentitySettingsTab } from "./Settings/IdentitySettingsTab";
-import { Building, Users, Store, CreditCard, FileText, Box, Users2, Palette, Hash, Tv, FileDigit, Bell } from 'lucide-react';
+import { ImageSettingsTab } from "./Settings/ImageSettingsTab"; // <-- IMPORT
+import { Building, Users, Store, CreditCard, FileText, Box, Users2, Palette, Hash, Tv, FileDigit, Bell, Image } from 'lucide-react'; // <-- IMPORT Image
 import NumberingSequencesPage from "./Settings/NumberingSequencesPage";
 import TvManagementPage from "./TvManagementPage";
 
@@ -68,6 +69,7 @@ export default function Settings() {
   const tabs = [
     { value: "general", label: "General", icon: <Building className="h-4 w-4" />, component: <GeneralSettingsTab />, roles: ['tenant_super_admin', 'tenant_admin', 'tenant_user'] },
     { value: "identity", label: "Identidad", icon: <Palette className="h-4 w-4" />, component: <IdentitySettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
+    { value: "images", label: "Imágenes", icon: <Image className="h-4 w-4" />, component: <ImageSettingsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "users", label: "Usuarios", icon: <Users className="h-4 w-4" />, component: <UsersTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "clients", label: "Clientes", icon: <Users2 className="h-4 w-4" />, component: <ClientsTab />, roles: ['tenant_super_admin', 'tenant_admin'] },
     { value: "document_types", label: "Parametrización", icon: <FileText className="h-4 w-4" />, component: <DocumentTypesSettingsTab />, roles: ['tenant_super_admin'] },

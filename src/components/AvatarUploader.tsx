@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, coreSupabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -63,11 +63,29 @@ export const AvatarUploader = React.memo(({
     setIsSaving(true);
     try {
       const base64data = await readFileAsBase64(croppedImage);
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('google-drive-upload', {
-        body: { tenantId: currentAssignment.tenant_id, fileName: `avatar_${user.id}.png`, fileBase64: base64data, mimeType: 'image/png', uploadContext: 'Avatars', contextId: user.id }
-      });
-      if (uploadError || !uploadData.success) throw new Error(uploadError?.message || uploadData.error || 'Error al subir a Google Drive.');
+      
+      // TODO: Implement fetching system_owner_tenant_id for cross-tenant integration ownership if Avatars should use it.
+      // For now, using the current tenant's ID.
+      const integrationOwnerTenantId = currentAssignment.tenant_id; 
 
+      // 1. Call the GENERIC 'google-drive-upload' function in the CORE project
+      const { data: uploadData, error: uploadError } = await coreSupabase.functions.invoke('google-drive-upload', {
+        body: { 
+          platform_id: import.meta.env.VITE_PLATFORM_ID, // NEW: Explicitly pass platform_id
+          tenantId: currentAssignment.tenant_id, // tenantId is still needed to resolve the platformName for the root folder
+          fileName: `avatar_${user.id}.png`, 
+          fileBase64: base64data, 
+          mimeType: 'image/png', 
+          path_components: ['Avatars', user.id],
+          integration_owner_tenant_id: integrationOwnerTenantId
+        }
+      });
+
+      if (uploadError || !uploadData.success) {
+        throw new Error(uploadError?.message || uploadData.error || 'Error al subir la imagen a Google Drive.');
+      }
+
+      // 2. Call the TENANT-SPECIFIC 'user-actions' function to update the user's profile
       const payload = {
         first_name: profile.firstName,
         last_name: profile.lastName,
@@ -84,20 +102,17 @@ export const AvatarUploader = React.memo(({
       if (updateError) throw updateError;
       if (!updateData.success) throw new Error(updateData.message);
 
-      // If an old avatar was replaced, delete it from Google Drive
+      // 3. If an old avatar was replaced, call the GENERIC 'google-drive-delete' in CORE
       if (updateData.oldAvatarFileId) {
         console.log(`Deleting old avatar file: ${updateData.oldAvatarFileId}`);
-        const { error: deleteError } = await supabase.functions.invoke('google-drive-delete', {
+        const { error: deleteError } = await coreSupabase.functions.invoke('google-drive-delete', {
           body: { 
             fileId: updateData.oldAvatarFileId, 
-            tenantId: currentAssignment.tenant_id, // Pass the current tenantId
-            uploadContext: 'Avatars' // Indicate that this is an avatar deletion
+            integrationOwnerTenantId: integrationOwnerTenantId
           }
         });
         if (deleteError) {
           console.error('Error deleting old avatar from Google Drive:', deleteError.message);
-          // Do not throw error here, as the new avatar was successfully uploaded and saved.
-          // Log it for debugging, but let the user experience be positive.
         }
       }
 

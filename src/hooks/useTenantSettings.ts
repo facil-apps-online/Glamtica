@@ -7,21 +7,30 @@ export interface TenantSettingsData {
 }
 
 // GET tenant-specific settings
-const fetchTenantSettings = async (supabaseClient: any, tenantId: string): Promise<TenantSettingsData> => {
-  console.log('fetchTenantSettings: Attempting to fetch for tenantId:', tenantId);
-  const { data, error } = await supabaseClient
-    .from('tenants')
-    .select('logo_url')
-    .eq('id', tenantId)
-    .single();
+const fetchTenantSettings = async (tenantId: string): Promise<TenantSettingsData> => {
+  console.log('fetchTenantSettings: Attempting to fetch via tenant-actions for tenantId:', tenantId);
+  const response = await fetch('/functions/v1/tenant-actions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+    },
+    body: JSON.stringify({
+      action: 'get-tenant-details',
+      // The payload is not needed as tenantId is extracted from the JWT in the function
+    }),
+  });
+
+  const { data, error } = await response.json();
 
   if (error) {
-    console.log('fetchTenantSettings: Error fetching for tenantId:', tenantId, 'Error:', error);
-    if (error.code === 'PGRST116') return {}; 
+    console.log('fetchTenantSettings: Error fetching via tenant-actions for tenantId:', tenantId, 'Error:', error);
     throw new Error(error.message);
   }
-  console.log('fetchTenantSettings: Successfully fetched for tenantId:', tenantId, 'Data:', data);
-  return data;
+  
+  console.log('fetchTenantSettings: Successfully fetched via tenant-actions for tenantId:', tenantId, 'Data:', data);
+  // The hook expects an object with just logo_url
+  return { logo_url: data.tenant.logo_url };
 };
 
 export const useTenantSettings = () => {

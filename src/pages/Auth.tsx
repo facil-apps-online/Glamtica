@@ -87,7 +87,7 @@ const AuthPage: React.FC = () => {
     
 
     try {
-      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      const platformId = import.meta.env.VITE_PLATFORM_ID;
       if (!platformId) {
         throw new Error("Platform ID no está configurado en el cliente.");
       }
@@ -116,7 +116,7 @@ const AuthPage: React.FC = () => {
 
     setConfirmLoading(true);
     try {
-      const platformId = import.meta.env.VITE_GLAMTICA_PLATFORM_ID;
+      const platformId = import.meta.env.VITE_PLATFORM_ID;
       if (!platformId) {
         throw new Error("Platform ID no está configurado en el cliente.");
       }
@@ -158,8 +158,8 @@ const AuthPage: React.FC = () => {
       >
         {/* Columna Izquierda */}
         <div className="hidden lg:flex flex-col items-center justify-center p-10 text-white">
-          <img src={Logo} alt="Glamtica.app Logo" className="w-48 h-48 mb-6" />
-          <h1 className="text-4xl font-bold text-center">Bienvenido a Glamtica.app</h1>
+          <img src={Logo} alt="Glamtica Logo" className="w-48 h-48 mb-6" />
+          <h1 className="text-4xl font-bold text-center">Bienvenido a Glamtica</h1>
           <p className="mt-4 text-lg text-center text-gray-300">La solución todo en uno para la gestión de tu negocio de belleza.</p>
         </div>
 
@@ -167,7 +167,7 @@ const AuthPage: React.FC = () => {
         <div className="flex items-center justify-center p-6 sm:p-12 lg:bg-background">
           <div className="w-full max-w-md">
             <div className="lg:hidden flex justify-center mb-8">
-              <img src={Logo} alt="Glamtica.app Logo" className="w-36 h-36" />
+              <img src={Logo} alt="Glamtica Logo" className="w-36 h-36" />
             </div>
             <Card className="border-none shadow-none lg:border lg:shadow-sm">
               <CardHeader className="text-center lg:text-left">

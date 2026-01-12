@@ -19,28 +19,30 @@ export interface UserSubscriptionPlan {
   active_branches_count: number;
 }
 
-const fetchTenantSubscriptionPlans = async (tenantId: string): Promise<UserSubscriptionPlan[]> => {
-  if (!tenantId) return [];
+const fetchTenantSubscriptionPlans = async (tenantId: string, platformId: string): Promise<UserSubscriptionPlan[]> => {
+  if (!tenantId || !platformId) return [];
 
   const { data, error } = await supabase.functions.invoke('tenant-actions', {
-    body: { action: 'GET_SUBSCRIPTION_PLANS', payload: { tenantId } },
+    body: { action: 'GET_SUBSCRIPTION_PLANS', payload: { tenantId, platformId } },
   });
 
   if (error) {
     throw new Error(`Error fetching tenant subscription plans: ${error.message}`);
   }
 
+  // The backend action for GET_SUBSCRIPTION_PLANS returns the data directly
   return data || [];
 };
 
 export const useTenantSubscriptionPlans = () => {
   const { currentAssignment, loading: isAuthLoading } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+  const platformId = currentAssignment?.platform_id;
 
   return useQuery<UserSubscriptionPlan[], Error>({
-    queryKey: ['tenant_subscription_plans', tenantId],
-    queryFn: () => fetchTenantSubscriptionPlans(tenantId!),
-    // Enable the query only when auth is loaded and we have a tenantId
-    enabled: !isAuthLoading && !!tenantId,
+    queryKey: ['tenant_subscription_plans', tenantId, platformId],
+    queryFn: () => fetchTenantSubscriptionPlans(tenantId!, platformId!),
+    // Enable the query only when auth is loaded and we have a tenantId and platformId
+    enabled: !isAuthLoading && !!tenantId && !!platformId,
   });
 };

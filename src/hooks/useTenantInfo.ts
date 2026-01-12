@@ -34,29 +34,45 @@ export interface TenantInfo {
 }
 
 const fetchTenantInfo = async (): Promise<TenantInfo> => {
-  const { data, error } = await supabase
-    .from('tenants')
-    .select('*')
-    .single();
+  const response = await fetch('/functions/v1/tenant-actions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+    },
+    body: JSON.stringify({
+      action: 'get-tenant-details',
+    }),
+  });
+
+  const { data, error } = await response.json();
 
   if (error) {
     throw new Error(error.message);
   }
 
+  // Ensure the returned data matches the TenantInfo interface, adapting if necessary
   return data;
 };
 
-const updateTenantInfo = async (tenant: Partial<TenantInfo>): Promise<TenantInfo> => {
-  const { data, error } = await supabase
-    .from('tenants')
-    .update(tenant)
-    .eq('id', tenant.id)
-    .single();
+const updateTenantInfo = async (tenantId: string, updates: Partial<TenantInfo>): Promise<TenantInfo> => {
+  const response = await fetch('/functions/v1/tenant-actions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+    },
+    body: JSON.stringify({
+      action: 'update_tenant',
+      payload: { id: tenantId, values: updates },
+    }),
+  });
+
+  const { data, error } = await response.json();
 
   if (error) {
     throw new Error(error.message);
   }
-
   return data;
 };
 
@@ -69,8 +85,13 @@ export const useTenantInfo = () => {
 
 export const useUpdateTenantInfo = () => {
   const queryClient = useQueryClient();
+  const { tenantId } = useAuth(); // Get tenantId from context
+
   return useMutation<TenantInfo, Error, Partial<TenantInfo>>({
-    mutationFn: updateTenantInfo,
+    mutationFn: async (updates) => {
+      if (!tenantId) throw new Error("Tenant ID is required for update.");
+      return updateTenantInfo(tenantId, updates); // Pass tenantId
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant_info'] });
     },

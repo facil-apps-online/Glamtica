@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Phone, Globe } from 'lucide-react';
 import { SocialIcon } from '@/components/SocialIcon';
 import { MapDisplay } from '@/components/MapDisplay';
+import { PublicGoogleDriveImage } from '@/components/PublicGoogleDriveImage';
 
 const MicrositePageSkeleton = () => (
   <div className="bg-gray-50 min-h-screen p-8">
@@ -35,7 +36,7 @@ const MicrositePage = () => {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['microsite', countryIso, slug],
-    queryFn: () => fetchPublicAction('get_microsite_data', { country_iso_code: countryIso, slug, platform_id: import.meta.env.VITE_GLAMTICA_PLATFORM_ID }),
+    queryFn: () => fetchPublicAction('get_microsite_data', { country_iso_code: countryIso, slug, platform_id: import.meta.env.VITE_PLATFORM_ID }),
     enabled: !!countryIso && !!slug,
     staleTime: 0,
   });
@@ -61,8 +62,10 @@ const MicrositePage = () => {
     <div className="bg-gray-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-12">
-          <img
-            src={tenant.logo_base64 || `https://ui-avatars.com/api/?name=${encodeURIComponent(tenant.name)}&background=random`}
+          <PublicGoogleDriveImage
+            fileId={tenant.logo_url}
+            tenantId={tenant.id}
+            fallbackSrc={`https://ui-avatars.com/api/?name=${encodeURIComponent(tenant.name)}&background=random`}
             alt={tenant.name}
             className="w-28 h-28 rounded-full mx-auto mb-4 object-cover border-4 border-white shadow-lg"
           />
@@ -84,9 +87,10 @@ const MicrositePage = () => {
           {branches && branches.length > 0 ? (
             branches.map((branch: any) => (
               <Card key={branch.id} className="overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300">
-                {branch.primary_photo_base64 && (
-                  <img
-                    src={branch.primary_photo_base64}
+                {branch.primary_photo_gdrive_id && (
+                  <PublicGoogleDriveImage
+                    fileId={branch.primary_photo_gdrive_id}
+                    tenantId={tenant.id}
                     alt={`Foto de ${branch.name}`}
                     className="w-full h-48 object-cover"
                   />

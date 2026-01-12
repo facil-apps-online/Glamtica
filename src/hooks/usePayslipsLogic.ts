@@ -6,7 +6,6 @@ import { invokeTenantAction } from './useTenantUsers';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getEvidenceUrl } from './useAppointmentEvidence';
 
 // Helper to convert data URL to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {

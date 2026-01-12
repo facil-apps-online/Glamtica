@@ -875,9 +875,7 @@ const SignedConsentsDisplay = ({ attentionId, attentionServiceId, branchId, atte
     });
   };
 
-  if (isLoadingSignedConsents) {
-    return <p className="text-sm text-muted-foreground mt-2">Cargando consentimientos...</p>;
-  }
+
 
   if (!signedConsents || signedConsents.length === 0) {
     return <p className="text-sm text-muted-foreground mt-2">No hay consentimientos asignados a este servicio.</p>;
@@ -894,7 +892,7 @@ const SignedConsentsDisplay = ({ attentionId, attentionServiceId, branchId, atte
               {consent.signed_at ? (
                 <span className="text-green-600">Firmado</span>
               ) : (
-                <Button variant="link" className="text-orange-600 h-auto p-0" onClick={() => setSelectedConsent(consent)}>
+                <Button type="button" variant="link" className="text-orange-600 h-auto p-0" onClick={() => setSelectedConsent(consent)}>
                   Pendiente
                 </Button>
               )}

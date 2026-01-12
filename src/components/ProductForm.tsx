@@ -13,6 +13,8 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
+import { ProductImageGallery } from "@/components/ProductImageGallery";
+
 interface ProductFormProps {
   product?: MasterProduct;
   onSubmit: (data: any, selectedCategoryIds: string[], selectedTaxIds: string[]) => void;
@@ -102,6 +104,15 @@ export const ProductForm = ({ product, onSubmit, onCancel, isSaving }: ProductFo
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+      {product && (
+        <div className="space-y-2">
+          <Label>Imágenes del Producto</Label>
+          <p className="text-sm text-muted-foreground">
+            Sube y gestiona las imágenes para este producto. La primera imagen que subas será la principal.
+          </p>
+          <ProductImageGallery productId={product.id} />
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Nombre del Producto</Label>

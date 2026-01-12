@@ -11,11 +11,12 @@ interface TenantSettings {
 export const useSettings = () => {
   const { session, currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+  const platformId = currentAssignment?.platform_id;
 
   return useQuery<TenantSettings["settings_data"], Error>({
     queryKey: ['tenantSettings', tenantId],
     queryFn: async () => {
-      if (!tenantId || !session) return {};
+      if (!tenantId || !session || !platformId) return {};
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
         method: 'POST',
@@ -25,7 +26,7 @@ export const useSettings = () => {
         },
         body: JSON.stringify({
           action: 'get_tenant_settings',
-          payload: { tenantId: tenantId },
+          payload: { tenantId: tenantId, platformId: platformId },
         }),
       });
 
@@ -35,7 +36,7 @@ export const useSettings = () => {
       }
       return json.settings_data || {};
     },
-    enabled: !!tenantId && !!session,
+    enabled: !!tenantId && !!session && !!platformId,
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
 };
@@ -45,12 +46,13 @@ export const useUpdateSetting = () => {
   const { toast } = useToast();
   const { session, currentAssignment } = useAuth();
   const tenantId = currentAssignment?.tenant_id;
+  const platformId = currentAssignment?.platform_id;
 
   return useMutation({
     mutationFn: async (newSettings: { [key: string]: any }) => {
-      if (!tenantId || !session) {
-        console.error("Tenant ID or session is undefined when attempting to update settings.", { session, tenantId });
-        throw new Error("Tenant ID or session not available");
+      if (!tenantId || !session || !platformId) {
+        console.error("Tenant ID, session or platformId is undefined when attempting to update settings.", { session, tenantId, platformId });
+        throw new Error("Tenant ID, session or platformId not available");
       }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
@@ -61,7 +63,7 @@ export const useUpdateSetting = () => {
         },
         body: JSON.stringify({
           action: 'update_tenant_settings',
-          payload: { tenantId: tenantId, newSettings: newSettings },
+          payload: { tenantId: tenantId, newSettings: newSettings, platformId: platformId },
         }),
       });
 

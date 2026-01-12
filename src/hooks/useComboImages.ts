@@ -1,9 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchTenantAction } from "@/lib/fetchTenantAction";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabaseClient";
+import { useGoogleDriveStorage } from "./useGoogleDriveStorage";
 import { useAuth } from "@/contexts/AuthContext";
-import { ComboImage } from "@/types/combos"; // Import ComboImage
+
+export interface ComboImage {
+  id: string;
+  combo_id: string;
+  tenant_id: string;
+  image_url: string | null;
+  google_drive_file_id: string;
+  is_primary: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
 
 // Hook to get images for a specific combo
 export const useComboImages = (comboId: string) => {
@@ -17,22 +28,56 @@ export const useComboImages = (comboId: string) => {
   });
 };
 
+// Hook to associate a file uploaded to GDrive with a combo
+export const useAssociateComboImage = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, { comboId: string; google_drive_file_id: string }>({
+    mutationFn: (variables) => fetchTenantAction("associate_combo_image", variables),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["comboImages", variables.comboId] });
+      queryClient.invalidateQueries({ queryKey: ['master_combos'] });
+    },
+    onError: (error) => {
+      toast({ title: "Error de Asociación", description: `La imagen se subió pero no se pudo asociar al combo: ${error.message}`, variant: "destructive" });
+    },
+  });
+};
+
 // Hook to delete an image from a combo
 export const useDeleteComboImage = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { deleteFile: deleteFromDrive } = useGoogleDriveStorage();
 
-  return useMutation<void, Error, { imageId: string; comboId: string }>({
-    mutationFn: ({ imageId }) => fetchTenantAction("delete_combo_image", { imageId }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["comboImages", variables.comboId] });
-      queryClient.invalidateQueries({ queryKey: ['master_combos'] }); // Invalidate master_combos list
-      toast({ title: "Éxito", description: "Imagen eliminada correctamente.", variant: "success" });
+  const { mutate, isPending: isDeleting } = useMutation<void, Error, { imageId: string; comboId: string; google_drive_file_id: string }>({
+    mutationFn: async ({ imageId, comboId, google_drive_file_id }) => {
+      // 1. Delete from our database first
+      await fetchTenantAction("delete_combo_image", { imageId });
+
+      // 2. Immediately invalidate queries to update the UI instantly
+      queryClient.invalidateQueries({ queryKey: ["comboImages", comboId] });
+      queryClient.invalidateQueries({ queryKey: ['master_combos'] });
+      
+      // 3. Then, delete from Google Drive in the background
+      try {
+        await deleteFromDrive(google_drive_file_id);
+      } catch (error) {
+        console.error(`DB record deleted. Error deleting file from Google Drive: ${(error as Error).message}.`);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Éxito", description: "Imagen eliminada.", variant: "success" });
     },
     onError: (error) => {
-      toast({ title: "Error", description: `No se pudo eliminar la imagen: ${error.message}`, variant: "destructive" });
+      toast({ title: "Error", description: `No se pudo eliminar el registro de la imagen: ${error.message}`, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["comboImages"] });
+      queryClient.invalidateQueries({ queryKey: ['master_combos'] });
     },
   });
+
+  return { mutate, isDeleting };
 };
 
 // Hook to set an image as the primary one for a combo
@@ -44,62 +89,11 @@ export const useSetPrimaryComboImage = () => {
     mutationFn: (variables) => fetchTenantAction("set_primary_combo_image", variables),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["comboImages", variables.comboId] });
-      queryClient.invalidateQueries({ queryKey: ['master_combos'] }); // Invalidate master_combos list
+      queryClient.invalidateQueries({ queryKey: ['master_combos'] });
       toast({ title: "Éxito", description: "Imagen principal actualizada.", variant: "success" });
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo actualizar la imagen principal: ${error.message}`, variant: "destructive" });
-    },
-  });
-};
-
-// Hook to upload an image file to Google Drive and associate it with a combo
-export const useUploadComboImage = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  return useMutation<any, Error, { comboId: string; file: File }>({
-    mutationFn: async ({ comboId, file }) => {
-      if (!currentAssignment?.tenant_id) {
-        throw new Error("No se pudo determinar el tenant actual.");
-      }
-
-      const fileBase64 = await convertFileToBase64(file);
-
-      const { data, error } = await supabase.functions.invoke("google-drive-upload", {
-        body: {
-          tenantId: currentAssignment.tenant_id,
-          fileBase64,
-          mimeType: file.type,
-          fileName: file.name,
-          uploadContext: "Combos", // <--- Important: Upload context for Combos
-          contextId: comboId, // contextId is the comboId
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["comboImages", variables.comboId] });
-      queryClient.invalidateQueries({ queryKey: ['master_combos'] }); // Invalidate master_combos list
-      toast({ title: "Éxito", description: "Imagen subida y asociada correctamente.", variant: "success" });
-    },
-    onError: (error) => {
-      toast({ title: "Error", description: `Error al subir la imagen: ${error.message}`, variant: "destructive" });
     },
   });
 };

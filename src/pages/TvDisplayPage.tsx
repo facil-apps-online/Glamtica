@@ -145,15 +145,26 @@ const TvDisplayPage: React.FC = () => {
   useEffect(() => {
     if (tvDisplay?.tenant_id) {
       const fetchTenant = async () => {
-        const { data, error } = await supabase
-          .from('tenants')
-          .select('id, logo_url')
-          .eq('id', tvDisplay.tenant_id)
-          .single();
-        if (error) {
-          console.error('Error fetching tenant:', error);
-        } else {
+        try {
+          const url = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/public-actions`;
+          const body = {
+            action: 'public_get_tenant_basic_info',
+            payload: { tenantId: tvDisplay.tenant_id },
+          };
+
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch tenant basic info');
+          }
           setTenant(data);
+        } catch (error: any) {
+          console.error('Error fetching tenant:', error);
         }
       };
       fetchTenant();

@@ -34,18 +34,19 @@ const TributarioTabSkeleton = () => (
 );
 
 export function TributarioTab() {
-  const { tenantId } = useAuth();
+  const { tenantId, currentAssignment } = useAuth(); // Get currentAssignment
+  const platformId = currentAssignment?.platform_id; // Get platformId from currentAssignment
   const { toast } = useToast();
   const { data: tenantSettings, isLoading: isLoadingSettings } = useTenantInvoicingSettings(tenantId || '');
   const { mutate: updateSettings, isPending: isUpdatingSettings } = useUpdateTenantInvoicingSettings();
 
   const handleToggle = (settingKey: 'invoice_products_enabled' | 'invoice_services_enabled' | 'automatic_invoicing_enabled', checked: boolean) => {
-    if (!tenantId) {
-      toast({ title: "Error", description: "Tenant ID no disponible.", variant: "destructive" });
+    if (!tenantId || !platformId) { // Add platformId check
+      toast({ title: "Error", description: "Tenant ID o Platform ID no disponible.", variant: "destructive" }); // Update error message
       return;
     }
     const newSettings = { ...tenantSettings?.settings_data, [settingKey]: checked };
-    updateSettings({ tenantId, newSettings }, {
+    updateSettings({ tenantId, platformId, newSettings }, { // Pass platformId here
       onSuccess: () => { toast({ title: "Éxito", description: "Configuración de facturación actualizada.", variant: "success" }); },
       onError: (error) => { toast({ title: "Error", description: `Error al actualizar configuración: ${error.message}`, variant: "destructive" }); },
     });

@@ -153,12 +153,14 @@ const TenantInfoFooter: React.FC = () => {
 };
 
 // --- COMPONENTE PRINCIPAL (Corregido y Unificado) ---
-export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", subtitle = "Panel", ...props }: AppSidebarProps) {
+export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica", subtitle = "Panel", ...props }: AppSidebarProps) {
   const { setOpenMobile, open } = useSidebar();
   const { user, tenant, currentAssignment } = useAuth();
   const userRole = currentAssignment?.role_name;
 
-  const { displayUrl: tenantLogoUrl } = useGoogleDriveImage(tenant?.logo_url);
+  console.log('[AppSidebar] Tenant object from useAuth:', tenant);
+
+  const { displayUrl: tenantLogoUrl, isLoading: isLogoLoading } = useGoogleDriveImage(tenant?.tenant?.logo_url);
 
   const handleLinkClick = () => {
     setOpenMobile(false);
@@ -171,7 +173,9 @@ export function AppSidebar({ menuConfig, homeUrl = "/", title = "Glamtica.app", 
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to={homeUrl} onClick={handleLinkClick}>
-                {tenantLogoUrl ? (
+                {isLogoLoading ? (
+                  <Skeleton className="aspect-square size-8 rounded-lg" />
+                ) : tenantLogoUrl ? (
                   <img 
                     src={tenantLogoUrl} 
                     alt="Logo del Tenant" 

@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchTenantAction } from "@/lib/fetchTenantAction";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabaseClient";
-import { useAuth } from "@/contexts/AuthContext";
+import { useGoogleDriveStorage } from "./useGoogleDriveStorage";
+import { useAuth } from "@/contexts/AuthContext"; // Re-add useAuth
 
 export interface ServiceImage {
   id: string;
@@ -28,39 +28,61 @@ export const useServiceImages = (serviceId: string) => {
   });
 };
 
-// Hook to add an image to a service (desde URL, puede ser útil mantenerlo)
-export const useAddServiceImage = () => {
+// Hook to associate a file uploaded to GDrive with a service
+export const useAssociateServiceImage = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<ServiceImage, Error, { serviceId: string; imageUrl: string }>({
-    mutationFn: (variables) => fetchTenantAction("add_service_image", variables),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["serviceImages", data.service_id] });
-      toast({ title: "Éxito", description: "Imagen añadida correctamente.", variant: "success" });
+  return useMutation<any, Error, { serviceId: string; google_drive_file_id: string }>({
+    mutationFn: (variables) => fetchTenantAction("associate_service_image", variables),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["serviceImages", variables.serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['master_services'] });
+      // The toast is handled by the uploader hook, so we might not need one here.
+      // toast({ title: "Éxito", description: "Imagen asociada correctamente.", variant: "success" });
     },
     onError: (error) => {
-      toast({ title: "Error", description: `No se pudo añadir la imagen: ${error.message}`, variant: "destructive" });
+      toast({ title: "Error de Asociación", description: `La imagen se subió pero no se pudo asociar al servicio: ${error.message}`, variant: "destructive" });
     },
   });
 };
 
-// Hook to delete an image from a service
+// Hook to delete an image from a service (refactored using useGoogleDriveStorage)
 export const useDeleteServiceImage = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { deleteFile: deleteFromDrive } = useGoogleDriveStorage();
 
-  return useMutation<void, Error, { imageId: string; serviceId: string }>({
-    mutationFn: ({ imageId }) => fetchTenantAction("delete_service_image", { imageId }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["serviceImages", variables.serviceId] });
+  const { mutate, isPending: isDeleting } = useMutation<void, Error, { imageId: string; serviceId: string; google_drive_file_id: string }>({
+    mutationFn: async ({ imageId, serviceId, google_drive_file_id }) => {
+      // 1. Delete from our database first
+      await fetchTenantAction("delete_service_image", { imageId });
+
+      // 2. Immediately invalidate queries to update the UI instantly
+      queryClient.invalidateQueries({ queryKey: ["serviceImages", serviceId] });
       queryClient.invalidateQueries({ queryKey: ['master_services'] });
-      toast({ title: "Éxito", description: "Imagen eliminada correctamente.", variant: "success" });
+      
+      // 3. Then, delete from Google Drive in the background
+      try {
+        await deleteFromDrive(google_drive_file_id);
+      } catch (error) {
+        // Log the error but do not re-throw. The DB record is gone, and the orphan cleanup will handle the GDrive file.
+        console.error(`DB record deleted. Error deleting file from Google Drive: ${(error as Error).message}.`);
+      }
+    },
+    onSuccess: () => {
+      // The UI has already updated. Just show a confirmation toast.
+      toast({ title: "Éxito", description: "Imagen eliminada.", variant: "success" });
     },
     onError: (error) => {
-      toast({ title: "Error", description: `No se pudo eliminar la imagen: ${error.message}`, variant: "destructive" });
+      // This error is for the DB deletion part. Invalidate to refetch and bring the item back to the UI.
+      toast({ title: "Error", description: `No se pudo eliminar el registro de la imagen: ${error.message}`, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["serviceImages"] }); // Refetch all service images on error
+      queryClient.invalidateQueries({ queryKey: ['master_services'] });
     },
   });
+
+  return { mutate, isDeleting };
 };
 
 // Hook to set an image as the primary one for a service
@@ -77,57 +99,6 @@ export const useSetPrimaryServiceImage = () => {
     },
     onError: (error) => {
       toast({ title: "Error", description: `No se pudo actualizar la imagen principal: ${error.message}`, variant: "destructive" });
-    },
-  });
-};
-
-// Hook to upload an image file to Google Drive and associate it with a service
-export const useUploadServiceImage = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const { currentAssignment } = useAuth();
-
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  return useMutation<any, Error, { serviceId: string; file: File }>({
-    mutationFn: async ({ serviceId, file }) => {
-      if (!currentAssignment?.tenant_id) {
-        throw new Error("No se pudo determinar el tenant actual.");
-      }
-
-      const fileBase64 = await convertFileToBase64(file);
-
-      const { data, error } = await supabase.functions.invoke("google-drive-upload", {
-        body: {
-          tenantId: currentAssignment.tenant_id,
-          fileBase64,
-          mimeType: file.type,
-          fileName: file.name,
-          uploadContext: "Services",
-          contextId: serviceId,
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["serviceImages", variables.serviceId] });
-      queryClient.invalidateQueries({ queryKey: ['master_services'] });
-      toast({ title: "Éxito", description: "Imagen subida y asociada correctamente.", variant: "success" });
-    },
-    onError: (error) => {
-      toast({ title: "Error", description: `Error al subir la imagen: ${error.message}`, variant: "destructive" });
     },
   });
 };

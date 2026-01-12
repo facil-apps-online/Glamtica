@@ -18,7 +18,7 @@ const PrivacyPolicy: React.FC = () => {
             </TabsList>
             <TabsContent value="es" className="prose max-w-none mt-4">
               <p>Última actualización: 19 de septiembre de 2025</p>
-              <p>Esta Política de Privacidad describe cómo Glamtica.app ("nosotros", "nuestro" o "nuestra") recopila, utiliza y divulga su información personal cuando utiliza nuestro servicio (el "Servicio").</p>
+              <p>Esta Política de Privacidad describe cómo Glamtica ("nosotros", "nuestro" o "nuestra") recopila, utiliza y divulga su información personal cuando utiliza nuestro servicio (el "Servicio").</p>
 
               <h2>1. Recopilación y Uso de Información</h2>
               <p>Recopilamos varios tipos de información para proporcionar y mejorar nuestro Servicio. Los tipos de información personal que podemos recopilar incluyen:</p>
@@ -28,7 +28,7 @@ const PrivacyPolicy: React.FC = () => {
               </ul>
 
               <h2>2. Uso de Datos</h2>
-              <p>Glamtica.app utiliza los datos recopilados para diversos fines:</p>
+              <p>Glamtica utiliza los datos recopilados para diversos fines:</p>
               <ul>
                 <li>Para proporcionar y mantener nuestro Servicio.</li>
                 <li>Para notificarle sobre cambios en nuestro Servicio.</li>
@@ -42,7 +42,7 @@ const PrivacyPolicy: React.FC = () => {
               <p>Podemos divulgar su información personal de buena fe cuando dicha acción sea necesaria para:</p>
               <ul>
                 <li>Cumplir con una obligación legal.</li>
-                <li>Proteger y defender los derechos o la propiedad de Glamtica.app.</li>
+                <li>Proteger y defender los derechos o la propiedad de Glamtica.</li>
                 <li>Prevenir o investigar posibles infracciones en relación con el Servicio.</li>
                 <li>Proteger la seguridad personal de los usuarios del Servicio o del público.</li>
                 <li>Protegerse contra la responsabilidad legal.</li>
@@ -65,7 +65,7 @@ const PrivacyPolicy: React.FC = () => {
             </TabsContent>
             <TabsContent value="en" className="prose max-w-none mt-4">
               <p>Last updated: September 19, 2025</p>
-              <p>This Privacy Policy describes how Glamtica.app ("we", "us", or "our") collects, uses, and discloses your personal information when you use our service (the "Service").</p>
+              <p>This Privacy Policy describes how Glamtica ("we", "us", or "our") collects, uses, and discloses your personal information when you use our service (the "Service").</p>
 
               <h2>1. Information Collection and Use</h2>
               <p>We collect several different types of information to provide and improve our Service. The types of personal information we may collect include:</p>
@@ -75,7 +75,7 @@ const PrivacyPolicy: React.FC = () => {
               </ul>
 
               <h2>2. Use of Data</h2>
-              <p>Glamtica.app uses the collected data for various purposes:</p>
+              <p>Glamtica uses the collected data for various purposes:</p>
               <ul>
                 <li>To provide and maintain our Service.</li>
                 <li>To notify you about changes to our Service.</li>
@@ -89,7 +89,7 @@ const PrivacyPolicy: React.FC = () => {
               <p>We may disclose your personal information in the good faith belief that such action is necessary to:</p>
               <ul>
                 <li>To comply with a legal obligation.</li>
-                <li>To protect and defend the rights or property of Glamtica.app.</li>
+                <li>To protect and defend the rights or property of Glamtica.</li>
                 <li>To prevent or investigate possible wrongdoing in connection with the Service.</li>
                 <li>To protect the personal safety of users of the Service or the public.</li>
                 <li>To protect against legal liability.</li>

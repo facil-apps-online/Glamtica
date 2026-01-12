@@ -107,7 +107,7 @@ export const AttentionItemCard = ({
   };
 
   const canPerformActions = type !== 'product' && type !== 'combo' && attentionStatus !== 'Cancelada' && attentionStatus !== 'Pagada' && attentionStatus !== 'Finalizada';
-  const canUploadEvidence = type === 'service';
+  const canUploadEvidence = type === 'service' && attentionStatus !== 'Cancelada';
 
   return (
     <>

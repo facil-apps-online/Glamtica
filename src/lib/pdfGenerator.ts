@@ -2,11 +2,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Helper to fetch an image and convert it to a data URL for embedding
-const fetchImageAsDataURL = async (url: string, token: string) => {
+const fetchImageAsDataURL = async (url: string) => {
   try {
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
+    const response = await fetch(url);
     if (!response.ok) return null;
     const blob = await response.blob();
     return new Promise<string | null>((resolve, reject) => {
@@ -24,9 +22,9 @@ const fetchImageAsDataURL = async (url: string, token: string) => {
 export const generatePayslipPDF = async (payslipDetails: any, token: string, formatPrice: (price: number) => string) => {
   const doc = new jsPDF();
   const logoUrl = payslipDetails.tenant?.logo_url 
-    ? `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/proxy-google-drive-image?fileId=${payslipDetails.tenant.logo_url}`
+    ? `${import.meta.env.VITE_CORE_SUPABASE_URL}/functions/v1/proxy-google-drive-image?fileId=${payslipDetails.tenant.logo_url}&tenantId=${payslipDetails.tenant.id}&platformId=${import.meta.env.VITE_PLATFORM_ID}`
     : '/glamtica.app.png';
-  const logoDataUrl = await fetchImageAsDataURL(logoUrl, token);
+  const logoDataUrl = await fetchImageAsDataURL(logoUrl);
   const pageWidth = doc.internal.pageSize.getWidth();
   if (logoDataUrl) {
     const img = new Image();
@@ -101,8 +99,8 @@ export const generatePayslipPDF = async (payslipDetails: any, token: string, for
   doc.text(`Total Liquidado: ${formatPrice(payslipDetails.payslip.total_amount)}`, 14, finalY + 10);
   finalY += 15;
   if (payslipDetails.signature?.google_drive_file_id) {
-    const signatureUrl = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/proxy-google-drive-image?fileId=${payslipDetails.signature.google_drive_file_id}`;
-    const signatureDataUrl = await fetchImageAsDataURL(signatureUrl, token);
+    const signatureUrl = `${import.meta.env.VITE_CORE_SUPABASE_URL}/functions/v1/proxy-google-drive-image?fileId=${payslipDetails.signature.google_drive_file_id}&tenantId=${payslipDetails.tenant.id}&platformId=${import.meta.env.VITE_PLATFORM_ID}`;
+    const signatureDataUrl = await fetchImageAsDataURL(signatureUrl);
     if (signatureDataUrl) {
       doc.setFontSize(10);
       doc.text('Firma del Profesional:', 14, finalY);

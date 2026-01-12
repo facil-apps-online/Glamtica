@@ -97,8 +97,8 @@ const ResetPasswordPage: React.FC = () => {
     <div className="min-h-screen w-full bg-brand-primary lg:grid lg:grid-cols-2">
       {/* Columna Izquierda - Panel de Bienvenida */}
       <div className="hidden lg:flex flex-col items-center justify-center p-10 text-white">
-        <img src={Logo} alt="Glamtica.app Logo" className="w-48 h-48 mb-6" />
-        <h1 className="text-4xl font-bold text-center">Glamtica.app</h1>
+        <img src={Logo} alt="Glamtica Logo" className="w-48 h-48 mb-6" />
+        <h1 className="text-4xl font-bold text-center">Glamtica</h1>
         <p className="mt-4 text-lg text-center text-gray-300">Establece una nueva contraseña para tu cuenta.</p>
       </div>
 
@@ -107,7 +107,7 @@ const ResetPasswordPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo para la vista móvil */}
           <div className="lg:hidden flex justify-center mb-8">
-            <img src={Logo} alt="Glamtica.app Logo" className="w-36 h-36" />
+            <img src={Logo} alt="Glamtica Logo" className="w-36 h-36" />
           </div>
           <Card className="border-none shadow-none lg:border lg:shadow-sm">
             <CardHeader className="text-center lg:text-left">

@@ -1,13 +1,13 @@
 import { useGoogleDriveImage } from '@/hooks/useGoogleDriveImage';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface ProductImageProps {
+interface ComboImageProps {
   imageUrl: string;
   altText?: string;
   className?: string;
 }
 
-export const ProductImage = ({ imageUrl, altText = "Imagen de producto", className }: ProductImageProps) => {
+export const ComboImage = ({ imageUrl, altText = "Imagen de combo", className }: ComboImageProps) => {
   const { displayUrl, isLoading } = useGoogleDriveImage(imageUrl);
 
   if (isLoading) {

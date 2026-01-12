@@ -35,14 +35,26 @@ export interface TenantSettingsData {
 }
 
 const fetchTenantSettingsData = async (tenantId: string): Promise<TenantSettingsData> => {
-  const { data, error } = await supabase.rpc('get_tenant_settings_data', { tenant_id_param: tenantId });
+  // The tenantId is passed for query key consistency, but the function gets the ID from the JWT
+  const response = await fetch('/functions/v1/tenant-actions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+    },
+    body: JSON.stringify({
+      action: 'get-tenant-details',
+    }),
+  });
 
-  if (error) {
-    console.error('Error fetching tenant settings data:', error);
-    throw new Error(error.message);
+  const responseData = await response.json();
+
+  if (!response.ok || responseData.success === false) {
+    console.error('Error fetching tenant settings data:', responseData.message);
+    throw new Error(responseData.message || 'Failed to fetch tenant settings data');
   }
 
-  return data;
+  return responseData;
 };
 
 export const useTenantSettingsData = (tenantId: string) => {
