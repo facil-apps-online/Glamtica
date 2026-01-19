@@ -120,18 +120,11 @@ export function SubscriptionTab() {
 
     const checkoutRequest = {
       tenantId: currentAssignment.tenant_id,
-      redirectUrl: `${window.location.origin}/app/settings?tab=subscription&payment_status=success`,
       userId: profile.id,
-      amountInCents: Math.round(plan.calculated_price * 100),
+      planId: plan.plan_id,
+      redirectUrl: `${window.location.origin}/app/settings?tab=subscription&payment_status=success`,
       currency: 'COP',
-      actions_on_success: [
-        {
-          action_type: 'ACTIVATE_SUBSCRIPTION',
-          payload: { 
-            plan_id: plan.plan_id,
-          },
-        },
-      ],
+      // The backend will calculate the total based on the plan and the tenant's current assets (like branches)
     };
 
     wompiCheckoutMutation.mutate(checkoutRequest, {

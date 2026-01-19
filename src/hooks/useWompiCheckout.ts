@@ -1,17 +1,17 @@
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { coreSupabase } from '@/lib/supabaseClient';
 
 interface CheckoutRequest {
   tenantId: string;
   redirectUrl: string;
   userId: string;
-  amountInCents: number;
+  planId: string; // Required for backend price calculation
   currency?: string;
-  actions_on_success: any[];
+  extraItems?: Array<{ assetId: string; quantity: number }>;
 }
 
 const generateWompiCheckout = async (request: CheckoutRequest) => {
-  const { data, error } = await supabase.functions.invoke('wompi-generate-checkout', {
+  const { data, error } = await coreSupabase.functions.invoke('wompi-generate-checkout', {
     body: request,
   });
 

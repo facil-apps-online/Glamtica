@@ -21,8 +21,13 @@ const fetchSubscriptionStatus = async (): Promise<SubscriptionInfo | null> => {
     throw new Error(error.message);
   }
   
-  // The RPC returns an array, so we extract the first element.
-  return (data && data.length > 0 ? data[0] : null) as SubscriptionInfo | null;
+  // The RPC might return an array or a single object depending on recent changes.
+  // We handle both cases to be safe.
+  if (Array.isArray(data)) {
+      return (data.length > 0 ? data[0] : null) as SubscriptionInfo | null;
+  }
+  
+  return data as SubscriptionInfo | null;
 };
 
 export const useSubscriptionStatus = (tenantId: string | null | undefined) => {

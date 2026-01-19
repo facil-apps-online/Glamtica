@@ -5,9 +5,9 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export function ReadOnlyBanner() {
-  const { user } = useAuth();
+  const { currentAssignment } = useAuth();
 
-  const isAdmin = user?.role === 'tenant_super_admin' || user?.role === 'tenant_admin';
+  const isAdmin = currentAssignment?.role_name === 'tenant_super_admin' || currentAssignment?.role_name === 'tenant_admin';
 
   return (
     <div className="bg-yellow-500 border-b border-yellow-600 text-yellow-900 p-3 text-center text-sm flex items-center justify-center gap-3">
@@ -18,7 +18,7 @@ export function ReadOnlyBanner() {
             <span className="font-semibold">Tu suscripción requiere atención.</span> Para reactivar todas las funcionalidades, por favor, actualiza tu plan.
           </div>
           <Button asChild size="sm" className="bg-yellow-800 hover:bg-yellow-900 text-white ml-4">
-            <Link to="/subscribe">Renovar Suscripción</Link>
+            <Link to="/app/subscribe">Renovar Suscripción</Link>
           </Button>
         </>
       ) : (
