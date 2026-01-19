@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { coreSupabase } from '@/lib/supabaseClient';
 
 export interface PhonePrefix {
   id: string;
@@ -8,21 +9,16 @@ export interface PhonePrefix {
 }
 
 const fetchPhonePrefixes = async (): Promise<PhonePrefix[]> => {
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/public-actions`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    const { data, error } = await coreSupabase.functions.invoke('public-actions', {
+        body: {
             action: 'get-phone-prefixes',
-        }),
+        }
     });
 
-    const json = await response.json();
-    if (!response.ok) {
-        throw new Error(json.message || 'Failed to fetch phone prefixes');
+    if (error) {
+        throw new Error(error.message || 'Failed to fetch phone prefixes');
     }
-    return json;
+    return data;
 };
 
 export const usePhonePrefixes = () => {

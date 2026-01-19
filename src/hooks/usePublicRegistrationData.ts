@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { coreSupabase } from '@/lib/supabaseClient';
 
 // Tipos de datos que esperamos de la función RPC
 export interface PublicCountry {
@@ -36,7 +36,12 @@ export interface PublicRegistrationData {
 }
 
 const fetchPublicRegistrationData = async (platformId: string): Promise<PublicRegistrationData> => {
-  const { data, error } = await supabase.rpc('get_public_registration_data', { p_platform_id: platformId });
+  const { data, error } = await coreSupabase.functions.invoke('public-actions', {
+    body: {
+      action: 'get_public_registration_data',
+      platform_id: platformId
+    }
+  });
 
   if (error) {
     console.error('Error fetching public registration data:', error);

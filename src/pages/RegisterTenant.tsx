@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { usePublicRegistrationData } from '@/hooks/usePublicRegistrationData';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, coreSupabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
@@ -279,9 +279,8 @@ export default function RegisterTenant() {
       const platformId = import.meta.env.VITE_PLATFORM_ID;
       if (!platformId) throw new Error("Platform ID no está configurado.");
 
-      // Construir el payload explícitamente para que coincida con la Edge Function
-      const payload = {
-        platform_id: platformId,
+      // Primera llamada: Registrar el tenant en la base de datos Core
+      const coreTenantPayload = {
         name: values.name,
         country_id: values.country_id,
         default_language_code: values.default_language_code,
@@ -302,18 +301,54 @@ export default function RegisterTenant() {
         website: values.website,
         latitude: values.latitude,
         longitude: values.longitude,
-        admin_email: values.admin_email,
-        admin_password: userExists ? undefined : values.admin_password, // Solo enviar si es nuevo usuario
-        recaptcha_token: values.recaptcha_token,
+        recaptcha_token: values.recaptcha_token, // Recaptcha se valida en Core
+        platform_id: platformId, // Asegurarse que platform_id esté incluido en el payload de Core
       };
 
-      const { data, error } = await supabase.functions.invoke('register-tenant', { body: payload });
-      if (error) throw new Error(error.message);
-      if (data.error) throw new Error(data.error);
-      if (data.success === false) throw new Error(data.message);
+      console.log('Enviando payload al Core register-tenant:', coreTenantPayload);
+      // 'coreSupabase' es el cliente para el backend de Core
+      const { data: coreResponse, error: coreError } = await coreSupabase.functions.invoke('register-tenant', { body: coreTenantPayload });
+      
+      if (coreError) throw new Error(coreError.message);
+      if (!coreResponse.success) throw new Error(coreResponse.message);
+      
+      const newTenantId = coreResponse.tenant_id;
+      if (!newTenantId) throw new Error('No se recibió el ID del tenant desde Core.');
+      
+      console.log('Tenant Core registrado exitosamente con ID:', newTenantId);
+
+      // Segunda llamada: Crear o vincular el usuario administrador en Services
+      // 'supabase' es el cliente para el backend de Services
+      const servicesUserPayload = {
+        action: 'invite_or_assign_user_to_tenant',
+        payload: {
+          email: values.admin_email,
+          password: userExists ? undefined : values.admin_password,
+          tenantId: newTenantId,
+          platformId: platformId,
+          roleName: 'tenant_super_admin',
+          branchName: 'Sucursal Principal',
+          firstName: values.admin_email.split('@')[0], // Basic default
+          lastName: '',
+          tenantData: {
+            ...coreTenantPayload, // Enviar todos los datos recolectados para el Core
+            tenantId: newTenantId, // Asegurar IDs correctos
+            platformId: platformId,
+            address: values.formatted_address || [values.physical_address_line1, values.physical_city, values.physical_state].filter(Boolean).join(', '),
+          }
+        },
+      };
+
+      console.log('Enviando payload al Services user-actions:', servicesUserPayload);
+      const { data: servicesResponse, error: servicesError } = await supabase.functions.invoke('user-actions', { body: servicesUserPayload });
+      
+      if (servicesError) throw new Error(servicesError.message);
+      if (!servicesResponse.success) throw new Error(servicesResponse.message);
+
       toast({
         title: '¡Registro Exitoso!',
-        description: 'Tu negocio ha sido registrado. Revisa tu email para verificar tu cuenta y luego inicia sesión.',
+        description: 'Tu negocio y cuenta de administrador han sido registrados. Revisa tu email para verificar tu cuenta y luego inicia sesión.',
+        variant: 'success',
       });
       navigate('/auth');
     } catch (error: any) {

@@ -61,10 +61,10 @@ export function Layout() {
   }, [currentAssignment, addNotification]);
 
   React.useEffect(() => {
-    if (!isSubscriptionLoading && status === 'suspendido' && location.pathname !== '/app/subscribe') {
+    if (!isSubscriptionLoading && (status === 'suspendido' || !subscription) && location.pathname !== '/app/subscribe') {
       navigate('/app/subscribe');
     }
-  }, [status, isSubscriptionLoading, location.pathname, navigate]);
+  }, [status, subscription, isSubscriptionLoading, location.pathname, navigate]);
 
   if (isSubscriptionLoading || isNotificationsLoading) {
     return (
