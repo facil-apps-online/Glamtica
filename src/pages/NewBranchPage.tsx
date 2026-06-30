@@ -27,7 +27,7 @@ export default function NewBranchPage() {
         <h1 className="text-3xl font-bold text-primary">Añadir Nueva Sucursal</h1>
       </div>
       <BranchForm
-        onSuccess={() => navigate('/branches')}
+        onSuccess={() => navigate('/app/branches')}
         tenantId={tenantId}
       />
     </div>

@@ -26,7 +26,6 @@ export const BranchCard: React.FC<BranchCardProps> = ({
   screenSize, // Usar la nueva prop
 }) => {
   const { t } = useTranslation();
-  console.log('BranchCard - branch:', branch, 'screenSize:', screenSize); // Console log para depuración
 
   return (
     <Card className={`backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${screenSize === 'mobile' ? 'border-red-500 border-2' : ''}`}>

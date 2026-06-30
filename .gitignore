@@ -27,3 +27,6 @@ Original
 
 *storybook.log
 storybook-static
+.env.*
+.lovable
+plan.md

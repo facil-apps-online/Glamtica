@@ -47,7 +47,6 @@ const AuthPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false); // Nuevo estado de carga
-  const [resetLink, setResetLink] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { login, supabaseClient, currentAssignment } = useAuth(); // Obtener supabaseClient y currentAssignment del contexto
@@ -83,17 +82,18 @@ const AuthPage: React.FC = () => {
       });
       return;
     }
-    
-    
 
     try {
       const platformId = import.meta.env.VITE_PLATFORM_ID;
       if (!platformId) {
         throw new Error("Platform ID no está configurado en el cliente.");
       }
-      const result = await createPasswordResetTokenMutation.mutateAsync({ email, platform_id: platformId });
-      const fullLink = `${window.location.origin}/update-password?token=${result.token}`;
-      setResetLink(fullLink);
+      await createPasswordResetTokenMutation.mutateAsync({ email, platform_id: platformId });
+      toast({
+        title: 'Correo Enviado',
+        description: 'Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.',
+        variant: 'success',
+      });
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -231,24 +231,6 @@ const AuthPage: React.FC = () => {
         </div>
       </motion.div>
 
-      <AlertDialog open={!!resetLink} onOpenChange={() => setResetLink(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Enlace de Recuperación Generado</AlertDialogTitle>
-            <AlertDialogDescription>
-              Copia y pega el siguiente enlace en tu navegador para establecer una nueva contraseña.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="p-4 bg-muted rounded-md text-sm break-all">
-            {resetLink}
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setResetLink(null)}>
-              Cerrar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

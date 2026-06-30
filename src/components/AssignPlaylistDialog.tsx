@@ -27,7 +27,6 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
   tvDisplayId,
   currentPlaylistId,
 }) => {
-  console.log("AssignPlaylistDialog - currentPlaylistId received:", currentPlaylistId);
   const [playlists, setPlaylists] = useState<MediaPlaylist[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(currentPlaylistId);
   const [loading, setLoading] = useState(false);
@@ -139,14 +138,11 @@ const AssignPlaylistDialog: React.FC<AssignPlaylistDialogProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Ninguna</SelectItem>
-                {playlists.map((playlist) => {
-                    console.log("AssignPlaylistDialog - Renderizando SelectItem para:", playlist.id, playlist.name);
-                    return (
-                      <SelectItem key={playlist.id} value={playlist.id}>
-                        {playlist.name}
-                      </SelectItem>
-                    );
-                  })}
+                {playlists.map((playlist) => (
+                  <SelectItem key={playlist.id} value={playlist.id}>
+                    {playlist.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

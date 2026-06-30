@@ -11,6 +11,7 @@ import { es } from 'date-fns/locale';
 import { Paperclip, Send, X } from 'lucide-react';
 import { useGoogleDriveImage } from "@/hooks/useGoogleDriveImage";
 import { useTenantUsers } from '@/hooks/useTenantUsers';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 // TipTap Imports
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -111,7 +112,7 @@ const ChatterEventItem: React.FC<{ event: ChatterEvent }> = ({ event }) => {
         if (event.event_type === 'comment') {
             return (
                 <div>
-                    <div className="text-sm text-gray-800 whitespace-pre-wrap prose dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={{ __html: event.payload.text }}></div>
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap prose dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={{ __html: sanitizeHtml(event.payload.text) }}></div>
                     {event.chatter_attachments && event.chatter_attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                             {event.chatter_attachments.map(attachment => (

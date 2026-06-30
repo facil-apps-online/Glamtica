@@ -38,7 +38,6 @@ const reportError = async (error: Error, info?: React.ErrorInfo) => {
         payload: payload,
       }),
     });
-    console.log("Error reported to Supabase successfully.");
   } catch (supabaseError) {
     console.error("Failed to report error to Supabase:", supabaseError);
   }

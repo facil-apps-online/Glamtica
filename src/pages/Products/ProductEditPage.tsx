@@ -52,16 +52,16 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
        <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Nombre del Producto</Label>
-          <Input id="name" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} required />
+          <Input id="name" value={formData.name || ""} onChange={(e) => handleChange('name', e.target.value)} required />
         </div>
         <div className="space-y-2">
           <Label htmlFor="sku">SKU</Label>
-          <Input id="sku" value={formData.sku} onChange={(e) => handleChange('sku', e.target.value)} />
+          <Input id="sku" value={formData.sku || ""} onChange={(e) => handleChange('sku', e.target.value)} />
         </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="description">Descripción</Label>
-        <Textarea id="description" value={formData.description} onChange={(e) => handleChange('description', e.target.value)} />
+        <Textarea id="description" value={formData.description || ""} onChange={(e) => handleChange('description', e.target.value)} />
       </div>
        <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -75,7 +75,7 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
         </div>
         <div className="space-y-2">
           <Label htmlFor="brand">Marca</Label>
-          <Select value={formData.brand_id} onValueChange={(value) => handleChange('brand_id', value)}>
+          <Select value={formData.brand_id || ""} onValueChange={(value) => handleChange('brand_id', value)}>
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {brands?.map((brand) => <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>)}
@@ -85,7 +85,7 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
       </div>
       <div className="space-y-2">
         <Label>Unidad de Medida</Label>
-        <Select value={formData.unit_of_measure_id} onValueChange={(value) => handleChange('unit_of_measure_id', value)}>
+        <Select value={formData.unit_of_measure_id || ""} onValueChange={(value) => handleChange('unit_of_measure_id', value)}>
           <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
           <SelectContent>
             {unitsOfMeasure?.map((uom) => <SelectItem key={uom.id} value={uom.id}>{uom.name} ({uom.abbreviation})</SelectItem>)}
@@ -95,21 +95,21 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="packageContentQuantity">Contenido del Envase (en UoM)</Label>
-          <Input id="packageContentQuantity" type="number" value={formData.package_content_quantity} onChange={(e) => handleChange('package_content_quantity', Number(e.target.value))} />
+          <Input id="packageContentQuantity" type="number" value={formData.package_content_quantity ?? ""} onChange={(e) => handleChange('package_content_quantity', e.target.value === "" ? null : Number(e.target.value))} />
         </div>
         <div className="space-y-2 flex flex-col justify-center">
           <Label htmlFor="allowDecimalSale" className="mb-2">Permitir Venta Decimal</Label>
-          <Switch id="allowDecimalSale" checked={formData.allow_decimal_sale} onCheckedChange={(value) => handleChange('allow_decimal_sale', value)} />
+          <Switch id="allowDecimalSale" checked={formData.allow_decimal_sale || false} onCheckedChange={(value) => handleChange('allow_decimal_sale', value)} />
         </div>
       </div>
        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
           <Label htmlFor="cost_price">Precio de Costo</Label>
-          <Input id="cost_price" type="number" value={formData.cost_price} onChange={(e) => handleChange('cost_price', Number(e.target.value))} disabled />
+          <Input id="cost_price" type="number" value={formData.cost_price ?? ""} onChange={(e) => handleChange('cost_price', e.target.value === "" ? null : Number(e.target.value))} disabled />
         </div>
         <div className="space-y-2">
           <Label htmlFor="barcode">Código de Barras</Label>
-          <Input id="barcode" value={formData.barcode} onChange={(e) => handleChange('barcode', e.target.value)} />
+          <Input id="barcode" value={formData.barcode || ""} onChange={(e) => handleChange('barcode', e.target.value)} />
         </div>
       </div>
       <div className="flex justify-end pt-4">

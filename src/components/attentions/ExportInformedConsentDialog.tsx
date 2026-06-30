@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SignedConsent } from '@/hooks/useConsentTemplates';
 import { useClientDetails } from '@/hooks/useClients';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 // Helper to fetch an image and convert it to a data URL
 const fetchImageAsDataURL = async (url: string) => {
@@ -64,6 +65,7 @@ export const ExportInformedConsentDialog: React.FC<ExportInformedConsentDialogPr
         : null;
 
       // 2. Construct full HTML for the new window
+      const cleanSignedContent = sanitizeHtml(signedConsent.signed_content);
       const fullHtml = `
         <html>
           <head>
@@ -103,7 +105,7 @@ export const ExportInformedConsentDialog: React.FC<ExportInformedConsentDialogPr
               </table>
               <h2 style="font-size: 14pt; margin-top: 20pt; padding-bottom: 5pt; text-align: center;">Consentimiento Informado</h2>
               <div style="margin-top: 20pt; padding-top: 15pt;">
-                ${signedConsent.signed_content}
+                ${cleanSignedContent}
               </div>
               ${signedConsent.form_data && Object.keys(signedConsent.form_data).length > 0 ? `
                 <div style="margin-top: 20pt; page-break-before: auto;">
@@ -167,7 +169,7 @@ export const ExportInformedConsentDialog: React.FC<ExportInformedConsentDialogPr
         
         <div className="flex-grow prose max-w-none border rounded-md p-4 overflow-y-auto space-y-4">
           {signedConsent.signed_content ? (
-            <div dangerouslySetInnerHTML={{ __html: signedConsent.signed_content }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(signedConsent.signed_content) }} />
           ) : (
             <p>No se encontró contenido firmado para este consentimiento.</p>
           )}

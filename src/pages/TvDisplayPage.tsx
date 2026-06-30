@@ -84,8 +84,6 @@ const TvDisplayPage: React.FC = () => {
           },
         };
 
-        console.log('Calling public-actions (initializeTv):', { url, body: JSON.stringify(body) });
-
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -130,7 +128,6 @@ const TvDisplayPage: React.FC = () => {
             filter: `id=eq.${tvDisplay.id}`,
           },
           (payload) => {
-            console.log('TV Display updated!', payload);
             setTvDisplay(payload.new as TvDisplay);
           }
         )

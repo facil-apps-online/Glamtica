@@ -122,7 +122,6 @@ export const useTreatmentDetails = (treatmentId: string) => {
     queryKey: ['treatment_details', treatmentId],
     queryFn: async () => {
       const result = await fetchTenantAction('get_treatment_details', { treatment_id: treatmentId });
-      console.log('Result from get_treatment_details:', result);
       // The RPC returns an array with a single object. We need to return that object.
       return result.data?.[0] || null;
     },

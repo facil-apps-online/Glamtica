@@ -104,7 +104,6 @@ export const AvatarUploader = React.memo(({
 
       // 3. If an old avatar was replaced, call the GENERIC 'google-drive-delete' in CORE
       if (updateData.oldAvatarFileId) {
-        console.log(`Deleting old avatar file: ${updateData.oldAvatarFileId}`);
         const { error: deleteError } = await coreSupabase.functions.invoke('google-drive-delete', {
           body: { 
             fileId: updateData.oldAvatarFileId, 

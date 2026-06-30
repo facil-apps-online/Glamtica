@@ -74,39 +74,40 @@ export const ComboBranchesTab = ({ combo, onToggleMicrositeVisibility }: ComboBr
                 <TableRow>
                   <TableHead>Sucursal</TableHead>
                   <TableHead className="text-right">Asignado</TableHead>
-                                      <TableHead className="text-right">Visible en Micrositio</TableHead>
-                                      <TableHead className="text-right">Acciones</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {filteredBranches.map(branch => {
-                                      const assignment = assignments?.find(a => a.branch_id === branch.id);
-                                      const isAssigned = !!assignment;
-                                      return (
-                                        <TableRow key={branch.id}>
-                                          <TableCell className="font-medium">{branch.name}</TableCell>
-                                          <TableCell className="text-right">
-                                            <Switch
-                                              checked={isAssigned}
-                                              onCheckedChange={(isChecked) => handleAssignmentChange(branch.id, isChecked)}
-                                            />
-                                          </TableCell>
-                                          <TableCell className="text-right">
-                                            <Switch
-                                              checked={assignment?.is_visible_on_microsite || false}
-                                              onCheckedChange={(isChecked) => combo && onToggleMicrositeVisibility(branch.id, combo.id, isChecked)}
-                                              disabled={!isAssigned}
-                                            />
-                                          </TableCell>
-                                          <TableCell className="text-right">
-                                            <Button variant="outline" size="sm" disabled={!isAssigned} onClick={() => handleOpenPriceDialog(branch)}>
-                                              <Edit className="w-4 h-4 mr-2" /> Precios
-                                            </Button>
-                                          </TableCell>
-                                        </TableRow>
-                                      );
-                                    })}
-                                  </TableBody>            </Table>
+                  <TableHead className="text-right">Visible en Micrositio</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredBranches.map(branch => {
+                  const assignment = assignments?.find(a => a.branch_id === branch.id);
+                  const isAssigned = !!assignment;
+                  return (
+                    <TableRow key={branch.id}>
+                      <TableCell className="font-medium">{branch.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Switch
+                          checked={isAssigned}
+                          onCheckedChange={(isChecked) => handleAssignmentChange(branch.id, isChecked)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Switch
+                          checked={assignment?.is_visible_on_microsite || false}
+                          onCheckedChange={(isChecked) => combo && onToggleMicrositeVisibility(branch.id, combo.id, isChecked)}
+                          disabled={!isAssigned}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" disabled={!isAssigned} onClick={() => handleOpenPriceDialog(branch)}>
+                          <Edit className="w-4 h-4 mr-2" /> Precios
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </div>
       </div>

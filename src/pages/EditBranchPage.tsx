@@ -48,7 +48,7 @@ export default function EditBranchPage() {
         <CardContent className="pt-6">
           <BranchForm
             branchToEdit={branchToEdit}
-            onSuccess={() => navigate('/branches')}
+            onSuccess={() => navigate('/app/branches')}
             tenantId={tenantId}
           />
         </CardContent>

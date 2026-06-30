@@ -8,6 +8,7 @@ import { useTenantUsers } from '@/hooks/useTenantUsers';
 import { useBranches } from '@/hooks/useBranches';
 import { SignConsentDialog } from './SignConsentDialog';
 import { DynamicFormRenderer } from '../DynamicFormRenderer';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface ViewConsentDialogProps {
   open: boolean;
@@ -87,7 +88,7 @@ export const ViewConsentDialog: React.FC<ViewConsentDialogProps> = ({
           </DialogHeader>
           
           <div className="flex-grow prose max-w-none border rounded-md p-4 overflow-y-auto" ref={contentRef}>
-            <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(processedContent) }} />
             {signedConsent.template_fields && (
               <div className="mt-4">
                 <DynamicFormRenderer

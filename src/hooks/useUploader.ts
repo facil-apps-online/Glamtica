@@ -140,7 +140,6 @@ export const useUploader = () => {
   const deleteFile = useCallback(async (fileId: string) => {
     try {
       await deleteFromDrive(fileId);
-      console.log(`Archivo ${fileId} eliminado correctamente de Google Drive.`);
     } catch (e: any) {
       console.error(`Excepción al eliminar el archivo ${fileId} de Google Drive:`, e);
       // Re-throw the error so the calling component can handle it (e.g., decide not to proceed with DB deletion)

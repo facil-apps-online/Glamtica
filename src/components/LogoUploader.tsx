@@ -130,9 +130,6 @@ export const LogoUploader: React.FC<LogoUploaderProps> = ({ initialLogoUrl, onSa
       // The deletion logic is now inside the google-drive-upload function's response handling
 
       if (uploadData.oldFileId) {
-
-        console.log(`Deleting old logo file: ${uploadData.oldFileId}`);
-
         const { error: deleteError } = await supabase.functions.invoke('google-drive-delete', {
 
           body: { 

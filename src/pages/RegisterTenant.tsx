@@ -305,7 +305,6 @@ export default function RegisterTenant() {
         platform_id: platformId, // Asegurarse que platform_id esté incluido en el payload de Core
       };
 
-      console.log('Enviando payload al Core register-tenant:', coreTenantPayload);
       // 'coreSupabase' es el cliente para el backend de Core
       const { data: coreResponse, error: coreError } = await coreSupabase.functions.invoke('register-tenant', { body: coreTenantPayload });
       
@@ -315,8 +314,6 @@ export default function RegisterTenant() {
       const newTenantId = coreResponse.tenant_id;
       if (!newTenantId) throw new Error('No se recibió el ID del tenant desde Core.');
       
-      console.log('Tenant Core registrado exitosamente con ID:', newTenantId);
-
       // Segunda llamada: Crear o vincular el usuario administrador en Services
       // 'supabase' es el cliente para el backend de Services
       const servicesUserPayload = {
@@ -339,7 +336,6 @@ export default function RegisterTenant() {
         },
       };
 
-      console.log('Enviando payload al Services user-actions:', servicesUserPayload);
       const { data: servicesResponse, error: servicesError } = await supabase.functions.invoke('user-actions', { body: servicesUserPayload });
       
       if (servicesError) throw new Error(servicesError.message);
