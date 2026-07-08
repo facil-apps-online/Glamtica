@@ -16,7 +16,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 export function Layout() {
   const { currentAssignment } = useAuth();
-  const { data: subscription, isLoading: isSubscriptionLoading } = useSubscriptionStatus(currentAssignment?.tenant_id);
+  const { data: subscription, isLoading: isSubscriptionLoading } = useSubscriptionStatus(currentAssignment?.tenant_id, currentAssignment?.platform_id);
   const { setNotifications, addNotification } = useNotificationStore();
   const navigate = useNavigate();
   const location = useLocation();

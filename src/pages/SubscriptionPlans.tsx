@@ -34,13 +34,15 @@ const SubscriptionPlans = () => {
     }
 
     try {
-      // Call Core Function 'wompi-generate-checkout' directly
-      const { data, error: functionError } = await coreSupabase.functions.invoke('wompi-generate-checkout', {
+      const { data, error: functionError } = await coreSupabase.functions.invoke('core-actions', {
         body: {
-          tenantId: user.tenant_id,
-          userId: user.id,
-          planId: planId, // Send planId for backend calculation
-          redirectUrl: `${window.location.origin}/payment-success`,
+          action: 'generate_wompi_checkout',
+          payload: {
+            tenantId: user.tenant_id,
+            userId: user.id,
+            planId: planId,
+            redirectUrl: `${window.location.origin}/payment-success`,
+          },
         },
       });
 

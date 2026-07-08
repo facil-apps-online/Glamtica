@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { coreSupabase } from '@/lib/supabaseClient';
 
 export interface SubscriptionUsage {
   plan_name: string;
@@ -9,29 +9,30 @@ export interface SubscriptionUsage {
     asset_name: string;
     asset_key: string;
     asset_description: string;
+    asset_purpose_key?: string;
     used: number;
     limit: number;
   }>;
 }
 
-const fetchSubscriptionUsage = async (): Promise<SubscriptionUsage | null> => {
-  const { data, error } = await supabase.functions.invoke('tenant-actions', {
-    body: { action: 'get_my_subscription_usage' },
+const fetchSubscriptionUsage = async (tenantId: string, platformId: string): Promise<SubscriptionUsage | null> => {
+  const { data, error } = await coreSupabase.functions.invoke('core-actions', {
+    body: { action: 'get_subscription_usage', payload: { tenantId, platformId } },
   });
 
   if (error) {
-    console.error('[Hook] Error fetching subscription usage from Edge Function:', error);
+    console.error('[useSubscriptionUsage] Error:', error);
     throw new Error(error.message);
   }
-  
+
   return data as SubscriptionUsage;
 };
 
-export const useSubscriptionUsage = (tenantId: string | null | undefined) => {
+export const useSubscriptionUsage = (tenantId: string | null | undefined, platformId: string | null | undefined) => {
   return useQuery<SubscriptionUsage | null, Error>({
-    queryKey: ['subscription_usage', tenantId],
-    queryFn: () => fetchSubscriptionUsage(),
-    enabled: !!tenantId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    queryKey: ['subscription_usage', tenantId, platformId],
+    queryFn: () => fetchSubscriptionUsage(tenantId!, platformId!),
+    enabled: !!tenantId && !!platformId,
+    staleTime: 1000 * 60 * 5,
   });
 };

@@ -1,45 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from './useAuth';
+import { coreSupabase } from '@/lib/supabaseClient';
+import type { SubscriptionInfo } from '@/types/subscription';
 
-export type SubscriptionStatus = 'activo' | 'gracia' | 'suspendido' | 'cancelado';
-
-export interface SubscriptionInfo {
-  status: SubscriptionStatus;
-  end_date: string | null;
-  plan_name: string | null;
-}
-
-const fetchSubscriptionStatus = async (): Promise<SubscriptionInfo | null> => {
-
-  const { data, error } = await supabase.functions.invoke('tenant-actions', {
-    body: { action: 'GET_SUBSCRIPTION_STATUS' },
+const fetchSubscriptionStatus = async (tenantId: string, platformId: string): Promise<SubscriptionInfo | null> => {
+  const { data, error } = await coreSupabase.functions.invoke('core-actions', {
+    body: { action: 'get_subscription_status', payload: { tenantId, platformId } },
   });
 
   if (error) {
-    console.error('[Hook] Error fetching subscription status from Edge Function:', error);
+    console.error('[useActiveSubscription] Error:', error);
     throw new Error(error.message);
   }
-  
-  // The RPC might return an array or a single object depending on recent changes.
-  // We handle both cases to be safe.
-  if (Array.isArray(data)) {
-      return (data.length > 0 ? data[0] : null) as SubscriptionInfo | null;
-  }
-  
-  return data as SubscriptionInfo | null;
+
+  if (!data) return null;
+
+  return {
+    status: data.status || 'cancelado',
+    end_date: data.ends_at || null,
+    plan_name: data.plan_name || null,
+  };
 };
 
-export const useSubscriptionStatus = (tenantId: string | null | undefined) => {
-  const queryResult = useQuery<SubscriptionInfo | null, Error>({
-    queryKey: ['subscription_status', tenantId],
-    queryFn: () => fetchSubscriptionStatus(),
-    enabled: !!tenantId,
-    // La configuración se hace más agresiva para detectar cambios de suscripción rápidamente.
-    staleTime: 0, // Los datos se consideran "stale" (viejos) inmediatamente.
-    refetchOnWindowFocus: true, // Se recarga si el usuario vuelve a la ventana.
-    refetchOnMount: true, // Se recarga siempre que el componente se monta.
+export const useSubscriptionStatus = (tenantId: string | null | undefined, platformId: string | null | undefined) => {
+  return useQuery<SubscriptionInfo | null, Error>({
+    queryKey: ['subscription_status', tenantId, platformId],
+    queryFn: () => fetchSubscriptionStatus(tenantId!, platformId!),
+    enabled: !!tenantId && !!platformId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
-
-  return queryResult;
 };

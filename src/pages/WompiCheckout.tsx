@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { coreSupabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,12 +35,15 @@ const WompiCheckout = () => {
     }
 
     try {
-      const { data, error: functionError } = await supabase.functions.invoke('wompi-generate-checkout', {
+      const { data, error: functionError } = await coreSupabase.functions.invoke('core-actions', {
         body: {
-          tenantId: user.tenant_id,
-          amountInCents,
-          currency: 'COP', // O podría venir de la configuración del tenant
-          redirectUrl: `${window.location.origin}/payment-success`,
+          action: 'generate_wompi_checkout',
+          payload: {
+            tenantId: user.tenant_id,
+            amountInCents,
+            currency: 'COP',
+            redirectUrl: `${window.location.origin}/payment-success`,
+          },
         },
       });
 

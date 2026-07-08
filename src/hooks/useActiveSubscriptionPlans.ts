@@ -1,35 +1,47 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { coreSupabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Esta interfaz refleja la estructura de datos devuelta por la función RPC
 export interface ActivePlan {
   plan_id: string;
   plan_name: string;
-  description: string; // Asumiendo que la RPC devolverá estos campos
-  features: string[]; // Asumiendo que la RPC devolverá estos campos
-  price_id: string; // El ID del registro de precio
+  plan_description: string;
+  plan_features: string[];
+  billing_frequency_months: number;
+  price_id: string;
   calculated_price: number;
+  calculated_extra_branch_price: number;
+  calculated_promotional_price: number;
   currency_code: string;
   currency_symbol: string;
+  base_price: number;
+  active_branches_count: number;
+  country_id: string;
 }
 
-// La función que llama a la RPC de la base de datos
-const fetchActivePlans = async (): Promise<ActivePlan[]> => {
-  const { data, error } = await supabase.rpc('get_calculated_plan_prices');
+const fetchActivePlans = async (tenantId: string, platformId: string): Promise<ActivePlan[]> => {
+  if (!tenantId || !platformId) return [];
+
+  const { data, error } = await coreSupabase.functions.invoke('core-actions', {
+    body: { action: 'get_tenant_subscription_plans', payload: { tenantId, platformId } },
+  });
 
   if (error) {
-    console.error('Error fetching calculated plan prices:', error);
+    console.error('Error fetching subscription plans:', error);
     throw new Error(error.message);
   }
-  
-  // Aquí se podría hacer un mapeo si la estructura de la RPC no coincide 100%
-  // Por ahora, asumimos que coincide con la interfaz ActivePlan
+
   return data || [];
 };
 
 export const useActiveSubscriptionPlans = () => {
+  const { currentAssignment } = useAuth();
+  const tenantId = currentAssignment?.tenant_id;
+  const platformId = currentAssignment?.platform_id;
+
   return useQuery<ActivePlan[], Error>({
-    queryKey: ['active_subscription_plans'],
-    queryFn: fetchActivePlans,
+    queryKey: ['active_subscription_plans', tenantId, platformId],
+    queryFn: () => fetchActivePlans(tenantId!, platformId!),
+    enabled: !!tenantId && !!platformId,
   });
 };

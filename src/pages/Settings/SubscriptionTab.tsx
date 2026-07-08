@@ -5,7 +5,7 @@ import { usePriceFormat } from '@/hooks/usePriceFormat';
 import { useWompiCheckout } from '@/hooks/useWompiCheckout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertTriangle, Info, CreditCard, FileText, Users, Archive } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, CreditCard, FileText, Users, Archive, HardDrive, Building2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays } from 'date-fns';
@@ -13,29 +13,22 @@ import { es } from 'date-fns/locale';
 import { useSubscriptionUsage } from '@/hooks/useSubscriptionUsage';
 import { StatsCard } from "@/components/StatsCard";
 
-const formatBytes = (bytes: number, decimals = 2) => {
-  if (!+bytes) return '0 Bytes';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+const formatStorage = (value: number) => `${value} GB`;
+
+const assetIconByPurpose: Record<string, React.ElementType> = {
+  storage: HardDrive,
+  extra_branch: Building2,
+  e_invoice: FileText,
 };
 
-const AssetIcon = ({ assetKey }: { assetKey: string }) => {
-  switch (assetKey) {
-    case 'electronic_invoices':
-      return FileText;
-    case 'users':
-      return Users;
-    default:
-      return Archive;
-  }
+const AssetIcon = ({ purposeKey }: { purposeKey?: string }): React.ElementType => {
+  if (purposeKey && assetIconByPurpose[purposeKey]) return assetIconByPurpose[purposeKey];
+  return Archive;
 };
 
 const CurrentSubscriptionStatus = () => {
   const { currentAssignment } = useAuth();
-  const { data: subscription, isLoading } = useSubscriptionUsage(currentAssignment?.tenant_id);
+  const { data: subscription, isLoading } = useSubscriptionUsage(currentAssignment?.tenant_id, currentAssignment?.platform_id);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full mb-8" />;
@@ -78,7 +71,7 @@ const CurrentSubscriptionStatus = () => {
           {subscription.usage.map(item => {
             const isStorage = item.asset_purpose_key === 'storage';
             const displayValue = isStorage
-              ? `${formatBytes(item.used)} / ${formatBytes(item.limit)}`
+              ? `${formatStorage(item.used)} / ${formatStorage(item.limit)}`
               : `${item.used} / ${item.limit === -1 ? '∞' : item.limit}`;
 
             return (
@@ -87,7 +80,7 @@ const CurrentSubscriptionStatus = () => {
                 title={item.asset_name}
                 value={displayValue}
                 change={item.asset_description}
-                icon={AssetIcon({ assetKey: item.asset_key })}
+                icon={AssetIcon({ purposeKey: item.asset_purpose_key })}
               />
             );
           })}
