@@ -36,7 +36,7 @@ export interface TenantSettingsData {
 
 const fetchTenantSettingsData = async (tenantId: string): Promise<TenantSettingsData> => {
   // The tenantId is passed for query key consistency, but the function gets the ID from the JWT
-  const response = await fetch('/functions/v1/tenant-actions', {
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

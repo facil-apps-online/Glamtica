@@ -34,7 +34,7 @@ export interface TenantInfo {
 }
 
 const fetchTenantInfo = async (): Promise<TenantInfo> => {
-  const response = await fetch('/functions/v1/tenant-actions', {
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ const fetchTenantInfo = async (): Promise<TenantInfo> => {
 };
 
 const updateTenantInfo = async (tenantId: string, updates: Partial<TenantInfo>): Promise<TenantInfo> => {
-  const response = await fetch('/functions/v1/tenant-actions', {
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/tenant-actions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
