@@ -459,7 +459,7 @@ export default function RegisterTenant() {
                     )}
                   </div>
 
-                  <div className="p-4 border rounded-lg bg-blue-50">
+                  <div className="p-4 border rounded-lg bg-card">
                     <h3 className="text-lg font-semibold mb-4">Crea tu Cuenta de Administrador</h3>
                     <p className="text-sm text-muted-foreground mb-4">Estos serán tus datos para iniciar sesión en la plataforma.</p>
                     <div className="mb-6">

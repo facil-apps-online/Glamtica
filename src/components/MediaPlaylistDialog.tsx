@@ -422,7 +422,16 @@ const MediaPlaylistDialog: React.FC<MediaPlaylistDialogProps> = ({
                 </SortableContext>
               </DndContext>
             )}
-            <Button onClick={() => { setCurrentItem({ media_url: '', media_type: 'youtube' }); setIsItemFormOpen(true); }} className="mt-4">Añadir Nuevo Ítem</Button>
+            <Button
+              onClick={() => { setCurrentItem({ media_url: '', media_type: 'youtube' }); setIsItemFormOpen(true); }}
+              disabled={!playlist?.id}
+              className="mt-4"
+            >
+              Añadir Nuevo Ítem
+            </Button>
+            {!playlist?.id && (
+              <p className="text-xs text-muted-foreground">Guarda la playlist primero (botón "Guardar" abajo) para poder añadirle videos.</p>
+            )}
           </div>
 
           <DialogFooter>
