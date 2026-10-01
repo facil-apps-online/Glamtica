@@ -31,13 +31,17 @@ const saveTenantIntegrationRpc = async ({
   environment: 'test' | 'production';
   userRole: string;
 }) => {
-  const { error } = await supabase.rpc('upsert_tenant_integration', {
-    p_tenant_id: tenantId,
-    p_provider_slug: providerSlug,
-    p_encrypted_credentials: encrypted_credentials,
-    p_nonce: nonce,
-    p_environment: environment,
-    p_user_role: userRole,
+  // tenant_integrations vive en Core: el backend (tenant-actions) la guarda con el tenant/plataforma/rol del JWT.
+  const { error } = await supabase.functions.invoke('tenant-actions', {
+    body: {
+      action: 'save_tenant_integration',
+      payload: {
+        providerSlug,
+        encrypted_credentials,
+        nonce,
+        environment,
+      },
+    },
   });
 
   if (error) {

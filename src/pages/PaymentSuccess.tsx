@@ -8,6 +8,7 @@ const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const [paymentConfirmed, setPaymentConfirmed] = useState(true);
 
   useEffect(() => {
     const attentionId = searchParams.get('attention_id');
@@ -15,7 +16,7 @@ const PaymentSuccess = () => {
     if (attentionId) {
       const updateStatus = async () => {
         try {
-          const { error } = await supabase.functions.invoke('tenant-actions', {
+          const { data, error } = await supabase.functions.invoke('tenant-actions', {
             body: {
               action: 'update-attention-payment-status',
               payload: { attention_id: attentionId },
@@ -25,6 +26,8 @@ const PaymentSuccess = () => {
           if (error) {
             throw new Error(error.message);
           }
+          // El backend solo consulta el estado de los pagos; la confirmación real llega por la pasarela.
+          setPaymentConfirmed(data?.all_completed !== false);
           setStatus('success');
         } catch (err: any) {
           setErrorMessage(err.message || 'Ocurrió un error al actualizar el estado del pago.');
@@ -77,11 +80,13 @@ const PaymentSuccess = () => {
           <div className="mx-auto bg-green-100 rounded-full h-16 w-16 flex items-center justify-center">
             <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
-          <CardTitle className="mt-4">¡Pago Exitoso!</CardTitle>
+          <CardTitle className="mt-4">{paymentConfirmed ? '¡Pago Exitoso!' : 'Pago en verificación'}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-6">
-            Tu transacción ha sido procesada y el estado de la atención ha sido actualizado.
+            {paymentConfirmed
+              ? 'Tu transacción ha sido procesada y el estado de la atención ha sido actualizado.'
+              : 'Estamos esperando la confirmación de la pasarela de pagos. El estado se actualizará automáticamente.'}
           </p>
           <Link to="/attentions" className="text-blue-600 hover:underline">
             Volver a Atenciones
