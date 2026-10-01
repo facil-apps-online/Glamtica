@@ -250,8 +250,7 @@ const ExpenseRecordsComponent = () => {
                 subtitle="Visualiza y administra los gastos únicos de tu negocio."
                 children={
                     <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Nuevo Gasto
+                        <PlusCircle className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Nuevo Gasto</span>
                     </Button>
                 }
             />
@@ -607,8 +606,7 @@ const RecurringExpensesComponent = () => {
                 subtitle="Define y gestiona los gastos que se repiten periódicamente."
                 children={
                     <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Nuevo Gasto Recurrente
+                        <PlusCircle className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Nuevo Gasto Recurrente</span>
                     </Button>
                 }
             />
@@ -735,8 +733,7 @@ export default function ExpensesPage() {
                 title="Módulo de Gastos"
                 children={
                     <Button variant="outline" onClick={() => navigate('/app/expenses/providers')}>
-                        <Building2 className="mr-2 h-4 w-4" />
-                        Gestionar Proveedores
+                        <Building2 className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Gestionar Proveedores</span>
                     </Button>
                 }
             />

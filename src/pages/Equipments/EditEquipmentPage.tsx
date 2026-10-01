@@ -72,7 +72,7 @@ const EquipmentDetailsForm = ({ equipment, onFormChange, onSave, isSaving, equip
           <Label htmlFor="last_maintenance_date">Último Mantenimiento</Label>
           <Input id="last_maintenance_date" type="date" value={formData.last_maintenance_date?.split('T')[0] || ''} onChange={(e) => handleChange('last_maintenance_date', e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="maintenance_frequency">Frec. Mantenimiento</Label>
             <Input id="maintenance_frequency" type="number" value={formData.maintenance_frequency} onChange={(e) => handleChange('maintenance_frequency', Number(e.target.value))} />

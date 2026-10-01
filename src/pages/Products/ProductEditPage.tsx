@@ -49,7 +49,7 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(); }} className="space-y-4 pt-4">
-       <div className="grid grid-cols-2 gap-4">
+       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Nombre del Producto</Label>
           <Input id="name" value={formData.name || ""} onChange={(e) => handleChange('name', e.target.value)} required />
@@ -63,7 +63,7 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
         <Label htmlFor="description">Descripción</Label>
         <Textarea id="description" value={formData.description || ""} onChange={(e) => handleChange('description', e.target.value)} />
       </div>
-       <div className="grid grid-cols-2 gap-4">
+       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="category">Categoría(s)</Label>
           <MultiSelect
@@ -92,7 +92,7 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
           </SelectContent>
         </Select>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="packageContentQuantity">Contenido del Envase (en UoM)</Label>
           <Input id="packageContentQuantity" type="number" value={formData.package_content_quantity ?? ""} onChange={(e) => handleChange('package_content_quantity', e.target.value === "" ? null : Number(e.target.value))} />
@@ -102,7 +102,7 @@ const ProductDetailsForm = ({ product, onFormChange, onSave, isSaving, unitsOfMe
           <Switch id="allowDecimalSale" checked={formData.allow_decimal_sale || false} onCheckedChange={(value) => handleChange('allow_decimal_sale', value)} />
         </div>
       </div>
-       <div className="grid grid-cols-2 gap-4">
+       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
           <Label htmlFor="cost_price">Precio de Costo</Label>
           <Input id="cost_price" type="number" value={formData.cost_price ?? ""} onChange={(e) => handleChange('cost_price', e.target.value === "" ? null : Number(e.target.value))} disabled />

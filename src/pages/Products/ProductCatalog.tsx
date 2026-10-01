@@ -305,7 +305,7 @@ const ProductCatalog = () => {
   return (
     <div className="space-y-8">
       <PageHeader title="Productos" subtitle="Crea y edita los productos base de tu negocio.">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <UnitOfMeasureManagementDialog trigger={<Button variant="outline" size="sm"><SlidersHorizontal className="w-4 h-4" /><span className="hidden sm:inline ml-2">UoM</span></Button>} />
           <ProductCategoryManagementDialog trigger={<Button variant="outline" size="sm"><ListFilter className="w-4 h-4" /><span className="hidden sm:inline ml-2">Categorías</span></Button>} />
           <BrandManagementDialog trigger={<Button variant="outline" size="sm"><Tag className="w-4 h-4" /><span className="hidden sm:inline ml-2">Marcas</span></Button>} />

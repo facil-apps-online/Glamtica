@@ -190,7 +190,7 @@ const SequenceForm = ({ sequence, onFinished }: { sequence?: DocumentSequence, o
             <FormMessage />
           </FormItem>
         )} />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="current_number" render={({ field }) => (
             <FormItem><FormLabel>Siguiente Número</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
           )} />

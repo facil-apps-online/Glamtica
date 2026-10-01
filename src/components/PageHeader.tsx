@@ -9,7 +9,7 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, backButton, children }) => {
   return (
-    <div className="flex justify-between items-start mb-6">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
       <div className="flex items-start gap-4">
         {backButton}
         <div>

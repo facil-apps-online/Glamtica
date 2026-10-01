@@ -547,7 +547,7 @@ export default function ClientDetailPage() {
                         <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Estado/Provincia</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Código Postal</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Teléfono</FormLabel><FormControl><PhoneInput {...field} defaultCountryIsoCode={countryIsoCode} placeholderType='movil' /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-sm font-medium">Email</FormLabel><FormControl><Input type="email" {...field} placeholder="contacto@cliente.com" /></FormControl><FormMessage /></FormItem>)} />
                       </div>

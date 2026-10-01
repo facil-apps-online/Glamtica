@@ -92,7 +92,7 @@ export default function Inventory() {
       >
         <div className="flex gap-4 items-center">
            {purchaseIndependenceMode !== "centralized" && ( // Mostrar solo si no es centralizado
-             <div className="w-64">
+             <div className="w-full sm:w-64">
               <Select onValueChange={setBranchId} value={selectedBranchId || ''}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una sucursal..." />
