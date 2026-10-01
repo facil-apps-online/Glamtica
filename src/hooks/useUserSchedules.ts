@@ -1,20 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { fetchTenantAction } from '@/lib/fetchTenantAction';
 
-// Hook to fetch user schedules
+// Hook to fetch user schedules (tenant y plataforma salen del JWT en el backend)
 export const useUserSchedules = (userId?: string, tenantId?: string) => {
   return useQuery({
     queryKey: ['user-schedules', userId, tenantId],
     queryFn: async () => {
       if (!userId || !tenantId) return [];
-      const { data, error } = await supabase
-        .from('user_schedules')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('tenant_id', tenantId);
-      
-      if (error) throw new Error(error.message);
-      return data;
+      return fetchTenantAction('get_user_schedules', { userId });
     },
     enabled: !!userId && !!tenantId,
   });
@@ -33,13 +26,8 @@ export const useUpdateUserSchedule = () => {
       end_time: string;
       is_active: boolean;
     }) => {
-      const { data, error } = await supabase
-        .from('user_schedules')
-        .upsert({ ...scheduleData, platform_id: import.meta.env.VITE_PLATFORM_ID }, { onConflict: 'user_id,day_of_week,tenant_id,branch_id' })
-        .select();
-      
-      if (error) throw new Error(error.message);
-      return data;
+      const { tenant_id: _tenantId, ...payload } = scheduleData; // el tenant lo toma el backend del JWT
+      return fetchTenantAction('upsert_user_schedule', payload);
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['user-schedules', variables.user_id, variables.tenant_id] });
