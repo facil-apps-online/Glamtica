@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchTenantAction } from '@/lib/fetchTenantAction';
 import { toast } from '@/hooks/use-toast';
 
 // 'Language' ahora representa una Localización, ej. Español (Colombia)
@@ -86,17 +87,8 @@ export const useCountries = () => {
   return useQuery<Country[], Error>({
     queryKey: ['countries'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('countries')
-        .select(`
-          *,
-          currencies!default_currency_id(name, code),
-          languages!default_localization_id(name),
-          phone_prefixes!phone_prefix_id(prefix)
-        `)
-        .order('name');
-      if (error) throw error;
-      return data;
+      // countries/currencies/languages/phone_prefixes viven en Core: se leen a través de tenant-actions.
+      return await fetchTenantAction('get_countries_detailed');
     },
     select: (data) => data.map(country => ({
       ...country,

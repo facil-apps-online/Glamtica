@@ -1,6 +1,6 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { fetchTenantAction } from '@/lib/fetchTenantAction';
 
 export interface Timezone {
   id: string;
@@ -11,18 +11,8 @@ export interface Timezone {
   updated_at: string;
 }
 
-const fetchTimezones = async (): Promise<Timezone[]> => {
-  const { data, error } = await supabase
-    .from('timezones')
-    .select('*')
-    .order('name', { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
-};
+// timezones vive en Core: se lee a través de tenant-actions.
+const fetchTimezones = async (): Promise<Timezone[]> => fetchTenantAction('get_timezones');
 
 export const useTimezones = () => {
   return useQuery<Timezone[], Error, { id: string; name: string; formattedLabel: string }[]>({
