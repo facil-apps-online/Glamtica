@@ -245,7 +245,7 @@ export const useUpdateBranchCombo = () => {
 
   return useMutation<any, Error, { id: string; branchId: string; updates: { selling_price?: number; is_active_in_branch?: boolean } }>({
     mutationFn: ({ id, branchId, updates }) =>
-      callTenantAction('update_branch_combo_status', { combo_id: id, branch_id: branchId, is_active: updates.is_active_in_branch }),
+      callTenantAction('update_branch_combo_status', { combo_id: id, branch_id: branchId, updates: { is_active: updates.is_active_in_branch } }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['branch_services_and_combos', variables.branchId] });
       toast({ title: "Combo Actualizado", description: "El precio o estado ha sido actualizado para esta sucursal.", variant: "success" });

@@ -136,8 +136,9 @@ export const useEquipmentById = (equipmentId: string) => {
     queryKey: ['equipment', equipmentId],
     queryFn: async () => {
       if (!currentAssignment?.tenant_id || !equipmentId) return null;
-      const data = await callTenantAction('get_equipment_by_id', { equipmentId });
-      return data;
+      // No existe 'get_equipment_by_id' en el backend: se obtiene la lista (incluye inactivos) y se filtra.
+      const list = await callTenantAction('get_equipment', { showInactive: true });
+      return (list as Equipment[] | null)?.find((e) => e.id === equipmentId) ?? null;
     },
     enabled: !!currentAssignment?.tenant_id && !!equipmentId,
   });

@@ -42,7 +42,7 @@ export const useMonthlyPaidExpenses = () => {
       
       const { data, error } = await supabase.functions.invoke('tenant-actions', {
         body: {
-          action: 'get_current_month_paid_expenses',
+          action: 'get_monthly_expense_summary',
           payload: { branchId: branchIdToFetch },
         },
       });
@@ -50,7 +50,8 @@ export const useMonthlyPaidExpenses = () => {
       if (error) {
         throw new Error(error.message);
       }
-      return data;
+      // get_monthly_expense_summary devuelve { paid, pending, overdue }; este widget solo usa lo pagado.
+      return (data?.paid ?? 0) as number;
     },
     enabled: !authLoading && !!tenantId && (isSuperAdmin || isAdmin), // Only enable if tenantId is present and user has permission
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes

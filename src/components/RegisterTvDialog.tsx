@@ -59,6 +59,7 @@ const RegisterTvDialog: React.FC<RegisterTvDialogProps> = ({ isOpen, onClose, on
 
       const { error } = await supabase.rpc('authorize_tv_display', {
         p_tv_display_id: tvDisplayId,
+        p_platform_id: import.meta.env.VITE_PLATFORM_ID,
         p_branch_id: branchId,
         p_tenant_id: currentTenantId,
       });

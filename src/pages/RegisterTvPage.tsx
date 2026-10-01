@@ -38,6 +38,7 @@ const RegisterTvPage: React.FC = () => {
     try {
       const { error } = await supabase.rpc('register_tv', {
         p_registration_code: registrationCode,
+        p_platform_id: currentAssignment.platform_id || import.meta.env.VITE_PLATFORM_ID,
         p_branch_id: selectedBranchId,
         p_tenant_id: currentAssignment.tenant_id,
       });

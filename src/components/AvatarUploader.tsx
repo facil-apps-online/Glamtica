@@ -107,7 +107,7 @@ export const AvatarUploader = React.memo(({
         const { error: deleteError } = await coreSupabase.functions.invoke('google-drive-delete', {
           body: { 
             fileId: updateData.oldAvatarFileId, 
-            integrationOwnerTenantId: integrationOwnerTenantId
+            integration_owner_tenant_id: integrationOwnerTenantId
           }
         });
         if (deleteError) {

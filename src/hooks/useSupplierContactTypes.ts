@@ -20,14 +20,14 @@ const callTenantAction = async (action: string, payload: any) => {
 export const useGetSupplierContactTypes = () => {
   return useQuery<SupplierContactType[], Error>({
     queryKey: ['supplier_contact_types'],
-    queryFn: () => callTenantAction('get_supplier_contact_types', {}),
+    queryFn: () => callTenantAction('get_contact_types', { applies_to: 'supplier' }),
   });
 };
 
 export const useCreateSupplierContactType = () => {
   const queryClient = useQueryClient();
   return useMutation<SupplierContactType, Error, { name: string }>({
-    mutationFn: (newType) => callTenantAction('create_supplier_contact_type', newType),
+    mutationFn: (newType) => callTenantAction('create_contact_type', { name: newType.name, is_for_supplier: true, is_for_client: false }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier_contact_types'] });
     },
@@ -37,7 +37,7 @@ export const useCreateSupplierContactType = () => {
 export const useUpdateSupplierContactType = () => {
   const queryClient = useQueryClient();
   return useMutation<SupplierContactType, Error, Partial<SupplierContactType> & { id: string }>({
-    mutationFn: (updates) => callTenantAction('update_supplier_contact_type', updates),
+    mutationFn: (updates) => callTenantAction('update_contact_type', updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier_contact_types'] });
     },
@@ -47,7 +47,7 @@ export const useUpdateSupplierContactType = () => {
 export const useDeleteSupplierContactType = () => {
   const queryClient = useQueryClient();
   return useMutation<{ success: boolean }, Error, string>({
-    mutationFn: (id) => callTenantAction('delete_supplier_contact_type', { id }),
+    mutationFn: (id) => callTenantAction('delete_contact_type', { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier_contact_types'] });
     },
