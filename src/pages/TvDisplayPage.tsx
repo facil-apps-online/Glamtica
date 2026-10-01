@@ -80,7 +80,8 @@ const TvDisplayPage: React.FC = () => {
           action: 'public_get_or_create_tv_display',
           payload: { 
             p_id: storedTvId,
-            p_registration_code: registrationCode 
+            p_registration_code: registrationCode,
+            platform_id: import.meta.env.VITE_PLATFORM_ID,
           },
         };
 

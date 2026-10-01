@@ -24,7 +24,7 @@ const RegisterTvDialog: React.FC<RegisterTvDialogProps> = ({ isOpen, onClose, on
   const handleRegister = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('register_tv_display', { p_registration_code: registrationCode });
+      const { data, error } = await supabase.rpc('register_tv_display', { p_registration_code: registrationCode, p_platform_id: import.meta.env.VITE_PLATFORM_ID });
       if (error) {
         throw error;
       }
