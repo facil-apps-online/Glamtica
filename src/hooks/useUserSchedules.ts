@@ -35,7 +35,7 @@ export const useUpdateUserSchedule = () => {
     }) => {
       const { data, error } = await supabase
         .from('user_schedules')
-        .upsert(scheduleData, { onConflict: 'user_id,day_of_week,tenant_id,branch_id' })
+        .upsert({ ...scheduleData, platform_id: import.meta.env.VITE_PLATFORM_ID }, { onConflict: 'user_id,day_of_week,tenant_id,branch_id' })
         .select();
       
       if (error) throw new Error(error.message);

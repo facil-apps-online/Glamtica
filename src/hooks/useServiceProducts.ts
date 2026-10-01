@@ -28,7 +28,7 @@ export const useAddServiceProduct = () => {
     mutationFn: async (newProduct: Omit<Tables<'attention_products'>, 'id' | 'created_at' | 'updated_at' | 'total_price'>) => {
       const { data, error } = await supabase
         .from('attention_products')
-        .insert(newProduct)
+        .insert({ ...newProduct, platform_id: import.meta.env.VITE_PLATFORM_ID })
         .select()
         .single();
 

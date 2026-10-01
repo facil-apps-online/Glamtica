@@ -49,11 +49,12 @@ export const useUpsertTenantTemplateSetting = () => {
         .upsert(
           {
             tenant_id: tenantId,
+            platform_id: import.meta.env.VITE_PLATFORM_ID,
             template_type: setting.template_type,
             template_id: setting.template_id,
             is_active: setting.is_active,
           },
-          { onConflict: 'tenant_id, template_type' } // La clave única para el upsert
+          { onConflict: 'tenant_id,platform_id,template_type' } // La clave única para el upsert
         );
 
       if (error) throw new Error(error.message);
